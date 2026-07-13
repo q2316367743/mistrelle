@@ -19,6 +19,7 @@
     "dayjs": "^1.11.14",
     "es-toolkit": "^1.39.10",
     "less": "^4.4.1",
+    "lunar-javascript": "^1.7.7",
     "nanoid": "^5.1.16",
     "openai": "^6.46.0",
     "pinia": "^2.3.1",

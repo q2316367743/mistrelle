@@ -89,18 +89,12 @@
           <view-list-icon />
         </template>
       </t-button>
-      <t-button v-if="showAddChat" theme="primary" shape="square" variant="text">
-        <template #icon>
-          <chat-add-icon />
-        </template>
-      </t-button>
     </div>
   </t-layout>
 </template>
 <script lang="ts" setup>
 import {
   AiIcon,
-  ChatAddIcon,
   ChatIcon,
   FolderIcon,
   InternetIcon,
@@ -143,10 +137,6 @@ const yuanbaoPieMenus = computed<YuanbaoPieMenuItem[]>(() => [
   ...pieMenus.map((item) => ({ ...item, path: `/pie/${item.id}` })),
   ...agentMenus.map((item) => ({ ...item, path: `/agent/${item.id}` }))
 ])
-const showAddChat = computed(() => {
-  if (route.path.startsWith('/setting')) return false
-  return true
-})
 
 const isActive = (path: string) => route.path === path
 

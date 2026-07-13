@@ -1,6 +1,8 @@
 import { BaseEntity } from '@/entity'
 
 export interface AiGroup extends BaseEntity {
+  // ------------------------------- 基础 -------------------------------
+
   /**
    * 分组名字
    */
@@ -16,10 +18,24 @@ export interface AiGroup extends BaseEntity {
    */
   tools: Array<string>
 
+  // ------------------------------- 高级 -------------------------------
+
   /**
    * 默认使用的模型
    */
-  defaultModel: string
+  model: string
+
+  /**
+   * 输入框占位符
+   */
+  placeholder: string
+
+  /**
+   * 是否深度思考
+   */
+  think: boolean
+
+  // ------------------------------- 状态 -------------------------------
 
   /**
    * 是否置顶

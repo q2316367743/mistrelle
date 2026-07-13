@@ -47,13 +47,16 @@ const props = defineProps({
   },
   think: {
     type: Boolean,
-    default: false
+    default: true
   },
   loading: {
     type: Boolean,
     default: false
   },
-  placeholder: String
+  placeholder: {
+    type: String,
+    default: '说点什么吧...'
+  }
 })
 const emit = defineEmits(['update:input', 'update:model', 'update:think', 'send', 'stop'])
 
