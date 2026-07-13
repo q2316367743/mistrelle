@@ -14,6 +14,8 @@ export const getUserProfile = (): UserProfile => {
   return {
     avatar: user?.avatar || './logo.png',
     nickname: user?.nickname || '用户',
-    type: user?.type as 'member' || 'user'
+    type: (user?.type as 'member') || 'user'
   }
 }
+
+export const copyText = (text: string) => utools.copyText(text)
