@@ -145,7 +145,6 @@ const yuanbaoPieMenus = computed<YuanbaoPieMenuItem[]>(() => [
 ])
 const showAddChat = computed(() => {
   if (route.path.startsWith('/setting')) return false
-  else if (route.path === '/home') return false
   return true
 })
 
