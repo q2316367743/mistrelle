@@ -244,6 +244,7 @@ async function handleSave() {
 // ---------- 提供方名称预设 ----------
 
 const providerPresets: Array<{ label: string; baseUrl: string }> = [
+  { label: 'V3 API', baseUrl: 'https://api.vveai.com/v1' },
   { label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
   { label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
   { label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1' },

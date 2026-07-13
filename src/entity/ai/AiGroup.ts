@@ -1,6 +1,6 @@
 import { BaseEntity } from '@/entity'
 
-export interface AiGroup extends BaseEntity {
+export interface AiGroupForm {
   // ------------------------------- 基础 -------------------------------
 
   /**
@@ -34,6 +34,9 @@ export interface AiGroup extends BaseEntity {
    * 是否深度思考
    */
   think: boolean
+}
+
+export interface AiGroup extends BaseEntity, AiGroupForm {
 
   // ------------------------------- 状态 -------------------------------
 
@@ -41,4 +44,16 @@ export interface AiGroup extends BaseEntity {
    * 是否置顶
    */
   top: boolean
+}
+
+
+export const buildAiGroupForm = (): AiGroupForm => {
+  return {
+    name: '',
+    prompt: '',
+    tools: [],
+    model: '',
+    placeholder: '',
+    think: false
+  }
 }

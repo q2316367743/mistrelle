@@ -7,5 +7,6 @@ export * from './IntervalComputer'
 export * from './MountEventBus'
 export * from './Snowflake'
 
+export * from './UseContextMenu'
 export * from './UseState'
 export * from './UseSafeBack'

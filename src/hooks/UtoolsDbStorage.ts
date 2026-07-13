@@ -1,6 +1,6 @@
-import { clone } from '@/utils/lang/ObjUtil'
 import { isNull } from '@/utils/lang/FieldUtil'
 import { KeyValueUtil } from '@/utils/native/KeyValueUtil'
+import { cloneDeep } from 'es-toolkit'
 
 type initialValueFunc<T> = () => T
 type initialValue<T> = T | initialValueFunc<T>
@@ -25,7 +25,7 @@ export function useUtoolsDbStorage<T extends string | number | boolean | Record<
       try {
         KeyValueUtil.setItem(key, toRaw(value))
       } catch (e) {
-        KeyValueUtil.setItem(key, clone(value, true))
+        KeyValueUtil.setItem(key, cloneDeep(value))
         console.error(e)
       }
       trigger()

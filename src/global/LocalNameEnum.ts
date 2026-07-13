@@ -5,4 +5,6 @@ export const LocalNameEnum = {
   SETTING_NETWORK: '/setting/network',
   SETTING_AI: '/setting/ai',
   SETTING_DEFAULT: '/setting/default',
+
+  LIST_AI_GROUP: '/list/ai/group'
 }

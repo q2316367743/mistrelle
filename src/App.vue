@@ -23,13 +23,27 @@
           </button>
 
           <div class="menu-section">
-            <div class="section-title">分组</div>
+            <div class="section-title">
+              <span>分组</span>
+              <t-button
+                theme="primary"
+                variant="text"
+                shape="square"
+                size="small"
+                @click="openGroupPut()"
+              >
+                <template #icon>
+                  <add-icon />
+                </template>
+              </t-button>
+            </div>
             <button
               v-for="group in groups"
               :key="group.id"
               class="menu-item"
               :class="{ active: isActive(`/group/${group.id}`) }"
               type="button"
+              @contextmenu="openGroupContextmenu($event, group.id)"
               @click="goTo(`/group/${group.id}`)"
             >
               <FolderIcon class="menu-icon" />
@@ -39,7 +53,14 @@
         </nav>
 
         <div class="bottom-menu">
-          <div class="section-title">元宝派</div>
+          <div class="section-title">
+            <span>元宝派</span>
+            <t-button theme="primary" variant="text" shape="square" size="small">
+              <template #icon>
+                <add-icon />
+              </template>
+            </t-button>
+          </div>
           <button
             v-for="item in yuanbaoPieMenus"
             :key="`${item.type}-${item.id}`"
@@ -75,6 +96,12 @@
                 </template>
                 AI 设置
               </t-dropdown-item>
+              <t-dropdown-item @click="handleSettingClick('default')">
+                <template #prefix-icon>
+                  <ai-article-icon />
+                </template>
+                默认设置
+              </t-dropdown-item>
             </t-dropdown-menu>
           </t-dropdown>
         </div>
@@ -94,6 +121,8 @@
 </template>
 <script lang="ts" setup>
 import {
+  AddIcon,
+  AiArticleIcon,
   AiIcon,
   ChatIcon,
   FolderIcon,
@@ -104,7 +133,9 @@ import {
   ViewListIcon
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
-import { collapsed, toggleCollapsed } from '@/global/BeanFactory'
+import { collapsed, isDark, toggleCollapsed } from '@/global/BeanFactory'
+import { useAiGroupStore } from '@/store/db/AiGroupStore'
+import { openGroupContextmenu, openGroupPut } from '@/pages/app/group-func'
 
 interface GroupMenuItem {
   id: string
@@ -123,7 +154,8 @@ const route = useRoute()
 
 const profile = getUserProfile()
 
-const groups: GroupMenuItem[] = [{ id: 'default', name: '分组' }]
+// 分组
+const groups = computed(() => useAiGroupStore().state)
 
 const pieMenus: Omit<YuanbaoPieMenuItem, 'path'>[] = [
   { id: 'default', name: '元宝派', type: 'pie' }
@@ -149,6 +181,10 @@ const goTo = (path: string) => {
 const handleSearchClick = () => {}
 
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
+
+onMounted(() => {
+  console.log('plugin enter', isDark.value)
+})
 
 utools.onPluginEnter((action) => {
   // 对关键字进行处理
@@ -222,7 +258,7 @@ utools.onPluginEnter((action) => {
     color var(--fluent-transition-fast);
 
   &:hover {
-    background: var(--fluent-item-hover);
+    background: var(--fluent-item-hover) !important;
   }
 
   &:focus-visible {
@@ -283,6 +319,10 @@ utools.onPluginEnter((action) => {
   padding: var(--td-comp-paddingTB-xs) var(--td-comp-paddingLR-s);
   color: var(--td-text-color-placeholder);
   font: var(--td-font-mark-small);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 16px;
 }
 
 .menu-item {

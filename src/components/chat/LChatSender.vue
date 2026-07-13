@@ -34,7 +34,7 @@
 <script lang="ts" setup>
 import { SystemSumIcon } from 'tdesign-icons-vue-next'
 import { ChatSender } from '@tdesign-vue-next/chat'
-import { useSettingAiStore } from '@/store'
+import { useSettingAiStore, useSettingDefaultStore } from '@/store'
 import { useBoolState } from '@/hooks'
 const props = defineProps({
   input: {
@@ -61,7 +61,7 @@ const props = defineProps({
 const emit = defineEmits(['update:input', 'update:model', 'update:think', 'send', 'stop'])
 
 const inputValue = ref(props.input)
-const model = ref(props.model)
+const model = ref(useSettingDefaultStore().state.defaultAssistantModel)
 const [thinkValue, toggleThink] = useBoolState(props.think)
 
 const options = computed(() => useSettingAiStore().options)

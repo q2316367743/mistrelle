@@ -1,10 +1,20 @@
 
+export interface ToolProperty {
+  type: string
+  description: string
+  items?: ToolProperty
+  properties?: Record<string, ToolProperty>
+  required?: string[]
+}
+
 export interface ToolFunction {
   name: string
+  // 显示名称
+  label: string
   description: string
   parameters: {
     type: 'object'
-    properties: Record<string, { type: string; description: string }>
+    properties: Record<string, ToolProperty>
     required?: Array<string>
     additionalProperties?: boolean
   }

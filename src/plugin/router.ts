@@ -3,6 +3,11 @@ import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 
 export const routes: Array<RouteRecordRaw> = [
   {
+    name: 'redirect',
+    path: '/',
+    redirect: '/home'
+  },
+  {
     name: '主页',
     path: '/home',
     alias: ['/'],
@@ -18,6 +23,11 @@ export const routes: Array<RouteRecordRaw> = [
     name: '设置/网络',
     path: '/setting/network',
     component: () => import('@/pages/setting/network/SettingNetwork.vue')
+  },
+  {
+    name: '设置/default',
+    path: '/setting/default',
+    component: () => import('@/pages/setting/default/SettingDefault.vue')
   }
 ]
 
