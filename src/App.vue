@@ -41,7 +41,7 @@
               v-for="group in groups"
               :key="group.id"
               class="menu-item"
-              :class="{ active: isActive(`/group/${group.id}`) }"
+              :class="{ active: isActive(`/group/${group.id}`) || isActive(`/new/${group.id}`) }"
               type="button"
               @contextmenu="openGroupContextmenu($event, group.id)"
               @click="goTo(`/group/${group.id}`)"
@@ -134,7 +134,7 @@ import {
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark, toggleCollapsed } from '@/global/BeanFactory'
-import { useAiGroupStore } from '@/store/db/AiGroupStore'
+import { useAiGroupStore } from '@/store'
 import { openGroupContextmenu, openGroupPut } from '@/pages/app/group-func'
 
 interface GroupMenuItem {

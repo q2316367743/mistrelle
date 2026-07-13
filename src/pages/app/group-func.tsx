@@ -1,6 +1,5 @@
 import { AiGroupForm, buildAiGroupForm } from '@/entity/ai'
-import { useAiGroupStore } from '@/store/db/AiGroupStore'
-import { useSettingAiStore } from '@/store'
+import { useAiGroupStore, useSettingAiStore } from '@/store'
 import { toolOptions } from '@/modules/tool'
 import { DialogPlugin, Form, FormItem, Input, Select, Switch, Textarea } from 'tdesign-vue-next'
 import { MessageUtil } from '@/utils/modal'

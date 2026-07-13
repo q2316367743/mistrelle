@@ -10,8 +10,18 @@ export const routes: Array<RouteRecordRaw> = [
   {
     name: '主页',
     path: '/home',
-    alias: ['/'],
     component: () => import('@/pages/home/index.vue')
+  },
+
+  {
+    name: '新建聊天',
+    path: '/new/:id',
+    component: () => import('@/pages/home/index.vue')
+  },
+  {
+    name: '分组',
+    path: '/group/:id',
+    component: () => import('@/pages/group/PageGroup.vue')
   },
 
   {
