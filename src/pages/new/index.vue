@@ -1,5 +1,5 @@
 <template>
-  <page-layout>
+  <page-layout :title="group?.name">
     <div class="p-8px flex flex-col items-center" style="height: calc(100% - 16px)">
       <div class="flex-1 flex flex-col items-center justify-center">
         <div style="font-size: var(--td-font-size-headline-medium); font-weight: bold">
@@ -11,6 +11,7 @@
           v-model:input="content"
           v-model:model="model"
           v-model:think="think"
+          :placeholder="group?.placeholder"
           @send="handleSend"
         />
       </div>
@@ -21,7 +22,10 @@
 import { useAiChatStore, useAiGroupStore, useSettingDefaultStore } from '@/store'
 import { AiGroup } from '@/entity/ai'
 
+const route = useRoute()
 const router = useRouter()
+
+const group = ref<AiGroup>()
 
 const content = ref('')
 const model = ref('')
@@ -34,13 +38,14 @@ const handleSend = async () => {
       model: model.value,
       thinking: think.value ? 'enabled' : 'disabled'
     },
-    '0'
+    group.value?.id || '0'
   )
-  await router.push(`/chat/0/${id}`)
+  await router.push(`/chat/${group.value?.id || '0'}/${id}`)
 }
 
 onMounted(() => {
-  model.value = useSettingDefaultStore().state.defaultAssistantModel
+  group.value = useAiGroupStore().getById(route.params.id as string)
+  model.value = group.value?.model || useSettingDefaultStore().state.defaultAssistantModel
 })
 </script>
 <style scoped lang="less"></style>

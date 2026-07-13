@@ -50,6 +50,20 @@
               <span>{{ group.name }}</span>
             </button>
           </div>
+
+          <div class="section-title">聊天</div>
+          <button
+            v-for="chat in chats"
+            :key="chat.id"
+            class="menu-item"
+            :class="{ active: isActive(`/chat/${chat.id}`) }"
+            type="button"
+            @contextmenu="openGroupContextmenu($event, chat.id)"
+            @click="goTo(`/chat/0/${chat.id}`)"
+          >
+            <FolderIcon class="menu-icon" />
+            <span>{{ chat.name }}</span>
+          </button>
         </nav>
 
         <div class="bottom-menu">
@@ -134,7 +148,7 @@ import {
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark, toggleCollapsed } from '@/global/BeanFactory'
-import { useAiGroupStore } from '@/store'
+import { useAiChatStore, useAiGroupStore } from '@/store'
 import { openGroupContextmenu, openGroupPut } from '@/pages/app/group-func'
 
 interface GroupMenuItem {
@@ -156,6 +170,7 @@ const profile = getUserProfile()
 
 // 分组
 const groups = computed(() => useAiGroupStore().state)
+const chats = computed(() => useAiChatStore().state)
 
 const pieMenus: Omit<YuanbaoPieMenuItem, 'path'>[] = [
   { id: 'default', name: '元宝派', type: 'pie' }

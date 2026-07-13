@@ -11,7 +11,7 @@
     <!-- 输入框 -->
     <ChatSender
       v-model="inputValue"
-      placeholder="请输入内容"
+      :textarea-props="{ placeholder: placeholder }"
       :loading="status === 'pending' || status === 'streaming'"
       @send="handleSend"
       @stop="handleStop"
@@ -54,6 +54,7 @@ const props = withDefaults(
     prompt: string
     height?: string
     storageKey?: string
+    placeholder?: string
   }>(),
   {
     height: 'calc(100vh - 73px)'

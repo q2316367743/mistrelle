@@ -16,7 +16,12 @@ export const routes: Array<RouteRecordRaw> = [
   {
     name: '新建聊天',
     path: '/new/:id',
-    component: () => import('@/pages/home/index.vue')
+    component: () => import('@/pages/new/index.vue')
+  },
+  {
+    name: '聊天',
+    path: '/chat/:groupId/:id',
+    component: () => import('@/pages/chat/PageChat.vue')
   },
   {
     name: '分组',
