@@ -1,0 +1,29 @@
+{
+  "$schema": "../node_modules/utools-api-types/resource/utools.schema.json",
+
+  "name": "vite-utools-template",
+  "title": "uTools 插件的 vite 模板",
+  "description": "uTools 插件的 vite 模板",
+  "version": "1.0.0",
+
+  "main": "dist/index.html",
+  "preload": "preload.js",
+  "logo": "public/logo.png",
+  "platform": ["win32", "darwin", "linux"],
+  "development": {
+    "main": "http://localhost:5173/"
+  },
+  "pluginSetting": {
+    "single": true,
+    "height": 0
+  },
+  "features": [
+    {
+      "code": "launch",
+      "explain": "vite-utools-template",
+      "icon": "public/logo.png",
+      "platform": ["win32", "darwin", "linux"],
+      "cmds": ["vite"]
+    }
+  ]
+}
