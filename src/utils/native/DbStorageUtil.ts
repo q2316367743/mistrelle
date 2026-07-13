@@ -199,27 +199,6 @@ export async function removeMultiByAsync(key: string, ignoreError: boolean = fal
   }
 }
 
-
-// --------------------------------------- 临时存储 ---------------------------------------
-
-export function getStrBySession<T>(key: string): T | null {
-  const item = sessionStorage.getItem(key);
-  if (!item) {
-    return null
-  }
-  try {
-    return JSON.parse(item)['value'];
-  } catch (e) {
-    sessionStorage.removeItem(key);
-    console.error(e);
-    return null;
-  }
-}
-
-export function setStrBySession(key: string, value: string) {
-  sessionStorage.setItem(key, value);
-}
-
 // --------------------------------------- 附件 ---------------------------------------
 
 /**

@@ -3,66 +3,93 @@
     <t-aside
       style="z-index: 50"
       :width="collapsed ? '0px' : '220px'"
-      :class="['sidebar', 'shrink-0', 'overflow-x-hidden', 'py-8px', collapsed ? 'px-0' : 'px-8px']"
+      :class="['sidebar', 'shrink-0']"
     >
-      <button class="search-button" type="button" @click="handleSearchClick">
+      <button class="search-button mx-8px" type="button" @click="handleSearchClick">
         <SearchIcon class="menu-icon" />
         <span>搜索</span>
       </button>
 
-      <nav class="menu-list" aria-label="主菜单">
-        <button
-          class="menu-item"
-          :class="{ active: isActive('/home') }"
-          type="button"
-          @click="goTo('/home')"
-        >
-          <ChatIcon class="menu-icon" />
-          <span>半窗烟雨</span>
-        </button>
-
-        <div class="menu-section">
-          <div class="section-title">分组</div>
+      <div class="side-container">
+        <nav class="menu-list" aria-label="主菜单">
           <button
-            v-for="group in groups"
-            :key="group.id"
             class="menu-item"
-            :class="{ active: isActive(`/group/${group.id}`) }"
+            :class="{ active: isActive('/home') }"
             type="button"
-            @click="goTo(`/group/${group.id}`)"
+            @click="goTo('/home')"
           >
-            <FolderIcon class="menu-icon" />
-            <span>{{ group.name }}</span>
+            <ChatIcon class="menu-icon" />
+            <span>半窗烟雨</span>
+          </button>
+
+          <div class="menu-section">
+            <div class="section-title">分组</div>
+            <button
+              v-for="group in groups"
+              :key="group.id"
+              class="menu-item"
+              :class="{ active: isActive(`/group/${group.id}`) }"
+              type="button"
+              @click="goTo(`/group/${group.id}`)"
+            >
+              <FolderIcon class="menu-icon" />
+              <span>{{ group.name }}</span>
+            </button>
+          </div>
+        </nav>
+
+        <div class="bottom-menu">
+          <div class="section-title">元宝派</div>
+          <button
+            v-for="item in yuanbaoPieMenus"
+            :key="`${item.type}-${item.id}`"
+            class="menu-item"
+            :class="{ active: isActive(item.path) }"
+            type="button"
+            @click="goTo(item.path)"
+          >
+            <UsergroupIcon v-if="item.type === 'pie'" class="menu-icon" />
+            <UserIcon v-else class="menu-icon" />
+            <span>{{ item.name }}</span>
           </button>
         </div>
-      </nav>
+      </div>
 
-      <div class="bottom-menu">
-        <div class="section-title">元宝派</div>
-        <button
-          v-for="item in yuanbaoPieMenus"
-          :key="`${item.type}-${item.id}`"
-          class="menu-item"
-          :class="{ active: isActive(item.path) }"
-          type="button"
-          @click="goTo(item.path)"
-        >
-          <UsergroupIcon v-if="item.type === 'pie'" class="menu-icon" />
-          <UserIcon v-else class="menu-icon" />
-          <span>{{ item.name }}</span>
-        </button>
+      <div class="user-menu">
+        <div class="w-220px overflow-x-hidden">
+          <t-dropdown trigger="click" placement="top" min-column-width="204px">
+            <button class="menu-item" type="button">
+              <t-avatar :image="profile.avatar" size="24px" />
+              <span>{{ profile.nickname }}</span>
+            </button>
+            <t-dropdown-menu>
+              <t-dropdown-item @click="handleSettingClick('network')">
+                <template #prefix-icon>
+                  <internet-icon />
+                </template>
+                网络设置
+              </t-dropdown-item>
+              <t-dropdown-item @click="handleSettingClick('ai')">
+                <template #prefix-icon>
+                  <ai-icon />
+                </template>
+                AI 设置
+              </t-dropdown-item>
+            </t-dropdown-menu>
+          </t-dropdown>
+        </div>
       </div>
     </t-aside>
     <t-content class="main-container">
       <router-view />
     </t-content>
     <div class="common-operator">
-      <t-button theme="primary" shape="square" variant="text" @click="setCollapsed()">
+      <t-button theme="primary" shape="square" variant="text" @click="toggleCollapsed()">
         <template #icon>
           <view-list-icon />
         </template>
       </t-button>
-      <t-button theme="primary" shape="square" variant="text">
+      <t-button v-if="showAddChat" theme="primary" shape="square" variant="text">
         <template #icon>
           <chat-add-icon />
         </template>
@@ -71,18 +98,19 @@
   </t-layout>
 </template>
 <script lang="ts" setup>
-import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
+  AiIcon,
   ChatAddIcon,
   ChatIcon,
   FolderIcon,
+  InternetIcon,
   SearchIcon,
   UsergroupIcon,
   UserIcon,
   ViewListIcon
 } from 'tdesign-icons-vue-next'
-import { useBoolState } from '@/hooks'
+import { getUserProfile } from '@/utils/native'
+import { collapsed, toggleCollapsed } from '@/global/BeanFactory'
 
 interface GroupMenuItem {
   id: string
@@ -99,7 +127,7 @@ interface YuanbaoPieMenuItem {
 const router = useRouter()
 const route = useRoute()
 
-const [collapsed, setCollapsed] = useBoolState(false)
+const profile = getUserProfile()
 
 const groups: GroupMenuItem[] = [{ id: 'default', name: '分组' }]
 
@@ -115,6 +143,11 @@ const yuanbaoPieMenus = computed<YuanbaoPieMenuItem[]>(() => [
   ...pieMenus.map((item) => ({ ...item, path: `/pie/${item.id}` })),
   ...agentMenus.map((item) => ({ ...item, path: `/agent/${item.id}` }))
 ])
+const showAddChat = computed(() => {
+  if (route.path.startsWith('/setting')) return false
+  else if (route.path === '/home') return false
+  return true
+})
 
 const isActive = (path: string) => route.path === path
 
@@ -125,6 +158,8 @@ const goTo = (path: string) => {
 }
 
 const handleSearchClick = () => {}
+
+const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
 
 utools.onPluginEnter((action) => {
   // 对关键字进行处理
@@ -145,10 +180,12 @@ utools.onPluginEnter((action) => {
     display: flex;
     flex-direction: column;
     gap: var(--td-comp-margin-s);
-    height: 100%;
-    background: var(--fluent-sidebar-bg);
-    backdrop-filter: var(--fluent-acrylic-blur);
-    box-shadow: var(--td-shadow-inset-right);
+    flex-shrink: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: calc(100vh - 16px);
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
 
   & > .main-container {
@@ -161,12 +198,24 @@ utools.onPluginEnter((action) => {
   }
 }
 
+.side-container {
+  position: absolute;
+  top: 88px;
+  left: 0;
+  right: 0;
+  bottom: 56px;
+  padding: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .search-button,
 .menu-item {
   display: flex;
   align-items: center;
   gap: var(--td-comp-margin-s);
-  width: 100%;
+  width: calc(100% - 16px);
+  min-width: 204px;
   min-height: var(--td-comp-size-xl);
   padding: 0 var(--td-comp-paddingLR-s);
   color: var(--td-text-color-primary);
@@ -198,7 +247,7 @@ utools.onPluginEnter((action) => {
   border-color: var(--td-component-border);
   box-shadow: var(--fluent-elevation-1);
   margin-top: 40px;
-  width: 220px;
+  width: 204px;
   overflow-x: hidden;
 }
 
@@ -217,6 +266,7 @@ utools.onPluginEnter((action) => {
   display: flex;
   flex-direction: column;
   gap: var(--td-comp-margin-xs);
+  padding-bottom: 8px;
 }
 
 .menu-section {
@@ -230,6 +280,14 @@ utools.onPluginEnter((action) => {
   border-top: 1px solid var(--fluent-sidebar-border);
   width: 220px;
   overflow-x: hidden;
+}
+
+.user-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px;
 }
 
 .section-title {

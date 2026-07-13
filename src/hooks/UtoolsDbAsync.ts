@@ -1,5 +1,5 @@
 import {ref, Ref, shallowRef, toValue, watch} from "vue";
-import {getFromOneByAsync, removeOneByAsync, saveOneByAsync} from "@/utils/utools/DbStorageUtil";
+import {getFromOneByAsync, removeOneByAsync, saveOneByAsync} from "@/utils/native/DbStorageUtil";
 
 
 export interface UseUtoolsDbOptions {

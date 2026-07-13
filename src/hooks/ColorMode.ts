@@ -1,5 +1,5 @@
-import {KeyValueUtil} from "@/utils/utools/KeyValueUtil";
-import {isDarkColors} from "@/utils/utools/NativeUtil";
+import {KeyValueUtil} from "@/utils/native/KeyValueUtil";
+import {isDarkColors} from "@/utils/native/NativeUtil";
 
 type ColorModeType = 'auto' | 'light' | 'dark';
 

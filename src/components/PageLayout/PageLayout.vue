@@ -1,6 +1,6 @@
 <template>
   <div class="page-layout">
-    <header class="page-header">
+    <header class="page-header" :class="{ collapsed: collapsed }">
       <div class="page-header__left">
         <div class="page-header__title">
           <slot name="title" v-if="slots['title']"></slot>
@@ -18,8 +18,14 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { collapsed } from '@/global/BeanFactory'
+
 defineProps({
-  title: String
+  title: String,
+  pl: {
+    type: String,
+    default: '24px'
+  }
 })
 const slots = defineSlots()
 </script>
@@ -33,10 +39,15 @@ const slots = defineSlots()
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 24px;
-    height: 56px;
+    padding: 8px 24px 8px 8px;
+    height: 48px;
     box-sizing: border-box;
     color: var(--td-text-color-primary);
+    transition: padding-left 0.1s ease-in-out;
+
+    &.collapsed {
+      padding-left: 48px;
+    }
 
     &__left {
       display: flex;

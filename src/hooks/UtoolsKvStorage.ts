@@ -1,5 +1,5 @@
 import {isNull} from "@/utils/lang/FieldUtil";
-import {KeyValueUtil} from "@/utils/utools/KeyValueUtil";
+import {KeyValueUtil} from "@/utils/native/KeyValueUtil";
 
 type initialValueFunc<T> = () => T
 type initialValue<T> = T | initialValueFunc<T>

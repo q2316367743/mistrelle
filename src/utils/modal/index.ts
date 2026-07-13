@@ -1,5 +1,5 @@
-import MessageUtil from "@/utils/modal/MessageUtil";
-import MessageBoxUtil from "@/utils/modal/MessageBoxUtil";
-import NotificationUtil from "@/utils/modal/NotificationUtil";
+import MessageUtil from '@/utils/modal/MessageUtil'
+import MessageBoxUtil from '@/utils/modal/MessageBoxUtil'
+import NotificationUtil from '@/utils/modal/NotificationUtil'
 
-export {MessageUtil, MessageBoxUtil, NotificationUtil}
+export { MessageUtil, MessageBoxUtil, NotificationUtil }

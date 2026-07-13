@@ -1,1 +1,2 @@
-export * from './components/GlobalStore';
+export * from './setting/SettingAiStore'
+export * from './setting/SettingNetworkStore'
