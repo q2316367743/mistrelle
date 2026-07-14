@@ -141,7 +141,7 @@ export const dateTools: ToolFunction[] = [
   {
     name: 'calculate_da_yun',
     label: '大运推算',
-    description: '根据阳历（公历）出生年月日时推算大运，包含起运年龄、顺逆排、大运列表（每运干支及起止年份）',
+    description: '根据阳历（公历）出生年月日时、性别和起运流派推算大运，包含起运年龄、顺逆排、大运列表（每运干支及起止年份）',
     parameters: {
       type: 'object',
       properties: {
@@ -149,13 +149,15 @@ export const dateTools: ToolFunction[] = [
         month: { type: 'number', description: '阳历出生月份（1-12）' },
         day: { type: 'number', description: '阳历出生日期（1-31）' },
         hour: { type: 'number', description: '阳历出生小时（0-23）' },
-        minute: { type: 'number', description: '阳历出生分钟（0-59）' }
+        minute: { type: 'number', description: '阳历出生分钟（0-59）' },
+        gender: { type: 'number', description: '性别，1 表示男，0 表示女' },
+        sect: { type: 'number', description: '起运流派，1 表示按时辰折算，2 表示按分钟精确折算；默认 1' }
       },
-      required: ['year', 'month', 'day', 'hour', 'minute']
+      required: ['year', 'month', 'day', 'hour', 'minute', 'gender']
     },
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
-      return calculateDaYun(args.year, args.month, args.day, args.hour, args.minute)
+      return calculateDaYun(args.year, args.month, args.day, args.hour, args.minute, args.gender, args.sect)
     }
   },
   {

@@ -68,9 +68,10 @@ export const lunarToSolar = (
   year: number,
   month: number,
   day: number,
+  isLeap = false
 ): LunarToSolarResult | null => {
   try {
-    const lunar = Lunar.fromYmd(year, month, day)
+    const lunar = Lunar.fromYmd(year, isLeap ? -month : month, day)
     const solar = lunar.getSolar()
     return {
       solarDate: solar.toYmd(),
@@ -318,24 +319,28 @@ export const calculateBaziDetail = (
     dayPillar: ec.getDay(),
     hourPillar: ec.getTime(),
     year: buildPillarDetail(
-      ec.getYear(), ec.getYearGan, ec.getYearZhi, ec.getYearHideGan,
-      ec.getYearWuXing, ec.getYearNaYin, ec.getYearShiShenGan, ec.getYearShiShenZhi,
-      ec.getYearDiShi, ec.getYearXun, ec.getYearXunKong
+      ec.getYear(),
+      () => ec.getYearGan(), () => ec.getYearZhi(), () => ec.getYearHideGan(),
+      () => ec.getYearWuXing(), () => ec.getYearNaYin(), () => ec.getYearShiShenGan(), () => ec.getYearShiShenZhi(),
+      () => ec.getYearDiShi(), () => ec.getYearXun(), () => ec.getYearXunKong()
     ),
     month: buildPillarDetail(
-      ec.getMonth(), ec.getMonthGan, ec.getMonthZhi, ec.getMonthHideGan,
-      ec.getMonthWuXing, ec.getMonthNaYin, ec.getMonthShiShenGan, ec.getMonthShiShenZhi,
-      ec.getMonthDiShi, ec.getMonthXun, ec.getMonthXunKong
+      ec.getMonth(),
+      () => ec.getMonthGan(), () => ec.getMonthZhi(), () => ec.getMonthHideGan(),
+      () => ec.getMonthWuXing(), () => ec.getMonthNaYin(), () => ec.getMonthShiShenGan(), () => ec.getMonthShiShenZhi(),
+      () => ec.getMonthDiShi(), () => ec.getMonthXun(), () => ec.getMonthXunKong()
     ),
     day: buildPillarDetail(
-      ec.getDay(), ec.getDayGan, ec.getDayZhi, ec.getDayHideGan,
-      ec.getDayWuXing, ec.getDayNaYin, ec.getDayShiShenGan, ec.getDayShiShenZhi,
-      ec.getDayDiShi, ec.getDayXun, ec.getDayXunKong
+      ec.getDay(),
+      () => ec.getDayGan(), () => ec.getDayZhi(), () => ec.getDayHideGan(),
+      () => ec.getDayWuXing(), () => ec.getDayNaYin(), () => ec.getDayShiShenGan(), () => ec.getDayShiShenZhi(),
+      () => ec.getDayDiShi(), () => ec.getDayXun(), () => ec.getDayXunKong()
     ),
     time: buildPillarDetail(
-      ec.getTime(), ec.getTimeGan, ec.getTimeZhi, ec.getTimeHideGan,
-      ec.getTimeWuXing, ec.getTimeNaYin, ec.getTimeShiShenGan, ec.getTimeShiShenZhi,
-      ec.getTimeDiShi, ec.getTimeXun, ec.getTimeXunKong
+      ec.getTime(),
+      () => ec.getTimeGan(), () => ec.getTimeZhi(), () => ec.getTimeHideGan(),
+      () => ec.getTimeWuXing(), () => ec.getTimeNaYin(), () => ec.getTimeShiShenGan(), () => ec.getTimeShiShenZhi(),
+      () => ec.getTimeDiShi(), () => ec.getTimeXun(), () => ec.getTimeXunKong()
     ),
     taiYuan: ec.getTaiYuan(),
     taiYuanNaYin: ec.getTaiYuanNaYin(),
@@ -374,12 +379,14 @@ export const calculateDaYun = (
   month: number,
   day: number,
   hour: number,
-  minute: number
+  minute: number,
+  gender: number,
+  sect = 1
 ): DaYunResult => {
   const solar = Solar.fromYmdHms(year, month, day, hour, minute, 0)
   const lunar = solar.getLunar()
   const ec = lunar.getEightChar()
-  const yun = ec.getYun()
+  const yun = ec.getYun(gender, sect)
   const daYunArr = yun.getDaYun()
 
   return {

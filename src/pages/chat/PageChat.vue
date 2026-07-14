@@ -16,7 +16,7 @@
 </template>
 <script lang="ts" setup>
 import { AiChatItem, AiGroup } from '@/entity/ai'
-import { aiChatGet, useAiChatStore, useAiGroupStore } from '@/store'
+import { aiChatGet, useAiGroupStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import type { ToolFunction } from '@/modules/chat'
@@ -29,7 +29,7 @@ const initial = ref(false)
 const functions = shallowRef(new Array<ToolFunction>())
 const lChatToolRef = ref()
 
-const storageKey = LocalNameEnum.LIST_AI_CHAT(route.params.groupId as string)
+const storageKey = LocalNameEnum.LIST_AI_CHAT(route.params.id as string)
 
 const handleChatInitial = (send: boolean) => {
   if (send && chat.value) {
@@ -39,14 +39,12 @@ const handleChatInitial = (send: boolean) => {
 
 onMounted(async () => {
   try {
-    console.log('1')
     group.value = useAiGroupStore().getById(route.params.groupId as string)
     if (group.value) {
-      console.log('2')
       functions.value = group.value.tools.map((tool) => toolMap[tool])
     }
-    console.log('3')
     chat.value = await aiChatGet(route.params.groupId as string, route.params.id as string)
+    console.log(chat.value)
   } finally {
     initial.value = true
   }

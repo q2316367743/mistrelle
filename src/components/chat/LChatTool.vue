@@ -118,7 +118,6 @@ onMounted(async () => {
       rev = c.rev
     }
   }
-  console.log('2')
 
   // 保存起来
   if (props.storageKey) {
@@ -130,7 +129,6 @@ onMounted(async () => {
       { throttle: 300, deep: true }
     )
   }
-  console.log('3')
 
   const messageCount = messages.value.length
 
@@ -138,7 +136,6 @@ onMounted(async () => {
   if (messages.value.length === 0) {
     await instance.sendSystemMessage(props.prompt)
   }
-  console.log('4')
   emit('initial', messageCount === 0)
 })
 

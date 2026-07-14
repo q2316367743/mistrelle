@@ -284,7 +284,7 @@ declare module 'lunar-javascript' {
     getShenGong(): string
     getShenGongNaYin(): string
     getLunar(): Lunar
-    getYun(): Yun
+    getYun(gender: number, sect?: number): Yun
     toString(): string
   }
 
