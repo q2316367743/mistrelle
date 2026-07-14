@@ -1,16 +1,18 @@
 <template>
-  <page-chat :title="group?.name">
-    <l-chat-tool
-      v-if="initial"
-      :functions="functions"
-      :prompt="group?.prompt || ''"
-      :storage-key="storageKey"
-      :placeholder="group?.placeholder"
-      ref="lChatToolRef"
-      @initial="handleChatInitial"
-    />
-    <loading-result v-else title="正在加载中" />
-  </page-chat>
+  <page-layout :title="group?.name">
+    <div class="p-8px">
+      <l-chat-tool
+        v-if="initial"
+        :functions="functions"
+        :prompt="group?.prompt || ''"
+        :storage-key="storageKey"
+        :placeholder="group?.placeholder"
+        ref="lChatToolRef"
+        @initial="handleChatInitial"
+      />
+      <loading-result v-else title="正在加载中" />
+    </div>
+  </page-layout>
 </template>
 <script lang="ts" setup>
 import { AiChatItem, AiGroup } from '@/entity/ai'

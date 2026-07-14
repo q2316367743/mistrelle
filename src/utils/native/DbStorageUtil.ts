@@ -41,6 +41,7 @@ export async function listByAsync<T = any>(key: string): Promise<DbList<T>> {
  * @param key 键
  * @param records 数组
  * @param rev 恢复值
+ * @param retryCount 重试次数
  */
 export async function saveListByAsync<T>(
   key: string,

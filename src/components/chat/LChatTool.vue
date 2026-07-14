@@ -110,11 +110,12 @@ const handleClear = () => {
 let unWatch: (() => void) | null = null
 
 onMounted(async () => {
-  console.log('1')
+  let rev: string | undefined = undefined
   if (props.storageKey) {
     const c = await listByAsync<ChatMessage>(props.storageKey)
     if (c) {
       instance.init(c.list)
+      rev = c.rev
     }
   }
   console.log('2')
@@ -124,7 +125,7 @@ onMounted(async () => {
     unWatch = throttledWatch(
       messages,
       async (val) => {
-        await saveListByAsync<ChatMessage>(props.storageKey!, cloneDeep(toRaw(val)))
+        rev = await saveListByAsync<ChatMessage>(props.storageKey!, cloneDeep(toRaw(val)), rev, 0)
       },
       { throttle: 300, deep: true }
     )
