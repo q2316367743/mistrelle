@@ -78,13 +78,15 @@ onMounted(async () => {
   group.value = useAiGroupStore().getById(route.params.id as string)
   chats.value = await aiChatList(group.value?.id as string)
   const { optionMap } = useSettingAiStore()
-  chats.value = chats.value.map((e) => ({
-    ...e,
-    form: {
-      ...e.form,
-      model: optionMap.get(e.form.model)?.model || e.form.model
-    }
-  }))
+  chats.value = chats.value
+    .map((e) => ({
+      ...e,
+      form: {
+        ...e.form,
+        model: optionMap.get(e.form.model)?.model || e.form.model
+      }
+    }))
+    .sort((a, b) => b.createdAt - a.createdAt)
 })
 </script>
 <style scoped lang="less">

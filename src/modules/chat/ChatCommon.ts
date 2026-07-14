@@ -103,6 +103,7 @@ export interface ChatAPI {
   init: (initialMessages?: ChatMessage[]) => void
   sendUserMessage: (requestParams: ChatRequestParams) => Promise<void>
   reaskMessage: (messageId: string, requestParams: ChatRequestParams) => Promise<void>
+  rollbackBeforeMessage: (messageId: string) => void
 
   modifyAndReaskMessage: (
     messageId: string,
@@ -223,7 +224,6 @@ export abstract class AbstractChat implements ChatAPI {
   }
 
   async reaskMessage(messageId: string, requestParams: ChatRequestParams): Promise<void> {
-    console.log('reaskMessage', messageId, requestParams)
     if (
       this.status.value !== 'idle' &&
       this.status.value !== 'complete' &&
@@ -292,6 +292,21 @@ export abstract class AbstractChat implements ChatAPI {
         this.handleLastMessage('error')
       }
     }
+  }
+
+  rollbackBeforeMessage(messageId: string): void {
+    if (
+      this.status.value !== 'idle' &&
+      this.status.value !== 'complete' &&
+      this.status.value !== 'error'
+    )
+      return
+
+    const userIdx = this.messages.value.findIndex((m) => m.id === messageId)
+    if (userIdx === -1) throw new Error('消息不存在')
+    if (this.messages.value[userIdx].role !== 'user') throw new Error('该消息不是用户消息')
+
+    this.messages.value = this.messages.value.slice(0, userIdx)
   }
 
   async modifyAndReaskMessage(

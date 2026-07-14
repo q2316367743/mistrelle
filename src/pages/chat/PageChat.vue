@@ -44,7 +44,6 @@ onMounted(async () => {
       functions.value = group.value.tools.map((tool) => toolMap[tool])
     }
     chat.value = await aiChatGet(route.params.groupId as string, route.params.id as string)
-    console.log(chat.value)
   } finally {
     initial.value = true
   }

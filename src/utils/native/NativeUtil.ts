@@ -10,6 +10,9 @@ interface UserProfile {
 }
 
 export const getUserProfile = (): UserProfile => {
+  if (window.preload.getPlatform() === 'ZTools') {
+    return { avatar: './logo.png', nickname: '用户', type: 'user' }
+  }
   const user = utools.getUser()
   return {
     avatar: user?.avatar || './logo.png',

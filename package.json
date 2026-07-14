@@ -1,5 +1,6 @@
 {
-  "name": "vite-utools-template",
+  "name": "mistrelle",
+  "description": "半窗烟雨",
   "private": true,
   "version": "1.0.0",
   "type": "module",

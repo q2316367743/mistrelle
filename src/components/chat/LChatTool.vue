@@ -6,6 +6,9 @@
       :clear-history="messages.length > 1 && status !== 'streaming'"
       style="flex: 1"
       @clear="handleClear"
+      @reask="handleReask"
+      @rollback="handleRollback"
+      @change="handleMessagesChange"
     />
 
     <!-- 输入框 -->
@@ -23,11 +26,14 @@
             <div class="w-32px">
               <t-button
                 :variant="think ? 'base' : 'outline'"
-                shape="circle"
+                shape="round"
                 :theme="think ? 'primary' : 'default'"
                 @click="toggleThink()"
               >
-                <SystemSumIcon />
+                <template #icon>
+                  <SystemSumIcon />
+                </template>
+                深度思考
               </t-button>
             </div>
           </div>
@@ -57,7 +63,7 @@ const props = withDefaults(
     placeholder?: string
   }>(),
   {
-    height: 'calc(100vh - 73px)'
+    height: 'calc(100vh - 66px)'
   }
 )
 const emit = defineEmits(['initial'])
@@ -73,16 +79,27 @@ const instance = new ToolChat({ functions: props.functions })
 
 const { messages, status } = instance
 
-const handleSend = () => {
+const createRequestParams = (content: string): ChatRequestParams | null => {
   const model = useSettingAiStore().optionMap.get(modelValue.value)
-  if (!model) return MessageUtil.error('请选择模型')
-  instance.sendUserMessage({
-    content: inputValue.value,
+  if (!model) {
+    MessageUtil.error('请选择模型')
+    return null
+  }
+
+  return {
+    content,
     model: model.identifier,
     baseURL: model.baseUrl,
     apiKey: model.key,
-    thinking: model ? (think.value ? 'enabled' : 'disabled') : 'disabled'
-  })
+    thinking: think.value ? 'enabled' : 'disabled'
+  }
+}
+
+const handleSend = () => {
+  const requestParams = createRequestParams(inputValue.value)
+  if (!requestParams) return
+
+  instance.sendUserMessage(requestParams)
   inputValue.value = ''
 }
 
@@ -105,6 +122,21 @@ const handleClear = () => {
       ]
     }
   ]
+}
+
+const handleReask = (messageId: string) => {
+  const requestParams = createRequestParams('')
+  if (!requestParams) return
+
+  instance.reaskMessage(messageId, requestParams)
+}
+
+const handleRollback = (messageId: string) => {
+  instance.rollbackBeforeMessage(messageId)
+}
+
+const handleMessagesChange = () => {
+  messages.value = [...messages.value]
 }
 
 let unWatch: (() => void) | null = null

@@ -1,5 +1,5 @@
 <template>
-  <ChatList :clear-history="clearHistory" style="flex: 1" @clear="$emit('clear')">
+  <ChatList :clear-history="clearHistory" style="flex: 1" @clear="emit('clear')">
     <div class="px-8px">
       <ChatMessage
         v-for="message in messages"
@@ -23,10 +23,11 @@
                 :role="message.role"
               >
                 <template #actionbar>
-                  <ChatActionbar
-                    :content="message.content[0].data as string"
-                    :action-bar="['replay', 'copy']"
-                    @actions="handleUserAction($event, message)"
+                  <RChatActionbar
+                    :content="getUserText(message)"
+                    role="user"
+                    @reask="emit('reask', message.id)"
+                    @rollback="emit('rollback', message.id)"
                   />
                 </template>
               </ChatMessage>
@@ -44,11 +45,12 @@
           </div>
         </template>
         <template #actionbar>
-          <ChatActionbar
+          <RChatActionbar
             v-if="message.role === 'assistant'"
+            role="assistant"
             :comment="message.comment"
-            :content="message.content?.find((e) => e.type === 'markdown')?.data"
-            :action-bar="['good', 'bad', 'copy', 'share']"
+            :content="getAssistantText(message)"
+            @comment-change="handleCommentChange(message, $event)"
           />
         </template>
       </ChatMessage>
@@ -56,11 +58,11 @@
   </ChatList>
 </template>
 <script lang="ts" setup>
-import { ChatActionbar, ChatContent, ChatList, ChatMessage } from '@tdesign-vue-next/chat'
-import { ChatMessage as ChatMessageType, UserMessage } from '@/domain'
+import { ChatContent, ChatList, ChatMessage } from '@tdesign-vue-next/chat'
+import type { AIMessage, ChatComment, ChatMessage as ChatMessageType, UserMessage } from '@/domain'
 import RChatTool from '@/components/chat/RChatTool.vue'
 import RChatSystem from '@/components/chat/RChatSystem.vue'
-import { copyText } from '@/utils/native'
+import RChatActionbar from '@/components/chat/RChatActionbar.vue'
 
 defineProps({
   clearHistory: {
@@ -72,18 +74,24 @@ defineProps({
     default: () => []
   }
 })
-const emit = defineEmits(['clear', 'reask'])
+const emit = defineEmits<{
+  clear: []
+  reask: [messageId: string]
+  rollback: [messageId: string]
+  change: []
+}>()
 
-const handleUserAction = (value: string, message: UserMessage) => {
-  console.log('handleUserAction', value, message)
-  if (value === 'replay') {
-    emit('reask', message.id)
-  } else if (value === 'copy') {
-    const text = message.content[0]?.data as string
-    if (text) {
-      copyText(text)
-    }
-  }
+const getUserText = (message: UserMessage) => {
+  return message.content.find((item) => item.type === 'text')?.data ?? ''
+}
+
+const getAssistantText = (message: AIMessage) => {
+  return message.content?.find((item) => item.type === 'markdown' || item.type === 'text')?.data ?? ''
+}
+
+const handleCommentChange = (message: AIMessage, comment: ChatComment) => {
+  message.comment = comment
+  emit('change')
 }
 </script>
 <style scoped lang="less"></style>

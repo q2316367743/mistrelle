@@ -1,5 +1,5 @@
 <template>
-  <page-layout :title="group?.name">
+  <page-layout :title="title">
     <div class="p-8px flex flex-col items-center" style="height: calc(100% - 16px)">
       <div class="flex-1 flex flex-col items-center justify-center">
         <div style="font-size: var(--td-font-size-headline-medium); font-weight: bold">
@@ -30,6 +30,13 @@ const group = ref<AiGroup>()
 const content = ref('')
 const model = ref('')
 const think = ref(true)
+
+const title = computed(() => {
+  if (group.value) {
+    return `${group.value.name} | 新建对话`
+  }
+  return '新建对话'
+})
 
 const handleSend = async () => {
   const id = await useAiChatStore().add(

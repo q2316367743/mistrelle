@@ -1,9 +1,9 @@
 {
   "$schema": "../node_modules/utools-api-types/resource/utools.schema.json",
 
-  "name": "vite-utools-template",
-  "title": "uTools 插件的 vite 模板",
-  "description": "uTools 插件的 vite 模板",
+  "name": "mistrelle",
+  "title": "半窗烟雨",
+  "description": "半窗烟雨",
   "version": "1.0.0",
 
   "main": "dist/index.html",
@@ -19,11 +19,11 @@
   },
   "features": [
     {
-      "code": "launch",
-      "explain": "vite-utools-template",
+      "code": "mistrelle",
+      "explain": "半窗烟雨",
       "icon": "public/logo.png",
       "platform": ["win32", "darwin", "linux"],
-      "cmds": ["vite"]
+      "cmds": ["半窗烟雨"]
     }
   ]
 }

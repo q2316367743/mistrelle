@@ -20,6 +20,7 @@ declare module 'vue' {
     LChatTool: typeof import('./src/components/chat/LChatTool.vue')['default']
     LoadingResult: typeof import('./src/components/Result/LoadingResult.vue')['default']
     PageLayout: typeof import('./src/components/PageLayout/PageLayout.vue')['default']
+    RChatActionbar: typeof import('./src/components/chat/RChatActionbar.vue')['default']
     RChatList: typeof import('./src/components/chat/RChatList.vue')['default']
     RChatSystem: typeof import('./src/components/chat/RChatSystem.vue')['default']
     RChatThink: typeof import('./src/components/chat/RChatThink.vue')['default']

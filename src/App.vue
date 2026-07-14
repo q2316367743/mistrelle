@@ -103,12 +103,6 @@
               <span>{{ profile.nickname }}</span>
             </button>
             <t-dropdown-menu>
-              <t-dropdown-item @click="handleSettingClick('network')">
-                <template #prefix-icon>
-                  <internet-icon />
-                </template>
-                网络设置
-              </t-dropdown-item>
               <t-dropdown-item @click="handleSettingClick('ai')">
                 <template #prefix-icon>
                   <ai-icon />
@@ -120,6 +114,12 @@
                   <ai-article-icon />
                 </template>
                 默认设置
+              </t-dropdown-item>
+              <t-dropdown-item @click="handleSettingClick('network')">
+                <template #prefix-icon>
+                  <internet-icon />
+                </template>
+                网络设置
               </t-dropdown-item>
             </t-dropdown-menu>
           </t-dropdown>
