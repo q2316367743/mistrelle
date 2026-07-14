@@ -40,6 +40,7 @@
 import { ChatSender } from '@tdesign-vue-next/chat'
 import { SystemSumIcon } from 'tdesign-icons-vue-next'
 import { cloneDeep } from 'es-toolkit'
+import { toRaw } from 'vue'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
 import { type ToolFunction, ChatRequestParams, ToolChat } from '@/modules/chat'
 import { useSettingAiStore } from '@/store'
@@ -76,13 +77,11 @@ const { messages, status } = instance
 const handleSend = () => {
   const model = useSettingAiStore().optionMap.get(modelValue.value)
   if (!model) return MessageUtil.error('请选择模型')
-  instance.init({
-    baseURL: model.baseUrl,
-    apiKey: model.key
-  })
   instance.sendUserMessage({
     content: inputValue.value,
     model: model.identifier,
+    baseURL: model.baseUrl,
+    apiKey: model.key,
     thinking: model ? (think.value ? 'enabled' : 'disabled') : 'disabled'
   })
   inputValue.value = ''
@@ -115,13 +114,7 @@ onMounted(async () => {
   if (props.storageKey) {
     const c = await listByAsync<ChatMessage>(props.storageKey)
     if (c) {
-      instance.init(
-        {
-          baseURL: '',
-          apiKey: ''
-        },
-        c.list
-      )
+      instance.init(c.list)
     }
   }
 
@@ -130,17 +123,19 @@ onMounted(async () => {
     unWatch = throttledWatch(
       messages,
       async (val) => {
-        await saveListByAsync<ChatMessage>(props.storageKey!, cloneDeep(val))
+        await saveListByAsync<ChatMessage>(props.storageKey!, cloneDeep(toRaw(val)))
       },
       { throttle: 300, deep: true }
     )
   }
 
+  const messageCount = messages.value.length
+
   // 如果第一次，则需要注入系统提示词
   if (messages.value.length === 0) {
     await instance.sendSystemMessage(props.prompt)
   }
-  emit('initial')
+  emit('initial', messageCount)
 })
 
 onUnmounted(() => {

@@ -28,6 +28,11 @@ export const aiChatList = async (groupId: string): Promise<Array<AiChatItem>> =>
   return res.list
 }
 
+export const aiChatGet = async (groupId: string, id: string): Promise<AiChatItem | undefined> => {
+  const list = await aiChatList(groupId)
+  return list.find((e) => e.id === id)
+}
+
 export const aiChatAdd = async (groupId: string, form: AiChatForm) => {
   const key = `/list/chat/${groupId}`
   let cache = aiChatCacheMap.get(key)

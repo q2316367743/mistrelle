@@ -5,7 +5,7 @@ import type {
   ChatCompletionMessageToolCall
 } from 'openai/resources/chat/completions'
 import type { AIMessageContent, ChatMessage } from '@/domain'
-import { AbstractChat, extractReasoningContent, finishReasonToStatus } from './ChatCommon'
+import { AbstractChat, createClient, extractReasoningContent, finishReasonToStatus } from './ChatCommon'
 import { prettyDurationTime } from '@/utils/lang'
 import type {
   SSEChunkData,
@@ -313,7 +313,7 @@ export class ToolChat extends AbstractChat {
     }
     this.ctx.config.onStart?.('')
 
-    const client = this.getClient()
+    const client = createClient(params.baseURL, params.apiKey)
 
     const stream = await client.chat.completions.create(finalBody, {
       signal,

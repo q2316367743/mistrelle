@@ -1,6 +1,7 @@
 // --------------------------------------- 基础对象 ---------------------------------------
 
 import { cloneDeep } from 'es-toolkit'
+import { toRaw } from 'vue'
 
 export interface DbList<T> {
   list: Array<T>
@@ -44,7 +45,8 @@ export async function listByAsync<T = any>(key: string): Promise<DbList<T>> {
 export async function saveListByAsync<T>(
   key: string,
   records: Array<T>,
-  rev?: string
+  rev?: string,
+  retryCount = 3
 ): Promise<undefined | string> {
   try {
     const res = await utools.db.promises.put({
@@ -54,21 +56,24 @@ export async function saveListByAsync<T>(
     })
     if (res.error) {
       if (res.message === 'Document update conflict') {
-        // 查询后更新
+        if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (conflict)')
         const res = await utools.db.promises.get(key)
-        return await saveListByAsync(key, records, res ? res._rev : undefined)
+        return await saveListByAsync(key, records, res ? res._rev : undefined, retryCount - 1)
       } else if (res.message === 'An object could not be cloned.') {
-        return await saveListByAsync(key, cloneDeep(records), rev)
+        if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (clone)')
+        return await saveListByAsync(key, cloneDeep(records), rev, retryCount - 1)
       } else if (
         res.message ===
         "DataCloneError: Failed to execute 'put' on 'IDBObjectStore': [object Array] could not be cloned."
       ) {
-        return await saveListByAsync(key, cloneDeep(records), rev)
+        if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (clone)')
+        return await saveListByAsync(key, cloneDeep(records), rev, retryCount - 1)
       } else if (
         res.message ===
         "DataCloneError: Failed to execute 'put' on 'IDBObjectStore': #<Object> could not be cloned."
       ) {
-        return await saveListByAsync(key, cloneDeep(records), rev)
+        if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (clone)')
+        return await saveListByAsync(key, cloneDeep(records), rev, retryCount - 1)
       }
       console.error(res)
       return Promise.reject(res.message)
@@ -76,8 +81,8 @@ export async function saveListByAsync<T>(
     return res.rev
   } catch (e: any) {
     if (e.message === 'An object could not be cloned.') {
-      // 查询后更新
-      return await saveListByAsync(key, cloneDeep(records), rev)
+      if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (clone)')
+      return await saveListByAsync(key, cloneDeep(records), rev, retryCount - 1)
     } else {
       return Promise.reject(e)
     }
@@ -150,6 +155,7 @@ export async function saveOneByAsync<T>(
   key: string,
   value: T,
   rev?: string,
+  retryCount = 3,
   err?: (e: Error) => void
 ): Promise<undefined | string> {
   try {
@@ -160,14 +166,15 @@ export async function saveOneByAsync<T>(
     })
     if (res.error) {
       if (res.message === 'Document update conflict') {
-        // 查询后更新
+        if (retryCount <= 0) return Promise.reject('saveOneByAsync: max retries exceeded (conflict)')
         const res = await utools.db.promises.get(key)
-        return await saveOneByAsync(key, value, res ? res._rev : undefined)
+        return await saveOneByAsync(key, value, res ? res._rev : undefined, retryCount - 1)
       } else if (
         res.message ===
         "DataCloneError: Failed to execute 'put' on 'IDBObjectStore': #<Object> could not be cloned."
       ) {
-        return await saveOneByAsync(key, cloneDeep(value), rev)
+        if (retryCount <= 0) return Promise.reject('saveOneByAsync: max retries exceeded (clone)')
+        return await saveOneByAsync(key, cloneDeep(value), rev, retryCount - 1)
       }
       console.error(res)
       if (err) {
@@ -179,13 +186,14 @@ export async function saveOneByAsync<T>(
     return Promise.resolve(res.rev)
   } catch (e: any) {
     if (e.message === 'An object could not be cloned.') {
-      // 查询后更新
-      return await saveOneByAsync(key, cloneDeep(value), rev)
+      if (retryCount <= 0) return Promise.reject('saveOneByAsync: max retries exceeded (clone)')
+      return await saveOneByAsync(key, cloneDeep(value), rev, retryCount - 1)
     } else if (
       e.message ===
       "DataCloneError: Failed to execute 'put' on 'IDBObjectStore': #<Object> could not be cloned."
     ) {
-      return await saveOneByAsync(key, cloneDeep(value), rev)
+      if (retryCount <= 0) return Promise.reject('saveOneByAsync: max retries exceeded (clone)')
+      return await saveOneByAsync(key, cloneDeep(value), rev, retryCount - 1)
     } else {
       console.error(e)
       return Promise.reject(e)

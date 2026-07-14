@@ -27,13 +27,13 @@ export type SSEChunkData = {
 export interface ChatRequestParams {
   content: string
   model: string
+  baseURL: string
+  apiKey?: string
   thinking?: 'enabled' | 'disabled'
   reasoning_effort?: 'high' | 'max'
 }
 
 export interface ChatServiceConfig {
-  baseURL: string
-  apiKey?: string
   stream?: boolean
   retryInterval?: number
   maxRetries?: number
@@ -52,9 +52,6 @@ export interface ChatServiceConfig {
   onError?: (err: Error | Response) => void
 }
 
-export type ChatServiceConfigSetter =
-  ChatServiceConfig | ((param: ChatServiceConfig) => ChatServiceConfig)
-
 export type ChatMessageStatus = 'pending' | 'streaming' | 'complete' | 'stop' | 'error'
 
 export type ChatStatus = 'idle' | ChatMessageStatus
@@ -69,17 +66,16 @@ export interface ChatContext {
   config: ChatServiceConfig
   abortController: AbortController | null
   requestSeq: number
-  openaiClient: OpenAI | null
 }
 
 // ==========================================
 //  纯工具函数
 // ==========================================
 
-export function createClient(config: ChatServiceConfig): OpenAI {
+export function createClient(baseURL: string, apiKey?: string): OpenAI {
   return new OpenAI({
-    baseURL: config.baseURL,
-    apiKey: config.apiKey,
+    baseURL,
+    apiKey,
     dangerouslyAllowBrowser: true
   })
 }
@@ -104,9 +100,10 @@ export interface ChatAPI {
   messages: Ref<ChatMessage[]>
   status: Ref<ChatStatus>
   destroy: () => void
-  init: (configSetter: ChatServiceConfigSetter, initialMessages?: ChatMessage[]) => void
+  init: (initialMessages?: ChatMessage[]) => void
   sendUserMessage: (requestParams: ChatRequestParams) => Promise<void>
   reaskMessage: (messageId: string, requestParams: ChatRequestParams) => Promise<void>
+
   modifyAndReaskMessage: (
     messageId: string,
     content: string,
@@ -133,22 +130,10 @@ export abstract class AbstractChat implements ChatAPI {
   }) {
     this.messages.value = [...(options.defaultMessages ?? [])]
     this.ctx = {
-      config: { ...(options.chatServiceConfig ?? { baseURL: '' }) },
+      config: { ...(options.chatServiceConfig ?? {}) },
       abortController: null,
-      requestSeq: 0,
-      openaiClient: null
+      requestSeq: 0
     }
-  }
-
-  // ========================
-  //   protected 工具方法
-  // ========================
-
-  protected getClient(): OpenAI {
-    if (!this.ctx.openaiClient) {
-      this.ctx.openaiClient = createClient(this.ctx.config)
-    }
-    return this.ctx.openaiClient
   }
 
   // ========================
@@ -237,7 +222,7 @@ export abstract class AbstractChat implements ChatAPI {
     }
   }
 
-  async reaskMessage(messageId: string, requestParams?: ChatRequestParams): Promise<void> {
+  async reaskMessage(messageId: string, requestParams: ChatRequestParams): Promise<void> {
     console.log('reaskMessage', messageId, requestParams)
     if (
       this.status.value !== 'idle' &&
@@ -284,15 +269,8 @@ export abstract class AbstractChat implements ChatAPI {
     try {
       await this.doStreamRequest(
         {
-          // 旧的
-          ...{
-            model: userMessage.model,
-            thinking: userMessage.thinking,
-            reasoning_effort: userMessage.reasoning_effort,
-            content: userMessage.content[0].data as string
-          },
-          // 可能存在的新的
-          ...requestParams
+          ...requestParams,
+          content: userMessage.content[0].data as string
         },
         this.ctx.abortController.signal,
         seq
@@ -407,14 +385,7 @@ export abstract class AbstractChat implements ChatAPI {
     await this.ctx.config.onAbort?.()
   }
 
-  init(configSetter: ChatServiceConfigSetter, initialMessages?: ChatMessage[]): void {
-    this.ctx.config =
-      typeof configSetter === 'function'
-        ? (configSetter as (param: ChatServiceConfig) => ChatServiceConfig)({
-            ...this.ctx.config
-          })
-        : { ...this.ctx.config, ...configSetter }
-    this.ctx.openaiClient = null
+  init(initialMessages?: ChatMessage[]): void {
     if (initialMessages) this.messages.value = [...initialMessages]
   }
 

@@ -41,7 +41,12 @@
               v-for="group in groups"
               :key="group.id"
               class="menu-item"
-              :class="{ active: isActive(`/group/${group.id}`) || isActive(`/new/${group.id}`) }"
+              :class="{
+                active:
+                  isActive(`/group/${group.id}`) ||
+                  isActive(`/new/${group.id}`) ||
+                  isStartActive(`/chat/${group.id}/`)
+              }"
               type="button"
               @contextmenu="openGroupContextmenu($event, group.id)"
               @click="goTo(`/group/${group.id}`)"
@@ -186,6 +191,7 @@ const yuanbaoPieMenus = computed<YuanbaoPieMenuItem[]>(() => [
 ])
 
 const isActive = (path: string) => route.path === path
+const isStartActive = (path: string) => route.path.startsWith(path)
 
 const goTo = (path: string) => {
   if (route.path !== path) {
