@@ -1,5 +1,5 @@
 <template>
-  <page-layout>
+  <page-layout title="新建对话">
     <div class="p-8px flex flex-col items-center" style="height: calc(100% - 16px)">
       <div class="flex-1 flex flex-col items-center justify-center">
         <div style="font-size: var(--td-font-size-headline-medium); font-weight: bold">
@@ -18,8 +18,7 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { useAiChatStore, useAiGroupStore, useSettingDefaultStore } from '@/store'
-import { AiGroup } from '@/entity/ai'
+import { useAiChatStore, useSettingDefaultStore } from '@/store'
 
 const router = useRouter()
 
