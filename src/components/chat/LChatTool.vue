@@ -40,7 +40,6 @@
 import { ChatSender } from '@tdesign-vue-next/chat'
 import { SystemSumIcon } from 'tdesign-icons-vue-next'
 import { cloneDeep } from 'es-toolkit'
-import { toRaw } from 'vue'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
 import { type ToolFunction, ChatRequestParams, ToolChat } from '@/modules/chat'
 import { useSettingAiStore } from '@/store'
@@ -111,12 +110,14 @@ const handleClear = () => {
 let unWatch: (() => void) | null = null
 
 onMounted(async () => {
+  console.log('1')
   if (props.storageKey) {
     const c = await listByAsync<ChatMessage>(props.storageKey)
     if (c) {
       instance.init(c.list)
     }
   }
+  console.log('2')
 
   // 保存起来
   if (props.storageKey) {
@@ -128,6 +129,7 @@ onMounted(async () => {
       { throttle: 300, deep: true }
     )
   }
+  console.log('3')
 
   const messageCount = messages.value.length
 
@@ -135,7 +137,8 @@ onMounted(async () => {
   if (messages.value.length === 0) {
     await instance.sendSystemMessage(props.prompt)
   }
-  emit('initial', messageCount)
+  console.log('4')
+  emit('initial', messageCount === 0)
 })
 
 onUnmounted(() => {

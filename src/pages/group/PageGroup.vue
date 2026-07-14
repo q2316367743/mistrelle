@@ -32,17 +32,17 @@
             hover-shadow
             class="chat-card"
             @click="openGroupChat(chat)"
+            :title="chat.name || '未命名对话'"
           >
             <div class="chat-card__content">
               <div class="chat-card__main">
-                <div class="chat-card__title">{{ chat.name || '未命名对话' }}</div>
                 <div class="chat-card__message">{{ chat.form.content || '暂无首条消息' }}</div>
               </div>
-              <div class="chat-card__meta">
-                <t-tag v-if="chat.top" theme="primary" variant="light" size="small">置顶</t-tag>
-                <span>{{ chat.form.model || '未设置模型' }}</span>
-              </div>
             </div>
+            <template #actions>
+              <t-tag v-if="chat.top" theme="primary" variant="light" size="small">置顶</t-tag>
+              <span>{{ chat.form.model || '未设置模型' }}</span>
+            </template>
           </t-card>
         </div>
         <t-empty v-else description="暂无历史对话">
@@ -57,7 +57,7 @@
 <script lang="ts" setup>
 import { AddIcon } from 'tdesign-icons-vue-next'
 import { AiChatItem, AiGroup } from '@/entity/ai'
-import { aiChatList, useAiGroupStore } from '@/store'
+import { aiChatList, useAiGroupStore, useSettingAiStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 
 const route = useRoute()
@@ -77,6 +77,14 @@ const openGroupChat = (chat: AiChatItem) => router.push(`/chat/${group.value?.id
 onMounted(async () => {
   group.value = useAiGroupStore().getById(route.params.id as string)
   chats.value = await aiChatList(group.value?.id as string)
+  const { optionMap } = useSettingAiStore()
+  chats.value = chats.value.map((e) => ({
+    ...e,
+    form: {
+      ...e.form,
+      model: optionMap.get(e.form.model)?.model || e.form.model
+    }
+  }))
 })
 </script>
 <style scoped lang="less">
