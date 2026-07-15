@@ -187,17 +187,19 @@ onMounted(async () => {
       async (val) => {
         rev = await saveListByAsync<ChatMessage>(props.storageKey!, cloneDeep(toRaw(val)), rev, 0)
       },
-      { throttle: 300, deep: true }
+      { throttle: 1000, deep: true }
     )
   }
 
   const messageCount = messages.value.length
 
+  console.debug('messageCount', messageCount)
+
   // 如果第一次，则需要注入系统提示词
   if (messages.value.length === 0) {
     await instance.sendSystemMessage(props.prompt)
   }
-  emit('initial', messageCount === 0)
+  emit('initial', messageCount < 2)
 })
 
 onUnmounted(() => {

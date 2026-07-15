@@ -145,8 +145,8 @@ const scrollToMessage = (messageId: string) => {
 
 .r-chat-list__locator-group {
   position: absolute;
-  top: var(--td-comp-margin-m);
-  right: var(--td-comp-margin-xs);
+  top: 0;
+  right: -8px;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -180,7 +180,7 @@ const scrollToMessage = (messageId: string) => {
 
 .r-chat-list__locator-line {
   display: block;
-  width: 14px;
+  width: 18px;
   height: 2px;
   border-radius: var(--td-radius-round);
   background: currentcolor;
@@ -188,6 +188,6 @@ const scrollToMessage = (messageId: string) => {
 }
 
 .r-chat-list__locator:hover .r-chat-list__locator-line {
-  width: 28px;
+  width: 32px;
 }
 </style>

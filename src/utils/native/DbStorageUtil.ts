@@ -58,8 +58,7 @@ export async function saveListByAsync<T>(
     if (res.error) {
       if (res.message === 'Document update conflict') {
         if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (conflict)')
-        const res = await window.preload.inject.db.promises.get(key)
-        return await saveListByAsync(key, records, res ? res._rev : undefined, retryCount - 1)
+        return undefined
       } else if (res.message === 'An object could not be cloned.') {
         if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (clone)')
         return await saveListByAsync(key, cloneDeep(records), rev, retryCount - 1)

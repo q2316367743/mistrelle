@@ -32,17 +32,22 @@ const lChatToolRef = ref()
 const storageKey = LocalNameEnum.LIST_AI_CHAT(route.params.id as string)
 
 const handleChatInitial = (send: boolean) => {
+  console.debug('4', send, chat.value)
   if (send && chat.value) {
+    console.debug('5')
     lChatToolRef.value.sendUserMessage(chat.value.form)
   }
 }
 
 onMounted(async () => {
+  console.debug('1')
   try {
     group.value = useAiGroupStore().getById(route.params.groupId as string)
     if (group.value) {
+      console.debug('2')
       functions.value = group.value.tools.map((tool) => toolMap[tool])
     }
+    console.debug('3')
     chat.value = await aiChatGet(route.params.groupId as string, route.params.id as string)
   } finally {
     initial.value = true
