@@ -3,6 +3,7 @@ import { listByAsync, saveListByAsync } from '@/utils/native'
 import { defineStore } from 'pinia'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
+import { useChatName } from '@/modules/chat/UseChatName'
 
 interface AiChatCache {
   list: Array<AiChatItem>
@@ -15,12 +16,14 @@ interface AiChatCache {
  */
 const aiChatCacheMap = new Map<string, AiChatCache>()
 
+const buildKey = (groupId: string) => `/list/chat/${groupId}`
+
 /**
  * 获取聊天列表
  * @param groupId 分组 ID
  */
 export const aiChatList = async (groupId: string): Promise<Array<AiChatItem>> => {
-  const key = `/list/chat/${groupId}`
+  const key = buildKey(groupId)
   const cache = aiChatCacheMap.get(key)
   if (cache) return cache.list
   const res = await listByAsync<AiChatItem>(key)
@@ -34,7 +37,7 @@ export const aiChatGet = async (groupId: string, id: string): Promise<AiChatItem
 }
 
 export const aiChatAdd = async (groupId: string, form: AiChatForm) => {
-  const key = `/list/chat/${groupId}`
+  const key = buildKey(groupId)
   let cache = aiChatCacheMap.get(key)
   if (!cache) cache = await listByAsync<AiChatItem>(key)
   aiChatCacheMap.set(key, cache)
@@ -50,6 +53,30 @@ export const aiChatAdd = async (groupId: string, form: AiChatForm) => {
   })
   cache.rev = await saveListByAsync(key, cache.list, cache.rev)
   return id
+}
+
+export const aiChatUpdate = async (groupId: string, id: string, target: Partial<AiChatItem>) => {
+  const key = buildKey(groupId)
+  let cache = aiChatCacheMap.get(key)
+  if (!cache) cache = await listByAsync<AiChatItem>(key)
+  aiChatCacheMap.set(key, cache)
+  let index = cache.list.findIndex((e) => e.id === id)
+  if (index >= 0) {
+    cache.list[index] = {
+      ...cache.list[index],
+      ...target,
+      updatedAt: Date.now()
+    }
+    cache.rev = await saveListByAsync(key, cache.list, cache.rev)
+  }
+}
+
+const aiChatRename = async (groupId: string, id: string) => {
+  const target = await aiChatGet(groupId, id)
+  if (target) {
+    const name = await useChatName(target.form.content)
+    await aiChatUpdate(groupId, id, { name })
+  }
 }
 
 export const useAiChatStore = defineStore('ai-chat', () => {
@@ -72,6 +99,12 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       // 更新缓存
       await init()
     }
+    // 生成聊天消息
+    aiChatRename(groupId, id).finally(() => {
+      if (groupId === '0') {
+        init()
+      }
+    })
     return id
   }
 
