@@ -1,5 +1,5 @@
 export function isDarkColors(): boolean {
-  return utools.isDarkColors()
+  return window.preload.inject.os.isDarkColors()
 }
 
 interface UserProfile {
@@ -10,10 +10,10 @@ interface UserProfile {
 }
 
 export const getUserProfile = (): UserProfile => {
-  if (window.preload.getPlatform() === 'ZTools') {
+  if (window.preload.inject.getPlatform() === 'ZTools') {
     return { avatar: './logo.png', nickname: '用户', type: 'user' }
   }
-  const user = utools.getUser()
+  const user = window.preload.inject.os.getUser()
   return {
     avatar: user?.avatar || './logo.png',
     nickname: user?.nickname || '用户',
@@ -21,4 +21,4 @@ export const getUserProfile = (): UserProfile => {
   }
 }
 
-export const copyText = (text: string) => utools.copyText(text)
+export const copyText = (text: string) => window.preload.inject.clipboard.copyText(text)

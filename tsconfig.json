@@ -21,11 +21,7 @@
         "./src/*"
       ]
     },
-    "noEmit": true,
-    "types": [
-      "utools-api-types",
-      "@ztools-center/ztools-api-types"
-    ]
+    "noEmit": true
   },
   "include": [
     "src/**/*.ts",

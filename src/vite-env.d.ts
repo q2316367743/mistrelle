@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference path="./types/inject.d.ts" />
 
 interface RouteMeta {
   hidden?: boolean
@@ -7,7 +8,6 @@ interface RouteMeta {
 
 interface Window {
   preload: {
-    getPlatform: () => 'ZTools' | 'utools' | 'browser'
     net: {
       /**
        * 从url下载一个文件到指定目录
@@ -21,5 +21,6 @@ interface Window {
        */
       pathToHref(path: string): string
     }
+    inject: InjectApi
   }
 }

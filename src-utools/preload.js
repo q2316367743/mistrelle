@@ -1,4 +1,5 @@
 const net = require('./src/net')
+const inject = require('./src/inject')
 
 if (window.ztools) window.utools = window.ztools
 
@@ -11,5 +12,6 @@ window.preload = {
     }
     return 'browser'
   },
-  net
+  net,
+  inject
 }

@@ -26,7 +26,7 @@ export interface DbRecord<T> {
  * @param key 键
  */
 export async function listByAsync<T = any>(key: string): Promise<DbList<T>> {
-  const res = await utools.db.promises.get(key)
+  const res = await window.preload.inject.db.promises.get(key)
   if (res) {
     return {
       list: res.value || new Array<T>(),
@@ -50,7 +50,7 @@ export async function saveListByAsync<T>(
   retryCount = 3
 ): Promise<undefined | string> {
   try {
-    const res = await utools.db.promises.put({
+    const res = await window.preload.inject.db.promises.put({
       _id: key,
       _rev: rev,
       value: toRaw(records)
@@ -58,7 +58,7 @@ export async function saveListByAsync<T>(
     if (res.error) {
       if (res.message === 'Document update conflict') {
         if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (conflict)')
-        const res = await utools.db.promises.get(key)
+        const res = await window.preload.inject.db.promises.get(key)
         return await saveListByAsync(key, records, res ? res._rev : undefined, retryCount - 1)
       } else if (res.message === 'An object could not be cloned.') {
         if (retryCount <= 0) return Promise.reject('saveListByAsync: max retries exceeded (clone)')
@@ -97,7 +97,7 @@ export async function saveListByAsync<T>(
 export async function listRecordByAsync<T>(key?: string | string[]): Promise<Array<DbRecord<T>>> {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  const items = await utools.db.promises.allDocs(key)
+  const items = await window.preload.inject.db.promises.allDocs(key)
   return items
     .filter((e) => !!e)
     .map((item) => ({
@@ -118,7 +118,7 @@ export async function getFromOneWithDefaultByAsync<T>(
   key: string,
   defaultValue: T
 ): Promise<DbRecord<T>> {
-  const res = await utools.db.promises.get(key)
+  const res = await window.preload.inject.db.promises.get(key)
   if (!res) {
     return { record: defaultValue, id: key }
   }
@@ -134,7 +134,7 @@ export async function getFromOneWithDefaultByAsync<T>(
  * @param key 键
  */
 export async function getFromOneByAsync<T = any>(key: string): Promise<DbRecord<T | null>> {
-  const res = await utools.db.promises.get(key)
+  const res = await window.preload.inject.db.promises.get(key)
   if (!res) {
     return { record: null, id: key }
   }
@@ -160,7 +160,7 @@ export async function saveOneByAsync<T>(
   err?: (e: Error) => void
 ): Promise<undefined | string> {
   try {
-    const res = await utools.db.promises.put({
+    const res = await window.preload.inject.db.promises.put({
       _id: key,
       _rev: rev,
       value: toRaw(value)
@@ -168,7 +168,7 @@ export async function saveOneByAsync<T>(
     if (res.error) {
       if (res.message === 'Document update conflict') {
         if (retryCount <= 0) return Promise.reject('saveOneByAsync: max retries exceeded (conflict)')
-        const res = await utools.db.promises.get(key)
+        const res = await window.preload.inject.db.promises.get(key)
         return await saveOneByAsync(key, value, res ? res._rev : undefined, retryCount - 1)
       } else if (
         res.message ===
@@ -208,7 +208,7 @@ export async function saveOneByAsync<T>(
  * @param ignoreError 是否忽略异常
  */
 export async function removeOneByAsync(key: string, ignoreError: boolean = false): Promise<void> {
-  const res = await utools.db.promises.remove(key)
+  const res = await window.preload.inject.db.promises.remove(key)
   if (res.error) {
     if (!ignoreError) {
       return Promise.reject(res.message)
@@ -224,7 +224,7 @@ export async function removeOneByAsync(key: string, ignoreError: boolean = false
  * @param ignoreError 是否忽略异常，默认不忽略
  */
 export async function removeMultiByAsync(key: string, ignoreError: boolean = false): Promise<void> {
-  const items = await utools.db.promises.allDocs(key)
+  const items = await window.preload.inject.db.promises.allDocs(key)
   for (let item of items) {
     await removeOneByAsync(item._id, ignoreError)
   }
@@ -240,7 +240,7 @@ export async function removeMultiByAsync(key: string, ignoreError: boolean = fal
  */
 export async function postAttachment(docId: string, attachment: Blob | File): Promise<string> {
   const buffer = await attachment.arrayBuffer()
-  const res = await utools.db.promises.postAttachment(
+  const res = await window.preload.inject.db.promises.postAttachment(
     docId,
     new Uint8Array(buffer),
     'application/octet-stream'

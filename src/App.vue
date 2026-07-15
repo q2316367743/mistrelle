@@ -212,7 +212,7 @@ onMounted(() => {
   console.log('plugin enter', isDark.value)
 })
 
-utools.onPluginEnter((action) => {
+window.preload.inject.onPluginEnter((action) => {
   // 对关键字进行处理
   console.log(action)
 })

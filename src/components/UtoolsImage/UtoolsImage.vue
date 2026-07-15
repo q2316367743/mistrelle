@@ -17,9 +17,9 @@ onMounted(async () => {
   }
   const { url } = props
   if (!url) return
-  const unit8Array = await utools.db.promises.getAttachment(url)
+  const unit8Array = await window.preload.inject.db.promises.getAttachment(url)
   if (!unit8Array) return
-  src.value = URL.createObjectURL(new Blob([unit8Array]))
+  src.value = URL.createObjectURL(new Blob([unit8Array.buffer as ArrayBuffer]))
 })
 onBeforeUnmount(() => {
   if (src.value) {
