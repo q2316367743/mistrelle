@@ -4,3 +4,4 @@ export * from './setting/SettingNetworkStore'
 
 export * from './db/AiGroupStore'
 export * from './db/AiChatStore'
+export * from './db/AiDiscussionStore'

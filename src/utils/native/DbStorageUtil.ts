@@ -150,6 +150,7 @@ export async function getFromOneByAsync<T = any>(key: string): Promise<DbRecord<
  * @param value 值
  * @param rev 恢复
  * @param err 错误处理函数
+ * @param retryCount 重试次数
  */
 export async function saveOneByAsync<T>(
   key: string,
@@ -206,7 +207,7 @@ export async function saveOneByAsync<T>(
  * @param key 键
  * @param ignoreError 是否忽略异常
  */
-export async function removeOneByAsync(key: string, ignoreError: boolean = false): Promise<void> {
+export async function removeOneByAsync(key: string, ignoreError: boolean = true): Promise<void> {
   const res = await window.preload.inject.db.promises.remove(key)
   if (res.error) {
     if (!ignoreError) {
