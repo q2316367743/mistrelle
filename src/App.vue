@@ -73,7 +73,7 @@
 
         <div class="bottom-menu">
           <div class="section-title">
-            <span>元宝派</span>
+            <span>达利园</span>
             <t-button theme="primary" variant="text" shape="square" size="small">
               <template #icon>
                 <add-icon />
@@ -97,7 +97,12 @@
 
       <div class="user-menu">
         <div class="w-220px overflow-x-hidden">
-          <t-dropdown trigger="click" placement="top" min-column-width="204px">
+          <t-dropdown
+            trigger="click"
+            placement="top"
+            max-column-width="188px"
+            min-column-width="188px"
+          >
             <button class="menu-item" type="button">
               <t-avatar :image="profile.avatar" size="24px" />
               <span>{{ profile.nickname }}</span>
@@ -178,11 +183,11 @@ const groups = computed(() => useAiGroupStore().state)
 const chats = computed(() => useAiChatStore().state)
 
 const pieMenus: Omit<YuanbaoPieMenuItem, 'path'>[] = [
-  { id: 'default', name: '元宝派', type: 'pie' }
+  { id: 'default', name: '蛋黄派', type: 'pie' }
 ]
 
 const agentMenus: Omit<YuanbaoPieMenuItem, 'path'>[] = [
-  { id: 'default', name: '元宝派', type: 'agent' }
+  { id: 'default', name: '巧克力派', type: 'agent' }
 ]
 
 const yuanbaoPieMenus = computed<YuanbaoPieMenuItem[]>(() => [

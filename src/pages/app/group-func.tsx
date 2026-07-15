@@ -60,6 +60,7 @@ export const openGroupPut = (id?: string) => {
                 options={toolOptions}
                 placeholder={'请选择分组启用的工具'}
                 multiple={true}
+                filterable={true}
               />
             </FormItem>
           </Form>
