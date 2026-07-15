@@ -73,23 +73,28 @@
 
         <div class="bottom-menu">
           <div class="section-title">
-            <span>达利园</span>
-            <t-button theme="primary" variant="text" shape="square" size="small">
+            <span>讨论组</span>
+            <t-button
+              theme="primary"
+              variant="text"
+              shape="square"
+              size="small"
+              @click="openDiscussionPut()"
+            >
               <template #icon>
                 <add-icon />
               </template>
             </t-button>
           </div>
           <button
-            v-for="item in yuanbaoPieMenus"
-            :key="`${item.type}-${item.id}`"
+            v-for="item in discussions"
+            :key="item.id"
             class="menu-item"
-            :class="{ active: isActive(item.path) }"
+            :class="{ active: isActive(`/discussion/${item.id}`) }"
             type="button"
-            @click="goTo(item.path)"
+            @click="goTo(`/discussion/${item.id}`)"
           >
-            <UsergroupIcon v-if="item.type === 'pie'" class="menu-icon" />
-            <UserIcon v-else class="menu-icon" />
+            <UsergroupIcon class="menu-icon" />
             <span>{{ item.name }}</span>
           </button>
         </div>
@@ -153,18 +158,13 @@ import {
   InternetIcon,
   SearchIcon,
   UsergroupIcon,
-  UserIcon,
   ViewListIcon
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark, toggleCollapsed } from '@/global/BeanFactory'
-import { useAiChatStore, useAiGroupStore } from '@/store'
+import { useAiChatStore, useAiDiscussionStore, useAiGroupStore } from '@/store'
 import { openGroupContextmenu, openGroupPut } from '@/pages/app/group-func'
-
-interface GroupMenuItem {
-  id: string
-  name: string
-}
+import { openDiscussionPut } from '@/pages/app/discussion-func'
 
 interface YuanbaoPieMenuItem {
   id: string
@@ -181,19 +181,7 @@ const profile = getUserProfile()
 // 分组
 const groups = computed(() => useAiGroupStore().state)
 const chats = computed(() => useAiChatStore().state)
-
-const pieMenus: Omit<YuanbaoPieMenuItem, 'path'>[] = [
-  { id: 'default', name: '蛋黄派', type: 'pie' }
-]
-
-const agentMenus: Omit<YuanbaoPieMenuItem, 'path'>[] = [
-  { id: 'default', name: '巧克力派', type: 'agent' }
-]
-
-const yuanbaoPieMenus = computed<YuanbaoPieMenuItem[]>(() => [
-  ...pieMenus.map((item) => ({ ...item, path: `/pie/${item.id}` })),
-  ...agentMenus.map((item) => ({ ...item, path: `/agent/${item.id}` }))
-])
+const discussions = computed(() => useAiDiscussionStore().state)
 
 const isActive = (path: string) => route.path === path
 const isStartActive = (path: string) => route.path.startsWith(path)

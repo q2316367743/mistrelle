@@ -57,6 +57,10 @@ export interface AiDiscussionRole {
    */
   prompt: string
   /**
+   * 关联模型
+   */
+  model: string
+  /**
    * 角色索引
    */
   index: number

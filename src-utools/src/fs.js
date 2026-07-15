@@ -1,6 +1,6 @@
-import { statSync } from 'node:fs'
-import { readdir, readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+const { statSync } = require('node:fs')
+const { readdir, readFile, writeFile } = require('node:fs/promises')
+const { join } = require('node:path')
 
 module.exports = {
   readDir: async (path) => {
