@@ -1,5 +1,5 @@
 import { AiGroupForm, buildAiGroupForm } from '@/entity/ai'
-import { useAiGroupStore, useSettingAiStore } from '@/store'
+import { useAiFriendStore, useAiGroupStore, useSettingAiStore } from '@/store'
 import { toolOptions } from '@/modules/tool'
 import { DialogPlugin, Form, FormItem, Input, Select, Switch, Textarea } from 'tdesign-vue-next'
 import { MessageUtil } from '@/utils/modal'
@@ -10,6 +10,23 @@ export const openGroupPut = (id?: string) => {
   const { getById, put } = useAiGroupStore()
   const old = getById(id)
   const form = ref<AiGroupForm>(old || buildAiGroupForm())
+
+  const aiFriendStore = useAiFriendStore()
+  const selectedFriendId = ref<string>('')
+  const onFriendSelect = async (v: string) => {
+    if (!v) return
+    const friend = await aiFriendStore.getById(v)
+    if (!friend) return
+    form.value = {
+      ...form.value,
+      name: friend.name,
+      prompt: friend.prompt,
+      tools: [...friend.tools],
+      model: friend.model,
+      placeholder: friend.placeholder,
+      think: friend.think
+    }
+  }
 
   const dp = DialogPlugin({
     header: (old ? '修改' : '新增') + '分组',
@@ -30,6 +47,15 @@ export const openGroupPut = (id?: string) => {
       return (
         <div style={{ height: 'calc(100vh - 280px)', overflow: 'auto' }}>
           <Form data={form.value}>
+            <FormItem label={'从好友填充'}>
+              <Select
+                v-model={selectedFriendId.value}
+                options={aiFriendStore.state.map((f) => ({ label: f.name, value: f.id }))}
+                placeholder={'选择好友快速填充'}
+                clearable={true}
+                onChange={(v) => onFriendSelect(v as string)}
+              />
+            </FormItem>
             <FormItem label={'分组名称'} name={'name'}>
               <Input v-model={form.value.name} placeholder={'请输入分组名称'} />
             </FormItem>
