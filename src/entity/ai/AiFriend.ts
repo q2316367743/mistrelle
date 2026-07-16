@@ -3,8 +3,10 @@ import { BaseEntity } from '@/entity'
 export type AiFriendType =
   // 职业类型，比如律师
   | 'profession'
-  // 个人类型，比如朋友，不同的性格
-  | 'person'
+  // 伙伴类型，比如朋友、知己
+  | 'companion'
+  // 名人类型，比如历史人物、虚构角色
+  | 'celebrity'
   // 其他类型
   | 'other'
 
@@ -51,6 +53,7 @@ export interface AiFriendForm {
 }
 
 export interface AiFriendItem extends BaseEntity {
+  type: AiFriendType
   /**
    * 好友名字
    */
