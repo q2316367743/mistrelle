@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { AiDiscussion, AiDiscussionForm, AiDiscussionItem } from '@/entity/ai/AiDiscussion'
+import { AiDiscussion, AiDiscussionForm, AiDiscussionItem } from '@/entity/ai'
 import {
   getFromOneByAsync,
   listByAsync,

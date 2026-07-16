@@ -5,6 +5,13 @@
       :width="collapsed ? '0px' : '220px'"
       :class="['sidebar', 'shrink-0']"
     >
+      <div class="h-32px pl-40px">
+        <t-button theme="primary" shape="square" variant="text" @click="handleFriendClick">
+          <template #icon>
+            <usergroup-icon />
+          </template>
+        </t-button>
+      </div>
       <button class="search-button mx-8px" type="button" @click="handleSearchClick">
         <SearchIcon class="menu-icon" />
         <span>搜索</span>
@@ -187,6 +194,7 @@ const goTo = (path: string) => {
 
 const handleSearchClick = () => {}
 
+const handleFriendClick = () => router.push('/friend')
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
 
 onMounted(() => {
@@ -278,7 +286,6 @@ window.preload.inject.onPluginEnter((action) => {
   background: var(--td-bg-color-container);
   border-color: var(--td-component-border);
   box-shadow: var(--fluent-elevation-1);
-  margin-top: 40px;
   width: 204px;
   overflow-x: hidden;
 }

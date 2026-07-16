@@ -9,6 +9,8 @@ export const LocalNameEnum = {
   LIST_AI_GROUP: '/list/ai/group',
   LIST_AI_CHAT: (groupId: string) => `/list/ai/chat/${groupId}`,
   LIST_AI_DISCUSSION: '/list/ai/discussion',
+  LIST_AI_FRIEND: '/list/ai/friend',
 
-  ITEM_AI_DISCUSSION: (id: string) => `/item/ai/discussion/${id}`
+  ITEM_AI_DISCUSSION: (id: string) => `/item/ai/discussion/${id}`,
+  ITEM_AI_FRIEND: (id: string) => `/item/ai/friend/${id}`
 }

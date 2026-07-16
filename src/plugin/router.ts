@@ -14,6 +14,12 @@ export const routes: Array<RouteRecordRaw> = [
   },
 
   {
+    name: '好友',
+    path: '/friend',
+    component: () => import('@/pages/friend/PageFriend.vue')
+  },
+
+  {
     name: '新建聊天',
     path: '/new/:id',
     component: () => import('@/pages/new/index.vue')

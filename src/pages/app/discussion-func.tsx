@@ -3,7 +3,7 @@ import { DialogPlugin, Form, FormItem, Input, Select, Textarea, Button } from 't
 import { MessageUtil } from '@/utils/modal'
 import { useContextMenu, useSnowflake } from '@/hooks'
 import { AddIcon, DeleteIcon, EditIcon, ChevronDownIcon, ChevronRightIcon } from 'tdesign-icons-vue-next'
-import { AiDiscussionForm, buildAiDiscussionForm } from '@/entity/ai/AiDiscussion'
+import { AiDiscussionForm, buildAiDiscussionForm } from '@/entity/ai'
 
 export const openDiscussionPut = async (id?: string) => {
   const { getById, put } = useAiDiscussionStore()
