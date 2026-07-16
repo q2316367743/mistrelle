@@ -71,7 +71,7 @@ const enabledToolsText = computed(
   () => group.value?.tools.map((e) => toolMap[e]?.label).join('、') || '暂无启用工具'
 )
 
-const openNewGroup = () => router.push(`/new/${group.value?.id || '0'}`)
+const openNewGroup = () => router.push(`/new/group/${group.value?.id || '0'}`)
 const openGroupChat = (chat: AiChatItem) => router.push(`/chat/${group.value?.id}/${chat.id}`)
 
 onMounted(async () => {

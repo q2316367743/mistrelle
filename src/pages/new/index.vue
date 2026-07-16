@@ -19,13 +19,13 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { useAiChatStore, useAiGroupStore, useSettingDefaultStore } from '@/store'
-import { AiGroup } from '@/entity/ai'
+import { useAiChatStore, useAiFriendStore, useAiGroupStore, useSettingDefaultStore } from '@/store'
+import { AiFriend, AiGroup } from '@/entity/ai'
 
 const route = useRoute()
 const router = useRouter()
 
-const group = ref<AiGroup>()
+const group = ref<AiGroup | AiFriend>()
 
 const content = ref('')
 const model = ref('')
@@ -39,19 +39,26 @@ const title = computed(() => {
 })
 
 const handleSend = async () => {
+  const groupId = route.params.type === 'group' ? group.value?.id || '0' : '0'
   const id = await useAiChatStore().add(
     {
       content: content.value,
       model: model.value,
-      thinking: think.value ? 'enabled' : 'disabled'
+      thinking: think.value ? 'enabled' : 'disabled',
+      type: route.params.type as any,
+      relationId: group.value?.id || '0'
     },
-    group.value?.id || '0'
+    groupId
   )
-  await router.push(`/chat/${group.value?.id || '0'}/${id}`)
+  await router.push(`/chat/${groupId}/${id}`)
 }
 
-onMounted(() => {
-  group.value = useAiGroupStore().getById(route.params.id as string)
+onMounted(async () => {
+  if (route.params.type === 'group') {
+    group.value = useAiGroupStore().getById(route.params.id as string)
+  } else if (route.params.type === 'friend') {
+    group.value = await useAiFriendStore().getById(route.params.id as string)
+  }
   model.value = group.value?.model || useSettingDefaultStore().state.defaultAssistantModel
 })
 </script>

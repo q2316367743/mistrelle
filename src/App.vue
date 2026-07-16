@@ -21,9 +21,9 @@
         <nav class="menu-list" aria-label="主菜单">
           <button
             class="menu-item"
-            :class="{ active: isActive('/home') }"
+            :class="{ active: isActive('/new/single/0') }"
             type="button"
-            @click="goTo('/home')"
+            @click="goTo('/new/single/0')"
           >
             <ChatIcon class="menu-icon" />
             <span>半窗烟雨</span>
@@ -51,7 +51,7 @@
               :class="{
                 active:
                   isActive(`/group/${group.id}`) ||
-                  isActive(`/new/${group.id}`) ||
+                  isActive(`/new/group/${group.id}`) ||
                   isStartActive(`/chat/${group.id}/`)
               }"
               type="button"
@@ -70,7 +70,7 @@
             class="menu-item"
             :class="{ active: isActive(`/chat/${chat.id}`) }"
             type="button"
-            @contextmenu="openGroupContextmenu($event, chat.id)"
+            @contextmenu="openChatContextmenu($event, chat.id, '0')"
             @click="goTo(`/chat/0/${chat.id}`)"
           >
             <FolderIcon class="menu-icon" />
@@ -172,6 +172,7 @@ import { collapsed, isDark, toggleCollapsed } from '@/global/BeanFactory'
 import { useAiChatStore, useAiDiscussionStore, useAiGroupStore } from '@/store'
 import { openGroupContextmenu, openGroupPut } from '@/pages/app/group-func'
 import { openDiscussionPut } from '@/pages/app/discussion-func'
+import { openChatContextmenu } from '@/pages/app/chat-func'
 
 const router = useRouter()
 const route = useRoute()

@@ -4,6 +4,7 @@ import { defineStore } from 'pinia'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
 import { useChatName } from '@/modules/chat/UseChatName'
+import { LocalNameEnum } from '@/global/LocalNameEnum'
 
 interface AiChatCache {
   list: Array<AiChatItem>
@@ -79,6 +80,20 @@ const aiChatRename = async (groupId: string, id: string) => {
   }
 }
 
+const aiChatRemove = async (groupId: string, id: string) => {
+  const key = buildKey(groupId)
+  let cache = aiChatCacheMap.get(key)
+  if (!cache) cache = await listByAsync<AiChatItem>(key)
+  aiChatCacheMap.set(key, cache)
+  let index = cache.list.findIndex((e) => e.id === id)
+  if (index >= 0) {
+    cache.list.splice(index, 1)
+    cache.rev = await saveListByAsync(key, cache.list, cache.rev)
+    // 删除聊天记录
+    LocalNameEnum.LIST_AI_CHAT(id)
+  }
+}
+
 export const useAiChatStore = defineStore('ai-chat', () => {
   const logger = useLog({ name: 'ai-chat' })
 
@@ -100,6 +115,7 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       await init()
     }
     // 生成聊天消息
+    logger.debug('AI 聊天消息生成')
     aiChatRename(groupId, id).finally(() => {
       if (groupId === '0') {
         init()
@@ -108,9 +124,18 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     return id
   }
 
+  const remove = async (groupId: string, id: string) => {
+    await aiChatRemove(groupId, id)
+    if (groupId === '0') {
+      // 更新缓存
+      await init()
+    }
+  }
+
   return {
     state,
 
-    add
+    add,
+    remove
   }
 })

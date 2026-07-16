@@ -5,12 +5,7 @@ export const routes: Array<RouteRecordRaw> = [
   {
     name: 'redirect',
     path: '/',
-    redirect: '/home'
-  },
-  {
-    name: '主页',
-    path: '/home',
-    component: () => import('@/pages/home/index.vue')
+    redirect: '/new/single/0'
   },
 
   {
@@ -21,7 +16,7 @@ export const routes: Array<RouteRecordRaw> = [
 
   {
     name: '新建聊天',
-    path: '/new/:id',
+    path: '/new/:type/:id',
     component: () => import('@/pages/new/index.vue')
   },
   {

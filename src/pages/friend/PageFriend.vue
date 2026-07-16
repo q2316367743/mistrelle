@@ -21,6 +21,7 @@
             hover-shadow
             class="friend-card"
             :title="item.name"
+            @click="handleChat(item)"
             @contextmenu="openFriendContextmenu($event, item.id)"
           >
             <div class="friend-card__content">
@@ -45,9 +46,11 @@
 import { useAiFriendStore } from '@/store'
 import { openFriendPut, openFriendContextmenu, typeOptions } from './modals/friend-func'
 import { AddIcon } from 'tdesign-icons-vue-next'
-import type { AiFriendType } from '@/entity/ai'
+import { AiFriendItem, AiFriendType } from '@/entity/ai'
 
+const router = useRouter()
 const store = useAiFriendStore()
+
 const activeType = ref<AiFriendType>(typeOptions[0].value)
 
 const filteredList = (type: AiFriendType) => {
@@ -56,6 +59,10 @@ const filteredList = (type: AiFriendType) => {
 
 const typeLabel = (type: AiFriendType): string => {
   return typeOptions.find((t) => t.value === type)?.label || type
+}
+
+const handleChat = (friend: AiFriendItem) => {
+  router.push(`/new/friend/${friend.id}`)
 }
 </script>
 
