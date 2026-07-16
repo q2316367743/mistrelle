@@ -166,13 +166,6 @@ import { useAiChatStore, useAiDiscussionStore, useAiGroupStore } from '@/store'
 import { openGroupContextmenu, openGroupPut } from '@/pages/app/group-func'
 import { openDiscussionPut } from '@/pages/app/discussion-func'
 
-interface YuanbaoPieMenuItem {
-  id: string
-  name: string
-  type: 'pie' | 'agent'
-  path: string
-}
-
 const router = useRouter()
 const route = useRoute()
 
