@@ -73,6 +73,13 @@ export function toDateString(
   return dayjs(date).format(format)
 }
 
+export function prettyTraceTime(timestamp: number): string {
+  const d = dayjs(timestamp)
+  if (dayjs().isSame(d, 'day')) return d.format('HH:mm')
+  if (dayjs().isSame(d, 'year')) return d.format('M月D日 HH:mm')
+  return d.format('YYYY年M月D日 HH:mm')
+}
+
 
 /**
  * 美化持续时间

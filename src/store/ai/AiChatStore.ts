@@ -95,7 +95,7 @@ const aiChatRemove = async (groupId: string, id: string) => {
 }
 
 export const useAiChatStore = defineStore('ai-chat', () => {
-  const logger = useLog({ name: 'ai-chat' })
+  const logger = useLog({ name: 'store:ai-chat' })
 
   const state = ref<Array<AiChatItem>>([])
 

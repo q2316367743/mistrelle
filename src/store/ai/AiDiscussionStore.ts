@@ -12,7 +12,7 @@ import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
 
 export const useAiDiscussionStore = defineStore('ai-discussion', () => {
-  const logger = useLog({ name: 'ai-discussion' })
+  const logger = useLog({ name: 'store:ai-discussion' })
   const state = ref<Array<AiDiscussionItem>>([])
   const rev = ref<string>()
 

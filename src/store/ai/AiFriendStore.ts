@@ -12,7 +12,7 @@ import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
 
 export const useAiFriendStore = defineStore('ai-friend', () => {
-  const logger = useLog({ name: 'ai-friend' })
+  const logger = useLog({ name: 'store:ai-friend' })
   const state = ref(new Array<AiFriendItem>())
   const rev = ref<string>()
 

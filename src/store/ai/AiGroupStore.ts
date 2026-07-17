@@ -6,7 +6,7 @@ import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
 
 export const useAiGroupStore = defineStore('ai-group', () => {
-  const logger = useLog({ name: 'ai-group' })
+  const logger = useLog({ name: 'store:ai-group' })
 
   const state = ref(new Array<AiGroup>())
   const rev = ref<string>()
