@@ -13,6 +13,11 @@ export const routes: Array<RouteRecordRaw> = [
     path: '/friend',
     component: () => import('@/pages/friend/PageFriend.vue')
   },
+  {
+    name: 'Skill',
+    path: '/skill',
+    component: () => import('@/pages/skill/index.vue')
+  },
 
   {
     name: '新建聊天',

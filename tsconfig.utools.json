@@ -12,7 +12,8 @@
     ],
     "types": [
       "utools-api-types",
-      "@ztools-center/ztools-api-types"
+      "@ztools-center/ztools-api-types",
+      "@types/node"
     ]
   },
   "include": ["src-utools/**/*"]

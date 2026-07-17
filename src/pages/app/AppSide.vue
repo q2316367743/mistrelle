@@ -13,14 +13,14 @@
         </t-button>
       </t-tooltip>
       <t-tooltip content="skill">
-        <t-button theme="primary" shape="square" variant="text" @click="handleFriendClick">
+        <t-button theme="primary" shape="square" variant="text" @click="handleSkillClick">
           <template #icon>
             <ai-book-open-icon />
           </template>
         </t-button>
       </t-tooltip>
     </div>
-    <div class="h-40px grid grid-cols-3 gap-8px px-8px">
+    <div class="h-40px grid grid-cols-3 gap-8px px-8px w-204px overflow-x-hidden">
       <t-tooltip content="碎碎念">
         <button
           :class="['menu-item', 'search-button', { active: isActive('/note/ego') }]"
@@ -214,6 +214,7 @@ const goTo = (path: string) => {
 }
 
 const handleFriendClick = () => router.push('/friend')
+const handleSkillClick = () => router.push('/skill')
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
 const handleNoteClick = (key: string) => router.push(`/note/${key}`)
 

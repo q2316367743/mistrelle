@@ -1,11 +1,13 @@
 const net = require('./src/net')
 const inject = require('./src/inject')
 const fs = require('./src/fs')
-
-if (window.ztools) window.utools = window.ztools
+const axios = require('axios')
 
 window.preload = {
   net,
   inject,
-  fs
+  fs,
+  axios: axios.create({
+    adapter: 'http'
+  })
 }
