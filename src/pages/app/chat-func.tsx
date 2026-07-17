@@ -3,7 +3,7 @@ import { DeleteIcon } from 'tdesign-icons-vue-next'
 import { useAiChatStore } from '@/store'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 
-export const openChatContextmenu = (e: MouseEvent, id: string, groupId: string) => {
+export const openChatContextmenu = (e: MouseEvent, agentId: string, id: string) => {
   useContextMenu(e, {
     items: [
       {
@@ -13,7 +13,7 @@ export const openChatContextmenu = (e: MouseEvent, id: string, groupId: string) 
           MessageBoxUtil.confirm('是否删除该会话？', '删除确认')
             .then(() => {
               const store = useAiChatStore()
-              return store.remove(groupId, id)
+              return store.remove(agentId, id)
             })
             .then(() => {
               MessageUtil.success('删除成功')

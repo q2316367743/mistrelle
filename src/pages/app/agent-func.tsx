@@ -1,13 +1,13 @@
 import { AiGroupForm, buildAiGroupForm } from '@/entity/ai'
-import { useAiFriendStore, useAiGroupStore, useSettingAiStore } from '@/store'
+import { useAiFriendStore, useAiAgentStore, useSettingAiStore } from '@/store'
 import { toolOptions } from '@/modules/tool'
 import { DialogPlugin, Form, FormItem, Input, Select, Switch, Textarea } from 'tdesign-vue-next'
 import { MessageUtil } from '@/utils/modal'
 import { useContextMenu } from '@/hooks'
 import { DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
 
-export const openGroupPut = (id?: string) => {
-  const { getById, put } = useAiGroupStore()
+export const openAgentPut = (id?: string) => {
+  const { getById, put } = useAiAgentStore()
   const old = getById(id)
   const form = ref<AiGroupForm>(old || buildAiGroupForm())
 
@@ -96,13 +96,13 @@ export const openGroupPut = (id?: string) => {
   })
 }
 
-export const openGroupContextmenu = (e: MouseEvent, id: string) => {
+export const openAgentContextmenu = (e: MouseEvent, id: string) => {
   useContextMenu(e, {
     items: [
       {
         icon: () => <EditIcon />,
         label: '编辑',
-        onClick: () => openGroupPut(id)
+        onClick: () => openAgentPut(id)
       },
       {
         icon: () => <DeleteIcon class={'color-red'} />,

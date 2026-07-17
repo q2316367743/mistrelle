@@ -5,6 +5,6 @@ export * from './setting/SettingNetworkStore'
 export * from '@/store/ai/AiChatStore'
 export * from '@/store/ai/AiDiscussionStore'
 export * from '@/store/ai/AiFriendStore'
-export * from '@/store/ai/AiGroupStore'
+export * from '@/store/ai/AiAgentStore'
 
 export * from '@/store/note/NoteTraceStore'

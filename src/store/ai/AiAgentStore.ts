@@ -1,18 +1,18 @@
 import { defineStore } from 'pinia'
-import { AiGroup, AiGroupForm } from '@/entity/ai'
+import { AiAgent, AiGroupForm } from '@/entity/ai'
 import { listByAsync, saveListByAsync } from '@/utils/native'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
 
-export const useAiGroupStore = defineStore('ai-group', () => {
-  const logger = useLog({ name: 'store:ai-group' })
+export const useAiAgentStore = defineStore('ai-agent', () => {
+  const logger = useLog({ name: 'store:ai-agent' })
 
-  const state = ref(new Array<AiGroup>())
+  const state = ref(new Array<AiAgent>())
   const rev = ref<string>()
 
   const init = async () => {
-    const res = await listByAsync<AiGroup>(LocalNameEnum.LIST_AI_GROUP)
+    const res = await listByAsync<AiAgent>(LocalNameEnum.LIST_AI_AGENT)
     state.value = res.list
     rev.value = res.rev
   }
@@ -41,15 +41,15 @@ export const useAiGroupStore = defineStore('ai-group', () => {
         top: false
       })
     }
-    rev.value = await saveListByAsync(LocalNameEnum.LIST_AI_GROUP, state.value, rev.value)
+    rev.value = await saveListByAsync(LocalNameEnum.LIST_AI_AGENT, state.value, rev.value)
   }
 
   const remove = async (id: string) => {
     state.value = state.value.filter((item) => item.id !== id)
-    rev.value = await saveListByAsync(LocalNameEnum.LIST_AI_GROUP, state.value, rev.value)
+    rev.value = await saveListByAsync(LocalNameEnum.LIST_AI_AGENT, state.value, rev.value)
   }
 
-  const getById = (id?: string): AiGroup | undefined => {
+  const getById = (id?: string): AiAgent | undefined => {
     if (!id) return undefined
     return state.value.find((item) => item.id === id)
   }

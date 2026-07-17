@@ -9,10 +9,6 @@ export interface AiChatForm {
   model: string
   thinking?: 'enabled' | 'disabled'
   reasoning_effort?: 'high' | 'max'
-  // 类型，从哪里来的
-  type: 'single' | 'group' | 'friend'
-  // 关系 ID
-  relationId: string
 }
 
 /**

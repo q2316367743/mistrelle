@@ -5,7 +5,7 @@
     :class="['sidebar', 'shrink-0']"
   >
     <div class="h-32px pl-40px">
-      <t-tooltip content="AI 好友">
+      <t-tooltip content="提示词管理">
         <t-button theme="primary" shape="square" variant="text" @click="handleFriendClick">
           <template #icon>
             <usergroup-icon />
@@ -51,9 +51,9 @@
       <nav class="menu-list" aria-label="主菜单">
         <button
           class="menu-item"
-          :class="{ active: isActive('/new/single/0') }"
+          :class="{ active: isActive('/new/0') }"
           type="button"
-          @click="goTo('/new/single/0')"
+          @click="goTo('/new/0')"
         >
           <ChatIcon class="menu-icon" />
           <span>半窗烟雨</span>
@@ -61,13 +61,13 @@
 
         <div class="menu-section">
           <div class="section-title">
-            <span>分组</span>
+            <span>我的 Agent</span>
             <t-button
               theme="primary"
               variant="text"
               shape="square"
               size="small"
-              @click="openGroupPut()"
+              @click="openAgentPut()"
             >
               <template #icon>
                 <add-icon />
@@ -80,13 +80,13 @@
             class="menu-item"
             :class="{
               active:
-                isActive(`/group/${group.id}`) ||
-                isActive(`/new/group/${group.id}`) ||
+                isActive(`/agent/${group.id}`) ||
+                isActive(`/new/${group.id}`) ||
                 isStartActive(`/chat/${group.id}/`)
             }"
             type="button"
-            @contextmenu="openGroupContextmenu($event, group.id)"
-            @click="goTo(`/group/${group.id}`)"
+            @contextmenu="openAgentContextmenu($event, group.id)"
+            @click="goTo(`/agent/${group.id}`)"
           >
             <FolderIcon class="menu-icon" />
             <span>{{ group.name }}</span>
@@ -100,7 +100,7 @@
           class="menu-item"
           :class="{ active: isActive(`/chat/${chat.id}`) }"
           type="button"
-          @contextmenu="openChatContextmenu($event, chat.id, '0')"
+          @contextmenu="openChatContextmenu($event, '0', chat.id)"
           @click="goTo(`/chat/0/${chat.id}`)"
         >
           <FolderIcon class="menu-icon" />
@@ -183,14 +183,12 @@ import {
   ChatIcon,
   FolderIcon,
   InternetIcon,
-  SearchIcon,
-  UsergroupIcon,
-  ViewListIcon
+  UsergroupIcon
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
-import { collapsed, isDark, toggleCollapsed } from '@/global/BeanFactory'
-import { useAiChatStore, useAiDiscussionStore, useAiGroupStore } from '@/store'
-import { openGroupContextmenu, openGroupPut } from '@/pages/app/group-func'
+import { collapsed, isDark } from '@/global/BeanFactory'
+import { useAiChatStore, useAiDiscussionStore, useAiAgentStore } from '@/store'
+import { openAgentContextmenu, openAgentPut } from '@/pages/app/agent-func'
 import { openDiscussionPut } from '@/pages/app/discussion-func'
 import { openChatContextmenu } from '@/pages/app/chat-func'
 
@@ -200,7 +198,7 @@ const route = useRoute()
 const profile = getUserProfile()
 
 // 分组
-const groups = computed(() => useAiGroupStore().state)
+const groups = computed(() => useAiAgentStore().state)
 const chats = computed(() => useAiChatStore().state)
 const discussions = computed(() => useAiDiscussionStore().state)
 

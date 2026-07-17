@@ -56,14 +56,14 @@
 </template>
 <script lang="ts" setup>
 import { AddIcon } from 'tdesign-icons-vue-next'
-import { AiChatItem, AiGroup } from '@/entity/ai'
-import { aiChatList, useAiGroupStore, useSettingAiStore } from '@/store'
+import { AiChatItem, AiAgent } from '@/entity/ai'
+import { aiChatList, useAiAgentStore, useSettingAiStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 
 const route = useRoute()
 const router = useRouter()
 
-const group = ref<AiGroup>()
+const group = ref<AiAgent>()
 const chats = ref<Array<AiChatItem>>([])
 
 const promptPreview = computed(() => group.value?.prompt?.trim() || '暂无提示词')
@@ -71,11 +71,11 @@ const enabledToolsText = computed(
   () => group.value?.tools.map((e) => toolMap[e]?.label).join('、') || '暂无启用工具'
 )
 
-const openNewGroup = () => router.push(`/new/group/${group.value?.id || '0'}`)
+const openNewGroup = () => router.push(`/new/${group.value?.id || '0'}`)
 const openGroupChat = (chat: AiChatItem) => router.push(`/chat/${group.value?.id}/${chat.id}`)
 
 onMounted(async () => {
-  group.value = useAiGroupStore().getById(route.params.id as string)
+  group.value = useAiAgentStore().getById(route.params.id as string)
   chats.value = await aiChatList(group.value?.id as string)
   const { optionMap } = useSettingAiStore()
   chats.value = chats.value

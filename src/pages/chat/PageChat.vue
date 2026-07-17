@@ -15,8 +15,8 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { AiChatItem, AiFriend, AiGroup } from '@/entity/ai'
-import { aiChatGet, useAiFriendStore, useAiGroupStore } from '@/store'
+import { AiChatItem, AiFriend, AiAgent } from '@/entity/ai'
+import { aiChatGet, useAiFriendStore, useAiAgentStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import type { ToolFunction } from '@/modules/chat'
@@ -25,7 +25,7 @@ import { MessageUtil } from '@/utils/modal'
 const route = useRoute()
 const router = useRouter()
 
-const group = ref<AiGroup | AiFriend>()
+const group = ref<AiAgent | AiFriend>()
 const chat = ref<AiChatItem>()
 const initial = ref(false)
 const functions = shallowRef(new Array<ToolFunction>())
@@ -48,17 +48,13 @@ const handleChatInitial = (send: boolean) => {
 
 onMounted(async () => {
   try {
-    chat.value = await aiChatGet(route.params.groupId as string, route.params.id as string)
+    chat.value = await aiChatGet(route.params.agentId as string, route.params.id as string)
     if (!chat.value) {
       MessageUtil.error('聊天不存在')
       await router.replace('/new/single/0')
       return
     }
-    if (chat.value.form.type === 'group') {
-      group.value = useAiGroupStore().getById(chat.value.form.relationId)
-    } else if (chat.value.form.type === 'friend') {
-      group.value = await useAiFriendStore().getById(chat.value.form.relationId)
-    }
+    group.value = useAiAgentStore().getById(route.params.agentId as string)
     if (group.value) {
       functions.value = group.value.tools.map((tool) => toolMap[tool])
     }

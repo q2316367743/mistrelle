@@ -14,4 +14,5 @@ declare interface FsApi {
   readDir: (path: string) => Promise<Array<FileItem>>
   writeTextFile: (path: string, text: string) => Promise<void>
   readTextFile: (path: string) => Promise<string>
+  existsSync: (path: string) => boolean
 }

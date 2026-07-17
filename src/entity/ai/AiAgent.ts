@@ -36,7 +36,7 @@ export interface AiGroupForm {
   think: boolean
 }
 
-export interface AiGroup extends BaseEntity, AiGroupForm {
+export interface AiAgent extends BaseEntity, AiGroupForm {
 
   // ------------------------------- 状态 -------------------------------
 

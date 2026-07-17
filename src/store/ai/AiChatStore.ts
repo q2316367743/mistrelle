@@ -17,14 +17,14 @@ interface AiChatCache {
  */
 const aiChatCacheMap = new Map<string, AiChatCache>()
 
-const buildKey = (groupId: string) => `/list/chat/${groupId}`
+const buildKey = (agentId: string) => `/list/chat/${agentId}`
 
 /**
  * 获取聊天列表
- * @param groupId 分组 ID
+ * @param agentId 分组 ID
  */
-export const aiChatList = async (groupId: string): Promise<Array<AiChatItem>> => {
-  const key = buildKey(groupId)
+export const aiChatList = async (agentId: string): Promise<Array<AiChatItem>> => {
+  const key = buildKey(agentId)
   const cache = aiChatCacheMap.get(key)
   if (cache) return cache.list
   const res = await listByAsync<AiChatItem>(key)
@@ -32,13 +32,13 @@ export const aiChatList = async (groupId: string): Promise<Array<AiChatItem>> =>
   return res.list
 }
 
-export const aiChatGet = async (groupId: string, id: string): Promise<AiChatItem | undefined> => {
-  const list = await aiChatList(groupId)
+export const aiChatGet = async (agentId: string, id: string): Promise<AiChatItem | undefined> => {
+  const list = await aiChatList(agentId)
   return list.find((e) => e.id === id)
 }
 
-export const aiChatAdd = async (groupId: string, form: AiChatForm) => {
-  const key = buildKey(groupId)
+export const aiChatAdd = async (agentId: string, form: AiChatForm) => {
+  const key = buildKey(agentId)
   let cache = aiChatCacheMap.get(key)
   if (!cache) cache = await listByAsync<AiChatItem>(key)
   aiChatCacheMap.set(key, cache)
@@ -56,8 +56,8 @@ export const aiChatAdd = async (groupId: string, form: AiChatForm) => {
   return id
 }
 
-export const aiChatUpdate = async (groupId: string, id: string, target: Partial<AiChatItem>) => {
-  const key = buildKey(groupId)
+export const aiChatUpdate = async (agentId: string, id: string, target: Partial<AiChatItem>) => {
+  const key = buildKey(agentId)
   let cache = aiChatCacheMap.get(key)
   if (!cache) cache = await listByAsync<AiChatItem>(key)
   aiChatCacheMap.set(key, cache)
@@ -72,16 +72,16 @@ export const aiChatUpdate = async (groupId: string, id: string, target: Partial<
   }
 }
 
-const aiChatRename = async (groupId: string, id: string) => {
-  const target = await aiChatGet(groupId, id)
+const aiChatRename = async (agentId: string, id: string) => {
+  const target = await aiChatGet(agentId, id)
   if (target) {
     const name = await useChatName(target.form.content)
-    await aiChatUpdate(groupId, id, { name })
+    await aiChatUpdate(agentId, id, { name })
   }
 }
 
-const aiChatRemove = async (groupId: string, id: string) => {
-  const key = buildKey(groupId)
+const aiChatRemove = async (agentId: string, id: string) => {
+  const key = buildKey(agentId)
   let cache = aiChatCacheMap.get(key)
   if (!cache) cache = await listByAsync<AiChatItem>(key)
   aiChatCacheMap.set(key, cache)
@@ -108,25 +108,25 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     .then(() => logger.debug('AI 聊天初始化成功'))
     .catch((e) => logger.error('AI 聊天初始化失败', e))
 
-  const add = async (form: AiChatForm, groupId: string) => {
-    const id = await aiChatAdd(groupId, form)
-    if (groupId === '0') {
+  const add = async (form: AiChatForm, agentId: string) => {
+    const id = await aiChatAdd(agentId, form)
+    if (agentId === '0') {
       // 更新缓存
       await init()
     }
     // 生成聊天消息
     logger.debug('AI 聊天消息生成')
-    aiChatRename(groupId, id).finally(() => {
-      if (groupId === '0') {
+    aiChatRename(agentId, id).finally(() => {
+      if (agentId === '0') {
         init()
       }
     })
     return id
   }
 
-  const remove = async (groupId: string, id: string) => {
-    await aiChatRemove(groupId, id)
-    if (groupId === '0') {
+  const remove = async (agentId: string, id: string) => {
+    await aiChatRemove(agentId, id)
+    if (agentId === '0') {
       // 更新缓存
       await init()
     }

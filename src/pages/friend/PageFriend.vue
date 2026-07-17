@@ -1,9 +1,9 @@
 <template>
-  <page-layout title="好友">
+  <page-layout title="提示词管理">
     <template #extra>
       <t-button theme="primary" @click="openFriendPut(undefined, activeType)">
         <template #icon><AddIcon /></template>
-        新增好友
+        新增提示词
       </t-button>
     </template>
     <t-tabs v-model:value="activeType" class="friend-tabs">
