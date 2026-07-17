@@ -5,16 +5,47 @@
     :class="['sidebar', 'shrink-0']"
   >
     <div class="h-32px pl-40px">
-      <t-button theme="primary" shape="square" variant="text" @click="handleFriendClick">
-        <template #icon>
-          <usergroup-icon />
-        </template>
-      </t-button>
+      <t-tooltip content="AI 好友">
+        <t-button theme="primary" shape="square" variant="text" @click="handleFriendClick">
+          <template #icon>
+            <usergroup-icon />
+          </template>
+        </t-button>
+      </t-tooltip>
+      <t-tooltip content="skill">
+        <t-button theme="primary" shape="square" variant="text" @click="handleFriendClick">
+          <template #icon>
+            <ai-book-open-icon />
+          </template>
+        </t-button>
+      </t-tooltip>
     </div>
-    <button class="search-button mx-8px" type="button" @click="handleSearchClick">
-      <SearchIcon class="menu-icon" />
-      <span>搜索</span>
-    </button>
+    <div class="h-40px grid grid-cols-3 gap-8px px-8px">
+      <t-tooltip content="碎碎念">
+        <button
+          :class="['menu-item', 'search-button', { active: isActive('/note/ego') }]"
+          @click="handleNoteClick('ego')"
+        >
+          <span>自我</span>
+        </button>
+      </t-tooltip>
+      <t-tooltip content="感悟">
+        <button
+          :class="['menu-item', 'search-button', { active: isActive('/note/id') }]"
+          @click="handleNoteClick('id')"
+        >
+          <span>本我</span>
+        </button>
+      </t-tooltip>
+      <t-tooltip content="内心">
+        <button
+          :class="['menu-item', 'search-button', { active: isActive('/note/superego') }]"
+          @click="handleNoteClick('superego')"
+        >
+          <span>超我</span>
+        </button>
+      </t-tooltip>
+    </div>
 
     <div class="side-container">
       <nav class="menu-list" aria-label="主菜单">
@@ -147,6 +178,7 @@
 import {
   AddIcon,
   AiArticleIcon,
+  AiBookOpenIcon,
   AiIcon,
   ChatIcon,
   FolderIcon,
@@ -181,15 +213,13 @@ const goTo = (path: string) => {
   }
 }
 
-const handleSearchClick = () => {}
-
 const handleFriendClick = () => router.push('/friend')
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
+const handleNoteClick = (key: string) => router.push(`/note/${key}`)
 
 onMounted(() => {
   console.log('plugin enter', isDark.value)
 })
-
 </script>
 <style scoped lang="less">
 .side-container {
@@ -240,8 +270,13 @@ onMounted(() => {
   background: var(--td-bg-color-container);
   border-color: var(--td-component-border);
   box-shadow: var(--fluent-elevation-1);
-  width: 204px;
   overflow-x: hidden;
+  width: 62px;
+  min-width: 62px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-list {
@@ -250,7 +285,7 @@ onMounted(() => {
   gap: var(--td-comp-margin-xs);
   min-height: 0;
   overflow-y: auto;
-  width: 220px;
+  width: 204px;
   overflow-x: hidden;
 }
 
@@ -272,7 +307,7 @@ onMounted(() => {
 .bottom-menu {
   padding-top: var(--td-comp-paddingTB-s);
   border-top: 1px solid var(--fluent-sidebar-border);
-  width: 220px;
+  width: 204px;
   overflow-x: hidden;
 }
 
@@ -291,7 +326,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-right: 16px;
 }
 
 .menu-item {

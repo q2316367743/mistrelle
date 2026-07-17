@@ -31,6 +31,22 @@ export const routes: Array<RouteRecordRaw> = [
   },
 
   {
+    name: 'note/自我',
+    path: '/note/ego',
+    component: () => import('@/pages/note/ego/index.vue')
+  },
+  {
+    name: 'note/本我',
+    path: '/note/id',
+    component: () => import('@/pages/note/id/index.vue')
+  },
+  {
+    name: 'note/超我',
+    path: '/note/superego',
+    component: () => import('@/pages/note/superego/index.vue')
+  },
+
+  {
     name: '设置/ai',
     path: '/setting/ai',
     component: () => import('@/pages/setting/ai/SettingAi.vue')
