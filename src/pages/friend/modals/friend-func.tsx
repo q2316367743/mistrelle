@@ -1,17 +1,10 @@
-import { AiFriendForm, buildAiFriendForm, AiFriendType } from '@/entity/ai'
+import { AiFriendForm, buildAiFriendForm, AiFriendType, typeOptions } from '@/entity/ai'
 import { useAiFriendStore, useSettingAiStore } from '@/store'
 import { toolOptions } from '@/modules/tool'
 import { DialogPlugin, Form, FormItem, Input, Select, Switch, Textarea } from 'tdesign-vue-next'
 import { MessageUtil, MessageBoxUtil } from '@/utils/modal'
 import { useContextMenu } from '@/hooks'
 import { DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
-
-export const typeOptions: { label: string; value: AiFriendType }[] = [
-  { label: '职业', value: 'profession' },
-  { label: '伙伴', value: 'companion' },
-  { label: '名人', value: 'celebrity' },
-  { label: '其他', value: 'other' },
-]
 
 export const openFriendPut = async (id?: string, defaultType?: AiFriendType) => {
   const store = useAiFriendStore()

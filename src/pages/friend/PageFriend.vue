@@ -44,9 +44,9 @@
 
 <script lang="ts" setup>
 import { useAiFriendStore } from '@/store'
-import { openFriendPut, openFriendContextmenu, typeOptions } from './modals/friend-func'
+import { openFriendPut, openFriendContextmenu } from './modals/friend-func'
 import { AddIcon } from 'tdesign-icons-vue-next'
-import { AiFriendItem, AiFriendType } from '@/entity/ai'
+import { AiFriendItem, AiFriendType, typeOptions } from '@/entity/ai'
 
 const router = useRouter()
 const store = useAiFriendStore()

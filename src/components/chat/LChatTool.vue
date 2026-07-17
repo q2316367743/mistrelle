@@ -12,35 +12,15 @@
         @change="handleMessagesChange"
       />
 
-      <!-- 输入框 -->
-      <ChatSender
-        v-model="inputValue"
-        :textarea-props="{ placeholder: placeholder }"
+      <l-chat-sender
+        v-model:input="inputValue"
+        v-model:model="modelValue"
+        v-model:think="think"
         :loading="status === 'pending' || status === 'streaming'"
-        @send="handleSend"
-        @stop="handleStop"
-      >
-        <template #footer-prefix>
-          <div class="model-select">
-            <div class="flex gap-8px">
-              <t-select v-model="modelValue" :options="options" />
-              <div class="w-32px">
-                <t-button
-                  :variant="think ? 'base' : 'outline'"
-                  shape="round"
-                  :theme="think ? 'primary' : 'default'"
-                  @click="toggleThink()"
-                >
-                  <template #icon>
-                    <SystemSumIcon />
-                  </template>
-                  深度思考
-                </t-button>
-              </div>
-            </div>
-          </div>
-        </template>
-      </ChatSender>
+        :placeholder="placeholder"
+        @send="handleSend()"
+        @stop="handleStop()"
+      />
     </div>
   </div>
 </template>
@@ -79,12 +59,9 @@ const props = withDefaults(
 )
 const emit = defineEmits(['initial'])
 
-const [think, toggleThink] = useBoolState(false)
-
 const inputValue = ref('')
+const think = ref(false)
 const modelValue = useUtoolsKvStorage<string>(LocalNameEnum.KEY_AI_COMMON_MODEL, '')
-
-const options = computed(() => useSettingAiStore().options)
 
 const instance = new ToolChat({ functions: props.functions })
 

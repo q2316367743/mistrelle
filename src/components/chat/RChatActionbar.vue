@@ -1,20 +1,24 @@
 <template>
   <t-space size="4px" class="r-chat-actionbar">
-    <t-tooltip v-if="role === 'user'" content="重新回答">
-      <t-button variant="text" shape="square" size="small" @click="emit('reask')">
-        <template #icon>
-          <RefreshIcon />
-        </template>
-      </t-button>
-    </t-tooltip>
+    <t-popconfirm v-if="role === 'user'" content="确认重新回答？" @confirm="emit('reask')">
+      <t-tooltip content="重新回答">
+        <t-button variant="text" shape="square" size="small">
+          <template #icon>
+            <RefreshIcon />
+          </template>
+        </t-button>
+      </t-tooltip>
+    </t-popconfirm>
 
-    <t-tooltip v-if="role === 'user'" content="回滚到此消息前">
-      <t-button variant="text" shape="square" size="small" @click="emit('rollback')">
-        <template #icon>
-          <RollbackIcon />
-        </template>
-      </t-button>
-    </t-tooltip>
+    <t-popconfirm v-if="role === 'user'" content="确认回滚到此消息前？" @confirm="emit('rollback')">
+      <t-tooltip content="回滚到此消息前">
+        <t-button variant="text" shape="square" size="small">
+          <template #icon>
+            <RollbackIcon />
+          </template>
+        </t-button>
+      </t-tooltip>
+    </t-popconfirm>
 
     <t-tooltip v-if="role === 'assistant'" content="赞同">
       <t-button
@@ -25,7 +29,8 @@
         @click="emit('comment-change', comment === 'good' ? '' : 'good')"
       >
         <template #icon>
-          <ThumbUpIcon />
+          <thumb-up-filled-icon v-if="comment === 'good'" />
+          <thumb-up-icon v-else />
         </template>
       </t-button>
     </t-tooltip>
@@ -39,7 +44,8 @@
         @click="emit('comment-change', comment === 'bad' ? '' : 'bad')"
       >
         <template #icon>
-          <ThumbDownIcon />
+          <thumb-down-filled-icon v-if="comment === 'bad'" />
+          <thumb-down-icon v-else />
         </template>
       </t-button>
     </t-tooltip>
@@ -55,7 +61,15 @@
 </template>
 
 <script lang="ts" setup>
-import { CopyIcon, RefreshIcon, RollbackIcon, ThumbDownIcon, ThumbUpIcon } from 'tdesign-icons-vue-next'
+import {
+  CopyIcon,
+  RefreshIcon,
+  RollbackIcon,
+  ThumbDownFilledIcon,
+  ThumbDownIcon,
+  ThumbUpFilledIcon,
+  ThumbUpIcon
+} from 'tdesign-icons-vue-next'
 import type { ChatComment, ChatMessageRole } from '@/domain'
 import { copyText } from '@/utils/native'
 
