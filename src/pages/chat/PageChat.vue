@@ -4,7 +4,7 @@
       <l-chat-tool
         v-if="initial"
         :functions="functions"
-        :prompt="group?.prompt || ''"
+        :prompt="prompt"
         :storage-key="storageKey"
         :placeholder="group?.placeholder"
         ref="lChatToolRef"
@@ -15,8 +15,8 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { AiChatItem, AiFriend, AiAgent } from '@/entity/ai'
-import { aiChatGet, useAiFriendStore, useAiAgentStore } from '@/store'
+import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
+import { aiChatGet, useAiAgentStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import type { ToolFunction } from '@/modules/chat'
@@ -25,7 +25,7 @@ import { MessageUtil } from '@/utils/modal'
 const route = useRoute()
 const router = useRouter()
 
-const group = ref<AiAgent | AiFriend>()
+const group = ref<AiAgent>()
 const chat = ref<AiChatItem>()
 const initial = ref(false)
 const functions = shallowRef(new Array<ToolFunction>())
@@ -36,6 +36,12 @@ const title = computed(() => {
     return `${group.value.name} - ${chat.value?.name || '聊天'}`
   }
   return chat.value?.name || '聊天'
+})
+const prompt = computed(() => {
+  if (group.value) {
+    return buildAiAgentPrompt(group.value)
+  }
+  return ''
 })
 
 const storageKey = LocalNameEnum.LIST_AI_CHAT(route.params.id as string)

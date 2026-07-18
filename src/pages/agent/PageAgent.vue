@@ -56,7 +56,7 @@
 </template>
 <script lang="ts" setup>
 import { AddIcon } from 'tdesign-icons-vue-next'
-import { AiChatItem, AiAgent } from '@/entity/ai'
+import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
 import { aiChatList, useAiAgentStore, useSettingAiStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 
@@ -66,7 +66,7 @@ const router = useRouter()
 const group = ref<AiAgent>()
 const chats = ref<Array<AiChatItem>>([])
 
-const promptPreview = computed(() => group.value?.prompt?.trim() || '暂无提示词')
+const promptPreview = computed(() => (group.value ? buildAiAgentPrompt(group.value) : '暂无提示词'))
 const enabledToolsText = computed(
   () => group.value?.tools.map((e) => toolMap[e]?.label).join('、') || '暂无启用工具'
 )

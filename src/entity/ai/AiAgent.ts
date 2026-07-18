@@ -1,6 +1,6 @@
 import { BaseEntity } from '@/entity'
 
-export interface AiGroupForm {
+export interface AiAgentForm {
   // ------------------------------- 基础 -------------------------------
 
   /**
@@ -9,9 +9,27 @@ export interface AiGroupForm {
   name: string
 
   /**
-   * 分组提示词
+   * Agent 描述
    */
-  prompt: string
+  description: string
+
+  /**
+   * 身份
+   * > 定义助手是谁，包括名字、角色定位和能力范围。
+   */
+  identity: string
+
+  /**
+   * 性格
+   * > 助手的性格、语气和行为准则。会强制助手遵循此设定。
+   */
+  personality: string
+
+  /**
+   * 关于我
+   * > 关于你自己的信息（姓名、偏好等），助手会记住你。
+   */
+  aboutMe: string
 
   /**
    * 启用的工具
@@ -36,7 +54,7 @@ export interface AiGroupForm {
   think: boolean
 }
 
-export interface AiAgent extends BaseEntity, AiGroupForm {
+export interface AiAgent extends BaseEntity, AiAgentForm {
 
   // ------------------------------- 状态 -------------------------------
 
@@ -47,13 +65,30 @@ export interface AiAgent extends BaseEntity, AiGroupForm {
 }
 
 
-export const buildAiGroupForm = (): AiGroupForm => {
+export const buildAiAgentForm = (): AiAgentForm => {
   return {
     name: '',
-    prompt: '',
+    description: '',
+    identity: '',
+    personality: '',
+    aboutMe: '',
     tools: [],
     model: '',
     placeholder: '',
     think: false
   }
+}
+
+export const buildAiAgentPrompt = (form: AiAgentForm) => {
+  return `## 身份
+> 定义助手是谁，包括名字、角色定位和能力范围。
+${form.identity}
+## 性格
+> 助手的性格、语气和行为准则。会强制助手遵循此设定。
+${form.personality}
+## 关于我
+> 关于你自己的信息（姓名、偏好等），助手会记住你。
+${form.aboutMe}
+
+`
 }

@@ -1,5 +1,5 @@
 import { AiChatForm, AiChatItem } from '@/entity/ai'
-import { listByAsync, saveListByAsync } from '@/utils/native'
+import { listByAsync, removeOneByAsync, saveListByAsync } from '@/utils/native'
 import { defineStore } from 'pinia'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
@@ -77,6 +77,21 @@ const aiChatRename = async (agentId: string, id: string) => {
   if (target) {
     const name = await useChatName(target.form.content)
     await aiChatUpdate(agentId, id, { name })
+  }
+}
+
+export const aiChatRemoveAll = async (agentId: string) => {
+  const key = buildKey(agentId)
+  let cache = aiChatCacheMap.get(key)
+  if (!cache) cache = await listByAsync<AiChatItem>(key)
+
+  try {
+    for (let aiChatItem of cache.list) {
+      await removeOneByAsync(LocalNameEnum.LIST_AI_CHAT(aiChatItem.id))
+    }
+  } finally {
+    await removeOneByAsync(key)
+    aiChatCacheMap.delete(key)
   }
 }
 
