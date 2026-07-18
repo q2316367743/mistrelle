@@ -1,7 +1,7 @@
 import { BaseEntity } from '@/entity'
 import { CommonSelect } from '@/domain'
 
-export type AiFriendType =
+export type AiPromptType =
   // 职业类型，比如律师
   | 'profession'
   // 伙伴类型，比如朋友、知己
@@ -23,7 +23,7 @@ export type AiFriendType =
   | 'it_ops'
   | 'lifestyle'
 
-export const typeOptions: Array<CommonSelect<AiFriendType>> = [
+export const typeOptions: Array<CommonSelect<AiPromptType>> = [
   { label: '职业', value: 'profession' },
   { label: '伙伴', value: 'companion' },
   { label: '名人', value: 'celebrity' },
@@ -43,22 +43,22 @@ export const typeOptions: Array<CommonSelect<AiFriendType>> = [
   { label: '生活服务', value: 'lifestyle' }
 ]
 
-export interface AiFriendForm {
-  type: AiFriendType
+export interface AiPromptForm {
+  type: AiPromptType
 
   // ------------------------------- 基础 -------------------------------
 
   /**
-   * 好友名字
+   * 提示词名字
    */
   name: string
   /**
-   * 好友简介
+   * 提示词简介
    */
   description: string
 
   /**
-   * 好友提示词
+   * 提示词
    */
   prompt: string
 
@@ -85,21 +85,24 @@ export interface AiFriendForm {
   think: boolean
 }
 
-export interface AiFriendItem extends BaseEntity {
-  type: AiFriendType
+export interface AiPromptItem extends BaseEntity {
+  type: AiPromptType
   /**
-   * 好友名字
+   * 提示词名字
    */
   name: string
   /**
-   * 好友简介
+   * 提示词简介
    */
   description: string
 }
 
-export interface AiFriend extends AiFriendItem, AiFriendForm {}
+/**
+ * AI 提示词管理
+ */
+export interface AiPrompt extends AiPromptItem, AiPromptForm {}
 
-export const buildAiFriendForm = (): AiFriendForm => {
+export const buildAiPromptForm = (): AiPromptForm => {
   return {
     type: 'other',
     name: '',

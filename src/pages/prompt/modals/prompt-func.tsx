@@ -1,16 +1,16 @@
-import { AiFriendForm, buildAiFriendForm, AiFriendType, typeOptions } from '@/entity/ai'
-import { useAiFriendStore, useSettingAiStore } from '@/store'
+import { AiPromptForm, buildAiPromptForm, AiPromptType, typeOptions } from '@/entity/ai'
+import { useAiPromptStore, useSettingAiStore } from '@/store'
 import { toolOptions } from '@/modules/tool'
 import { DialogPlugin, Form, FormItem, Input, Select, Switch, Textarea } from 'tdesign-vue-next'
 import { MessageUtil, MessageBoxUtil } from '@/utils/modal'
 import { useContextMenu } from '@/hooks'
 import { DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
 
-export const openFriendPut = async (id?: string, defaultType?: AiFriendType) => {
-  const store = useAiFriendStore()
-  const init = buildAiFriendForm()
+export const openPromptPut = async (id?: string, defaultType?: AiPromptType) => {
+  const store = useAiPromptStore()
+  const init = buildAiPromptForm()
   if (defaultType) init.type = defaultType
-  const form = ref<AiFriendForm>(init)
+  const form = ref<AiPromptForm>(init)
 
   if (id) {
     const old = await store.getById(id)
@@ -18,7 +18,7 @@ export const openFriendPut = async (id?: string, defaultType?: AiFriendType) => 
   }
 
   const dp = DialogPlugin({
-    header: (id ? '修改' : '新增') + '好友',
+    header: (id ? '修改' : '新增') + '提示词',
     placement: 'center',
     width: '80vw',
     onConfirm: () => {
@@ -40,16 +40,16 @@ export const openFriendPut = async (id?: string, defaultType?: AiFriendType) => 
               <Select
                 v-model={form.value.type}
                 options={typeOptions}
-                placeholder={'请选择好友类型'}
+                placeholder={'请选择提示词类型'}
               />
             </FormItem>
-            <FormItem label={'好友名称'} name={'name'}>
-              <Input v-model={form.value.name} placeholder={'请输入好友名称'} />
+            <FormItem label={'提示词名称'} name={'name'}>
+              <Input v-model={form.value.name} placeholder={'请输入提示词名称'} />
             </FormItem>
-            <FormItem label={'好友简介'} name={'description'}>
+            <FormItem label={'提示词简介'} name={'description'}>
               <Textarea
                 v-model={form.value.description}
-                placeholder={'请输入好友简介'}
+                placeholder={'请输入提示词简介'}
                 autosize={{ minRows: 2, maxRows: 4 }}
               />
             </FormItem>
@@ -90,21 +90,21 @@ export const openFriendPut = async (id?: string, defaultType?: AiFriendType) => 
   })
 }
 
-export const openFriendContextmenu = (e: MouseEvent, id: string) => {
+export const openPromptContextmenu = (e: MouseEvent, id: string) => {
   useContextMenu(e, {
     items: [
       {
         icon: () => <EditIcon />,
         label: '编辑',
-        onClick: () => openFriendPut(id)
+        onClick: () => openPromptPut(id)
       },
       {
         icon: () => <DeleteIcon class={'color-red'} />,
         label: <span class={'color-red'}>删除</span>,
         onClick: () => {
-          MessageBoxUtil.confirm('确定删除该好友？', '删除确认')
+          MessageBoxUtil.confirm('确定删除该提示词？', '删除确认')
             .then(() => {
-              const store = useAiFriendStore()
+              const store = useAiPromptStore()
               return store.remove(id)
             })
             .then(() => {

@@ -19,13 +19,13 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { useAiChatStore, useAiFriendStore, useAiAgentStore, useSettingDefaultStore } from '@/store'
-import { AiFriend, AiAgent } from '@/entity/ai'
+import { useAiChatStore, useAiPromptStore, useAiAgentStore, useSettingDefaultStore } from '@/store'
+import { AiPrompt, AiAgent } from '@/entity/ai'
 
 const route = useRoute()
 const router = useRouter()
 
-const group = ref<AiAgent | AiFriend>()
+const group = ref<AiAgent | AiPrompt>()
 
 const content = ref('')
 const model = ref('')

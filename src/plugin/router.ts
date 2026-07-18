@@ -9,9 +9,9 @@ export const routes: Array<RouteRecordRaw> = [
   },
 
   {
-    name: '好友',
-    path: '/friend',
-    component: () => import('@/pages/friend/PageFriend.vue')
+    name: '提示词管理',
+    path: '/prompt',
+    component: () => import('@/pages/prompt/PagePrompt.vue')
   },
   {
     name: 'Skill',

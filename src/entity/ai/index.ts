@@ -1,4 +1,4 @@
 export * from './AiChat'
 export * from './AiDiscussion'
-export * from './AiFriend'
+export * from './AiPrompt'
 export * from './AiAgent'

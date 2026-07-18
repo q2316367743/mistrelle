@@ -6,9 +6,9 @@
   >
     <div class="h-32px pl-40px">
       <t-tooltip content="提示词管理">
-        <t-button theme="primary" shape="square" variant="text" @click="handleFriendClick">
+        <t-button theme="primary" shape="square" variant="text" @click="handlePromptClick">
           <template #icon>
-            <usergroup-icon />
+            <ai-textformat-italic-icon />
           </template>
         </t-button>
       </t-tooltip>
@@ -179,7 +179,7 @@ import {
   AddIcon,
   AiArticleIcon,
   AiBookOpenIcon,
-  AiIcon,
+  AiIcon, AiTextformatItalicIcon,
   ChatIcon,
   FolderIcon,
   InternetIcon,
@@ -211,7 +211,7 @@ const goTo = (path: string) => {
   }
 }
 
-const handleFriendClick = () => router.push('/friend')
+const handlePromptClick = () => router.push('/prompt')
 const handleSkillClick = () => router.push('/skill')
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
 const handleNoteClick = (key: string) => router.push(`/note/${key}`)
