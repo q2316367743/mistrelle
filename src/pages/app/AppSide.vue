@@ -39,8 +39,8 @@
       </t-tooltip>
       <t-tooltip content="内心">
         <button
-          :class="['menu-item', 'search-button', { active: isActive('/note/superego') }]"
-          @click="handleNoteClick('superego')"
+          :class="['menu-item', 'search-button', { active: isStartActive('/note/superego/') }]"
+          @click="handleNoteClick('superego/home')"
         >
           <span>超我</span>
         </button>

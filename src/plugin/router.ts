@@ -47,8 +47,8 @@ export const routes: Array<RouteRecordRaw> = [
   },
   {
     name: 'note/超我',
-    path: '/note/superego',
-    component: () => import('@/pages/note/superego/index.vue')
+    path: '/note/superego/home',
+    component: () => import('@/pages/note/superego/home/index.vue')
   },
 
   {
