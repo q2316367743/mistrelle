@@ -10,7 +10,6 @@ import {
   useChatName
 } from '@/modules/chat'
 
-
 const aiChatRename = async (agentId: string, id: string) => {
   const target = await aiChatGet(agentId, id)
   if (target) {
@@ -18,7 +17,6 @@ const aiChatRename = async (agentId: string, id: string) => {
     await aiChatUpdate(agentId, id, { name })
   }
 }
-
 
 export const useAiChatStore = defineStore('ai-chat', () => {
   const logger = useLog({ name: 'store:ai-chat' })
@@ -57,11 +55,19 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       await init()
     }
   }
+  const rename = async (agentId: string, id: string) => {
+    await aiChatRename(agentId, id)
+    if (agentId === '0') {
+      // 更新缓存
+      await init()
+    }
+  }
 
   return {
     state,
 
     add,
+    rename,
     remove
   }
 })

@@ -32,6 +32,7 @@
             hover-shadow
             class="chat-card"
             @click="openGroupChat(chat)"
+            @contextmenu="openChatContextmenu($event, group?.id || '0', chat.id, initFunc)"
             :title="chat.name || '未命名对话'"
           >
             <div class="chat-card__content">
@@ -60,6 +61,7 @@ import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 import { aiChatList } from '@/modules/chat'
+import { openChatContextmenu } from '@/pages/app/chat-func'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,22 +77,24 @@ const enabledToolsText = computed(
 const openNewGroup = () => router.push(`/new/${group.value?.id || '0'}`)
 const openGroupChat = (chat: AiChatItem) => router.push(`/chat/${group.value?.id}/${chat.id}`)
 
+const initFunc = async () => {
+  group.value = useAiAgentStore().getById(route.params.id as string)
+  chats.value = await aiChatList(group.value?.id as string)
+  const { optionMap } = useSettingAiStore()
+  chats.value = chats.value
+    .map((e) => ({
+      ...e,
+      form: {
+        ...e.form,
+        model: optionMap.get(e.form.model)?.model || e.form.model
+      }
+    }))
+    .sort((a, b) => b.createdAt - a.createdAt)
+}
+
 watch(
   () => route.params.id,
-  async () => {
-    group.value = useAiAgentStore().getById(route.params.id as string)
-    chats.value = await aiChatList(group.value?.id as string)
-    const { optionMap } = useSettingAiStore()
-    chats.value = chats.value
-      .map((e) => ({
-        ...e,
-        form: {
-          ...e.form,
-          model: optionMap.get(e.form.model)?.model || e.form.model
-        }
-      }))
-      .sort((a, b) => b.createdAt - a.createdAt)
-  },
+  () => initFunc(),
   { immediate: true }
 )
 </script>

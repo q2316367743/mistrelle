@@ -16,11 +16,12 @@ import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import { useContextMenu } from '@/hooks'
 import { DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
 import './agent-func.less'
+import { cloneDeep } from 'es-toolkit'
 
 export const openAgentPut = (id?: string) => {
   const { getById, put } = useAiAgentStore()
   const old = getById(id)
-  const form = ref<AiAgentForm>(old || buildAiAgentForm())
+  const form = ref<AiAgentForm>(old ? cloneDeep(old) : buildAiAgentForm())
 
   const dp = DialogPlugin({
     header: (old ? '修改' : '新增') + '分组',
