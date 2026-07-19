@@ -24,6 +24,7 @@ declare global {
       }
       inject: InjectApi
       fs: FsApi
+      path: PathApi
       axios: AxiosInstance
     }
   }

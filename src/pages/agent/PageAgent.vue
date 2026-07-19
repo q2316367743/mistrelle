@@ -57,8 +57,9 @@
 <script lang="ts" setup>
 import { AddIcon } from 'tdesign-icons-vue-next'
 import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
-import { aiChatList, useAiAgentStore, useSettingAiStore } from '@/store'
+import { useAiAgentStore, useSettingAiStore } from '@/store'
 import { toolMap } from '@/modules/tool'
+import { aiChatList } from '@/modules/chat'
 
 const route = useRoute()
 const router = useRouter()

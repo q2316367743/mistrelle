@@ -1,7 +1,7 @@
 <template>
   <page-layout :title="title">
     <div class="p-8px">
-      <l-chat-tool
+      <l-chat-engine
         v-if="initial"
         :functions="functions"
         :prompt="prompt"
@@ -16,11 +16,12 @@
 </template>
 <script lang="ts" setup>
 import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
-import { aiChatGet, useAiAgentStore } from '@/store'
+import { useAiAgentStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
-import type { ToolFunction } from '@/modules/chat'
+import { aiChatGet, buildChatChatPath, ToolFunction } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
+import { useSafeBack } from '@/hooks'
 
 const route = useRoute()
 const router = useRouter()
@@ -44,7 +45,7 @@ const prompt = computed(() => {
   return ''
 })
 
-const storageKey = LocalNameEnum.LIST_AI_CHAT(route.params.id as string)
+const storageKey = ref()
 
 const handleChatInitial = (send: boolean) => {
   if (send && chat.value) {
@@ -64,8 +65,12 @@ onMounted(async () => {
     if (group.value) {
       functions.value = group.value.tools.map((tool) => toolMap[tool])
     }
-  } finally {
+    storageKey.value = buildChatChatPath(group.value?.id || '0', chat.value.id)
+
     initial.value = true
+  } catch (e) {
+    MessageUtil.error('初始化失败', e)
+    useSafeBack()()
   }
 })
 </script>

@@ -30,7 +30,13 @@ import { ChatSender } from '@tdesign-vue-next/chat'
 import { SystemSumIcon } from 'tdesign-icons-vue-next'
 import { cloneDeep } from 'es-toolkit'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
-import { type ToolFunction, ChatRequestParams, ToolChat } from '@/modules/chat'
+import {
+  type ToolFunction,
+  ChatRequestParams,
+  ToolChat,
+  aiChatMessagesGet,
+  aiChatMessagesSet
+} from '@/modules/chat'
 import { useSettingAiStore } from '@/store'
 import { MessageUtil } from '@/utils/modal'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
@@ -148,12 +154,10 @@ const handleMessagesChange = () => {
 let unWatch: (() => void) | null = null
 
 onMounted(async () => {
-  let rev: string | undefined = undefined
   if (props.storageKey) {
-    const c = await listByAsync<ChatMessage>(props.storageKey)
+    const c = await aiChatMessagesGet(props.storageKey)
     if (c) {
-      instance.init(c.list)
-      rev = c.rev
+      instance.init(c)
     }
   }
 
@@ -162,7 +166,7 @@ onMounted(async () => {
     unWatch = throttledWatch(
       messages,
       async (val) => {
-        rev = await saveListByAsync<ChatMessage>(props.storageKey!, cloneDeep(toRaw(val)), rev, 0)
+        await aiChatMessagesSet(props.storageKey!, toRaw(val))
       },
       { throttle: 1000, deep: true }
     )

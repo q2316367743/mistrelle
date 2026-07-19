@@ -1,5 +1,5 @@
 const { statSync, existsSync } = require('node:fs')
-const { readdir, readFile, writeFile } = require('node:fs/promises')
+const { readdir, readFile, writeFile, mkdir, rm } = require('node:fs/promises')
 const { join } = require('node:path')
 
 module.exports = {
@@ -30,5 +30,11 @@ module.exports = {
   },
   existsSync: (path) => {
     return existsSync(path)
+  },
+  mkdir: (path, recursive = true) => {
+    return mkdir(path, { recursive })
+  },
+  rm: (path, options = { recursive: true, force: true }) => {
+    return rm(path, options)
   }
 }

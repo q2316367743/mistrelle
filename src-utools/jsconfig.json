@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "ignoreDeprecations": "6.0",
+    "moduleResolution": "node10",
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": false,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": [
+      "DOM",
+      "ESNext"
+    ],
+    "types": [
+      "@types/node"
+    ],
+    "rootDir": ".",
+  },
+  "include": [
+    "src/**/*.js",
+    "preload.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

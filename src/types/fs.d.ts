@@ -15,4 +15,6 @@ declare interface FsApi {
   writeTextFile: (path: string, text: string) => Promise<void>
   readTextFile: (path: string) => Promise<string>
   existsSync: (path: string) => boolean
+  mkdir: (path: string, recursive = true) => Promise<void>
+  rm: (path: string, options = { recursive: true, force: true }) => Promise<void>
 }

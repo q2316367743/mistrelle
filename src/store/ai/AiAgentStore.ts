@@ -4,7 +4,7 @@ import { listByAsync, saveListByAsync } from '@/utils/native'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
-import { aiChatRemoveAll } from '@/store'
+import { aiChatRemoveAll } from '@/modules/chat'
 
 export const useAiAgentStore = defineStore('ai-agent', () => {
   const logger = useLog({ name: 'store:ai-agent' })

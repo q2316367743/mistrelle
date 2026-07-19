@@ -17,10 +17,15 @@
 import { ViewListIcon } from 'tdesign-icons-vue-next'
 import { toggleCollapsed } from '@/global/BeanFactory'
 import AppSide from '@/pages/app/AppSide.vue'
+import { getAppData } from '@/global/Constant'
 
 window.preload.inject.onPluginEnter((action) => {
   // 对关键字进行处理
   console.log(action)
+})
+
+onMounted(() => {
+  console.log('插件已启动', getAppData())
 })
 </script>
 <style scoped lang="less">
