@@ -75,20 +75,24 @@ const enabledToolsText = computed(
 const openNewGroup = () => router.push(`/new/${group.value?.id || '0'}`)
 const openGroupChat = (chat: AiChatItem) => router.push(`/chat/${group.value?.id}/${chat.id}`)
 
-onMounted(async () => {
-  group.value = useAiAgentStore().getById(route.params.id as string)
-  chats.value = await aiChatList(group.value?.id as string)
-  const { optionMap } = useSettingAiStore()
-  chats.value = chats.value
-    .map((e) => ({
-      ...e,
-      form: {
-        ...e.form,
-        model: optionMap.get(e.form.model)?.model || e.form.model
-      }
-    }))
-    .sort((a, b) => b.createdAt - a.createdAt)
-})
+watch(
+  () => route.params.id,
+  async () => {
+    group.value = useAiAgentStore().getById(route.params.id as string)
+    chats.value = await aiChatList(group.value?.id as string)
+    const { optionMap } = useSettingAiStore()
+    chats.value = chats.value
+      .map((e) => ({
+        ...e,
+        form: {
+          ...e.form,
+          model: optionMap.get(e.form.model)?.model || e.form.model
+        }
+      }))
+      .sort((a, b) => b.createdAt - a.createdAt)
+  },
+  { immediate: true }
+)
 </script>
 <style scoped lang="less">
 .group-page {

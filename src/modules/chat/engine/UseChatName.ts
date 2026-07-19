@@ -26,7 +26,7 @@ export const useChatName = async (content: string): Promise<string> => {
       stream: false
     })
     const title = response.choices?.[0]?.message?.content?.trim()
-    return title || content.substring(0, 10)
+    return (title || content).substring(0, 10)
   } catch {
     return content.substring(0, 10)
   }
