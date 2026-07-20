@@ -1,15 +1,22 @@
 import { CommonSelect, ToolFunction } from '@/domain'
 import { dateTools } from '@/modules/tool/components/date'
-import { injectOsTools, injectClipboardTools, injectNotificationTools, injectScreenTools, injectBrowserTools, injectFfmpegTools } from '@/modules/tool/components/inject'
+import {
+  injectOsTools,
+  injectClipboardTools,
+  injectNotificationTools,
+  injectScreenTools,
+  injectBrowserTools,
+  injectFfmpegTools
+} from '@/modules/tool/components/inject'
 import { objectify } from '@/utils/lang'
+import { nativeHttpTools } from '@/modules/tool/components/native/http'
 
 interface ToolOption {
   group: string
   children: Array<CommonSelect>
 }
 
-const toOptions = (tools: ToolFunction[]) =>
-  tools.map((e) => ({ label: e.label, value: e.name }))
+const toOptions = (tools: ToolFunction[]) => tools.map((e) => ({ label: e.label, value: e.name }))
 
 export const toolOptions: Array<ToolOption> = [
   {
@@ -39,6 +46,10 @@ export const toolOptions: Array<ToolOption> = [
   {
     group: 'FFmpeg',
     children: toOptions(injectFfmpegTools)
+  },
+  {
+    group: '网络工具',
+    children: toOptions(nativeHttpTools)
   }
 ]
 

@@ -101,6 +101,7 @@ const createRequestParams = (content: string): ChatRequestParams | null => {
   return {
     content,
     model: model.identifier,
+    provide: model.provideId,
     baseURL: model.baseUrl,
     apiKey: model.key,
     thinking: think.value ? 'enabled' : 'disabled'
@@ -181,6 +182,14 @@ onMounted(async () => {
     await instance.sendSystemMessage(props.prompt)
   }
   emit('initial', messageCount < 2)
+  if (messages.value.length > 1) {
+    // 寻找最后一个用户消息
+    const lastUser = messages.value.findLast((e) => e.role === 'user')
+    if (lastUser) {
+      modelValue.value = lastUser.model
+      think.value = lastUser.thinking === 'enabled'
+    }
+  }
 })
 
 onUnmounted(() => {

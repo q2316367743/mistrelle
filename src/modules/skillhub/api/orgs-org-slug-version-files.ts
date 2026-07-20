@@ -1,3 +1,5 @@
+import { requestJson } from '@/plugin/http'
+
 /**
  * 获取文件信息
  * @param orgId 所属组织
@@ -11,7 +13,7 @@ export const orgsOrgSlugVersionFiles = async (
   version: string,
   fileName: string
 ) => {
-  const { data } = await window.preload.axios<string>({
+  const { data } = await requestJson<string>({
     method: 'GET',
     baseURL: 'https://api.skillhub.cn',
     url: `/orgs/${orgId}/${slug}/${version}/files/${fileName}`

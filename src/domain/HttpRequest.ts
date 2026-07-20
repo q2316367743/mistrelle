@@ -1,6 +1,6 @@
 import HttpProgressEvent from './HttpProgressEvent'
 
-export type HttpRequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
+export type HttpRequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD'
 
 export interface HttpRequest<D = unknown> {
   baseURL?: string

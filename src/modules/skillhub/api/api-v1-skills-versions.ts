@@ -1,3 +1,5 @@
+import { requestJson } from '@/plugin/http'
+
 export interface ApiV1SkillsVersionsResult {
   slug: string
   source: string
@@ -24,7 +26,7 @@ interface Keen {
 }
 
 export const apiV1SkillsVersions = async (slug: string) => {
-  const { data } = await window.preload.axios<ApiV1SkillsVersionsResult>({
+  const { data } = await requestJson<ApiV1SkillsVersionsResult>({
     baseURL: `https://api.skillhub.cn`,
     url: `/api/v1/skills/${slug}/versions`,
     method: 'GET'

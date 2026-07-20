@@ -1,3 +1,5 @@
+import { requestJson } from '@/plugin/http'
+
 export interface ApiV1SkillsResult {
   contentZhAvailable: boolean
   latestVersion: LatestVersion
@@ -91,7 +93,7 @@ interface LatestVersion {
  * @param slug 技能slug
  */
 export const skillHubApiV1SkillsInfo = async (slug: string) => {
-  const { data } = await window.preload.axios<ApiV1SkillsResult>({
+  const { data } = await requestJson<ApiV1SkillsResult>({
     baseURL: `https://api.skillhub.cn`,
     url: `/api/v1/skills/${slug}`,
     method: 'GET'

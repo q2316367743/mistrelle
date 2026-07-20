@@ -1,4 +1,5 @@
 import { SkillHubResult } from '@/modules/skillhub'
+import { requestJson } from '@/plugin/http'
 
 export interface ApiSkillsParam {
   page: number
@@ -70,7 +71,7 @@ interface Labels {
  * @param params
  */
 export const skillHubApiSkills = async (params: ApiSkillsParam) => {
-  const resp = await window.preload.axios<SkillHubResult<ApiSkillsResult>>({
+  const resp = await requestJson<SkillHubResult<ApiSkillsResult>>({
     baseURL: 'https://api.skillhub.cn',
     url: '/api/skills',
     method: 'GET',

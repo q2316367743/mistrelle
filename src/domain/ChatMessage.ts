@@ -128,6 +128,8 @@ export interface UserMessage extends ChatBaseMessage {
   role: 'user'
   // 使用的模型
   model: string
+  // 提供商
+  provide: string
   thinking?: 'enabled' | 'disabled'
   reasoning_effort?: 'high' | 'max'
   content: UserMessageContent[]

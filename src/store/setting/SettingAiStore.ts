@@ -7,6 +7,7 @@ import { LocalNameEnum } from '@/global/LocalNameEnum'
 import { cloneDeep } from 'es-toolkit'
 
 export interface AiProvideOption extends AiModel {
+  provideId: string
   // 提供方名称
   baseUrl: string
   // 提供方密钥
@@ -54,7 +55,8 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
         .forEach((model) => {
           map.set(`${item.id}:${model.identifier}`, {
             ...model,
-            ...item
+            ...item,
+            provideId: item.id
           })
         })
     )

@@ -27,6 +27,7 @@ export type SSEChunkData = {
 export interface ChatRequestParams {
   content: string
   model: string
+  provide: string
   baseURL: string
   apiKey?: string
   thinking?: 'enabled' | 'disabled'
@@ -189,6 +190,7 @@ export abstract class AbstractChat implements ChatAPI {
         }
       ],
       model: requestParams.model,
+      provide: requestParams.provide,
       thinking: requestParams.thinking,
       reasoning_effort: requestParams.reasoning_effort
     }

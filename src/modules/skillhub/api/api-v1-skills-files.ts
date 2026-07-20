@@ -1,3 +1,5 @@
+import { requestJson } from '@/plugin/http'
+
 export interface ApiV1SkillsFilesResult {
   count: number
   files: File[]
@@ -11,7 +13,7 @@ interface File {
 }
 
 export const skillHubApiV1SkillsFiles = async (slug: string) => {
-  const { data } = await window.preload.axios<ApiV1SkillsFilesResult>({
+  const { data } = await requestJson<ApiV1SkillsFilesResult>({
     baseURL: 'https://api.skillhub.cn',
     url: `/api/v1/skills/${slug}/files`,
     method: 'GET'
