@@ -1,7 +1,7 @@
 <template>
   <page-layout :title="group?.name || '分组'">
     <div class="group-page">
-      <div class="group-summary">
+      <div v-if="group" class="group-summary">
         <t-card title="提示词" size="small" hover-shadow class="summary-card">
           <p class="prompt-text" :title="promptPreview">{{ promptPreview }}</p>
         </t-card>
@@ -79,7 +79,7 @@ const openGroupChat = (chat: AiChatItem) => router.push(`/chat/${group.value?.id
 
 const initFunc = async () => {
   group.value = useAiAgentStore().getById(route.params.id as string)
-  chats.value = await aiChatList(group.value?.id as string)
+  chats.value = await aiChatList(group.value?.id || '0')
   const { optionMap } = useSettingAiStore()
   chats.value = chats.value
     .map((e) => ({

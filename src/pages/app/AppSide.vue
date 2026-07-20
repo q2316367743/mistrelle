@@ -75,6 +75,18 @@
             </t-button>
           </div>
           <button
+            class="menu-item"
+            :class="{
+              active: isActive(`/agent/0`) || isStartActive(`/chat/0/`)
+            }"
+            type="button"
+            @contextmenu="openAgentContextmenu($event, '0')"
+            @click="goTo(`/agent/0`)"
+          >
+            <FolderIcon class="menu-icon" />
+            <span>默认 Agent</span>
+          </button>
+          <button
             v-for="group in groups"
             :key="group.id"
             class="menu-item"
@@ -92,20 +104,6 @@
             <span>{{ group.name }}</span>
           </button>
         </div>
-
-        <div class="section-title">聊天</div>
-        <button
-          v-for="chat in chats"
-          :key="chat.id"
-          class="menu-item"
-          :class="{ active: isActive(`/chat/${chat.id}`) }"
-          type="button"
-          @contextmenu="openChatContextmenu($event, '0', chat.id)"
-          @click="goTo(`/chat/0/${chat.id}`)"
-        >
-          <FolderIcon class="menu-icon" />
-          <span>{{ chat.name }}</span>
-        </button>
       </nav>
 
       <div class="bottom-menu">
@@ -185,7 +183,8 @@ import {
   AddIcon,
   AiArticleIcon,
   AiBookOpenIcon,
-  AiIcon, AiTextformatItalicIcon,
+  AiIcon,
+  AiTextformatItalicIcon,
   ChatIcon,
   FolderIcon,
   InternetIcon,
@@ -194,10 +193,9 @@ import {
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark } from '@/global/BeanFactory'
-import { useAiChatStore, useAiDiscussionStore, useAiAgentStore } from '@/store'
+import { useAiDiscussionStore, useAiAgentStore } from '@/store'
 import { openAgentContextmenu, openAgentPut } from '@/pages/app/agent-func'
 import { openDiscussionPut } from '@/pages/app/discussion-func'
-import { openChatContextmenu } from '@/pages/app/chat-func'
 
 const router = useRouter()
 const route = useRoute()
@@ -206,7 +204,6 @@ const profile = getUserProfile()
 
 // 分组
 const groups = computed(() => useAiAgentStore().state)
-const chats = computed(() => useAiChatStore().state)
 const discussions = computed(() => useAiDiscussionStore().state)
 
 const isActive = (path: string) => route.path === path

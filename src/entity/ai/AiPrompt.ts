@@ -2,14 +2,6 @@ import { BaseEntity } from '@/entity'
 import { CommonSelect } from '@/domain'
 
 export type AiPromptType =
-  // 职业类型，比如律师
-  | 'profession'
-  // 伙伴类型，比如朋友、知己
-  | 'companion'
-  // 名人类型，比如历史人物、虚构角色
-  | 'celebrity'
-  // 其他类型
-  | 'other'
   | 'office'
   | 'content'
   | 'development'
@@ -24,11 +16,6 @@ export type AiPromptType =
   | 'lifestyle'
 
 export const typeOptions: Array<CommonSelect<AiPromptType>> = [
-  { label: '职业', value: 'profession' },
-  { label: '伙伴', value: 'companion' },
-  { label: '名人', value: 'celebrity' },
-  { label: '其他', value: 'other' },
-
   { label: '办公效率', value: 'office' },
   { label: '内容创作', value: 'content' },
   { label: '开发编程', value: 'development' },
@@ -104,7 +91,7 @@ export interface AiPrompt extends AiPromptItem, AiPromptForm {}
 
 export const buildAiPromptForm = (): AiPromptForm => {
   return {
-    type: 'other',
+    type: 'office',
     name: '',
     description: '',
     prompt: '',
