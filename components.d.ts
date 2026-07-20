@@ -12,7 +12,6 @@ declare module 'vue' {
     InfoResult: typeof import('./src/components/Result/InfoResult.vue')['default']
     LChatEngine: typeof import('./src/components/chat/LChatEngine.vue')['default']
     LChatSender: typeof import('./src/components/chat/LChatSender.vue')['default']
-    LChatTool: typeof import('./src/components/chat/LChatTool.vue')['default']
     LoadingResult: typeof import('./src/components/Result/LoadingResult.vue')['default']
     PageLayout: typeof import('./src/components/PageLayout/PageLayout.vue')['default']
     RChatActionbar: typeof import('./src/components/chat/RChatActionbar.vue')['default']

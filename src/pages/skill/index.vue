@@ -6,7 +6,7 @@
         <t-radio-button value="skillhub">SkillHub</t-radio-button>
       </t-radio-group>
     </template>
-    <div class="p-8px pt-0">
+    <div class="skill-page">
       <skill-local v-show="active === 'local'"></skill-local>
       <skill-hub v-show="active === 'skillhub'"></skill-hub>
     </div>
@@ -18,4 +18,15 @@ import SkillHub from '@/pages/skill/SkillHub/SkillHub.vue'
 
 const active = ref('local')
 </script>
-<style scoped lang="less"></style>
+<style scoped lang="less">
+.skill-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 8px 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+</style>
