@@ -44,6 +44,8 @@ export const useSettingNetworkStore = defineStore('SettingNetworkStore', () => {
         }
       }
     }
+    config.timeout = setting.value.connectTimeout * 1000
+    config.maxRedirects = setting.value.maxRedirects
   }
 
   return {

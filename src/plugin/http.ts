@@ -39,9 +39,33 @@ function detectCharset(response: AxiosResponse<ArrayBuffer>): string {
   return 'utf-8'
 }
 
-async function requestBase<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+/**
+ * 转换请求配置，并加入网络代理与 User-Agent
+ * @param config 请求配置
+ */
+function httpRequestToAxiosConfig(config: HttpRequest): AxiosRequestConfig {
   const { fillAxiosConfig } = useSettingNetworkStore()
-  const _config: AxiosRequestConfig = { ...config }
+  const {
+    baseURL = '',
+    timeout = 30000,
+    headers = {},
+    data,
+    params,
+    url,
+    method = 'GET',
+    onDownloadProgress
+  } = config
+  const _config: AxiosRequestConfig = {
+    baseURL,
+    url,
+    method,
+    timeout,
+    headers,
+    data,
+    params,
+    onDownloadProgress,
+    responseType: 'arraybuffer'
+  }
 
   // 应用全局网络设置
   fillAxiosConfig(_config)
@@ -50,38 +74,36 @@ async function requestBase<T = unknown>(config: AxiosRequestConfig): Promise<Axi
     if (_config.headers) _config.headers['User-Agent'] = navigator.userAgent
     else _config.headers = { 'User-Agent': navigator.userAgent }
   }
-  logger.debug(`发起请求: ${_config.method} ${_config.baseURL || ''}${_config.url}`, _config)
-  try {
-    const response = await window.preload.axios<T>(_config)
+  return _config
+}
 
-    logger.debug(`请求成功: ${_config.method} ${_config.baseURL || ''}${_config.url}`, {
+// 用于日志打印
+async function requestBase<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  logger.debug(`发起请求: ${config.method} ${config.baseURL || ''}${config.url}`, config)
+  try {
+    const response = await window.preload.axios<T>(config)
+
+    logger.debug(`请求成功: ${config.method} ${config.baseURL || ''}${config.url}`, {
       status: response.status,
       headers: response.headers
     })
     return response
   } catch (e) {
-    logger.error(`请求失败: ${_config.method} ${_config.baseURL || ''}${_config.url}`, e)
+    logger.error(`请求失败: ${config.method} ${config.baseURL || ''}${config.url}`, e)
     throw e
   }
 }
+
+// ====================================== 封装方法 ======================================
 
 /**
  * 请求获取字符串
  * @param config 请求配置
  */
 export async function requestText(config: HttpRequest): Promise<HttpResponse> {
-  const { baseURL = '', charset, timeout = 30000, headers = {}, data, url, method = 'GET' } = config
-  const _config: AxiosRequestConfig = {
-    baseURL,
-    url,
-    method,
-    timeout,
-    headers,
-    data,
-    responseType: 'arraybuffer'
-  }
+  const { charset } = config
 
-  const response = await requestBase<ArrayBuffer>(_config)
+  const response = await requestBase<ArrayBuffer>(httpRequestToAxiosConfig(config))
 
   let responseData: string
   if (charset) {
@@ -110,6 +132,20 @@ export async function requestJson<T = Record<string, any>>(
     data: JSON.parse(response.data) as T
   }
 }
+
+/**
+ * 请求下载
+ * @param config
+ * @param path
+ */
+export async function requestDownload(
+  config: Omit<HttpRequest, 'charset' | 'webview'>,
+  path: string
+): Promise<void> {
+  return window.preload.net.downloadFileFromUrl(httpRequestToAxiosConfig(config), path)
+}
+
+// ====================================== 包装方法 ======================================
 
 export function useHead(url: string, params?: Record<string, unknown>, config?: HttpRequest) {
   return requestText({

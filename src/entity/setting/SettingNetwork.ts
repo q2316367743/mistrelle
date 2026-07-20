@@ -7,6 +7,8 @@ export interface SettingNetwork {
   readTimeout: number
   // 忽略 TLS 证书错误
   ignoreTlsCertError: boolean
+  // 最大重定向次数
+  maxRedirects: number
   /**
    * 代理模式
    * - 1：无代理
@@ -31,6 +33,7 @@ export function buildSettingNetwork(): SettingNetwork {
     connectTimeout: 10,
     readTimeout: 30,
     ignoreTlsCertError: true,
+    maxRedirects: 5,
     proxyMode: 1,
     proxyType: 'http',
     proxyHost: '',

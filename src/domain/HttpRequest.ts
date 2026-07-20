@@ -11,11 +11,6 @@ export interface HttpRequest<D = unknown> {
 
   timeout?: number
 
-  /**
-   * 如果指定了 charset 则此设置无效
-   */
-  responseType?: 'json' | 'arraybuffer' | 'blob'
-
   params?: Record<string, any>
 
   data?: D

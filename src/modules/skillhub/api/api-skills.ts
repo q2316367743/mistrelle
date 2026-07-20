@@ -1,9 +1,11 @@
-import { SkillHubResult } from '@/modules/skillhub'
 import { requestJson } from '@/plugin/http'
+import type { SkillHubResult } from '../types'
 
 export interface ApiSkillsParam {
   page: number
   pageSize: number
+  keyword?: string
+  category?: string
   sortBy?: string
   order?: string
 }
@@ -77,6 +79,5 @@ export const skillHubApiSkills = async (params: ApiSkillsParam) => {
     method: 'GET',
     params: params
   })
-  const { data } = resp
-  return data
+  return resp.data.data
 }

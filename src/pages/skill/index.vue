@@ -8,7 +8,7 @@
     </template>
     <div class="skill-page">
       <skill-local v-show="active === 'local'"></skill-local>
-      <skill-hub v-show="active === 'skillhub'"></skill-hub>
+      <skill-hub v-if="active === 'skillhub'"></skill-hub>
     </div>
   </page-layout>
 </template>

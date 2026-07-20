@@ -4,6 +4,7 @@ const fs = require('./src/fs')
 const path = require('./src/path')
 const iconv = require('./src/IconvAPI')
 const crypto = require('./src/CryptoApi')
+const zip = require('./src/zip')
 const axios = require('axios')
 
 window.preload = {
@@ -13,6 +14,7 @@ window.preload = {
   path,
   iconv,
   crypto,
+  zip,
   axios: axios.create({
     adapter: 'http'
   })

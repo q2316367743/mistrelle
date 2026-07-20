@@ -1,15 +1,15 @@
 import { requestJson } from '@/plugin/http'
 
-export interface ApiV1SkillsFilesResult {
-  count: number
-  files: File[]
-  version: string
-}
-
-interface File {
+export interface ApiV1SkillFileItem {
   path: string
   sha256: string
   size: number
+}
+
+export interface ApiV1SkillsFilesResult {
+  count: number
+  files: ApiV1SkillFileItem[]
+  version: string
 }
 
 export const skillHubApiV1SkillsFiles = async (slug: string) => {

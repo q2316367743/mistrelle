@@ -56,6 +56,22 @@
       </t-list-item>
 
       <t-list-item>
+        <t-list-item-meta title="最大重定向次数" description="最大重定向次数" />
+        <template #action>
+          <div class="flex items-center gap-8px">
+            <t-input-number
+              v-model="setting.maxRedirects"
+              :min="0"
+              :max="300"
+              style="width: 120px"
+              theme="normal"
+              suffix="秒"
+            />
+          </div>
+        </template>
+      </t-list-item>
+
+      <t-list-item>
         <t-list-item-meta title="忽略 TLS 证书错误" description="是否忽略 HTTPS 证书验证错误" />
         <template #action>
           <t-switch v-model="setting.ignoreTlsCertError" />

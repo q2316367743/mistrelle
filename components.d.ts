@@ -24,6 +24,7 @@ declare module 'vue' {
     SubPageLayout: typeof import('./src/components/PageLayout/SubPageLayout.vue')['default']
     SubTitle: typeof import('./src/components/PageLayout/SubTitle.vue')['default']
     SuccessResult: typeof import('./src/components/Result/SuccessResult.vue')['default']
+    TAlert: typeof import('tdesign-vue-next')['Alert']
     TAside: typeof import('tdesign-vue-next')['Aside']
     TAutoComplete: typeof import('tdesign-vue-next')['AutoComplete']
     TAvatar: typeof import('tdesign-vue-next')['Avatar']
@@ -48,6 +49,7 @@ declare module 'vue' {
     TListItemMeta: typeof import('tdesign-vue-next')['ListItemMeta']
     TLoading: typeof import('tdesign-vue-next')['Loading']
     TOption: typeof import('tdesign-vue-next')['Option']
+    TPagination: typeof import('tdesign-vue-next')['Pagination']
     TPopconfirm: typeof import('tdesign-vue-next')['Popconfirm']
     TRadio: typeof import('tdesign-vue-next')['Radio']
     TRadioButton: typeof import('tdesign-vue-next')['RadioButton']
@@ -63,6 +65,7 @@ declare module 'vue' {
     TTimeline: typeof import('tdesign-vue-next')['Timeline']
     TTimelineItem: typeof import('tdesign-vue-next')['TimelineItem']
     TTooltip: typeof import('tdesign-vue-next')['Tooltip']
+    TTree: typeof import('tdesign-vue-next')['Tree']
     UtoolsImage: typeof import('./src/components/UtoolsImage/UtoolsImage.vue')['default']
   }
 }

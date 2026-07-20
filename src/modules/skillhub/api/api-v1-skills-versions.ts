@@ -1,17 +1,17 @@
 import { requestJson } from '@/plugin/http'
 
-export interface ApiV1SkillsVersionsResult {
-  slug: string
-  source: string
-  versions: Version[]
-}
-
-interface Version {
+export interface ApiV1SkillVersionItem {
   changelog: string
   createdAt: number
   securityReports: SecurityReports
   version: string
   versionId: number
+}
+
+export interface ApiV1SkillsVersionsResult {
+  slug: string
+  source: string
+  versions: ApiV1SkillVersionItem[]
 }
 
 interface SecurityReports {
