@@ -150,6 +150,12 @@
             <span>{{ profile.nickname }}</span>
           </button>
           <t-dropdown-menu>
+            <t-dropdown-item @click="handleSettingClick('account')">
+              <template #prefix-icon>
+                <user-icon />
+              </template>
+              账号设置
+            </t-dropdown-item>
             <t-dropdown-item @click="handleSettingClick('ai')">
               <template #prefix-icon>
                 <ai-icon />
@@ -183,6 +189,7 @@ import {
   ChatIcon,
   FolderIcon,
   InternetIcon,
+  UserIcon,
   UsergroupIcon
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'

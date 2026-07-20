@@ -52,6 +52,11 @@ export const routes: Array<RouteRecordRaw> = [
   },
 
   {
+    name: '设置/account',
+    path: '/setting/account',
+    component: () => import('@/pages/setting/account/SettingAccountPage.vue')
+  },
+  {
     name: '设置/ai',
     path: '/setting/ai',
     component: () => import('@/pages/setting/ai/SettingAi.vue')

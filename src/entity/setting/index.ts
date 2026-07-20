@@ -1,3 +1,4 @@
+export * from './SettingAccount'
 export * from './SettingAi'
 export * from './SettingDefault'
 export * from './SettingNetwork'

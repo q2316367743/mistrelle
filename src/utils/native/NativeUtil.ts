@@ -22,3 +22,9 @@ export const getUserProfile = (): UserProfile => {
 }
 
 export const copyText = (text: string) => window.preload.inject.clipboard.copyText(text)
+
+export const openUrlByBrowser = (url?: string) => {
+  if (!url) return
+  if (window.preload.inject.getPlatform() === 'ZTools') return
+  window.preload.inject.shell.openExternal(url)
+}

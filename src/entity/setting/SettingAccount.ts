@@ -5,3 +5,9 @@ export interface SettingAccount {
    */
   skillhub: string
 }
+
+export function buildSettingAccount(): SettingAccount {
+  return {
+    skillhub: ''
+  }
+}
