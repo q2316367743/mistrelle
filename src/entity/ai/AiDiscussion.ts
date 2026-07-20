@@ -64,6 +64,10 @@ export interface AiDiscussionRole {
    * 角色索引
    */
   index: number
+  /**
+   * 关联的提示词 ID，用于修改时回显选中项
+   */
+  promptId?: string
 }
 
 /**

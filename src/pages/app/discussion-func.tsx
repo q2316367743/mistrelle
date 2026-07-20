@@ -1,4 +1,4 @@
-import { useAiDiscussionStore, useSettingAiStore } from '@/store'
+import { useAiDiscussionStore, useAiPromptStore } from '@/store'
 import { DialogPlugin, Form, FormItem, Input, Select, Textarea, Button } from 'tdesign-vue-next'
 import { MessageUtil } from '@/utils/modal'
 import { useContextMenu, useSnowflake } from '@/hooks'
@@ -56,7 +56,8 @@ export const openDiscussionPut = async (id?: string) => {
         })
     },
     default: () => {
-      const modelOptions = useSettingAiStore().options
+      const promptStore = useAiPromptStore()
+      const promptOptions = computed(() => promptStore.state.map(p => ({ label: p.name, value: p.id })))
       const modeOptions = [
         { label: '自动推进', value: 'auto' },
         { label: '手动推进', value: 'manual' },
@@ -169,53 +170,25 @@ export const openDiscussionPut = async (id?: string) => {
                             color: 'var(--td-text-color-secondary)'
                           }}
                         >
-                          角色名称
-                        </div>
-                        <Input v-model={role.name} placeholder={'请输入角色名称'} />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <div
-                          style={{
-                            marginBottom: '4px',
-                            fontSize: '14px',
-                            color: 'var(--td-text-color-secondary)'
-                          }}
-                        >
-                          角色描述
-                        </div>
-                        <Input v-model={role.description} placeholder={'请输入角色描述'} />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <div
-                          style={{
-                            marginBottom: '4px',
-                            fontSize: '14px',
-                            color: 'var(--td-text-color-secondary)'
-                          }}
-                        >
-                          角色提示词
-                        </div>
-                        <Textarea
-                          v-model={role.prompt}
-                          placeholder={'请输入角色提示词'}
-                          autosize={{ minRows: 2, maxRows: 6 }}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '4px' }}>
-                        <div
-                          style={{
-                            marginBottom: '4px',
-                            fontSize: '14px',
-                            color: 'var(--td-text-color-secondary)'
-                          }}
-                        >
-                          关联模型
+                          选择提示词
                         </div>
                         <Select
-                          v-model={role.model}
-                          options={modelOptions}
-                          placeholder={'请选择模型'}
+                          v-model={role.promptId}
+                          options={promptOptions.value}
+                          placeholder={'请选择提示词'}
                           clearable={true}
+                          onChange={(value) => {
+                            if (value) {
+                              promptStore.getById(value as string).then(p => {
+                                if (p) {
+                                  role.name = p.name
+                                  role.description = p.description
+                                  role.prompt = p.prompt
+                                  role.model = p.model
+                                }
+                              })
+                            }
+                          }}
                         />
                       </div>
                     </div>
@@ -285,59 +258,25 @@ export const openDiscussionPut = async (id?: string) => {
                             color: 'var(--td-text-color-secondary)'
                           }}
                         >
-                          角色名称
-                        </div>
-                        <Input
-                          v-model={form.value.summaryRole.name}
-                          placeholder={'请输入角色名称'}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <div
-                          style={{
-                            marginBottom: '4px',
-                            fontSize: '14px',
-                            color: 'var(--td-text-color-secondary)'
-                          }}
-                        >
-                          角色描述
-                        </div>
-                        <Input
-                          v-model={form.value.summaryRole.description}
-                          placeholder={'请输入角色描述'}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <div
-                          style={{
-                            marginBottom: '4px',
-                            fontSize: '14px',
-                            color: 'var(--td-text-color-secondary)'
-                          }}
-                        >
-                          角色提示词
-                        </div>
-                        <Textarea
-                          v-model={form.value.summaryRole.prompt}
-                          placeholder={'请输入角色提示词'}
-                          autosize={{ minRows: 2, maxRows: 6 }}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '4px' }}>
-                        <div
-                          style={{
-                            marginBottom: '4px',
-                            fontSize: '14px',
-                            color: 'var(--td-text-color-secondary)'
-                          }}
-                        >
-                          关联模型
+                          选择提示词
                         </div>
                         <Select
-                          v-model={form.value.summaryRole.model}
-                          options={modelOptions}
-                          placeholder={'请选择模型'}
+                          v-model={form.value.summaryRole.promptId}
+                          options={promptOptions.value}
+                          placeholder={'请选择提示词'}
                           clearable={true}
+                          onChange={(value) => {
+                            if (value) {
+                              promptStore.getById(value as string).then(p => {
+                                if (p) {
+                                  form.value.summaryRole!.name = p.name
+                                  form.value.summaryRole!.description = p.description
+                                  form.value.summaryRole!.prompt = p.prompt
+                                  form.value.summaryRole!.model = p.model
+                                }
+                              })
+                            }
+                          }}
                         />
                       </div>
                     </div>

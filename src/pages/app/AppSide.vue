@@ -80,7 +80,6 @@
               active: isActive(`/agent/0`) || isStartActive(`/chat/0/`)
             }"
             type="button"
-            @contextmenu="openAgentContextmenu($event, '0')"
             @click="goTo(`/agent/0`)"
           >
             <FolderIcon class="menu-icon" />

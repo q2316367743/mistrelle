@@ -13,29 +13,38 @@
         :value="tab.value"
         :label="tab.label"
       >
-        <div v-if="filteredList(tab.value).length > 0" class="primpt-list">
-          <t-card
+        <t-list v-if="filteredList(tab.value).length > 0" class="primpt-list" split>
+          <t-list-item
             v-for="item in filteredList(tab.value)"
             :key="item.id"
             size="small"
             hover-shadow
             class="primpt-card"
-            :title="item.name"
-            @click="handleChat(item)"
-            @contextmenu="openPromptContextmenu($event, item.id)"
           >
-            <div class="primpt-card__content">
-              <div v-if="item.description" class="primpt-card__desc">
-                {{ item.description }}
-              </div>
-            </div>
-            <template #actions>
-              <t-tag theme="primary" variant="light" size="small">
-                {{ typeLabel(item.type) }}
-              </t-tag>
+            <t-list-item-meta :title="item.name" :description="item.description"></t-list-item-meta>
+            <template #action>
+              <t-space size="small">
+                <t-button
+                  theme="primary"
+                  variant="text"
+                  shape="square"
+                  @click="openPromptPut(item.id)"
+                >
+                  <template #icon>
+                    <EditIcon />
+                  </template>
+                </t-button>
+                <t-popconfirm content="确定删除该提示词？" @confirm="openPromptDelete(item.id)">
+                  <t-button theme="danger" variant="text" shape="square">
+                    <template #icon>
+                      <DeleteIcon />
+                    </template>
+                  </t-button>
+                </t-popconfirm>
+              </t-space>
             </template>
-          </t-card>
-        </div>
+          </t-list-item>
+        </t-list>
         <t-empty v-else description="暂无该类型提示词" class="mt-15vh" />
       </t-tab-panel>
     </t-tabs>
@@ -44,11 +53,11 @@
 
 <script lang="ts" setup>
 import { useAiPromptStore } from '@/store'
-import { openPromptPut, openPromptContextmenu } from './modals/prompt-func'
-import { AddIcon } from 'tdesign-icons-vue-next'
-import { AiPromptItem, AiPromptType, typeOptions } from '@/entity/ai'
+import { openPromptPut } from './modals/prompt-func'
+import { AddIcon, DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
+import { AiPromptType, typeOptions } from '@/entity/ai'
+import { MessageUtil } from '@/utils/modal'
 
-const router = useRouter()
 const store = useAiPromptStore()
 
 const activeType = ref<AiPromptType>(typeOptions[0].value)
@@ -57,12 +66,13 @@ const filteredList = (type: AiPromptType) => {
   return store.state.filter((item) => item.type === type)
 }
 
-const typeLabel = (type: AiPromptType): string => {
-  return typeOptions.find((t) => t.value === type)?.label || type
-}
-
-const handleChat = (primpt: AiPromptItem) => {
-  router.push(`/new/primpt/${primpt.id}`)
+const openPromptDelete = (id: string) => {
+  useAiPromptStore()
+    .remove(id)
+    .then(() => {
+      MessageUtil.success('删除成功')
+    })
+    .catch((e) => MessageUtil.error('删除失败', e))
 }
 </script>
 
@@ -72,10 +82,7 @@ const handleChat = (primpt: AiPromptItem) => {
 }
 
 .primpt-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  padding: 16px;
+  width: 100%;
 }
 
 .primpt-card {
