@@ -1,5 +1,6 @@
 import { requestJson } from '@/plugin/http'
 import type { SkillHubResult } from '../types'
+import { useSettingAccountStore } from '@/store'
 
 export interface ApiSkillsParam {
   page: number
@@ -77,7 +78,8 @@ export const skillHubApiSkills = async (params: ApiSkillsParam) => {
     baseURL: 'https://api.skillhub.cn',
     url: '/api/skills',
     method: 'GET',
-    params: params
+    params: params,
+    ...useSettingAccountStore().skillhubConfig
   })
   return resp.data.data
 }

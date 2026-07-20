@@ -53,6 +53,7 @@ function httpRequestToAxiosConfig(config: HttpRequest): AxiosRequestConfig {
     params,
     url,
     method = 'GET',
+    cookie,
     onDownloadProgress
   } = config
   const _config: AxiosRequestConfig = {
@@ -70,9 +71,17 @@ function httpRequestToAxiosConfig(config: HttpRequest): AxiosRequestConfig {
   // 应用全局网络设置
   fillAxiosConfig(_config)
   nonNullObj(_config)
-  if (!_config.headers || !_config.headers['User-Agent']) {
-    if (_config.headers) _config.headers['User-Agent'] = navigator.userAgent
-    else _config.headers = { 'User-Agent': navigator.userAgent }
+  if (!_config.headers) {
+    _config.headers = {}
+  }
+  if (!_config.headers['User-Agent']) {
+    _config.headers['User-Agent'] = navigator.userAgent
+  }
+  // 补全 Cookie
+  if (cookie) {
+    _config.headers['Cookie'] = _config.headers['Cookie']
+      ? `${_config.headers['Cookie']};${cookie}`
+      : cookie
   }
   return _config
 }

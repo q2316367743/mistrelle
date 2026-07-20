@@ -1,4 +1,5 @@
 import { requestText } from '@/plugin/http'
+import { useSettingAccountStore } from '@/store'
 
 /**
  * 获取技能指定文件内容（如 SKILL.md）
@@ -9,7 +10,8 @@ export const skillHubApiV1SkillsFile = async (slug: string, path = 'SKILL.md') =
     baseURL: 'https://api.skillhub.cn',
     url: `/api/v1/skills/${slug}/file`,
     method: 'GET',
-    params: { path }
+    params: { path },
+    ...useSettingAccountStore().skillhubConfig
   })
 
   const trimmed = data.trim()

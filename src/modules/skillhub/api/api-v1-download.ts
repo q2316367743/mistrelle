@@ -1,5 +1,6 @@
 import { requestDownload } from '@/plugin/http'
 import HttpProgressEvent from '@/domain/HttpProgressEvent'
+import { useSettingAccountStore } from '@/store'
 
 export const apiV1Download = (
   slug: string,
@@ -13,7 +14,8 @@ export const apiV1Download = (
       params: {
         slug: slug
       },
-      onDownloadProgress
+      onDownloadProgress,
+      ...useSettingAccountStore().skillhubConfig
     },
     path
   )

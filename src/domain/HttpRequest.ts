@@ -32,4 +32,9 @@ export interface HttpRequest<D = unknown> {
    * @param progressEvent 进度回调
    */
   onDownloadProgress?: (progressEvent: HttpProgressEvent) => void
+
+  /**
+   * 一种快捷方式，设置cookie
+   */
+  cookie?: string
 }

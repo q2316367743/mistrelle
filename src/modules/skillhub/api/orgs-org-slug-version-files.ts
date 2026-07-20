@@ -1,4 +1,5 @@
 import { requestJson } from '@/plugin/http'
+import { useSettingAccountStore } from '@/store'
 
 /**
  * 获取文件信息
@@ -16,7 +17,8 @@ export const orgsOrgSlugVersionFiles = async (
   const { data } = await requestJson<string>({
     method: 'GET',
     baseURL: 'https://api.skillhub.cn',
-    url: `/orgs/${orgId}/${slug}/${version}/files/${fileName}`
+    url: `/orgs/${orgId}/${slug}/${version}/files/${fileName}`,
+    ...useSettingAccountStore().skillhubConfig
   })
   return data
 }

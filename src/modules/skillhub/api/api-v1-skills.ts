@@ -1,4 +1,5 @@
 import { requestJson } from '@/plugin/http'
+import { useSettingAccountStore } from '@/store'
 
 export interface ApiV1SkillsResult {
   contentZhAvailable: boolean
@@ -96,7 +97,8 @@ export const skillHubApiV1SkillsInfo = async (slug: string) => {
   const { data } = await requestJson<ApiV1SkillsResult>({
     baseURL: `https://api.skillhub.cn`,
     url: `/api/v1/skills/${slug}`,
-    method: 'GET'
+    method: 'GET',
+    ...useSettingAccountStore().skillhubConfig
   })
   return data
 }

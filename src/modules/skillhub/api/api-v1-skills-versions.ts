@@ -1,4 +1,5 @@
 import { requestJson } from '@/plugin/http'
+import { useSettingAccountStore } from '@/store'
 
 export interface ApiV1SkillVersionItem {
   changelog: string
@@ -29,7 +30,8 @@ export const apiV1SkillsVersions = async (slug: string) => {
   const { data } = await requestJson<ApiV1SkillsVersionsResult>({
     baseURL: `https://api.skillhub.cn`,
     url: `/api/v1/skills/${slug}/versions`,
-    method: 'GET'
+    method: 'GET',
+    ...useSettingAccountStore().skillhubConfig
   })
   return data
 }
