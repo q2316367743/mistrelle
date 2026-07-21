@@ -57,6 +57,18 @@ const handleSend = async () => {
 onMounted(async () => {
   group.value = useAiAgentStore().getById(route.params.id as string)
   model.value = group.value?.model || useSettingDefaultStore().state.defaultAssistantModel
+
+  watch(
+    () => route.params.id,
+    (val) => {
+      if (val === '0') {
+        group.value = undefined
+      } else {
+        group.value = useAiAgentStore().getById(route.params.id as string)
+      }
+      model.value = group.value?.model || useSettingDefaultStore().state.defaultAssistantModel
+    }
+  )
 })
 </script>
 <style scoped lang="less"></style>

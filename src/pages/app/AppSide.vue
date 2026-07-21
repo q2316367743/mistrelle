@@ -59,7 +59,16 @@
           <span>半窗烟雨</span>
         </button>
 
-        <div class="menu-section">
+        <t-divider size="1px" />
+
+        <t-radio-group v-model="active" variant="primary-filled">
+          <t-radio-button value="agent" class="w-100px flex justify-center">Agent</t-radio-button>
+          <t-radio-button value="discussion" class="w-100px flex justify-center">
+            讨论组
+          </t-radio-button>
+        </t-radio-group>
+
+        <div v-if="active === 'agent'" class="menu-section">
           <div class="section-title">
             <span>我的 Agent</span>
             <t-button
@@ -103,35 +112,34 @@
             <span>{{ group.name }}</span>
           </button>
         </div>
-      </nav>
-
-      <div class="bottom-menu">
-        <div class="section-title">
-          <span>讨论组</span>
-          <t-button
-            theme="primary"
-            variant="text"
-            shape="square"
-            size="small"
-            @click="openDiscussionPut()"
+        <div v-else-if="active === 'discussion'" class="menu-section">
+          <div class="section-title">
+            <span>讨论组</span>
+            <t-button
+              theme="primary"
+              variant="text"
+              shape="square"
+              size="small"
+              @click="openDiscussionPut()"
+            >
+              <template #icon>
+                <add-icon />
+              </template>
+            </t-button>
+          </div>
+          <button
+            v-for="item in discussions"
+            :key="item.id"
+            class="menu-item"
+            :class="{ active: isActive(`/discussion/${item.id}`) }"
+            type="button"
+            @click="goTo(`/discussion/${item.id}`)"
           >
-            <template #icon>
-              <add-icon />
-            </template>
-          </t-button>
+            <UsergroupIcon class="menu-icon" />
+            <span>{{ item.name }}</span>
+          </button>
         </div>
-        <button
-          v-for="item in discussions"
-          :key="item.id"
-          class="menu-item"
-          :class="{ active: isActive(`/discussion/${item.id}`) }"
-          type="button"
-          @click="goTo(`/discussion/${item.id}`)"
-        >
-          <UsergroupIcon class="menu-icon" />
-          <span>{{ item.name }}</span>
-        </button>
-      </div>
+      </nav>
     </div>
 
     <div class="user-menu">
@@ -200,6 +208,8 @@ const router = useRouter()
 const route = useRoute()
 
 const profile = getUserProfile()
+
+const active = ref('agent')
 
 // 分组
 const groups = computed(() => useAiAgentStore().state)
@@ -303,7 +313,6 @@ onMounted(() => {
 .menu-section {
   margin-top: var(--td-comp-margin-xs);
   padding-top: var(--td-comp-paddingTB-xs);
-  border-top: 1px solid var(--fluent-sidebar-border);
 }
 
 .bottom-menu {

@@ -121,7 +121,9 @@ const buildReferenceContext = async (): Promise<string | null> => {
   const parts: string[] = []
   for (const skill of sender.getSelectedSkills()) {
     try {
-      parts.push(`## Skill: ${skill.name}\n路径：${skill.path}\n\n${await localSkillContentGet(skill)}`)
+      parts.push(
+        `## Skill: ${skill.name}\n路径：${skill.path}\n\n${await localSkillContentGet(skill)}`
+      )
     } catch (err) {
       MessageUtil.error(`读取 Skill 失败：${err instanceof Error ? err.message : String(err)}`)
       return null
@@ -129,7 +131,9 @@ const buildReferenceContext = async (): Promise<string | null> => {
   }
   for (const file of sender.getSelectedFiles()) {
     try {
-      parts.push(`## File: ${file.relativePath}\n路径：${file.path}\n\n${await window.preload.fs.readTextFile(file.path)}`)
+      parts.push(
+        `## File: ${file.relativePath}\n路径：${file.path}\n\n${await window.preload.fs.readTextFile(file.path)}`
+      )
     } catch (err) {
       MessageUtil.error(`读取文件失败：${err instanceof Error ? err.message : String(err)}`)
       return null
@@ -146,7 +150,8 @@ const handleSend = async () => {
   if (!requestParams) return
   if (context) requestParams.referenceContext = context
 
-  await instance.sendUserMessage(requestParams)
+  instance.sendUserMessage(requestParams)
+
   inputValue.value = ''
   senderRef.value?.clearRefs()
 }
