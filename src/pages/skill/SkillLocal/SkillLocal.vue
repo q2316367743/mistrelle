@@ -7,7 +7,7 @@
       :selected-key="selectedKey"
       @select="selectSkill"
       @create="handleCreate"
-      @refresh="load"
+      @refresh="() => load(true)"
       @manage="openAgentManage(loadAgents)"
     />
     <skill-detail
@@ -49,10 +49,10 @@ const selectedKey = computed(() =>
   selected.value ? selected.value.agentKey + '/' + selected.value.dirName : ''
 )
 
-const load = async () => {
+const load = async (forceRefresh = false) => {
   loading.value = true
   try {
-    list.value = await localSkillList()
+    list.value = await localSkillList(undefined, forceRefresh)
     if (selected.value) {
       const key = selected.value.agentKey + '/' + selected.value.dirName
       const next = list.value.find((e) => e.agentKey + '/' + e.dirName === key)

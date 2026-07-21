@@ -13,11 +13,13 @@
       />
 
       <l-chat-sender
+        ref="senderRef"
         v-model:input="inputValue"
         v-model:model="modelValue"
         v-model:think="think"
         :loading="status === 'pending' || status === 'streaming'"
         :placeholder="placeholder"
+        :root-dir="rootDir"
         @send="handleSend()"
         @stop="handleStop()"
       />
@@ -26,10 +28,7 @@
 </template>
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { ChatSender } from '@tdesign-vue-next/chat'
-import { SystemSumIcon } from 'tdesign-icons-vue-next'
-import { cloneDeep } from 'es-toolkit'
-import { useBoolState, useUtoolsKvStorage } from '@/hooks'
+import { useUtoolsKvStorage } from '@/hooks'
 import {
   type ToolFunction,
   ChatRequestParams,
@@ -40,10 +39,16 @@ import {
 import { useSettingAiStore } from '@/store'
 import { MessageUtil } from '@/utils/modal'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
-import { ChatMessage } from '@/domain'
-import { listByAsync, saveListByAsync } from '@/utils/native'
+import { localSkillContentGet, type LocalSkill } from '@/modules/skill'
+import type { ChatFileRef } from '@/utils/chatSender'
 
 type ChatToolLayout = 'compact' | 'wide'
+
+interface ChatSenderExpose {
+  getSelectedSkills: () => LocalSkill[]
+  getSelectedFiles: () => ChatFileRef[]
+  clearRefs: () => void
+}
 
 const props = withDefaults(
   defineProps<{
@@ -55,6 +60,7 @@ const props = withDefaults(
     layout?: ChatToolLayout
     compactWidth?: string
     wideMaxWidth?: string
+    rootDir?: string
   }>(),
   {
     height: 'calc(100vh - 66px)',
@@ -68,6 +74,7 @@ const emit = defineEmits(['initial'])
 const inputValue = ref('')
 const think = ref(false)
 const modelValue = useUtoolsKvStorage<string>(LocalNameEnum.KEY_AI_COMMON_MODEL, '')
+const senderRef = ref<ChatSenderExpose>()
 
 const instance = new ToolChat({ functions: props.functions })
 
@@ -108,12 +115,40 @@ const createRequestParams = (content: string): ChatRequestParams | null => {
   }
 }
 
-const handleSend = () => {
+const buildReferenceContext = async (): Promise<string | null> => {
+  const sender = senderRef.value
+  if (!sender) return ''
+  const parts: string[] = []
+  for (const skill of sender.getSelectedSkills()) {
+    try {
+      parts.push(`## Skill: ${skill.name}\n路径：${skill.path}\n\n${await localSkillContentGet(skill)}`)
+    } catch (err) {
+      MessageUtil.error(`读取 Skill 失败：${err instanceof Error ? err.message : String(err)}`)
+      return null
+    }
+  }
+  for (const file of sender.getSelectedFiles()) {
+    try {
+      parts.push(`## File: ${file.relativePath}\n路径：${file.path}\n\n${await window.preload.fs.readTextFile(file.path)}`)
+    } catch (err) {
+      MessageUtil.error(`读取文件失败：${err instanceof Error ? err.message : String(err)}`)
+      return null
+    }
+  }
+  if (parts.length === 0) return ''
+  return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n\n---\n\n')}`
+}
+
+const handleSend = async () => {
+  const context = await buildReferenceContext()
+  if (context === null) return
   const requestParams = createRequestParams(inputValue.value)
   if (!requestParams) return
+  if (context) requestParams.referenceContext = context
 
-  instance.sendUserMessage(requestParams)
+  await instance.sendUserMessage(requestParams)
   inputValue.value = ''
+  senderRef.value?.clearRefs()
 }
 
 const handleStop = () => {

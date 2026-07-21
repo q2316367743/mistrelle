@@ -1,7 +1,7 @@
 import { defineComponent, ref } from 'vue'
 import { DialogPlugin, Form, FormItem, Select, Switch, Progress } from 'tdesign-vue-next'
 import { MessageUtil } from '@/utils/modal'
-import { skillAgentList, type SkillAgent } from '@/modules/skill'
+import { localSkillCacheClear, skillAgentList, type SkillAgent } from '@/modules/skill'
 import { skillHubInstall, type ApiSkill } from '@/modules/skillhub'
 
 interface DownloadState {
@@ -109,6 +109,7 @@ export const openSkillHubDownload = (skill: ApiSkill, onSuccess?: () => void) =>
         })
         state.value.progress = 100
         MessageUtil.success(`已安装到 ${path}`)
+        localSkillCacheClear()
         dp.destroy()
         onSuccess?.()
       } catch (e) {

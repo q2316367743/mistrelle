@@ -32,6 +32,7 @@ export interface ChatRequestParams {
   apiKey?: string
   thinking?: 'enabled' | 'disabled'
   reasoning_effort?: 'high' | 'max'
+  referenceContext?: string
 }
 
 export interface ChatServiceConfig {
@@ -192,7 +193,10 @@ export abstract class AbstractChat implements ChatAPI {
       model: requestParams.model,
       provide: requestParams.provide,
       thinking: requestParams.thinking,
-      reasoning_effort: requestParams.reasoning_effort
+      reasoning_effort: requestParams.reasoning_effort,
+      ext: requestParams.referenceContext
+        ? { referenceContext: requestParams.referenceContext }
+        : undefined
     }
     this.messages.value = [...this.messages.value, userMsg]
 

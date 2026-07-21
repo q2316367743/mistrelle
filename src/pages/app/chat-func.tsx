@@ -40,8 +40,11 @@ export const openChatContextmenu = (
         onClick: () => {
           MessageBoxUtil.confirm('是否删除该会话？', '删除确认')
             .then(() => {
-              const store = useAiChatStore()
-              return store.remove(agentId, id)
+              useAiChatStore()
+                .remove(agentId, id)
+                .then(() => MessageUtil.success('删除成功'))
+                .catch((e) => MessageUtil.error('删除失败', e))
+                .finally(() => onUpdate?.())
             })
             .then(() => {
               MessageUtil.success('删除成功')

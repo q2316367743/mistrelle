@@ -15,6 +15,13 @@ import type {
   ChatAPI
 } from './ChatCommon'
 import { nanoid } from 'nanoid'
+import { skillTools, applySkillToChat } from '@/modules/skill'
+
+const getReferenceContext = (ext: unknown) => {
+  if (!ext || typeof ext !== 'object' || !('referenceContext' in ext)) return ''
+  const value = ext.referenceContext
+  return typeof value === 'string' ? value : ''
+}
 
 // ==========================================
 //  类型导出
@@ -53,6 +60,8 @@ export interface UseChatOptions {
   defaultMessages?: Array<ChatMessage>
   chatServiceConfig?: ChatServiceConfig
   functions?: Array<ToolFunction>
+  // 是否启用内置 Skill 能力（skill 目录注入 + load_skill 工具），默认开启
+  enableSkill?: boolean
 }
 
 export interface UseChatResult extends ChatAPI {
@@ -66,10 +75,26 @@ export interface UseChatResult extends ChatAPI {
 export class ToolChat extends AbstractChat {
   readonly toolCalls = ref<ToolCall[]>([])
   private readonly _functions?: ToolFunction[]
+  private readonly _enableSkill: boolean
 
   constructor(options: UseChatOptions) {
     super(options)
     this._functions = options.functions
+    this._enableSkill = options.enableSkill ?? true
+  }
+
+  // ========================
+  //   合并内置 Skill 工具后的完整函数列表
+  // ========================
+
+  private getFunctions(): ToolFunction[] {
+    const base = this._functions ?? []
+    return this._enableSkill ? [...base, ...skillTools] : base
+  }
+
+  // 解析用户消息并注入 skill 上下文（目录 或 指定 skill 全文）
+  private async applySkillContext(apiMessages: ChatCompletionMessageParam[]): Promise<void> {
+    if (this._enableSkill) await applySkillToChat(this.messages.value, apiMessages)
   }
 
   // ========================
@@ -92,7 +117,9 @@ export class ToolChat extends AbstractChat {
         const textParts = msg.content.filter((c) => c.type === 'text') as {
           data: string
         }[]
-        const userContent: string = textParts.map((t) => t.data).join('') || ''
+        const content = textParts.map((t) => t.data).join('') || ''
+        const referenceContext = getReferenceContext(msg.ext)
+        const userContent = referenceContext ? `${content}${referenceContext}` : content
         out.push({ role: 'user', content: userContent })
       } else if (msg.role === 'system') {
         const firstText = msg.content.find((c) => c.type === 'text')
@@ -197,13 +224,11 @@ export class ToolChat extends AbstractChat {
 
   private buildTools(): ChatCompletionTool[] {
     const tools: ChatCompletionTool[] = []
-    if (this._functions) {
-      for (const fn of this._functions) {
-        tools.push({
-          type: 'function',
-          function: fn
-        })
-      }
+    for (const fn of this.getFunctions()) {
+      tools.push({
+        type: 'function',
+        function: fn
+      })
     }
     return tools
   }
@@ -278,6 +303,7 @@ export class ToolChat extends AbstractChat {
     seq: number
   ): Promise<void> {
     const apiMessages = this.toApiMessages()
+    await this.applySkillContext(apiMessages)
     const tools = this.buildTools()
 
     const body: ChatCompletionCreateParamsStreaming = {
@@ -395,8 +421,9 @@ export class ToolChat extends AbstractChat {
       this.toolCalls.value = metaList
 
       // 逐个执行工具
+      const functions = this.getFunctions()
       for (const meta of metaList) {
-        const fnDef = this._functions?.find((f) => f.name === meta.toolCallName)
+        const fnDef = functions.find((f) => f.name === meta.toolCallName)
         if (fnDef) {
           try {
             const args = JSON.parse(meta.args ?? '{}')

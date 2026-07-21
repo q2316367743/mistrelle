@@ -21,6 +21,7 @@
 <script lang="ts" setup>
 import { useAiChatStore, useAiPromptStore, useAiAgentStore, useSettingDefaultStore } from '@/store'
 import { AiPrompt, AiAgent } from '@/entity/ai'
+import { MessageUtil } from '@/utils/modal'
 
 const route = useRoute()
 const router = useRouter()
@@ -40,6 +41,8 @@ const title = computed(() => {
 
 const handleSend = async () => {
   const agentId = group.value?.id || '0'
+  if (!content.value) return MessageUtil.error('请输入内容')
+  if (!model.value) return MessageUtil.error('请选择模型')
   const id = await useAiChatStore().add(
     {
       content: content.value,

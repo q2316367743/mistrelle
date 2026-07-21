@@ -1,5 +1,6 @@
 import { KeyValueUtil } from '@/utils/native/KeyValueUtil'
 import { LocalSkill, LocalSkillFile, LocalSkillForm, SkillAgent } from './types'
+import { cloneDeep } from 'es-toolkit'
 
 const SKILL_FILE = 'SKILL.md'
 const AGENT_STORAGE_KEY = 'skill/agents'
@@ -31,7 +32,7 @@ export const skillAgentList = (): Array<SkillAgent> => {
  * 保存 agent 列表
  */
 export const skillAgentSave = (agents: Array<SkillAgent>) => {
-  KeyValueUtil.setItem(AGENT_STORAGE_KEY, agents)
+  KeyValueUtil.setItem(AGENT_STORAGE_KEY, cloneDeep(agents))
 }
 
 export const buildSkillDirPath = (agent: SkillAgent, dirName: string) =>
@@ -95,13 +96,27 @@ const listAgentSkills = async (agent: SkillAgent): Promise<Array<LocalSkill>> =>
   return list
 }
 
+let _skillCache: Array<LocalSkill> | null = null
+
+/**
+ * 清除本地 Skill 缓存
+ */
+export const localSkillCacheClear = () => {
+  _skillCache = null
+}
+
 /**
  * 获取本地 Skill 列表，传入 agentKey 时只扫描指定 agent
  */
-export const localSkillList = async (agentKey?: string): Promise<Array<LocalSkill>> => {
+export const localSkillList = async (agentKey?: string, forceRefresh = false): Promise<Array<LocalSkill>> => {
+  if (!forceRefresh && _skillCache) {
+    return agentKey ? _skillCache.filter((e) => e.agentKey === agentKey) : _skillCache
+  }
   const agents = skillAgentList().filter((e) => !agentKey || e.key === agentKey)
   const result = await Promise.all(agents.map((agent) => listAgentSkills(agent)))
-  return result.flat().sort((a, b) => b.updatedAt - a.updatedAt)
+  _skillCache = result.flat().sort((a, b) => b.updatedAt - a.updatedAt)
+  if (agentKey) return _skillCache.filter((e) => e.agentKey === agentKey)
+  return _skillCache
 }
 
 /**
