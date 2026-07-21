@@ -25,26 +25,25 @@
         </div>
 
         <div v-if="chats.length > 0" class="chat-list">
-          <t-card
-            v-for="chat in chats"
-            :key="chat.id"
-            size="small"
-            hover-shadow
-            class="chat-card"
-            @click="openGroupChat(chat)"
-            @contextmenu="openChatContextmenu($event, group?.id || '0', chat.id, initFunc)"
-            :title="chat.name || '未命名对话'"
-          >
-            <div class="chat-card__content">
-              <div class="chat-card__main">
-                <div class="chat-card__message">{{ chat.form.content || '暂无首条消息' }}</div>
+          <div v-for="chat in chats" :key="chat.id" class="chat-card">
+            <t-card
+              size="small"
+              hover-shadow
+              @click="openGroupChat(chat)"
+              @contextmenu="openChatContextmenu($event, group?.id || '0', chat.id, initFunc)"
+              :title="chat.name || '未命名对话'"
+            >
+              <div class="chat-card__content">
+                <div class="chat-card__main">
+                  <div class="chat-card__message">{{ chat.form.content || '暂无首条消息' }}</div>
+                </div>
               </div>
-            </div>
-            <template #actions>
-              <t-tag v-if="chat.top" theme="primary" variant="light" size="small">置顶</t-tag>
-              <span>{{ chat.form.model || '未设置模型' }}</span>
-            </template>
-          </t-card>
+              <template #actions>
+                <t-tag v-if="chat.top" theme="primary" variant="light" size="small">置顶</t-tag>
+                <span>{{ chat.form.model || '未设置模型' }}</span>
+              </template>
+            </t-card>
+          </div>
         </div>
         <t-empty v-else description="暂无历史对话">
           <template #action>
@@ -75,7 +74,8 @@ const enabledToolsText = computed(
 )
 
 const openNewGroup = () => router.push(`/new/${group.value?.id || '0'}`)
-const openGroupChat = (chat: AiChatItem) => router.push(`/chat/${group.value?.id}/${chat.id}`)
+const openGroupChat = (chat: AiChatItem) =>
+  router.push(`/chat/${group.value?.id || '0'}/${chat.id}`)
 
 const initFunc = async () => {
   group.value = useAiAgentStore().getById(route.params.id as string)
@@ -154,8 +154,11 @@ watch(
 }
 
 .chat-list {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--td-comp-margin-s);
+  overflow-x: hidden;
+  position: relative;
 }
 
 .chat-card {

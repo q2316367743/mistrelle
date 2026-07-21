@@ -72,6 +72,7 @@ import {
 } from 'tdesign-icons-vue-next'
 import type { ChatComment, ChatMessageRole } from '@/domain'
 import { copyText } from '@/utils/native'
+import { MessageUtil } from '@/utils/modal'
 
 const props = withDefaults(
   defineProps<{
@@ -94,6 +95,7 @@ const emit = defineEmits<{
 const handleCopy = () => {
   if (props.content) {
     copyText(props.content)
+    MessageUtil.success('复制成功')
   }
 }
 </script>

@@ -1,6 +1,5 @@
 <template>
   <page-layout :title="title">
-    <div class="p-8px">
       <l-chat-engine
         v-if="initial"
         :functions="functions"
@@ -11,7 +10,6 @@
         @initial="handleChatInitial"
       />
       <loading-result v-else title="正在加载中" />
-    </div>
   </page-layout>
 </template>
 <script lang="ts" setup>
@@ -58,7 +56,7 @@ onMounted(async () => {
     chat.value = await aiChatGet(route.params.agentId as string, route.params.id as string)
     if (!chat.value) {
       MessageUtil.error('聊天不存在')
-      await router.replace('/new/single/0')
+      await router.replace('/new//0')
       return
     }
     group.value = useAiAgentStore().getById(route.params.agentId as string)

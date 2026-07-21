@@ -71,7 +71,7 @@ export const openAgentPut = (id?: string) => {
               <div class={'help'}>定义助手是谁，包括名字、角色定位和能力范围。</div>
               <Textarea
                 v-model={form.value.identity}
-                autosize={{ minRows: 6, maxRows: 18 }}
+                autosize={{ minRows: 6, maxRows: 17 }}
                 placeholder={'请输入助手身份。支持 Markdown 格式，可用中文或英文书写'}
               />
             </div>
@@ -81,7 +81,7 @@ export const openAgentPut = (id?: string) => {
               <div class={'help'}>助手的性格、语气和行为准则。会强制助手遵循此设定。</div>
               <Textarea
                 v-model={form.value.personality}
-                autosize={{ minRows: 6, maxRows: 18 }}
+                autosize={{ minRows: 6, maxRows: 17 }}
                 placeholder={'请输入助手性格。支持 Markdown 格式，可用中文或英文书写'}
               />
             </div>
@@ -91,7 +91,7 @@ export const openAgentPut = (id?: string) => {
               <div class={'help'}>关于你自己的信息（姓名、偏好等），助手会记住你。</div>
               <Textarea
                 v-model={form.value.aboutMe}
-                autosize={{ minRows: 6, maxRows: 18 }}
+                autosize={{ minRows: 6, maxRows: 17 }}
                 placeholder={'请输入关于我。支持 Markdown 格式，可用中文或英文书写'}
               />
             </div>

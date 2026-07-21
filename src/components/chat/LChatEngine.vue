@@ -226,7 +226,7 @@ onMounted(async () => {
     // 寻找最后一个用户消息
     const lastUser = messages.value.findLast((e) => e.role === 'user')
     if (lastUser) {
-      modelValue.value = lastUser.model
+      modelValue.value = `${lastUser.provide}:${lastUser.model}`
       think.value = lastUser.thinking === 'enabled'
     }
   }
@@ -253,6 +253,7 @@ defineExpose({
   width: 100%;
   min-height: 0;
   overflow: hidden;
+  padding-bottom: 16px;
 }
 
 .l-chat-tool__content {

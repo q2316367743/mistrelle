@@ -169,7 +169,8 @@ export abstract class AbstractChat implements ChatAPI {
     if (
       this.status.value !== 'idle' &&
       this.status.value !== 'complete' &&
-      this.status.value !== 'error'
+      this.status.value !== 'error' &&
+      this.status.value !== 'stop'
     )
       return
 
@@ -233,7 +234,8 @@ export abstract class AbstractChat implements ChatAPI {
     if (
       this.status.value !== 'idle' &&
       this.status.value !== 'complete' &&
-      this.status.value !== 'error'
+      this.status.value !== 'error' &&
+      this.status.value !== 'stop'
     )
       return
 
@@ -304,7 +306,8 @@ export abstract class AbstractChat implements ChatAPI {
     if (
       this.status.value !== 'idle' &&
       this.status.value !== 'complete' &&
-      this.status.value !== 'error'
+      this.status.value !== 'error' &&
+      this.status.value !== 'stop'
     )
       return
 
@@ -323,7 +326,8 @@ export abstract class AbstractChat implements ChatAPI {
     if (
       this.status.value !== 'idle' &&
       this.status.value !== 'complete' &&
-      this.status.value !== 'error'
+      this.status.value !== 'error' &&
+      this.status.value !== 'stop'
     )
       return
 

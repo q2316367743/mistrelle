@@ -1,4 +1,4 @@
-# CLAUDE.md —— 前端工程约束规范
+# AGENTS.md —— 前端工程约束规范
 
 ## 🚫 硬性红线（违反即错）
 
@@ -6,7 +6,6 @@
 |-------|------------------------------------------------------|
 | RL‑01 | 语言：允许英文思考，但所有对外输出必须使用中文                              |
 | RL‑02 | 根目录洁净：禁止在根目录放置业务代码                                   |
-| RL‑03 | API 层隔离：组件必须通过 `@/api` 层访问后端                         |
 | RL‑04 | 类型安全：禁止使用 `any`；禁止不必要的 `as` 断言                       |
 | RL‑05 | UI 强制：所有 UI 元素必须使用 `tdesign`；禁用原生 `alert` / `select` |
 | RL‑06 | 文件长度：vue 文件 ≤ 300 行，ts 文件 ≤ 500 行，超出必须拆分             |
@@ -37,6 +36,11 @@
 5. **红线优先**
 
 - 上述原则与硬性红线冲突时，以红线为准
+
+6. **关键逻辑注释**
+
+- 复杂算法、同步流程、冲突处理、锁处理必须为入口函数补充 JSDoc
+- 关键分支必须添加简短备注，说明为什么这样处理，而不是复述代码做了什么
 
 ---
 
@@ -103,3 +107,43 @@ src/
 | `color: #1677ff;`                 | 违反样式约定，应使用 tdesign CSS Token        |
 | `FilterModal.vue` 作为弹窗            | 违反约定，弹窗 / 抽屉必须使用 `.tsx`             |
 | 单文件超过 300 行未拆分                    | 违反 RL‑07                            |
+
+## DialogPlugin 使用示例
+
+```tsx
+import { DialogPlugin } from "tdesign-vue-next";
+export const postAiGroupDialog = () => {
+  const name = ref("");
+  const dp = DialogPlugin({
+    header: "创建分组",
+    confirmBtn: "创建",
+    placement: "center",
+    default: () => (
+      <div class={"px-4px"}>
+        <input v-model={name.value} />
+      </div>
+    ),
+    onConfirm: () => {
+    },
+  });
+};
+```
+## DrawerPlugin 使用示例
+
+```tsx
+import { DrawerPlugin } from "tdesign-vue-next";
+export const postAiGroupDialog = () => {
+  const name = ref("");
+  const dp = DrawerPlugin({
+    header: "创建分组",
+    confirmBtn: "创建",
+    default: () => (
+      <div class={"px-4px"}>
+        <input v-model={name.value} />
+      </div>
+    ),
+    onConfirm: () => {
+    },
+  });
+};
+```
