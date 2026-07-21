@@ -5,7 +5,7 @@
         :functions="functions"
         :prompt="prompt"
         :storage-key="storageKey"
-        :placeholder="group?.placeholder"
+        :placeholder="agent?.placeholder"
         ref="lChatToolRef"
         @initial="handleChatInitial"
       />
@@ -24,21 +24,21 @@ import { useSafeBack } from '@/hooks'
 const route = useRoute()
 const router = useRouter()
 
-const group = ref<AiAgent>()
+const agent = ref<AiAgent>()
 const chat = ref<AiChatItem>()
 const initial = ref(false)
 const functions = shallowRef(new Array<ToolFunction>())
 const lChatToolRef = ref()
 
 const title = computed(() => {
-  if (group.value) {
-    return `${group.value.name} - ${chat.value?.name || '聊天'}`
+  if (agent.value) {
+    return `${agent.value.name} - ${chat.value?.name || '聊天'}`
   }
   return chat.value?.name || '聊天'
 })
 const prompt = computed(() => {
-  if (group.value) {
-    return buildAiAgentPrompt(group.value)
+  if (agent.value) {
+    return buildAiAgentPrompt(agent.value)
   }
   return ''
 })
@@ -59,11 +59,11 @@ onMounted(async () => {
       await router.replace('/new//0')
       return
     }
-    group.value = useAiAgentStore().getById(route.params.agentId as string)
-    if (group.value) {
-      functions.value = group.value.tools.map((tool) => toolMap[tool])
+    agent.value = useAiAgentStore().getById(route.params.agentId as string)
+    if (agent.value) {
+      functions.value = agent.value.tools.map((tool) => toolMap[tool])
     }
-    storageKey.value = buildChatChatPath(group.value?.id || '0', chat.value.id)
+    storageKey.value = buildChatChatPath(agent.value?.id || '0', chat.value.id)
 
     initial.value = true
   } catch (e) {

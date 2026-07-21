@@ -17,13 +17,14 @@ export const getAppData = () => {
   return window.preload.path.join(
     window.preload.inject.os.getPath('appData'),
     window.preload.inject.getPlatform(),
-    Constant.id,
+    Constant.id
   )
 }
 
 export const getAppData2Chat = () => {
-  return window.preload.path.join(
-    getAppData(),
-    'chat',
-  )
+  return window.preload.path.join(getAppData(), 'chat')
+}
+
+export const getAppData2Group = () => {
+  return window.preload.path.join(getAppData(), 'group')
 }

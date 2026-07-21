@@ -11,7 +11,7 @@
           v-model:input="content"
           v-model:model="model"
           v-model:think="think"
-          :placeholder="group?.placeholder"
+          :placeholder="agent?.placeholder"
           @send="handleSend"
         />
       </div>
@@ -19,28 +19,28 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { useAiChatStore, useAiPromptStore, useAiAgentStore, useSettingDefaultStore } from '@/store'
-import { AiPrompt, AiAgent } from '@/entity/ai'
+import { useAiChatStore, useAiAgentStore, useSettingDefaultStore } from '@/store'
+import { AiAgent } from '@/entity/ai'
 import { MessageUtil } from '@/utils/modal'
 
 const route = useRoute()
 const router = useRouter()
 
-const group = ref<AiAgent | AiPrompt>()
+const agent = ref<AiAgent>()
 
 const content = ref('')
 const model = ref('')
 const think = ref(true)
 
 const title = computed(() => {
-  if (group.value) {
-    return `${group.value.name} | 新建对话`
+  if (agent.value) {
+    return `${agent.value.name} | 新建对话`
   }
   return '新建对话'
 })
 
 const handleSend = async () => {
-  const agentId = group.value?.id || '0'
+  const agentId = agent.value?.id || '0'
   if (!content.value) return MessageUtil.error('请输入内容')
   if (!model.value) return MessageUtil.error('请选择模型')
   const id = await useAiChatStore().add(
@@ -55,18 +55,18 @@ const handleSend = async () => {
 }
 
 onMounted(async () => {
-  group.value = useAiAgentStore().getById(route.params.id as string)
-  model.value = group.value?.model || useSettingDefaultStore().state.defaultAssistantModel
+  agent.value = useAiAgentStore().getById(route.params.id as string)
+  model.value = agent.value?.model || useSettingDefaultStore().state.defaultAssistantModel
 
   watch(
     () => route.params.id,
     (val) => {
       if (val === '0') {
-        group.value = undefined
+        agent.value = undefined
       } else {
-        group.value = useAiAgentStore().getById(route.params.id as string)
+        agent.value = useAiAgentStore().getById(route.params.id as string)
       }
-      model.value = group.value?.model || useSettingDefaultStore().state.defaultAssistantModel
+      model.value = agent.value?.model || useSettingDefaultStore().state.defaultAssistantModel
     }
   )
 })

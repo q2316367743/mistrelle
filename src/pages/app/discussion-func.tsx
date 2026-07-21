@@ -1,4 +1,4 @@
-import { useAiDiscussionStore, useAiPromptStore } from '@/store'
+import { useAiDiscussionStore, useAiPromptStore, useSettingAiStore } from '@/store'
 import { DialogPlugin, Form, FormItem, Input, Select, Textarea, Button } from 'tdesign-vue-next'
 import { MessageUtil } from '@/utils/modal'
 import { useContextMenu, useSnowflake } from '@/hooks'
@@ -58,6 +58,7 @@ export const openDiscussionPut = async (id?: string) => {
     default: () => {
       const promptStore = useAiPromptStore()
       const promptOptions = computed(() => promptStore.state.map(p => ({ label: p.name, value: p.id })))
+      const modelOptions = useSettingAiStore().options
       const modeOptions = [
         { label: '自动推进', value: 'auto' },
         { label: '手动推进', value: 'manual' },
@@ -170,7 +171,7 @@ export const openDiscussionPut = async (id?: string) => {
                             color: 'var(--td-text-color-secondary)'
                           }}
                         >
-                          选择提示词
+                          选择提示词（快速填充）
                         </div>
                         <Select
                           v-model={role.promptId}
@@ -191,6 +192,18 @@ export const openDiscussionPut = async (id?: string) => {
                           }}
                         />
                       </div>
+                      <FormItem label={'角色名称'}>
+                        <Input v-model={role.name} placeholder={'请输入角色名称'} />
+                      </FormItem>
+                      <FormItem label={'角色描述'}>
+                        <Textarea v-model={role.description} placeholder={'请输入角色描述'} autosize={{ minRows: 2, maxRows: 4 }} />
+                      </FormItem>
+                      <FormItem label={'系统提示词'}>
+                        <Textarea v-model={role.prompt} placeholder={'请输入系统提示词'} autosize={{ minRows: 3, maxRows: 8 }} />
+                      </FormItem>
+                      <FormItem label={'关联模型'}>
+                        <Select v-model={role.model} options={modelOptions} placeholder={'请选择关联模型'} clearable={true} />
+                      </FormItem>
                     </div>
                   )}
                 </div>
@@ -258,7 +271,7 @@ export const openDiscussionPut = async (id?: string) => {
                             color: 'var(--td-text-color-secondary)'
                           }}
                         >
-                          选择提示词
+                          选择提示词（快速填充）
                         </div>
                         <Select
                           v-model={form.value.summaryRole.promptId}
@@ -279,6 +292,18 @@ export const openDiscussionPut = async (id?: string) => {
                           }}
                         />
                       </div>
+                      <FormItem label={'角色名称'}>
+                        <Input v-model={form.value.summaryRole.name} placeholder={'请输入角色名称'} />
+                      </FormItem>
+                      <FormItem label={'角色描述'}>
+                        <Textarea v-model={form.value.summaryRole.description} placeholder={'请输入角色描述'} autosize={{ minRows: 2, maxRows: 4 }} />
+                      </FormItem>
+                      <FormItem label={'系统提示词'}>
+                        <Textarea v-model={form.value.summaryRole.prompt} placeholder={'请输入系统提示词'} autosize={{ minRows: 3, maxRows: 8 }} />
+                      </FormItem>
+                      <FormItem label={'关联模型'}>
+                        <Select v-model={form.value.summaryRole.model} options={modelOptions} placeholder={'请选择关联模型'} clearable={true} />
+                      </FormItem>
                     </div>
                   )}
                 </div>

@@ -1,7 +1,7 @@
 <template>
-  <page-layout :title="group?.name || '分组'">
-    <div class="group-page">
-      <div v-if="group" class="group-summary">
+  <page-layout :title="agent?.name || '分组'">
+    <div class="agent-page">
+      <div v-if="agent" class="agent-summary">
         <t-card title="提示词" size="small" hover-shadow class="summary-card">
           <p class="prompt-text" :title="promptPreview">{{ promptPreview }}</p>
         </t-card>
@@ -30,7 +30,7 @@
               size="small"
               hover-shadow
               @click="openGroupChat(chat)"
-              @contextmenu="openChatContextmenu($event, group?.id || '0', chat.id, initFunc)"
+              @contextmenu="openChatContextmenu($event, agent?.id || '0', chat.id, initFunc)"
               :title="chat.name || '未命名对话'"
             >
               <div class="chat-card__content">
@@ -65,21 +65,21 @@ import { openChatContextmenu } from '@/pages/app/chat-func'
 const route = useRoute()
 const router = useRouter()
 
-const group = ref<AiAgent>()
+const agent = ref<AiAgent>()
 const chats = ref<Array<AiChatItem>>([])
 
-const promptPreview = computed(() => (group.value ? buildAiAgentPrompt(group.value) : '暂无提示词'))
+const promptPreview = computed(() => (agent.value ? buildAiAgentPrompt(agent.value) : '暂无提示词'))
 const enabledToolsText = computed(
-  () => group.value?.tools.map((e) => toolMap[e]?.label).join('、') || '暂无启用工具'
+  () => agent.value?.tools.map((e) => toolMap[e]?.label).join('、') || '暂无启用工具'
 )
 
-const openNewGroup = () => router.push(`/new/${group.value?.id || '0'}`)
+const openNewGroup = () => router.push(`/new/${agent.value?.id || '0'}`)
 const openGroupChat = (chat: AiChatItem) =>
-  router.push(`/chat/${group.value?.id || '0'}/${chat.id}`)
+  router.push(`/chat/${agent.value?.id || '0'}/${chat.id}`)
 
 const initFunc = async () => {
-  group.value = useAiAgentStore().getById(route.params.id as string)
-  chats.value = await aiChatList(group.value?.id || '0')
+  agent.value = useAiAgentStore().getById(route.params.id as string)
+  chats.value = await aiChatList(agent.value?.id || '0')
   const { optionMap } = useSettingAiStore()
   chats.value = chats.value
     .map((e) => ({
@@ -99,11 +99,11 @@ watch(
 )
 </script>
 <style scoped lang="less">
-.group-page {
+.agent-page {
   padding: 0 24px 24px;
 }
 
-.group-summary {
+.agent-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--td-comp-margin-l);
@@ -210,11 +210,11 @@ watch(
 }
 
 @media (max-width: 720px) {
-  .group-page {
+  .agent-page {
     padding: 0 16px 16px;
   }
 
-  .group-summary {
+  .agent-summary {
     grid-template-columns: 1fr;
   }
 

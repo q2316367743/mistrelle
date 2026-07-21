@@ -95,21 +95,21 @@
             <span>默认 Agent</span>
           </button>
           <button
-            v-for="group in groups"
-            :key="group.id"
+            v-for="agent in agents"
+            :key="agent.id"
             class="menu-item"
             :class="{
               active:
-                isActive(`/agent/${group.id}`) ||
-                isActive(`/new/${group.id}`) ||
-                isStartActive(`/chat/${group.id}/`)
+                isActive(`/agent/${agent.id}`) ||
+                isActive(`/new/${agent.id}`) ||
+                isStartActive(`/chat/${agent.id}/`)
             }"
             type="button"
-            @contextmenu="openAgentContextmenu($event, group.id)"
-            @click="goTo(`/agent/${group.id}`)"
+            @contextmenu="openAgentContextmenu($event, agent.id)"
+            @click="goTo(`/agent/${agent.id}`)"
           >
             <FolderIcon class="menu-icon" />
-            <span>{{ group.name }}</span>
+            <span>{{ agent.name }}</span>
           </button>
         </div>
         <div v-else-if="active === 'discussion'" class="menu-section">
@@ -212,7 +212,7 @@ const profile = getUserProfile()
 const active = ref('agent')
 
 // 分组
-const groups = computed(() => useAiAgentStore().state)
+const agents = computed(() => useAiAgentStore().state)
 const discussions = computed(() => useAiDiscussionStore().state)
 
 const isActive = (path: string) => route.path === path

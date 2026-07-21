@@ -8,7 +8,6 @@ export const LocalNameEnum = {
   SETTING_DEFAULT: '/setting/default',
 
   LIST_AI_AGENT: '/list/ai/group',
-  LIST_AI_CHAT: (groupId: string) => `/list/ai/chat/${groupId}`,
   LIST_AI_DISCUSSION: '/list/ai/discussion',
   LIST_AI_PROMPT: '/list/ai/prompt',
   LIST_NOTE_TRACE: '/list/note/trace',
