@@ -39,6 +39,8 @@ const handleModelOption = (
 export const useSettingAiStore = defineStore('AiProvideStore', () => {
   const items = ref(new Array<AiProvide>())
   const rev = ref<string>()
+  const ready = ref(false)
+  let initPromise: Promise<void> | undefined
 
   const options = computed<Array<SelectOptionGroup>>(() => {
     return handleModelOption(items.value, 'chat')
@@ -73,9 +75,10 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
       }))
     }))
     rev.value = res.rev
+    ready.value = true
   }
 
-  init()
+  initPromise = init()
 
   const put = async (form: AiProvideForm) => {
     const index = form.id ? items.value.findIndex((item) => item.id === form.id) : -1
@@ -108,6 +111,8 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
     options,
     vectorOptions,
     optionMap,
+    ready,
+    initPromise,
     put,
     remove
   }

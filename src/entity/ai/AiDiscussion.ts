@@ -22,7 +22,11 @@ export type AiDiscussionSummaryTrigger =
   // 所有轮之后总结
   | 'after_all_rounds'
   // 手动触发
-  | 'manual';
+  | 'manual'
+
+export type AiDiscussionSessionStatus = 'idle' | 'running' | 'stopped' | 'completed'
+
+export type AiDiscussionMessageStatus = 'pending' | 'streaming' | 'complete' | 'stop' | 'error'
 
 /**
  * AI 讨论组列表项
@@ -129,9 +133,9 @@ export function buildAiDiscussionForm(): AiDiscussionForm {
   }
 }
 
-export interface Message {
+export interface AiDiscussionMessage {
   id: string
-  type: 'user' | 'role'
+  type: 'user' | 'role' | 'summary'
   /** 用户发言时为 null，角色发言时对应角色 id */
   roleId?: string
   /** 发言内容 */
@@ -140,10 +144,22 @@ export interface Message {
   timestamp: number
   /** 所属轮次 */
   round: number
+  /** 角色流式输出状态 */
+  status?: AiDiscussionMessageStatus
+}
+
+export interface AiDiscussionRecordItem extends BaseEntity {
+  discussionId: string
+  name: string
+  currentRound: number
+  status: AiDiscussionSessionStatus
 }
 
 export interface AiDiscussionRecord extends BaseEntity {
+  discussionId: string
   // 讨论记录名称，ai 自动总结
   name: string
-  messages: Array<Message>
+  currentRound: number
+  status: AiDiscussionSessionStatus
+  messages: Array<AiDiscussionMessage>
 }

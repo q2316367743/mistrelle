@@ -34,6 +34,11 @@ export const routes: Array<RouteRecordRaw> = [
     path: '/agent/:id',
     component: () => import('@/pages/agent/PageAgent.vue')
   },
+  {
+    name: '讨论组',
+    path: '/discussion/:id/home',
+    component: () => import('@/pages/discussion/home/PageDiscussion.vue')
+  },
 
   {
     name: 'note/自我',

@@ -25,6 +25,6 @@ export const getAppData2Chat = () => {
   return window.preload.path.join(getAppData(), 'chat')
 }
 
-export const getAppData2Group = () => {
-  return window.preload.path.join(getAppData(), 'group')
+export const getAppData2Discussion = () => {
+  return window.preload.path.join(getAppData(), 'discussion')
 }

@@ -58,6 +58,17 @@
           <ChatIcon class="menu-icon" />
           <span>半窗烟雨</span>
         </button>
+        <button
+          class="menu-item"
+          :class="{
+            active: isActive(`/agent/0`) || isStartActive(`/chat/0/`)
+          }"
+          type="button"
+          @click="goTo(`/agent/0`)"
+        >
+          <ChatBubbleHistoryIcon class="menu-icon" />
+          <span>聊天记录</span>
+        </button>
 
         <t-divider size="1px" />
 
@@ -83,17 +94,6 @@
               </template>
             </t-button>
           </div>
-          <button
-            class="menu-item"
-            :class="{
-              active: isActive(`/agent/0`) || isStartActive(`/chat/0/`)
-            }"
-            type="button"
-            @click="goTo(`/agent/0`)"
-          >
-            <FolderIcon class="menu-icon" />
-            <span>默认 Agent</span>
-          </button>
           <button
             v-for="agent in agents"
             :key="agent.id"
@@ -131,9 +131,10 @@
             v-for="item in discussions"
             :key="item.id"
             class="menu-item"
-            :class="{ active: isActive(`/discussion/${item.id}`) }"
+            :class="{ active: isStartActive(`/discussion/${item.id}/`) }"
             type="button"
             @click="goTo(`/discussion/${item.id}`)"
+            @contextmenu="openDiscussionContextmenu($event, item.id)"
           >
             <UsergroupIcon class="menu-icon" />
             <span>{{ item.name }}</span>
@@ -196,13 +197,14 @@ import {
   FolderIcon,
   InternetIcon,
   UserIcon,
-  UsergroupIcon
+  UsergroupIcon,
+  ChatBubbleHistoryIcon
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useAiDiscussionStore, useAiAgentStore } from '@/store'
 import { openAgentContextmenu, openAgentPut } from '@/pages/app/agent-func'
-import { openDiscussionPut } from '@/pages/app/discussion-func'
+import { openDiscussionPut, openDiscussionContextmenu } from '@/pages/app/discussion-func'
 
 const router = useRouter()
 const route = useRoute()
@@ -269,7 +271,7 @@ onMounted(() => {
     color var(--fluent-transition-fast);
 
   &:hover {
-    background: var(--fluent-item-hover) !important;
+    background: var(--fluent-item-hover);
   }
 
   &:focus-visible {
@@ -357,6 +359,10 @@ onMounted(() => {
     color: var(--td-text-color-brand);
     background: var(--fluent-item-selected);
     border-color: var(--fluent-sidebar-border);
+
+    &:hover {
+      background: var(--fluent-item-selected);
+    }
 
     &::before {
       background: var(--fluent-item-selected-border);

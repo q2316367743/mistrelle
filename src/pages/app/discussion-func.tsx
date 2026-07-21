@@ -1,9 +1,11 @@
 import { useAiDiscussionStore, useAiPromptStore, useSettingAiStore } from '@/store'
 import { DialogPlugin, Form, FormItem, Input, Select, Textarea, Button } from 'tdesign-vue-next'
-import { MessageUtil } from '@/utils/modal'
+import type { FormInstanceFunctions, FormRule } from 'tdesign-vue-next'
+import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import { useContextMenu, useSnowflake } from '@/hooks'
 import { AddIcon, DeleteIcon, EditIcon, ChevronDownIcon, ChevronRightIcon } from 'tdesign-icons-vue-next'
 import { AiDiscussionForm, buildAiDiscussionForm } from '@/entity/ai'
+import { discussionRecordRemoveAll } from '@/modules/discussion'
 
 export const openDiscussionPut = async (id?: string) => {
   const { getById, put } = useAiDiscussionStore()
@@ -11,6 +13,22 @@ export const openDiscussionPut = async (id?: string) => {
   const form = ref<AiDiscussionForm>(old || buildAiDiscussionForm())
   const expandedRoles = ref<number[]>([])
   const summaryExpanded = ref(old?.summaryRole !== undefined)
+
+  const formRef = ref<FormInstanceFunctions | null>(null)
+  const formRules = computed<Record<string, FormRule[]>>(() => {
+    const rules: Record<string, FormRule[]> = {}
+    form.value.roles.forEach((_, i) => {
+      rules[`roles[${i}].model`] = [
+        { required: true, message: '请选择关联模型', type: 'error', trigger: 'change' },
+      ]
+    })
+    if (form.value.summaryRole) {
+      rules['summaryRole.model'] = [
+        { required: true, message: '请选择关联模型', type: 'error', trigger: 'change' },
+      ]
+    }
+    return rules
+  })
 
   const toggleRoleExpand = (index: number) => {
     const idx = expandedRoles.value.indexOf(index)
@@ -44,7 +62,9 @@ export const openDiscussionPut = async (id?: string) => {
     header: (old ? '修改' : '新增') + '分组',
     placement: 'center',
     width: '80vw',
-    onConfirm: () => {
+    onConfirm: async () => {
+      const result = await formRef.value?.validate?.()
+      if (result !== true) return
       if (!summaryExpanded.value) form.value.summaryRole = undefined
       put(form.value, id)
         .then(() => {
@@ -77,7 +97,7 @@ export const openDiscussionPut = async (id?: string) => {
 
       return (
         <div style={{ height: 'calc(100vh - 280px)', overflow: 'auto' }}>
-          <Form data={form.value}>
+          <Form ref={formRef} data={form.value} rules={formRules.value}>
             <FormItem label={'分组名称'} name={'name'}>
               <Input v-model={form.value.name} placeholder={'请输入分组名称'} />
             </FormItem>
@@ -201,7 +221,7 @@ export const openDiscussionPut = async (id?: string) => {
                       <FormItem label={'系统提示词'}>
                         <Textarea v-model={role.prompt} placeholder={'请输入系统提示词'} autosize={{ minRows: 3, maxRows: 8 }} />
                       </FormItem>
-                      <FormItem label={'关联模型'}>
+                      <FormItem label={'关联模型'} name={`roles[${index}].model`}>
                         <Select v-model={role.model} options={modelOptions} placeholder={'请选择关联模型'} clearable={true} />
                       </FormItem>
                     </div>
@@ -301,7 +321,7 @@ export const openDiscussionPut = async (id?: string) => {
                       <FormItem label={'系统提示词'}>
                         <Textarea v-model={form.value.summaryRole.prompt} placeholder={'请输入系统提示词'} autosize={{ minRows: 3, maxRows: 8 }} />
                       </FormItem>
-                      <FormItem label={'关联模型'}>
+                      <FormItem label={'关联模型'} name={'summaryRole.model'}>
                         <Select v-model={form.value.summaryRole.model} options={modelOptions} placeholder={'请选择关联模型'} clearable={true} />
                       </FormItem>
                     </div>
@@ -345,7 +365,18 @@ export const openDiscussionContextmenu = (e: MouseEvent, id: string) => {
       {
         icon: () => <DeleteIcon class={'color-red'} />,
         label: <span class={'color-red'}>删除</span>,
-        onClick: () => {}
+        onClick: () => {
+          MessageBoxUtil.confirm(
+            '确定要删除吗？会删除全部的讨论记录，数据不可恢复',
+            '删除确认'
+          ).then(() => {
+            const store = useAiDiscussionStore()
+            store.remove(id).then(() => {
+              discussionRecordRemoveAll(id)
+              MessageUtil.success('删除成功')
+            }).catch((e) => MessageUtil.error('删除失败', e))
+          })
+        }
       }
     ]
   })
