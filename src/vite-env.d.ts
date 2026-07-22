@@ -44,6 +44,7 @@ declare global {
           args?: Record<string, unknown>
         ): {
           result?: unknown
+          stdout?: string
           error?: string
         }
       }
