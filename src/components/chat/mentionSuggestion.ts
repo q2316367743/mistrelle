@@ -1,11 +1,8 @@
 import { PluginKey } from '@tiptap/pm/state'
 import type { SuggestionOptions } from '@tiptap/suggestion'
-import { ref, type Ref } from 'vue'
+import type { Ref } from 'vue'
 import type { ChatFileRef } from '@/utils/chatSender'
 import type { LocalSkill } from '@/modules/skill'
-
-// suggestion 弹层是否处于打开状态（供 Enter 发送逻辑判断是否让位给选择）
-export const suggestionOpen = ref(false)
 
 // suggestion 运行时注入的 props（仅取框架确实会回传的字段；selectedIndex 由闭包维护，框架不回传）
 interface RuntimeSuggestionProps {
@@ -17,6 +14,10 @@ interface RuntimeSuggestionProps {
 interface FormatResult {
   title: string
   desc?: string
+}
+
+interface SuggestionRendererOptions {
+  onOpenChange?: (open: boolean) => void
 }
 
 const buildContainer = (): HTMLDivElement => {
@@ -55,7 +56,8 @@ const rowCss = (active: boolean): string =>
  * 因此 items / selectedIndex / command 必须以闭包状态维护，不能从 props 上读取。
  */
 export const makeSuggestionRenderer = (
-  format: (item: unknown) => FormatResult
+  format: (item: unknown) => FormatResult,
+  options: SuggestionRendererOptions = {}
 ): SuggestionOptions['render'] => {
   return () => {
     let container: HTMLDivElement | null = null
@@ -118,7 +120,7 @@ export const makeSuggestionRenderer = (
         selectedIndex = 0
         items = p.items ?? []
         triggerCommand = p.command
-        suggestionOpen.value = true
+        options.onOpenChange?.(true)
         container = buildContainer()
         renderRows(container)
         positionPopup(p, container)
@@ -154,7 +156,7 @@ export const makeSuggestionRenderer = (
         return false
       },
       onExit: () => {
-        suggestionOpen.value = false
+        options.onOpenChange?.(false)
         if (container?.parentNode) container.parentNode.removeChild(container)
         container = null
       }
@@ -169,7 +171,8 @@ export interface SkillSuggestionItem {
 }
 
 export const buildSkillSuggestion = (
-  skills: Ref<LocalSkill[]>
+  skills: Ref<LocalSkill[]>,
+  options?: SuggestionRendererOptions
 ): Partial<SuggestionOptions<SkillSuggestionItem>> => ({
   char: '/',
   pluginKey: new PluginKey('skillMention'),
@@ -190,10 +193,13 @@ export const buildSkillSuggestion = (
       ])
       .run()
   },
-  render: makeSuggestionRenderer((item) => {
-    const s = item as SkillSuggestionItem
-    return { title: s.label, desc: s.data.description }
-  })
+  render: makeSuggestionRenderer(
+    (item) => {
+      const s = item as SkillSuggestionItem
+      return { title: s.label, desc: s.data.description }
+    },
+    options
+  )
 })
 
 export interface FileSuggestionItem {
@@ -203,7 +209,8 @@ export interface FileSuggestionItem {
 }
 
 export const buildFileSuggestion = (
-  files: Ref<ChatFileRef[]>
+  files: Ref<ChatFileRef[]>,
+  options?: SuggestionRendererOptions
 ): Partial<SuggestionOptions<FileSuggestionItem>> => ({
   char: '@',
   pluginKey: new PluginKey('fileMention'),
@@ -222,8 +229,11 @@ export const buildFileSuggestion = (
       ])
       .run()
   },
-  render: makeSuggestionRenderer((item) => {
-    const f = item as FileSuggestionItem
-    return { title: f.label, desc: f.data.path }
-  })
+  render: makeSuggestionRenderer(
+    (item) => {
+      const f = item as FileSuggestionItem
+      return { title: f.label, desc: f.data.path }
+    },
+    options
+  )
 })

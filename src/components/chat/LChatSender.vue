@@ -40,11 +40,7 @@ import { MessageUtil } from '@/utils/modal'
 import { toDateString } from '@/utils/lang'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
 import type { SkillItem, UserMessage, UserMessageContent } from '@/domain'
-import {
-  buildFileSuggestion,
-  buildSkillSuggestion,
-  suggestionOpen
-} from './mentionSuggestion'
+import { buildFileSuggestion, buildSkillSuggestion } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
 
 const props = withDefaults(
@@ -70,6 +66,8 @@ const [thinkValue, toggleThink] = useBoolState(props.initialThink)
 
 const inputValue = ref('')
 const mentionState = ref<{ skills: SkillItem[]; files: ChatFileRef[] }>({ skills: [], files: [] })
+const suggestionOpen = ref(false)
+const suggestionOptions = { onOpenChange: (open: boolean) => (suggestionOpen.value = open) }
 
 // 从编辑器文档中提取结构化引用（不再解析文本）
 const extractMentions = (editor: Editor): { skills: SkillItem[]; files: ChatFileRef[] } => {
@@ -123,7 +121,7 @@ const buildUserMessage = (): UserMessage | null => {
 const SkillMention = Mention.extend({ name: 'skillMention' }).configure({
   // 退格一次即整体删除标签，避免残留触发字符（默认 false 会把节点替换成 "/"）
   deleteTriggerWithBackspace: true,
-  suggestion: buildSkillSuggestion(skills),
+  suggestion: buildSkillSuggestion(skills, suggestionOptions),
   renderHTML: ({ options, node }) => [
     'span',
     mergeAttributes(options.HTMLAttributes, {
@@ -138,7 +136,7 @@ const SkillMention = Mention.extend({ name: 'skillMention' }).configure({
 const FileMention = Mention.extend({ name: 'fileMention' }).configure({
   // 退格一次即整体删除标签，避免残留触发字符（默认 false 会把节点替换成 "@"）
   deleteTriggerWithBackspace: true,
-  suggestion: buildFileSuggestion(files),
+  suggestion: buildFileSuggestion(files, suggestionOptions),
   renderHTML: ({ options, node }) => [
     'span',
     mergeAttributes(options.HTMLAttributes, {
