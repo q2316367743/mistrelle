@@ -1,14 +1,4 @@
 <template>
-  <page-layout :title="discussion?.name || '讨论组'">
-    <template #extra>
-      <div class="page-actions">
-        <t-tag variant="light">{{ modeText }}</t-tag>
-        <t-tooltip content="未来扩展：群组式 AI 讨论，主动 @ 触发指定角色">
-          <t-button variant="outline" disabled>群组式 @ 入口</t-button>
-        </t-tooltip>
-      </div>
-    </template>
-
     <div v-if="loading" class="discussion-loading">
       <t-loading size="large" text="正在加载讨论组" />
     </div>
@@ -69,12 +59,7 @@
               >
                 总结
               </t-button>
-              <t-button
-                theme="primary"
-                :loading="running"
-                :disabled="!canRun"
-                @click="handleRun"
-              >
+              <t-button theme="primary" :loading="running" :disabled="!canRun" @click="handleRun">
                 <template #icon><play-icon /></template>
                 {{ record ? '下一轮' : '开始讨论' }}
               </t-button>
@@ -83,7 +68,6 @@
         </footer>
       </main>
     </div>
-  </page-layout>
 </template>
 
 <script setup lang="ts">
@@ -102,7 +86,6 @@ const {
   running,
   orderedRoles,
   canRun,
-  modeText,
   summaryText,
   handleRun,
   handleSummarize,

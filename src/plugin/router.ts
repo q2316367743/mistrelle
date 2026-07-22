@@ -36,8 +36,8 @@ export const routes: Array<RouteRecordRaw> = [
   },
   {
     name: '讨论组',
-    path: '/discussion/:id/home',
-    component: () => import('@/pages/discussion/home/PageDiscussion.vue')
+    path: '/discussion/:id',
+    component: () => import('@/pages/discussion/PageDiscussion.vue')
   },
 
   {
