@@ -13,7 +13,6 @@
       <l-chat-sender
         :initial-input="inputValue"
         :initial-model="modelValue"
-        :initial-think="think"
         :loading="status === 'pending' || status === 'streaming'"
         :placeholder="placeholder"
         :root-dir="rootDir"
@@ -40,7 +39,7 @@ import { toolMap } from '@/modules/tool'
 const props = withDefaults(
   defineProps<{
     functions: ToolFunction[]
-    prompt: string
+    systemPrompt: string
     storageKey?: string
     placeholder?: string
     rootDir?: string
@@ -60,6 +59,7 @@ const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<b
 
 const instance = new ToolChat({
   functions: props.functions,
+  systemPrompt: props.systemPrompt,
   toolConfirmHandler: confirmTool
 })
 
@@ -115,24 +115,7 @@ const handleStop = () => {
 }
 
 const handleClear = () => {
-  if (!props.prompt) {
-    messages.value = []
-    return
-  }
-  messages.value = [
-    {
-      id: '0',
-      role: 'system',
-      content: [
-        {
-          type: 'text',
-          data: props.prompt,
-          status: 'complete',
-          time: Date.now()
-        }
-      ]
-    }
-  ]
+  messages.value = []
 }
 
 const handleReask = (messageId: string) => {
@@ -179,16 +162,13 @@ onMounted(async () => {
       async (val) => {
         await aiChatContentSet(props.storageKey!, {
           updatedTime: Date.now(),
+          systemPrompt: props.systemPrompt,
           draft: undefined,
           messages: toRaw(val)
         })
       },
       { throttle: 1000, deep: true }
     )
-  }
-
-  if (messages.value.length === 0 && props.prompt) {
-    await instance.sendSystemMessage(props.prompt)
   }
 
   const hasUserMessage = messages.value.some((m) => m.role === 'user')

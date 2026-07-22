@@ -18,7 +18,7 @@
 </template>
 <script lang="ts" setup>
 import { useAiAgentStore, useAiChatStore, useSettingDefaultStore } from '@/store'
-import { AiAgent } from '@/entity/ai'
+import { AiAgent, buildAiAgentPrompt } from '@/entity/ai'
 import type { UserMessage } from '@/domain'
 import type { AiChatDraft } from '@/entity/ai'
 
@@ -44,7 +44,7 @@ const handleSend = async (message: UserMessage) => {
     thinking: message.thinking,
     reasoning_effort: message.reasoning_effort
   }
-  const id = await useAiChatStore().add(draft, agentId)
+  const id = await useAiChatStore().add(draft, agentId, agent.value ? buildAiAgentPrompt(agent.value) : '')
   await router.push(`/chat/${agentId}/${id}`)
 }
 

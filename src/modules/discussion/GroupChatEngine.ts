@@ -168,9 +168,12 @@ export class GroupChatEngine {
       ...(role.tools || []).map((name) => toolMap[name]).filter(Boolean),
       ...buildMemoryTools(this.chat.discussionId)
     ]
-    const chat = new ToolChat({ functions, enableSkill: true })
+    const chat = new ToolChat({
+      functions,
+      enableSkill: true,
+      systemPrompt: buildMemberPrompt(this.discussion, role, this.discussion.roles)
+    })
     this.activeChats.set(message.id, chat)
-    await chat.sendSystemMessage(buildMemberPrompt(this.discussion, role, this.discussion.roles))
 
     const syncMessage = () => {
       const assistant = chat.messages.value.findLast(

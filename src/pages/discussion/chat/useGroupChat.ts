@@ -168,10 +168,12 @@ export const useGroupChat = () => {
       const transcript = buildTranscript(discussion.value, ctxMessages)
       const modelKey = discussion.value.roles[0]?.model || useSettingDefaultStore().state.defaultAssistantModel
       const params = await resolveModel(modelKey)
-      const summarizer = new ToolChat({ functions: [], enableSkill: false })
-      await summarizer.sendSystemMessage(
-        '你是总结助手。把以下群聊记录压缩为一段简洁的要点摘要，保留关键结论、主要分歧、用户偏好与待办事项，用于作为新上下文的起点。直接输出摘要正文。'
-      )
+      const summarizer = new ToolChat({
+        functions: [],
+        enableSkill: false,
+        systemPrompt:
+          '你是总结助手。把以下群聊记录压缩为一段简洁的要点摘要，保留关键结论、主要分歧、用户偏好与待办事项，用于作为新上下文的起点。直接输出摘要正文。'
+      })
       await summarizer.sendUserMessage({ ...params, content: [buildTextContent(transcript)] })
       const summary = extractText(summarizer)
       summarizer.destroy()

@@ -1,5 +1,5 @@
 export * from './engine/ChatCommon'
-export * from './engine/UseChatTool'
+export * from './agent'
 export * from './engine/UseChatName'
 export * from './engine/UseDiscussionName'
 

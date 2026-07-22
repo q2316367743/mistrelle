@@ -24,6 +24,8 @@ export interface AiChatContent {
    * 更新时间
    */
   updatedTime: number
+  // 创建会话时固定下来的系统提示词快照
+  systemPrompt: string
   // 待发送的首条消息草稿
   draft?: AiChatDraft
   messages: Array<ChatMessage>

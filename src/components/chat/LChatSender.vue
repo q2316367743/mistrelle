@@ -5,26 +5,24 @@
       <EditorContent :editor="editor" class="l-chat-sender__editor" />
     </div>
     <div class="l-chat-sender__footer">
-      <div class="l-chat-sender__tools">
-        <t-select v-model="modelKey" :options="options" placeholder="请选择模型" />
-        <t-button
-          :variant="thinkValue ? 'base' : 'outline'"
-          shape="round"
-          :theme="thinkValue ? 'primary' : 'default'"
-          @click="toggleThink()"
-          class="shrink-0"
-        >
-          <template #icon><SystemSumIcon /></template>
-          深度思考
+      <t-button shape="circle" variant="text">
+        <template #icon>
+          <add-icon />
+        </template>
+      </t-button>
+      <div class="flex gap-8px">
+        <div class="l-chat-sender__tools">
+          <t-select v-model="modelKey" :options="options" placeholder="请选择模型" />
+        </div>
+        <t-button v-if="loading" theme="danger" variant="outline" @click="handleStop">
+          停止
         </t-button>
+        <t-button v-else theme="primary" :disabled="!canSend" @click="handleSend">发送</t-button>
       </div>
-      <t-button v-if="loading" theme="danger" variant="outline" @click="handleStop">停止</t-button>
-      <t-button v-else theme="primary" :disabled="!canSend" @click="handleSend">发送</t-button>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { SystemSumIcon } from 'tdesign-icons-vue-next'
 import type { SelectProps } from 'tdesign-vue-next'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
@@ -35,24 +33,28 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import { nanoid } from 'nanoid'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { useSettingAiStore, useSettingDefaultStore } from '@/store'
-import { useBoolState } from '@/hooks'
 import { MessageUtil } from '@/utils/modal'
 import { toDateString } from '@/utils/lang'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
 import type { SkillItem, UserMessage, UserMessageContent } from '@/domain'
 import { buildFileSuggestion, buildSkillSuggestion } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
+import { AddIcon } from 'tdesign-icons-vue-next'
 
 const props = withDefaults(
   defineProps<{
     initialInput?: string
     initialModel?: string
-    initialThink?: boolean
     loading?: boolean
     placeholder?: string
     rootDir?: string
   }>(),
-  { initialInput: '', initialModel: '', initialThink: true, loading: false, placeholder: '说点什么吧...' }
+  {
+    initialInput: '',
+    initialModel: '',
+    loading: false,
+    placeholder: '说点什么吧...'
+  }
 )
 const emit = defineEmits<{
   send: [message: UserMessage]
@@ -62,7 +64,6 @@ const emit = defineEmits<{
 const skills = ref<LocalSkill[]>([])
 const files = ref<ChatFileRef[]>([])
 const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaultAssistantModel)
-const [thinkValue, toggleThink] = useBoolState(props.initialThink)
 
 const inputValue = ref('')
 const mentionState = ref<{ skills: SkillItem[]; files: ChatFileRef[] }>({ skills: [], files: [] })
@@ -113,7 +114,8 @@ const buildUserMessage = (): UserMessage | null => {
     content: getContents(),
     model: option.identifier,
     provide: option.provideId,
-    thinking: thinkValue.value ? 'enabled' : 'disabled',
+    // 默认启用
+    thinking: 'enabled',
     datetime: toDateString(null)
   }
 }
@@ -183,7 +185,9 @@ const editor = useEditor({
 
 const options = computed<SelectProps['options']>(() => useSettingAiStore().options)
 const canSend = computed(() =>
-  Boolean(inputValue.value.trim() || mentionState.value.skills.length || mentionState.value.files.length)
+  Boolean(
+    inputValue.value.trim() || mentionState.value.skills.length || mentionState.value.files.length
+  )
 )
 const showPlaceholder = computed(
   () => !inputValue.value && !mentionState.value.skills.length && !mentionState.value.files.length
@@ -220,12 +224,6 @@ watch(
   () => props.initialModel,
   (value) => {
     modelKey.value = value || useSettingDefaultStore().state.defaultAssistantModel
-  }
-)
-watch(
-  () => props.initialThink,
-  (value) => {
-    thinkValue.value = value ?? true
   }
 )
 watch(

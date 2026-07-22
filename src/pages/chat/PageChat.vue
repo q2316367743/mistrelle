@@ -3,7 +3,7 @@
       <l-chat-engine
         v-if="initial"
         :functions="functions"
-        :prompt="prompt"
+        :system-prompt="systemPrompt"
         :storage-key="storageKey"
         :placeholder="agent?.placeholder"
       />
@@ -11,11 +11,11 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
+import { AiChatItem, AiAgent } from '@/entity/ai'
 import { useAiAgentStore } from '@/store'
 import { toolMap } from '@/modules/tool'
 import { ToolFunction } from '@/domain'
-import { aiChatGet, buildChatChatPath } from '@/modules/chat'
+import { aiChatContentGet, aiChatGet, buildChatChatPath } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { useSafeBack } from '@/hooks'
 
@@ -33,14 +33,8 @@ const title = computed(() => {
   }
   return chat.value?.name || '聊天'
 })
-const prompt = computed(() => {
-  if (agent.value) {
-    return buildAiAgentPrompt(agent.value)
-  }
-  return ''
-})
-
 const storageKey = ref()
+const systemPrompt = ref('')
 
 onMounted(async () => {
   try {
@@ -55,6 +49,8 @@ onMounted(async () => {
       functions.value = agent.value.tools.map((tool) => toolMap[tool])
     }
     storageKey.value = buildChatChatPath(agent.value?.id || '0', chat.value.id)
+    const content = await aiChatContentGet(storageKey.value)
+    systemPrompt.value = content?.systemPrompt ?? ''
 
     initial.value = true
   } catch (e) {

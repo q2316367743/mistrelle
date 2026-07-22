@@ -196,11 +196,12 @@ export class DiscussionEngine {
 
     // 解析角色配置的工具，注入到本次对话
     const functions = (role.tools || []).map((name) => toolMap[name]).filter(Boolean)
-    const chat = new ToolChat({ functions, enableSkill: false })
+    const chat = new ToolChat({
+      functions,
+      enableSkill: false,
+      systemPrompt: summary ? buildSummaryPrompt(this.discussion, role) : buildRolePrompt(this.discussion, role)
+    })
     this.activeChats.set(message.id, chat)
-    await chat.sendSystemMessage(
-      summary ? buildSummaryPrompt(this.discussion, role) : buildRolePrompt(this.discussion, role)
-    )
 
     // 同时监听 chat.messages 与 chat.status，flush: 'sync' 保证流式 chunk
     // 写入时 message.content/message.status 立即更新，避免 pre 异步 flush 导致
@@ -214,7 +215,6 @@ export class DiscussionEngine {
       message.status = toMessageStatus(chat.status.value)
       this.callbacks.onChange?.()
     }
-    // 初始化一次：sendSystemMessage 之后 chat 里已有 system + 即将发送 user，
     // 同步一次让 message 拿到最新基线（status='pending'、content 为空）。
     syncMessage()
     const stopWatch = watch(

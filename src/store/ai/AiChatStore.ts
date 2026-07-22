@@ -32,8 +32,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     .then(() => logger.debug('AI 聊天初始化成功'))
     .catch((e) => logger.error('AI 聊天初始化失败', e))
 
-  const add = async (draft: AiChatDraft, agentId: string) => {
-    const id = await aiChatAdd(agentId, draft)
+  const add = async (draft: AiChatDraft, agentId: string, systemPrompt: string) => {
+    const id = await aiChatAdd(agentId, draft, systemPrompt)
     if (agentId === '0') {
       // 更新缓存
       await init()

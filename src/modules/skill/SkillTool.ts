@@ -1,4 +1,3 @@
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { ToolFunction, type ChatMessage, type SkillContent, type TextContent } from '@/domain'
 import { localSkillList, localSkillContentGet, localSkillFileRead } from './SkillService'
 import type { LocalSkill } from './types'
@@ -113,8 +112,11 @@ export const buildSkillCatalogPrompt = (skills: LocalSkill[]): string => {
  */
 export const buildSkillInjectionPrompt = (skill: LocalSkill, content: string): string => {
   return [
-    '<skill name="' + skill.name + '">',
+    '<skill>',
+    `name: ${skill.name}`,
+    `path: ${skill.path}`,
     '用户已激活以下 Skill，请严格遵循其中的指令完成任务。',
+    '当 Skill 内容引用同目录下的脚本、模板或资料文件时，请基于上述 path 拼出绝对路径后调用 `read_skill_file`。',
     '',
     content,
     '</skill>'
@@ -122,7 +124,7 @@ export const buildSkillInjectionPrompt = (skill: LocalSkill, content: string): s
 }
 
 // ==========================================
-//  聊天引擎入口（会话粘滞）
+//  聊天引擎入口（单轮显式激活）
 // ==========================================
 
 // 提取一条用户消息的原始文本（不含 referenceContext）
@@ -152,46 +154,40 @@ const resolveActiveSkillFromMessage = (
 }
 
 /**
- * 供聊天引擎调用：解析会话并将 skill 上下文注入到 API 消息中（会话粘滞语义）
- *
- * - 激活 skill 从历史派生：取最近一个匹配到真实 skill 的 /name，后续不指定时沿用它，
- *   输入新的 /name 才切换；因此回滚 / 重问 / 清空等操作无需额外维护状态即可保持正确。
- * - 已激活 skill：系统提示词注入该 skill 全文；未激活：注入 skill 目录供 AI 自主加载。
- * - 同时剥离 API 用户消息中匹配到 skill 的 /name 前缀（保留 referenceContext 后缀），
- *   使历史消息中的指令前缀不会残留给模型。
+ * 构建本次请求的动态 skill 提示词。
+ * 当前最后一条用户消息显式指定的 skill 会注入全文；历史 skill 只作为可手动加载线索。
  */
-export const applySkillToChat = async (
-  messages: ChatMessage[],
-  apiMessages: ChatCompletionMessageParam[]
-): Promise<void> => {
+export const buildSkillDynamicPrompt = async (messages: ChatMessage[]): Promise<string> => {
   const skills = await localSkillList()
-  if (skills.length === 0) return
+  if (skills.length === 0) return ''
 
-  // 1. 从历史中找最近一个匹配到真实 skill 的消息作为激活 skill（优先 SkillContent，回退 /name 文本）
-  let activeSkill: LocalSkill | undefined
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const matched = resolveActiveSkillFromMessage(messages[i], skills)
-    if (matched) {
-      activeSkill = matched
-      break
-    }
+  const userMessages = messages.filter((msg) => msg.role === 'user')
+  const latestUser = userMessages[userMessages.length - 1]
+  const activeSkill = latestUser ? resolveActiveSkillFromMessage(latestUser, skills) : undefined
+  const historySkills = userMessages
+    .map((msg) => resolveActiveSkillFromMessage(msg, skills))
+    .filter((skill): skill is LocalSkill => !!skill && skill.name !== activeSkill?.name)
+  const historySkillMap = new Map(historySkills.map((skill) => [skill.name, skill]))
+
+  const parts = [buildSkillCatalogPrompt(skills)]
+
+  if (historySkillMap.size > 0) {
+    parts.push(
+      [
+        '<history_skills>',
+        '历史对话中用户曾指定以下 Skill。它们不代表当前已激活；仅当当前问题需要追溯历史上下文时，可调用 `load_skill` 手动加载。',
+        '',
+        ...Array.from(historySkillMap.values()).map(
+          (skill) => `- ${skill.name}：${skill.description || skill.dirName}`
+        ),
+        '</history_skills>'
+      ].join('\n')
+    )
   }
 
-  // 2. 注入系统提示词：已激活注入全文，否则注入目录
-  const systemAppend = activeSkill
-    ? buildSkillInjectionPrompt(activeSkill, await localSkillContentGet(activeSkill))
-    : buildSkillCatalogPrompt(skills)
-  const system = apiMessages.find((m) => m.role === 'system')
-  if (systemAppend && system && typeof system.content === 'string') {
-    system.content = `${system.content}\n\n${systemAppend}`
+  if (activeSkill) {
+    parts.push(buildSkillInjectionPrompt(activeSkill, await localSkillContentGet(activeSkill)))
   }
 
-  // 3. 剥离 API 用户消息中匹配到 skill 的 /name 前缀（rest 为空时保留，避免空消息）
-  for (const m of apiMessages) {
-    if (m.role !== 'user' || typeof m.content !== 'string') continue
-    const cmd = parseSkillCommand(m.content)
-    if (cmd && findSkillSync(cmd.name, skills) && cmd.rest.length > 0) {
-      m.content = cmd.rest
-    }
-  }
+  return parts.filter(Boolean).join('\n\n')
 }

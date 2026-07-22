@@ -87,6 +87,7 @@ const migrateOldItem = async (agentId: string, item: unknown): Promise<AiChatIte
     }
     await aiChatContentSet(chatPath, {
       updatedTime: newItem.createdAt,
+      systemPrompt: '',
       draft,
       messages: []
     })
@@ -139,7 +140,7 @@ export const aiChatGet = async (agentId: string, id: string): Promise<AiChatItem
   return list.find((e) => e.id === id)
 }
 
-export const aiChatAdd = async (agentId: string, draft: AiChatDraft) => {
+export const aiChatAdd = async (agentId: string, draft: AiChatDraft, systemPrompt: string) => {
   const { path, list } = await aiChatListWrap(agentId)
   const id = useSnowflake().nextId()
   const now = Date.now()
@@ -159,6 +160,7 @@ export const aiChatAdd = async (agentId: string, draft: AiChatDraft) => {
   // 保存聊天内容（含草稿）
   await aiChatContentSet(buildChatChatPath(agentId, id), {
     updatedTime: now,
+    systemPrompt,
     draft,
     messages: []
   })
@@ -206,6 +208,7 @@ export const aiChatContentGet = async (path: string): Promise<AiChatContent | un
     if (Array.isArray(data.list)) {
       return {
         updatedTime: data.updatedAt || Date.now(),
+        systemPrompt: '',
         messages: data.list as ChatMessage[]
       }
     }

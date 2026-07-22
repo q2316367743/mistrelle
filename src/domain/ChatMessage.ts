@@ -18,6 +18,8 @@ export type AttachmentType = 'image' | 'video' | 'audio' | 'pdf' | 'doc' | 'ppt'
 export interface ChatBaseContent<T extends string, TData> {
   type: T
   data: TData
+  /** 同一次模型响应产生的内容共享该标识，用于还原 API 工具调用轮次。 */
+  stepId?: string
   status?: ChatMessageStatus
   id?: string
   strategy?: 'merge' | 'append'
