@@ -7,6 +7,7 @@ import type {
 } from '@/entity/ai'
 import { useSnowflake } from '@/hooks'
 import { ToolChat, type ChatRequestParams } from '@/modules/chat'
+import { buildTextContent } from '@/modules/chat/engine/userContent'
 import { toolMap } from '@/modules/tool'
 import { useSettingAiStore } from '@/store'
 
@@ -78,7 +79,7 @@ const buildRequestParams = async (modelKey: string, content: string): Promise<Ch
   const option = store.optionMap.get(modelKey)
   if (!option) throw new Error('角色关联的模型不存在或未启用。请在 AI 设置中确认已配置并启用该模型。')
   return {
-    content,
+    content: [buildTextContent(content)],
     model: option.identifier,
     provide: option.provideId,
     baseURL: option.baseUrl,

@@ -335,7 +335,7 @@ function handleAddModel() {
         identifier: result.identifier,
         model: result.name,
         type: result.type,
-        enable: true
+        enable: true,
       })
       await handleSave()
       MessageUtil.success('模型已添加')

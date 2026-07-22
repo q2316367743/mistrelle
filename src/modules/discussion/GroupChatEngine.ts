@@ -1,13 +1,9 @@
 import { watch } from 'vue'
 import type { AIMessage } from '@/domain'
-import type {
-  AiDiscussion,
-  AiDiscussionRole,
-  AiGroupChat,
-  AiGroupChatMessage
-} from '@/entity/ai'
+import type { AiDiscussion, AiDiscussionRole, AiGroupChat, AiGroupChatMessage } from '@/entity/ai'
 import { useSnowflake } from '@/hooks'
 import { ToolChat, type ChatRequestParams } from '@/modules/chat'
+import { buildTextContent } from '@/modules/chat/engine/userContent'
 import { toolMap } from '@/modules/tool'
 import { useSettingAiStore } from '@/store'
 import { buildMemoryTools } from '@/modules/discussion/DiscussionChatService'
@@ -26,9 +22,16 @@ const toMessageStatus = (status: ToolChat['status']['value']) =>
   status === 'idle' ? 'complete' : status
 
 /** 成员系统提示词：身份 + 讨论目标 + 成员花名册 + 隔离规则 */
-const buildMemberPrompt = (discussion: AiDiscussion, role: AiDiscussionRole, allRoles: AiDiscussionRole[]) => {
+const buildMemberPrompt = (
+  discussion: AiDiscussion,
+  role: AiDiscussionRole,
+  allRoles: AiDiscussionRole[]
+) => {
   const roster = allRoles
-    .map((r) => `- ${r.name}${r.id === role.id ? '（这就是你）' : ''}：${r.description || '（未填写描述）'}`)
+    .map(
+      (r) =>
+        `- ${r.name}${r.id === role.id ? '（这就是你）' : ''}：${r.description || '（未填写描述）'}`
+    )
     .join('\n')
   const others = allRoles.filter((r) => r.id !== role.id).map((r) => `@${r.name}`)
   const othersHint = others.length
@@ -96,13 +99,17 @@ export const estimateTokens = (text: string): number => {
   return tokens
 }
 
-const buildRequestParams = async (modelKey: string, content: string): Promise<ChatRequestParams> => {
+const buildRequestParams = async (
+  modelKey: string,
+  content: string
+): Promise<ChatRequestParams> => {
   const store = useSettingAiStore()
   if (!store.ready) await store.initPromise
   const option = store.optionMap.get(modelKey)
-  if (!option) throw new Error('成员关联的模型不存在或未启用。请在 AI 设置中确认已配置并启用该模型。')
+  if (!option)
+    throw new Error('成员关联的模型不存在或未启用。请在 AI 设置中确认已配置并启用该模型。')
   return {
-    content,
+    content: [buildTextContent(content)],
     model: option.identifier,
     provide: option.provideId,
     baseURL: option.baseUrl,
@@ -166,13 +173,18 @@ export class GroupChatEngine {
     await chat.sendSystemMessage(buildMemberPrompt(this.discussion, role, this.discussion.roles))
 
     const syncMessage = () => {
-      const assistant = chat.messages.value.findLast((item): item is AIMessage => item.role === 'assistant')
+      const assistant = chat.messages.value.findLast(
+        (item): item is AIMessage => item.role === 'assistant'
+      )
       message.content = getAssistantText(assistant)
       message.status = toMessageStatus(chat.status.value)
       this.callbacks.onChange?.()
     }
     syncMessage()
-    const stopWatch = watch([chat.messages, chat.status], syncMessage, { deep: true, flush: 'sync' })
+    const stopWatch = watch([chat.messages, chat.status], syncMessage, {
+      deep: true,
+      flush: 'sync'
+    })
 
     try {
       await chat.sendUserMessage(await buildRequestParams(role.model, transcript))

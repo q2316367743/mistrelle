@@ -13,6 +13,12 @@
   "dependencies": {
     "@imengyu/vue3-context-menu": "^1.5.2",
     "@tdesign-vue-next/chat": "^0.5.2",
+    "@tiptap/core": "^3.28.0",
+    "@tiptap/extension-mention": "^3.28.0",
+    "@tiptap/pm": "^3.28.0",
+    "@tiptap/starter-kit": "^3.28.0",
+    "@tiptap/suggestion": "^3.28.0",
+    "@tiptap/vue-3": "^3.28.0",
     "@vueuse/core": "^9.13.0",
     "@vueuse/integrations": "^10.11.1",
     "@ztools-center/ztools-api-types": "^1.0.3",

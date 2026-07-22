@@ -9,8 +9,8 @@ import {
   AIMessageContent,
   ChatMessage,
   SystemMessage,
-  TextContent,
-  UserMessage
+  UserMessage,
+  UserMessageContent
 } from '@/domain'
 import { toDateString } from '@/utils/lang'
 import { nanoid } from 'nanoid'
@@ -24,14 +24,10 @@ export type SSEChunkData = {
   data: unknown
 }
 
-export interface ChatRequestParams {
-  content: string
-  model: string
-  provide: string
+export interface ChatRequestParams
+  extends Omit<UserMessage, 'id' | 'role' | 'datetime' | 'ext'> {
   baseURL: string
   apiKey?: string
-  thinking?: 'enabled' | 'disabled'
-  reasoning_effort?: 'high' | 'max'
   referenceContext?: string
 }
 
@@ -109,7 +105,7 @@ export interface ChatAPI {
 
   modifyAndReaskMessage: (
     messageId: string,
-    content: string,
+    content: UserMessageContent[],
     requestParams: ChatRequestParams
   ) => Promise<void>
   sendSystemMessage: (msg: string) => Promise<void>
@@ -180,17 +176,11 @@ export abstract class AbstractChat implements ChatAPI {
     this.onBeforeSendUserMessage()
     this.status.value = 'pending'
 
+    const userContent = requestParams.content
     const userMsg: UserMessage = {
       id: nanoid(),
       role: 'user',
-      content: [
-        {
-          type: 'text',
-          data: requestParams.content,
-          status: 'complete',
-          time: Date.now()
-        }
-      ],
+      content: userContent,
       model: requestParams.model,
       provide: requestParams.provide,
       thinking: requestParams.thinking,
@@ -278,7 +268,7 @@ export abstract class AbstractChat implements ChatAPI {
       await this.doStreamRequest(
         {
           ...requestParams,
-          content: userMessage.content[0].data as string
+          content: userMessage.content
         },
         this.ctx.abortController.signal,
         seq
@@ -320,7 +310,7 @@ export abstract class AbstractChat implements ChatAPI {
 
   async modifyAndReaskMessage(
     messageId: string,
-    content: string,
+    content: UserMessageContent[],
     requestParams: ChatRequestParams
   ): Promise<void> {
     if (
@@ -337,14 +327,7 @@ export abstract class AbstractChat implements ChatAPI {
 
     // 替换用户消息内容
     const userMsg = this.messages.value[userIdx] as ChatMessage
-    userMsg.content = [
-      {
-        type: 'text',
-        data: content,
-        status: 'complete',
-        time: Date.now()
-      } as TextContent
-    ]
+    userMsg.content = content
 
     // 删除用户消息之后的所有消息
     this.messages.value = this.messages.value.slice(0, userIdx + 1)

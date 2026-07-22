@@ -7,24 +7,48 @@
           :key="message.id"
           class="r-chat-list__item"
           :data-message-id="message.id"
-          :message="message"
+          :role="message.role"
           :placement="message.role === 'user' ? 'right' : 'left'"
           :variant="message.role === 'user' ? 'base' : 'text'"
         >
           <template #content>
             <div class="flex flex-col gap-4px">
-              <template
-                v-for="(contentItem, contentIndex) in message.content"
-                :key="contentItem.id || contentIndex"
-              >
-                <r-chat-system v-if="message.role === 'system'" :prompt="message.content[0]?.data" />
-                <ChatMessage
-                  v-else-if="message.role === 'user'"
-                  variant="outline"
-                  placement="right"
-                  :content="message.content"
-                  :role="message.role"
-                >
+              <r-chat-system v-if="message.role === 'system'" :prompt="message.content[0]?.data" />
+              <template v-else-if="message.role === 'user'">
+                <ChatMessage variant="outline" placement="right" :role="message.role">
+                  <template #content>
+                    <!-- 用户消息内联展示：文本为文字，skill/file 为不同色与图标的标签，整行内联 -->
+                    <div class="r-chat-list__user-content">
+                      <template v-for="(item, index) in message.content" :key="item.id || index">
+                        <span v-if="item.type === 'text'" class="r-chat-list__text">{{
+                          item.data
+                        }}</span>
+                        <t-tag
+                          v-else-if="item.type === 'skill'"
+                          theme="primary"
+                          variant="light"
+                          :title="item.data.path"
+                          class="r-chat-list__inline-tag"
+                        >
+                          <template #icon><CodeIcon /></template>
+                          {{ item.data.name }}
+                        </t-tag>
+                        <template v-else-if="item.type === 'attachment'">
+                          <t-tag
+                            v-for="(file, fi) in item.data"
+                            :key="file.url || fi"
+                            theme="success"
+                            variant="light"
+                            :title="file.url"
+                            class="r-chat-list__inline-tag"
+                          >
+                            <template #icon><FileIcon /></template>
+                            @{{ file.name }}
+                          </t-tag>
+                        </template>
+                      </template>
+                    </div>
+                  </template>
                   <template #actionbar>
                     <RChatActionbar
                       :content="getUserText(message)"
@@ -34,16 +58,23 @@
                     />
                   </template>
                 </ChatMessage>
-                <ChatContent
-                  v-else-if="contentItem.type === 'text' || contentItem.type === 'markdown'"
-                  :content="contentItem.data"
-                />
-                <r-chat-think
-                  v-else-if="contentItem.type === 'thinking'"
-                  :content="contentItem"
-                  :index="contentIndex"
-                />
-                <r-chat-tool v-else-if="contentItem.type === 'toolcall'" :content="contentItem" />
+              </template>
+              <template v-else>
+                <template
+                  v-for="(contentItem, contentIndex) in message.content"
+                  :key="contentItem.id || contentIndex"
+                >
+                  <ChatContent
+                    v-if="contentItem.type === 'text' || contentItem.type === 'markdown'"
+                    :content="contentItem.data"
+                  />
+                  <r-chat-think
+                    v-else-if="contentItem.type === 'thinking'"
+                    :content="contentItem"
+                    :index="contentIndex"
+                  />
+                  <r-chat-tool v-else-if="contentItem.type === 'toolcall'" :content="contentItem" />
+                </template>
               </template>
             </div>
           </template>
@@ -60,12 +91,14 @@
       </div>
     </ChatList>
     <div class="r-chat-list__locator-group">
-      <t-tooltip v-for="message in messages" :key="message.id" content="定位到这条消息" placement="left">
+      <t-tooltip
+        v-for="message in messages"
+        :key="message.id"
+        content="定位到这条消息"
+        placement="left"
+      >
         <t-button
-          :class="[
-            'r-chat-list__locator',
-            `r-chat-list__locator--${message.role}`
-          ]"
+          :class="['r-chat-list__locator', `r-chat-list__locator--${message.role}`]"
           variant="text"
           shape="square"
           size="small"
@@ -80,6 +113,7 @@
 </template>
 <script lang="ts" setup>
 import { ChatContent, ChatList, ChatMessage } from '@tdesign-vue-next/chat'
+import { CodeIcon, FileIcon } from 'tdesign-icons-vue-next'
 import type { AIMessage, ChatComment, ChatMessage as ChatMessageType, UserMessage } from '@/domain'
 import RChatTool from '@/components/chat/RChatTool.vue'
 import RChatSystem from '@/components/chat/RChatSystem.vue'
@@ -107,7 +141,9 @@ const getUserText = (message: UserMessage) => {
 }
 
 const getAssistantText = (message: AIMessage) => {
-  return message.content?.find((item) => item.type === 'markdown' || item.type === 'text')?.data ?? ''
+  return (
+    message.content?.find((item) => item.type === 'markdown' || item.type === 'text')?.data ?? ''
+  )
 }
 
 const handleCommentChange = (message: AIMessage, comment: ChatComment) => {
@@ -141,6 +177,27 @@ const scrollToMessage = (messageId: string) => {
 
 .r-chat-list__item {
   scroll-margin-top: var(--td-comp-margin-xxl);
+}
+
+// 用户消息内容：文本与标签整体内联，按需换行
+.r-chat-list__user-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  line-height: 22px;
+  border: 1px solid var(--td-border-level-1-color);
+  padding: 8px;
+  border-radius: var(--td-radius-large);
+}
+
+.r-chat-list__text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.r-chat-list__inline-tag {
+  vertical-align: middle;
 }
 
 .r-chat-list__locator-group {

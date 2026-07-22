@@ -35,12 +35,12 @@
             >
               <div class="chat-card__content">
                 <div class="chat-card__main">
-                  <div class="chat-card__message">{{ chat.form.content || '暂无首条消息' }}</div>
+                  <div class="chat-card__message">{{ chat.preview || (chat as any).form?.content || '暂无首条消息' }}</div>
                 </div>
               </div>
               <template #actions>
                 <t-tag v-if="chat.top" theme="primary" variant="light" size="small">置顶</t-tag>
-                <span>{{ chat.form.model || '未设置模型' }}</span>
+                <span>{{ resolvePreviewModel(chat) || '未设置模型' }}</span>
               </template>
             </t-card>
           </div>
@@ -77,19 +77,19 @@ const openNewGroup = () => router.push(`/new/${agent.value?.id || '0'}`)
 const openGroupChat = (chat: AiChatItem) =>
   router.push(`/chat/${agent.value?.id || '0'}/${chat.id}`)
 
+const { optionMap } = useSettingAiStore()
+
+const resolvePreviewModel = (chat: AiChatItem) => {
+  const modelKey = chat.previewModel || (chat as any).form?.model
+  if (!modelKey) return ''
+  return optionMap.get(modelKey)?.model || modelKey
+}
+
 const initFunc = async () => {
   agent.value = useAiAgentStore().getById(route.params.id as string)
-  chats.value = await aiChatList(agent.value?.id || '0')
-  const { optionMap } = useSettingAiStore()
-  chats.value = chats.value
-    .map((e) => ({
-      ...e,
-      form: {
-        ...e.form,
-        model: optionMap.get(e.form.model)?.model || e.form.model
-      }
-    }))
-    .sort((a, b) => b.createdAt - a.createdAt)
+  chats.value = (await aiChatList(agent.value?.id || '0')).sort(
+    (a, b) => b.createdAt - a.createdAt
+  )
 }
 
 watch(

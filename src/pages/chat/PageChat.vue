@@ -6,8 +6,6 @@
         :prompt="prompt"
         :storage-key="storageKey"
         :placeholder="agent?.placeholder"
-        ref="lChatToolRef"
-        @initial="handleChatInitial"
       />
       <loading-result v-else title="正在加载中" />
   </page-layout>
@@ -16,7 +14,6 @@
 import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
 import { useAiAgentStore } from '@/store'
 import { toolMap } from '@/modules/tool'
-import { LocalNameEnum } from '@/global/LocalNameEnum'
 import { aiChatGet, buildChatChatPath, ToolFunction } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { useSafeBack } from '@/hooks'
@@ -28,7 +25,6 @@ const agent = ref<AiAgent>()
 const chat = ref<AiChatItem>()
 const initial = ref(false)
 const functions = shallowRef(new Array<ToolFunction>())
-const lChatToolRef = ref()
 
 const title = computed(() => {
   if (agent.value) {
@@ -44,12 +40,6 @@ const prompt = computed(() => {
 })
 
 const storageKey = ref()
-
-const handleChatInitial = (send: boolean) => {
-  if (send && chat.value) {
-    lChatToolRef.value.sendUserMessage(chat.value.form)
-  }
-}
 
 onMounted(async () => {
   try {

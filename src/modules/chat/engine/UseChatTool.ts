@@ -114,6 +114,8 @@ export class ToolChat extends AbstractChat {
 
     for (const msg of this.messages.value) {
       if (msg.role === 'user') {
+        // 仅取纯文本部分：skill/attachment 引用是结构化 content，已由 applySkillToChat 注入上下文，
+        // 不再以 /name 文本形式混入，故此处天然排除。
         const textParts = msg.content.filter((c) => c.type === 'text') as {
           data: string
         }[]

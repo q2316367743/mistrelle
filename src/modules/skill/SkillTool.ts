@@ -1,5 +1,5 @@
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
-import { ToolFunction, type ChatMessage, type TextContent } from '@/domain'
+import { ToolFunction, type ChatMessage, type SkillContent, type TextContent } from '@/domain'
 import { localSkillList, localSkillContentGet, localSkillFileRead } from './SkillService'
 import type { LocalSkill } from './types'
 
@@ -134,6 +134,23 @@ const userText = (msg: ChatMessage): string => {
     .join('')
 }
 
+// 从一条用户消息中解析出"激活 skill"：优先读取结构化的 SkillContent（输入框 mention 产生），
+// 回退到解析文本中的 /name（兼容旧历史消息，它们没有 SkillContent）。
+const resolveActiveSkillFromMessage = (
+  msg: ChatMessage,
+  skills: LocalSkill[]
+): LocalSkill | undefined => {
+  if (msg.role !== 'user') return undefined
+  const structured = msg.content.find((c): c is SkillContent => c.type === 'skill')
+  if (structured) {
+    const matched = findSkillSync(structured.data.name, skills)
+    if (matched) return matched
+  }
+  const cmd = parseSkillCommand(userText(msg))
+  if (!cmd) return undefined
+  return findSkillSync(cmd.name, skills)
+}
+
 /**
  * 供聊天引擎调用：解析会话并将 skill 上下文注入到 API 消息中（会话粘滞语义）
  *
@@ -150,14 +167,10 @@ export const applySkillToChat = async (
   const skills = await localSkillList()
   if (skills.length === 0) return
 
-  // 1. 从历史中找最近一个匹配到真实 skill 的 /name 作为激活 skill
+  // 1. 从历史中找最近一个匹配到真实 skill 的消息作为激活 skill（优先 SkillContent，回退 /name 文本）
   let activeSkill: LocalSkill | undefined
   for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i]
-    if (msg.role !== 'user') continue
-    const cmd = parseSkillCommand(userText(msg))
-    if (!cmd) continue
-    const matched = findSkillSync(cmd.name, skills)
+    const matched = resolveActiveSkillFromMessage(messages[i], skills)
     if (matched) {
       activeSkill = matched
       break

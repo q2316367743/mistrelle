@@ -8,9 +8,7 @@
       </div>
       <div class="mt-auto w-full">
         <l-chat-sender
-          v-model:input="content"
-          v-model:model="model"
-          v-model:think="think"
+          :initial-model="model"
           :placeholder="agent?.placeholder"
           @send="handleSend"
         />
@@ -19,18 +17,16 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { useAiChatStore, useAiAgentStore, useSettingDefaultStore } from '@/store'
+import { useAiAgentStore, useAiChatStore, useSettingDefaultStore } from '@/store'
 import { AiAgent } from '@/entity/ai'
-import { MessageUtil } from '@/utils/modal'
+import type { UserMessage } from '@/domain'
+import type { AiChatDraft } from '@/entity/ai'
 
 const route = useRoute()
 const router = useRouter()
 
 const agent = ref<AiAgent>()
-
-const content = ref('')
 const model = ref('')
-const think = ref(true)
 
 const title = computed(() => {
   if (agent.value) {
@@ -39,18 +35,16 @@ const title = computed(() => {
   return '新建对话'
 })
 
-const handleSend = async () => {
+const handleSend = async (message: UserMessage) => {
   const agentId = agent.value?.id || '0'
-  if (!content.value) return MessageUtil.error('请输入内容')
-  if (!model.value) return MessageUtil.error('请选择模型')
-  const id = await useAiChatStore().add(
-    {
-      content: content.value,
-      model: model.value,
-      thinking: think.value ? 'enabled' : 'disabled'
-    },
-    agentId
-  )
+  const draft: AiChatDraft = {
+    content: message.content,
+    model: message.model,
+    provide: message.provide,
+    thinking: message.thinking,
+    reasoning_effort: message.reasoning_effort
+  }
+  const id = await useAiChatStore().add(draft, agentId)
   await router.push(`/chat/${agentId}/${id}`)
 }
 

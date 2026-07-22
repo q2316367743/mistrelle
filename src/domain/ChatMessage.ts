@@ -70,6 +70,14 @@ export type AttachmentItem = {
   metadata?: Record<string, any>
 }
 export type AttachmentContent = ChatBaseContent<'attachment', AttachmentItem[]>
+// 用户在输入框中通过 "/" 引用的本地 skill（仅存引用，发送时按需读取全文）
+export type SkillItem = {
+  path: string
+  name: string
+  agentName?: string
+  dirName?: string
+}
+export type SkillContent = ChatBaseContent<'skill', SkillItem>
 export type ThinkingContent = ChatBaseContent<
   'thinking',
   {
@@ -123,7 +131,7 @@ type AIContentTypeMap = {
 }
 export type AIContentType = keyof AIContentTypeMap
 export type AIMessageContent = AIContentTypeMap[AIContentType]
-export type UserMessageContent = TextContent | AttachmentContent
+export type UserMessageContent = TextContent | AttachmentContent | SkillContent
 export interface UserMessage extends ChatBaseMessage {
   role: 'user'
   // 使用的模型

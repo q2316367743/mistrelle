@@ -11,6 +11,7 @@ export const AiModelTypeOptions: Array<CommonSelect> = [
   { value: 'vector', label: '向量' }
 ]
 
+
 export interface AiModel {
   // 标识符
   identifier: string
@@ -20,6 +21,10 @@ export interface AiModel {
   enable: boolean
   // 模型类型：聊天/图片/视频/语音/向量
   type: AiModelType
+  // 总上下文大小
+  context?: number
+  // 输入 token 大小
+  output?: number
 }
 
 export interface AiProvideCore {

@@ -4,6 +4,7 @@ import { throttle } from 'es-toolkit'
 import type { AiDiscussion, AiGroupChat, AiGroupChatMessage, MessageSegment } from '@/entity/ai'
 import { useSnowflake } from '@/hooks'
 import { ToolChat, type ChatRequestParams } from '@/modules/chat'
+import { buildTextContent } from '@/modules/chat/engine/userContent'
 import { useAiDiscussionStore, useSettingAiStore, useSettingDefaultStore } from '@/store'
 import { MessageUtil } from '@/utils/modal'
 import {
@@ -28,7 +29,7 @@ const resolveModel = async (modelKey: string): Promise<ChatRequestParams> => {
   const option = store.optionMap.get(modelKey)
   if (!option) throw new Error('模型不存在或未启用，请在 AI 设置中配置。')
   return {
-    content: '',
+    content: [],
     model: option.identifier,
     provide: option.provideId,
     baseURL: option.baseUrl,
@@ -171,7 +172,7 @@ export const useGroupChat = () => {
       await summarizer.sendSystemMessage(
         '你是总结助手。把以下群聊记录压缩为一段简洁的要点摘要，保留关键结论、主要分歧、用户偏好与待办事项，用于作为新上下文的起点。直接输出摘要正文。'
       )
-      await summarizer.sendUserMessage({ ...params, content: transcript })
+      await summarizer.sendUserMessage({ ...params, content: [buildTextContent(transcript)] })
       const summary = extractText(summarizer)
       summarizer.destroy()
       if (!summary.trim()) {

@@ -1,4 +1,4 @@
-import { AiChatForm, AiChatItem } from '@/entity/ai'
+import { AiChatDraft, AiChatItem } from '@/entity/ai'
 import { defineStore } from 'pinia'
 import { useLog } from '@/hooks/UseLog'
 import {
@@ -13,7 +13,7 @@ import {
 const aiChatRename = async (agentId: string, id: string) => {
   const target = await aiChatGet(agentId, id)
   if (target) {
-    const name = await useChatName(target.form.content)
+    const name = await useChatName(target.preview || '')
     await aiChatUpdate(agentId, id, { name })
   }
 }
@@ -32,8 +32,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     .then(() => logger.debug('AI 聊天初始化成功'))
     .catch((e) => logger.error('AI 聊天初始化失败', e))
 
-  const add = async (form: AiChatForm, agentId: string) => {
-    const id = await aiChatAdd(agentId, form)
+  const add = async (draft: AiChatDraft, agentId: string) => {
+    const id = await aiChatAdd(agentId, draft)
     if (agentId === '0') {
       // 更新缓存
       await init()
