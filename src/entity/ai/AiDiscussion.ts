@@ -24,6 +24,17 @@ export type AiDiscussionSummaryTrigger =
   // 手动触发
   | 'manual'
 
+/**
+ * 每轮结束后的行为（记录级配置）
+ */
+export type AiDiscussionAfterRound =
+  /** 自动进入下一轮 */
+  | 'auto'
+  /** 等待用户补充后再继续 */
+  | 'wait_input'
+  /** 自动总结并结束 */
+  | 'summarize'
+
 export type AiDiscussionSessionStatus = 'idle' | 'running' | 'stopped' | 'completed'
 
 export type AiDiscussionMessageStatus = 'pending' | 'streaming' | 'complete' | 'stop' | 'error'
@@ -72,6 +83,10 @@ export interface AiDiscussionRole {
    * 关联的提示词 ID，用于修改时回显选中项
    */
   promptId?: string
+  /**
+   * 启用的工具（工具名列表），参考 AiAgent.tools
+   */
+  tools: Array<string>
 }
 
 /**
@@ -148,11 +163,49 @@ export interface AiDiscussionMessage {
   status?: AiDiscussionMessageStatus
 }
 
+/**
+ * 单次讨论会话的运行配置。
+ * 创建讨论时从讨论组（AiDiscussion）的默认配置派生，之后可在讨论过程中随时调整，
+ * 仅作用于当前会话，不影响讨论组的默认值。
+ */
+export interface AiDiscussionSessionConfig {
+  /** 每轮结束后的行为 */
+  afterRound: AiDiscussionAfterRound
+  /** 总轮数上限，0 表示无限（直到手动停止） */
+  maxRounds: number
+  /** 发言顺序 */
+  orderType: AiDiscussionOrderType
+  /** 总结者角色，未配置则不总结 */
+  summaryRole?: AiDiscussionRole
+}
+
+/**
+ * 依据讨论组的默认配置派生一份会话配置。
+ * 讨论组上的 mode / summaryTrigger 等字段在此映射为记录级的 afterRound 语义。
+ */
+export function buildDiscussionSessionConfig(discussion: AiDiscussion): AiDiscussionSessionConfig {
+  const afterRound: AiDiscussionAfterRound =
+    discussion.mode === 'manual'
+      ? 'wait_input'
+      : discussion.summaryTrigger === 'after_each_round'
+        ? 'summarize'
+        : 'auto'
+  return {
+    afterRound,
+    maxRounds: discussion.mode === 'rounds_limit' ? discussion.maxRounds : 0,
+    orderType: discussion.orderType,
+    summaryRole: discussion.summaryRole
+  }
+}
+
+/**
+ * 讨论记录索引项。
+ * 仅保存最基础的定位与展示信息（名称 + 时间），运行状态、轮数与配置都放在详情中，
+ * 这样讨论进行时只需频繁改写详情文件，索引保持稳定。
+ */
 export interface AiDiscussionRecordItem extends BaseEntity {
   discussionId: string
   name: string
-  currentRound: number
-  status: AiDiscussionSessionStatus
 }
 
 export interface AiDiscussionRecord extends BaseEntity {
@@ -161,5 +214,7 @@ export interface AiDiscussionRecord extends BaseEntity {
   name: string
   currentRound: number
   status: AiDiscussionSessionStatus
+  /** 本次讨论的会话配置，创建时从讨论组默认值派生，可随时调整 */
+  config: AiDiscussionSessionConfig
   messages: Array<AiDiscussionMessage>
 }

@@ -18,18 +18,16 @@
       >
         <div class="session-list__item-main">
           <span class="session-list__item-title">{{ item.name }}</span>
-          <span class="session-list__item-meta">第 {{ item.currentRound }} 轮</span>
+          <span class="session-list__item-meta">{{ formatTime(item.createdAt) }}</span>
         </div>
-        <t-tag size="small" variant="light" :theme="getStatusTheme(item.status)">
-          {{ getStatusText(item.status) }}
-        </t-tag>
       </button>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
-import type { AiDiscussionRecordItem, AiDiscussionSessionStatus } from '@/entity/ai'
+import dayjs from 'dayjs'
+import type { AiDiscussionRecordItem } from '@/entity/ai'
 
 defineProps<{
   records: AiDiscussionRecordItem[]
@@ -41,19 +39,7 @@ const emit = defineEmits<{
   select: [id: string]
 }>()
 
-const getStatusText = (status: AiDiscussionSessionStatus) => {
-  if (status === 'running') return '运行中'
-  if (status === 'stopped') return '已停止'
-  if (status === 'completed') return '已完成'
-  return '待推进'
-}
-
-const getStatusTheme = (status: AiDiscussionSessionStatus) => {
-  if (status === 'running') return 'primary'
-  if (status === 'stopped') return 'warning'
-  if (status === 'completed') return 'success'
-  return 'default'
-}
+const formatTime = (timestamp: number) => dayjs(timestamp).format('MM-DD HH:mm')
 </script>
 
 <style scoped lang="less">

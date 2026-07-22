@@ -7,6 +7,7 @@ import type {
 } from '@/entity/ai'
 import { useSnowflake } from '@/hooks'
 import { ToolChat, type ChatRequestParams } from '@/modules/chat'
+import { toolMap } from '@/modules/tool'
 import { useSettingAiStore } from '@/store'
 
 export interface DiscussionEngineCallbacks {
@@ -115,7 +116,6 @@ export class DiscussionEngine {
       round: this.record.currentRound + 1,
       status: 'complete'
     })
-    if (this.record.name === '新讨论') this.record.name = text.substring(0, 24)
     this.callbacks.onChange?.()
   }
 
@@ -129,11 +129,13 @@ export class DiscussionEngine {
     this.stopped = false
     this.record.status = 'running'
     const round = this.record.currentRound + 1
-    const orderedRoles = this.discussion.orderType === 'random' ? shuffle(roles) : roles
+    // 发言顺序读取记录级配置，支持讨论中途调整
+    const orderType = this.record.config.orderType
+    const orderedRoles = orderType === 'random' ? shuffle(roles) : roles
     const snapshot = [...this.record.messages]
     this.callbacks.onChange?.()
 
-    if (this.discussion.orderType === 'parallel') {
+    if (orderType === 'parallel') {
       await Promise.all(orderedRoles.map((role) => this.runRole(role, round, snapshot)))
     } else {
       for (const role of orderedRoles) {
@@ -149,7 +151,8 @@ export class DiscussionEngine {
 
   async summarize() {
     if (this.activeChats.size > 0) return
-    const role = this.discussion.summaryRole
+    // 总结者读取记录级配置，支持讨论中途调整
+    const role = this.record.config.summaryRole
     if (!role) throw new Error('讨论组尚未配置总结者')
     await buildRequestParams(role.model, '')
 
@@ -190,23 +193,33 @@ export class DiscussionEngine {
     this.record.messages.push(message)
     this.callbacks.onChange?.()
 
-    const chat = new ToolChat({ functions: [], enableSkill: false })
+    // 解析角色配置的工具，注入到本次对话
+    const functions = (role.tools || []).map((name) => toolMap[name]).filter(Boolean)
+    const chat = new ToolChat({ functions, enableSkill: false })
     this.activeChats.set(message.id, chat)
     await chat.sendSystemMessage(
       summary ? buildSummaryPrompt(this.discussion, role) : buildRolePrompt(this.discussion, role)
     )
 
+    // 同时监听 chat.messages 与 chat.status，flush: 'sync' 保证流式 chunk
+    // 写入时 message.content/message.status 立即更新，避免 pre 异步 flush 导致
+    // 流式内容合并到末尾一次性渲染、状态切换不及时（第二个 AI 完成后仍卡在
+    // 「正在组织观点」）。
+    const syncMessage = () => {
+      const assistant = chat.messages.value.findLast(
+        (item): item is AIMessage => item.role === 'assistant'
+      )
+      message.content = getAssistantText(assistant)
+      message.status = toMessageStatus(chat.status.value)
+      this.callbacks.onChange?.()
+    }
+    // 初始化一次：sendSystemMessage 之后 chat 里已有 system + 即将发送 user，
+    // 同步一次让 message 拿到最新基线（status='pending'、content 为空）。
+    syncMessage()
     const stopWatch = watch(
-      chat.messages,
-      () => {
-        const assistant = chat.messages.value.findLast(
-          (item): item is AIMessage => item.role === 'assistant'
-        )
-        message.content = getAssistantText(assistant)
-        message.status = toMessageStatus(chat.status.value)
-        this.callbacks.onChange?.()
-      },
-      { deep: true }
+      [chat.messages, chat.status],
+      syncMessage,
+      { deep: true, flush: 'sync' }
     )
 
     try {
@@ -215,8 +228,29 @@ export class DiscussionEngine {
         ? `以下是需要总结的讨论记录：\n\n${transcript}`
         : `${transcript ? `以下是此前的讨论记录：\n\n${transcript}\n\n` : ''}现在轮到你（${role.name}）进行第 ${round} 轮发言。请结合讨论目标和已有内容给出本轮观点。`
       await chat.sendUserMessage(await buildRequestParams(role.model, task))
+      // chat.destroy() 会把 status 重置为 'idle'，必须在它之前读取最终状态
       message.status = toMessageStatus(chat.status.value)
+    } catch (err) {
+      if (this.stopped) {
+        // 用户主动停止：删除这条未完成的发言，避免界面卡在「正在组织观点」
+        if (message.status === 'pending' || message.status === 'streaming') {
+          const index = this.record.messages.findIndex((item) => item.id === message.id)
+          if (index >= 0) this.record.messages.splice(index, 1)
+        }
+      } else {
+        // 非停止导致的异常：标记为错误，保留发言以便排查
+        message.status = 'error'
+        message.content = message.content || (err instanceof Error ? err.message : String(err))
+      }
     } finally {
+      // 兜底：若 runRole 异常退出导致 message.status 仍停留在 pending/streaming，
+      // 显式收尾为 stop，保证 UI 不会永远卡在「正在组织观点」。
+      if (
+        !this.stopped &&
+        (message.status === 'pending' || message.status === 'streaming')
+      ) {
+        message.status = 'stop'
+      }
       stopWatch()
       this.activeChats.delete(message.id)
       chat.destroy()

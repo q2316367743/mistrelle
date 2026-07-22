@@ -22,7 +22,7 @@
           </t-tag>
           <t-button
             class="message-card__delete"
-            theme="default"
+            theme="danger"
             variant="text"
             shape="square"
             size="small"

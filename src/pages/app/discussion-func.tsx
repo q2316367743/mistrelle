@@ -6,6 +6,7 @@ import { useContextMenu, useSnowflake } from '@/hooks'
 import { AddIcon, DeleteIcon, EditIcon, ChevronDownIcon, ChevronRightIcon } from 'tdesign-icons-vue-next'
 import { AiDiscussionForm, buildAiDiscussionForm } from '@/entity/ai'
 import { discussionRecordRemoveAll } from '@/modules/discussion'
+import { toolOptions } from '@/modules/tool'
 
 export const openDiscussionPut = async (id?: string) => {
   const { getById, put } = useAiDiscussionStore()
@@ -47,6 +48,7 @@ export const openDiscussionPut = async (id?: string) => {
       prompt: '',
       model: '',
       index: form.value.roles.length,
+      tools: [],
     })
     expandedRoles.value.push(form.value.roles.length - 1)
   }
@@ -206,6 +208,7 @@ export const openDiscussionPut = async (id?: string) => {
                                   role.description = p.description
                                   role.prompt = p.prompt
                                   role.model = p.model
+                                  role.tools = [...(p.tools || [])]
                                 }
                               })
                             }
@@ -223,6 +226,15 @@ export const openDiscussionPut = async (id?: string) => {
                       </FormItem>
                       <FormItem label={'关联模型'} name={`roles[${index}].model`}>
                         <Select v-model={role.model} options={modelOptions} placeholder={'请选择关联模型'} clearable={true} />
+                      </FormItem>
+                      <FormItem label={'启用工具'}>
+                        <Select
+                          v-model={role.tools}
+                          options={toolOptions}
+                          placeholder={'请选择角色启用的工具'}
+                          multiple={true}
+                          filterable={true}
+                        />
                       </FormItem>
                     </div>
                   )}
@@ -338,7 +350,8 @@ export const openDiscussionPut = async (id?: string) => {
                       description: '',
                       prompt: '',
                       model: '',
-                      index: -1
+                      index: -1,
+                      tools: [],
                     }
                     summaryExpanded.value = true
                   }}
