@@ -36,8 +36,12 @@ const getQueue = (key: string): PathCommandQueue => {
   return queue
 }
 
-const buildDiscussionFolderPath = (discussionId: string) =>
+export const buildDiscussionFolderPath = (discussionId: string) =>
   window.preload.path.join(getAppData2Discussion(), discussionId)
+
+/** 暴露路径级命令队列，保证同一文件的写操作串行执行（群聊 chat.json / 记忆文件复用） */
+export const enqueueByPath = <T>(key: string, command: () => Promise<T>): Promise<T> =>
+  getQueue(key).enqueue(command)
 
 const buildDiscussionIndexPath = (discussionId: string) =>
   window.preload.path.join(buildDiscussionFolderPath(discussionId), 'index.json')

@@ -8,7 +8,7 @@ import { AiDiscussionForm, buildAiDiscussionForm } from '@/entity/ai'
 import { discussionRecordRemoveAll } from '@/modules/discussion'
 import { toolOptions } from '@/modules/tool'
 
-export const openDiscussionPut = async (id?: string) => {
+export const openDiscussionPut = async (id?: string, onSaved?: () => void) => {
   const { getById, put } = useAiDiscussionStore()
   const old = await getById(id)
   const form = ref<AiDiscussionForm>(old || buildAiDiscussionForm())
@@ -72,6 +72,7 @@ export const openDiscussionPut = async (id?: string) => {
         .then(() => {
           MessageUtil.success('保存成功')
           dp.destroy()
+          onSaved?.()
         })
         .catch((e) => {
           MessageUtil.error('保存失败', e)
