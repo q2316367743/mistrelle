@@ -9,7 +9,6 @@ export interface ToolProperty {
 
 export interface ToolFunction {
   name: string
-  // 显示名称
   label: string
   description: string
   parameters: {
@@ -19,4 +18,5 @@ export interface ToolFunction {
     additionalProperties?: boolean
   }
   handler: (...params: unknown[]) => Promise<unknown>
+  requireConfirm?: boolean
 }

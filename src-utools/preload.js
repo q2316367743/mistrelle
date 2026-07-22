@@ -5,6 +5,7 @@ const path = require('./src/path')
 const iconv = require('./src/IconvAPI')
 const crypto = require('./src/CryptoApi')
 const zip = require('./src/zip')
+const shellExec = require('./src/shellExec')
 const axios = require('axios')
 
 window.preload = {
@@ -15,6 +16,7 @@ window.preload = {
   iconv,
   crypto,
   zip,
+  shellExec,
   axios: axios.create({
     adapter: 'http'
   })

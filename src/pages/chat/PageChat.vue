@@ -14,7 +14,8 @@
 import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
 import { useAiAgentStore } from '@/store'
 import { toolMap } from '@/modules/tool'
-import { aiChatGet, buildChatChatPath, ToolFunction } from '@/modules/chat'
+import { ToolFunction } from '@/domain'
+import { aiChatGet, buildChatChatPath } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { useSafeBack } from '@/hooks'
 

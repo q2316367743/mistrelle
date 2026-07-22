@@ -1,7 +1,6 @@
 <template>
   <div class="l-chat-tool">
-    <div class="l-chat-tool__content" :style="contentStyle">
-      <!-- 消息列表 -->
+    <div class="l-chat-tool__content">
       <r-chat-list
         :messages="messages"
         :clear-history="messages.length > 1 && status !== 'streaming'"
@@ -11,7 +10,6 @@
         @rollback="handleRollback"
         @change="handleMessagesChange"
       />
-
       <l-chat-sender
         :initial-input="inputValue"
         :initial-model="modelValue"
@@ -26,9 +24,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { CSSProperties } from 'vue'
 import {
-  type ToolFunction,
   ChatRequestParams,
   ToolChat,
   aiChatContentGet,
@@ -36,10 +32,10 @@ import {
 } from '@/modules/chat'
 import { useSettingAiStore } from '@/store'
 import { MessageUtil } from '@/utils/modal'
-import type { AttachmentContent, UserMessage, UserMessageContent } from '@/domain'
+import type { AttachmentContent, ToolFunction, UserMessage, UserMessageContent } from '@/domain'
 import type { AiChatContent, AiChatDraft } from '@/entity/ai'
-
-type ChatToolLayout = 'compact' | 'wide'
+import { toolConfirmDialog } from '@/components/chat/modals/ToolConfirmDialog'
+import { toolMap } from '@/modules/tool'
 
 const props = withDefaults(
   defineProps<{
@@ -47,39 +43,27 @@ const props = withDefaults(
     prompt: string
     storageKey?: string
     placeholder?: string
-    layout?: ChatToolLayout
-    compactWidth?: string
-    wideMaxWidth?: string
     rootDir?: string
   }>(),
-  {
-    layout: 'wide',
-    compactWidth: '720px',
-    wideMaxWidth: '1080px'
-  }
+  {}
 )
 
 const inputValue = ref('')
 const think = ref(false)
 const modelValue = ref('')
 
-const instance = new ToolChat({ functions: props.functions })
+const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<boolean> => {
+  const tool = toolMap[toolName]
+  const label = tool?.label || toolName
+  return toolConfirmDialog(label, toolName, JSON.stringify(args, null, 2))
+}
+
+const instance = new ToolChat({
+  functions: props.functions,
+  toolConfirmHandler: confirmTool
+})
 
 const { messages, status } = instance
-
-const contentStyle = computed<CSSProperties>(() => {
-  if (props.layout === 'compact') {
-    return {
-      width: props.compactWidth,
-      maxWidth: '100%'
-    }
-  }
-
-  return {
-    width: '100%',
-    maxWidth: props.wideMaxWidth
-  }
-})
 
 const createRequestParams = (message: UserMessage): ChatRequestParams | null => {
   const option = useSettingAiStore().optionMap.get(`${message.provide}:${message.model}`)
@@ -87,7 +71,6 @@ const createRequestParams = (message: UserMessage): ChatRequestParams | null => 
     MessageUtil.error('请选择模型')
     return null
   }
-
   return {
     content: message.content,
     model: message.model,
@@ -98,8 +81,6 @@ const createRequestParams = (message: UserMessage): ChatRequestParams | null => 
   }
 }
 
-// 文件内容注入：从结构化 content 的 AttachmentContent 读取本地文件全文，
-// 拼为 referenceContext（仅文件内容；skill 全文改由 applySkillToChat 按 SkillContent 注入系统提示词）。
 const buildReferenceContext = async (contents: UserMessageContent[]): Promise<string | null> => {
   const attachments = contents
     .filter((c): c is AttachmentContent => c.type === 'attachment')
@@ -119,7 +100,6 @@ const buildReferenceContext = async (contents: UserMessageContent[]): Promise<st
   return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n\n---\n\n')}`
 }
 
-// 接收 sender 随 send 事件带出的完整 UserMessage，直接构造请求
 const handleSend = async (message: UserMessage) => {
   const requestParams = createRequestParams(message)
   if (!requestParams) return
@@ -160,10 +140,8 @@ const handleReask = (messageId: string) => {
     (m): m is UserMessage => m.id === messageId && m.role === 'user'
   )
   if (!userMessage) return
-
   const requestParams = createRequestParams(userMessage)
   if (!requestParams) return
-
   instance.reaskMessage(messageId, requestParams)
 }
 
@@ -175,7 +153,6 @@ const handleMessagesChange = () => {
   messages.value = [...messages.value]
 }
 
-// 发送失败时把草稿回填到 sender，让用户可重试
 const fillSenderFromDraft = (draft: AiChatDraft) => {
   inputValue.value = draft.content
     .filter((c) => c.type === 'text')
@@ -196,7 +173,6 @@ onMounted(async () => {
     }
   }
 
-  // 保存起来（写入完整 AiChatContent，同时清空 draft）
   if (props.storageKey) {
     unWatch = throttledWatch(
       messages,
@@ -211,14 +187,12 @@ onMounted(async () => {
     )
   }
 
-  // 如果第一次且有提示词，则注入系统提示词
   if (messages.value.length === 0 && props.prompt) {
     await instance.sendSystemMessage(props.prompt)
   }
 
   const hasUserMessage = messages.value.some((m) => m.role === 'user')
 
-  // 没有用户消息且存在草稿：自动发送
   if (!hasUserMessage && content?.draft) {
     const draft = content.draft
     const option = useSettingAiStore().optionMap.get(`${draft.provide}:${draft.model}`)
@@ -243,7 +217,6 @@ onMounted(async () => {
     if (referenceContext) requestParams.referenceContext = referenceContext
     instance.sendUserMessage(requestParams)
   } else if (messages.value.length > 1) {
-    // 有历史消息时，从最后一条用户消息还原 sender 初始态
     const lastUser = messages.value.findLast((e) => e.role === 'user')
     if (lastUser) {
       modelValue.value = `${lastUser.provide}:${lastUser.model}`
@@ -275,5 +248,7 @@ onUnmounted(() => {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  width: 100%;
+  max-width: 1080px;
 }
 </style>

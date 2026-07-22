@@ -12,6 +12,7 @@ export const injectBrowserTools: ToolFunction[] = [
       },
       required: ['url'],
     },
+    requireConfirm: true,
     handler: async (...params: unknown[]) => {
       const { url } = params[0] as { url: string }
       window.preload.inject.shell.openExternal(url)

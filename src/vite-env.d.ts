@@ -27,6 +27,26 @@ declare global {
       fs: FsApi
       path: PathApi
       zip: ZipApi
+      shellExec: {
+        cliRun(
+          command: string,
+          args?: string[],
+          options?: { cwd?: string; timeout?: number }
+        ): {
+          stdout?: string
+          stderr?: string
+          exitCode?: number
+          signal?: string
+          error?: string
+        }
+        jsRun(
+          script: string,
+          args?: Record<string, unknown>
+        ): {
+          result?: unknown
+          error?: string
+        }
+      }
       axios: AxiosInstance
     }
   }

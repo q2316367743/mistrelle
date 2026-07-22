@@ -40,6 +40,7 @@ export const nativeHttpTools: ToolFunction[] = [
       },
       required: ['url']
     },
+    requireConfirm: true,
     handler: async (...params: unknown[]) => {
       const {
         url,

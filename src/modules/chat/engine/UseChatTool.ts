@@ -4,7 +4,7 @@ import type {
   ChatCompletionTool,
   ChatCompletionMessageToolCall
 } from 'openai/resources/chat/completions'
-import type { AIMessageContent, ChatMessage } from '@/domain'
+import type { AIMessageContent, ChatMessage, ToolFunction } from '@/domain'
 import { AbstractChat, createClient, extractReasoningContent, finishReasonToStatus } from './ChatCommon'
 import { prettyDurationTime } from '@/utils/lang'
 import type {
@@ -16,16 +16,13 @@ import type {
 } from './ChatCommon'
 import { nanoid } from 'nanoid'
 import { skillTools, applySkillToChat } from '@/modules/skill'
+import { defaultTools } from '@/modules/tool'
 
 const getReferenceContext = (ext: unknown) => {
   if (!ext || typeof ext !== 'object' || !('referenceContext' in ext)) return ''
   const value = ext.referenceContext
   return typeof value === 'string' ? value : ''
 }
-
-// ==========================================
-//  类型导出
-// ==========================================
 
 export type ToolCall = {
   toolCallId: string
@@ -36,86 +33,49 @@ export type ToolCall = {
   result?: string
 }
 
-export interface ToolProperty {
-  type: string
-  description: string
-  items?: ToolProperty
-  properties?: Record<string, ToolProperty>
-  required?: string[]
-}
-
-export interface ToolFunction {
-  name: string
-  description: string
-  parameters: {
-    type: 'object'
-    properties: Record<string, ToolProperty>
-    required?: Array<string>
-    additionalProperties?: boolean
-  }
-  handler: (...params: unknown[]) => Promise<unknown>
-}
-
 export interface UseChatOptions {
   defaultMessages?: Array<ChatMessage>
   chatServiceConfig?: ChatServiceConfig
   functions?: Array<ToolFunction>
-  // 是否启用内置 Skill 能力（skill 目录注入 + load_skill 工具），默认开启
   enableSkill?: boolean
+  toolConfirmHandler?: (toolName: string, args: Record<string, unknown>) => Promise<boolean>
 }
 
-export interface UseChatResult extends ChatAPI {
+export type UseChatResult = ChatAPI & {
   getToolcallByName: (name: string) => ToolCall | undefined
 }
 
-// ==========================================
-//  具体类：ToolChat
-// ==========================================
-
 export class ToolChat extends AbstractChat {
   readonly toolCalls = ref<ToolCall[]>([])
-  private readonly _functions?: ToolFunction[]
+  private readonly _functions: ToolFunction[]
   private readonly _enableSkill: boolean
+  private readonly _toolConfirmHandler?: (toolName: string, args: Record<string, unknown>) => Promise<boolean>
 
   constructor(options: UseChatOptions) {
     super(options)
-    this._functions = options.functions
+    this._functions = options.functions ?? []
     this._enableSkill = options.enableSkill ?? true
+    this._toolConfirmHandler = options.toolConfirmHandler
   }
-
-  // ========================
-  //   合并内置 Skill 工具后的完整函数列表
-  // ========================
 
   private getFunctions(): ToolFunction[] {
-    const base = this._functions ?? []
-    return this._enableSkill ? [...base, ...skillTools] : base
+    const base = this._functions
+    return this._enableSkill ? [...base, ...defaultTools, ...skillTools] : base
   }
 
-  // 解析用户消息并注入 skill 上下文（目录 或 指定 skill 全文）
   private async applySkillContext(apiMessages: ChatCompletionMessageParam[]): Promise<void> {
     if (this._enableSkill) await applySkillToChat(this.messages.value, apiMessages)
   }
 
-  // ========================
-  //   hook：发送前清理工具调用
-  // ========================
-
   protected onBeforeSendUserMessage(): void {
     this.toolCalls.value = []
   }
-
-  // ========================
-  //   toApiMessages（工具调用版本）
-  // ========================
 
   protected toApiMessages(): ChatCompletionMessageParam[] {
     const out: ChatCompletionMessageParam[] = []
 
     for (const msg of this.messages.value) {
       if (msg.role === 'user') {
-        // 仅取纯文本部分：skill/attachment 引用是结构化 content，已由 applySkillToChat 注入上下文，
-        // 不再以 /name 文本形式混入，故此处天然排除。
         const textParts = msg.content.filter((c) => c.type === 'text') as {
           data: string
         }[]
@@ -138,12 +98,9 @@ export class ToolChat extends AbstractChat {
             args: string
             result: string | undefined
           }> = []
-          // 收集 thinking 内容 —— DeepSeek 文档要求：工具调用场景下必须将
-          // reasoning_content 回传 API，否则 AI 丢失思考上下文会陷入循环
           let thinkingBuffer = ''
 
           const flushTCs = () => {
-            // 无工具调用但存在 reasoning_content：附加到最后一条 assistant 消息
             if (pendingTCs.length === 0) {
               if (thinkingBuffer) {
                 const lastMsg = out[out.length - 1]
@@ -172,7 +129,6 @@ export class ToolChat extends AbstractChat {
                 function: { name: tc.name, arguments: tc.args }
               }))
             }
-            // 工具调用时将思考内容以 reasoning_content 回传
             if (thinkingBuffer) {
               ;(tcMsg as unknown as Record<string, unknown>).reasoning_content =
                 thinkingBuffer.trim()
@@ -191,7 +147,6 @@ export class ToolChat extends AbstractChat {
 
           for (const part of parts) {
             if (part.type === 'thinking') {
-              // 收集 reasoning_content，后续 flushTCs 时作为 reasoning_content 回传
               thinkingBuffer += ((part.data as { text?: string })?.text || '') + '\n'
               continue
             }
@@ -220,24 +175,12 @@ export class ToolChat extends AbstractChat {
     return out
   }
 
-  // ========================
-  //   buildTools
-  // ========================
-
   private buildTools(): ChatCompletionTool[] {
-    const tools: ChatCompletionTool[] = []
-    for (const fn of this.getFunctions()) {
-      tools.push({
-        type: 'function',
-        function: fn
-      })
-    }
-    return tools
+    return this.getFunctions().map((fn) => ({
+      type: 'function' as const,
+      function: fn
+    }))
   }
-
-  // ========================
-  //   handleMessageContent（扩展版本）
-  // ========================
 
   protected handleMessageContent(mc: AIMessageContent, append = true) {
     const last = this.messages.value[this.messages.value.length - 1]
@@ -276,10 +219,6 @@ export class ToolChat extends AbstractChat {
     }
   }
 
-  // ========================
-  //   handleLastMessage（扩展版本）
-  // ========================
-
   protected handleLastMessage(chatMessageStatus: ChatMessageStatus) {
     const last = this.messages.value[this.messages.value.length - 1]
     if (last) {
@@ -294,10 +233,6 @@ export class ToolChat extends AbstractChat {
       }
     }
   }
-
-  // ========================
-  //   doStreamRequest（工具调用版本）
-  // ========================
 
   protected async doStreamRequest(
     params: ChatRequestParams,
@@ -315,7 +250,6 @@ export class ToolChat extends AbstractChat {
       tools
     }
 
-    // 自定义参数
     const extras: Record<string, unknown> = {}
     if (params.thinking) extras.thinking = { type: params.thinking }
     if (params.reasoning_effort) extras.reasoning_effort = params.reasoning_effort
@@ -325,7 +259,6 @@ export class ToolChat extends AbstractChat {
       ...extras
     } as ChatCompletionCreateParamsStreaming
 
-    // onRequest 钩子
     let requestHeaders: Record<string, string> = {}
     if (this.ctx.config.onRequest) {
       const modified = await this.ctx.config.onRequest(params)
@@ -350,7 +283,6 @@ export class ToolChat extends AbstractChat {
 
     this.messages.value[this.messages.value.length - 1].status = 'streaming'
 
-    // 流式累积工具调用
     const accToolCalls: Map<number, { id: string; name: string; args: string }> = new Map()
     let finishReason: string | null | undefined
 
@@ -366,7 +298,6 @@ export class ToolChat extends AbstractChat {
       const sseChunk: SSEChunkData = { data: chunk, event: 'data' }
       if (this.ctx.config.isValidChunk && !this.ctx.config.isValidChunk(sseChunk)) continue
 
-      // reasoning_content
       const reasoningContent = extractReasoningContent(delta)
       if (reasoningContent) {
         this.handleMessageContent({
@@ -378,7 +309,6 @@ export class ToolChat extends AbstractChat {
         continue
       }
 
-      // content
       if (delta.content) {
         this.handleMessageContent({
           type: 'markdown',
@@ -388,7 +318,6 @@ export class ToolChat extends AbstractChat {
         })
       }
 
-      // tool_calls
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
           const index = tc.index
@@ -407,33 +336,92 @@ export class ToolChat extends AbstractChat {
 
     const finalStatus = finishReasonToStatus(finishReason)
 
-    // === 处理工具调用 ===
     if (accToolCalls.size > 0) {
       const metaList: ToolCall[] = []
       for (const [, tc] of accToolCalls) {
         const id = tc.id || `call_${nanoid()}`
-        const meta: ToolCall = {
+        metaList.push({
           toolCallId: id,
           toolCallName: tc.name,
           args: tc.args
-        }
-        metaList.push(meta)
+        })
       }
 
       this.toolCalls.value = metaList
 
-      // 逐个执行工具
       const functions = this.getFunctions()
       for (const meta of metaList) {
         const fnDef = functions.find((f) => f.name === meta.toolCallName)
-        if (fnDef) {
+
+        if (!fnDef) {
+          meta.result = `错误: 未找到工具 "${meta.toolCallName}"`
+          this.handleMessageContent({
+            type: 'toolcall',
+            status: 'complete',
+            data: {
+              toolCallId: meta.toolCallId,
+              toolCallName: meta.toolCallName,
+              args: meta.args,
+              result: meta.result
+            },
+            time: Date.now()
+          })
+          continue
+        }
+
+        const args = JSON.parse(meta.args ?? '{}')
+
+        // 需要用户确认的工具：先渲染 pending 态，等待确认后执行
+        if (fnDef.requireConfirm && this._toolConfirmHandler) {
+          this.handleMessageContent({
+            type: 'toolcall',
+            status: 'pending',
+            data: {
+              toolCallId: meta.toolCallId,
+              toolCallName: meta.toolCallName,
+              args: meta.args
+            },
+            time: Date.now()
+          })
+
+          const approved = await this._toolConfirmHandler(fnDef.label || fnDef.name, args)
+
+          if (approved) {
+            try {
+              const raw = await fnDef.handler(args)
+              meta.result = typeof raw === 'string' ? raw : JSON.stringify(raw)
+            } catch (err: unknown) {
+              meta.result = `错误: ${err instanceof Error ? err.message : String(err)}`
+            }
+          } else {
+            meta.result = '用户拒绝了该工具调用'
+          }
+
+          // 更新已渲染的 pending toolcall 内容
+          const lastMsg = this.messages.value[this.messages.value.length - 1]
+          if (lastMsg?.role === 'assistant' && lastMsg.content) {
+            const pendingIdx = lastMsg.content.findLastIndex(
+              (c) =>
+                c.type === 'toolcall' &&
+                c.data.toolCallId === meta.toolCallId &&
+                c.status === 'pending'
+            )
+            if (pendingIdx >= 0) {
+              const tc = lastMsg.content[pendingIdx]
+              if (tc.type === 'toolcall') {
+                tc.status = 'complete'
+                tc.data.result = meta.result
+              }
+            }
+          }
+        } else {
           try {
-            const args = JSON.parse(meta.args ?? '{}')
-            const result = await fnDef.handler(args)
-            meta.result = typeof result === 'string' ? result : JSON.stringify(result)
+            const raw = await fnDef.handler(args)
+            meta.result = typeof raw === 'string' ? raw : JSON.stringify(raw)
           } catch (err: unknown) {
             meta.result = `错误: ${err instanceof Error ? err.message : String(err)}`
           }
+
           this.handleMessageContent({
             type: 'toolcall',
             status: 'complete',
@@ -450,30 +438,19 @@ export class ToolChat extends AbstractChat {
 
       this.toolCalls.value = [...this.toolCalls.value]
 
-      // 让 Vue flush DOM 更新，确保上一轮内容已渲染
       await nextTick()
 
-      // 多轮递归
       await this.doStreamRequest(params, signal, seq)
       return
     }
 
-    // === 正常完成 ===
     this.status.value = finalStatus
     this.ctx.config.onComplete?.(false, params)
   }
 
-  // ========================
-  //   额外公开方法
-  // ========================
-
   getToolcallByName(name: string): ToolCall | undefined {
     return this.toolCalls.value.find((tc) => tc.toolCallName === name)
   }
-
-  // ========================
-  //   destroy（扩展：清理工具调用）
-  // ========================
 
   destroy(): void {
     if (this.ctx.abortController) {

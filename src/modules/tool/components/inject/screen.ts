@@ -9,6 +9,7 @@ export const injectScreenTools: ToolFunction[] = [
       type: 'object',
       properties: {},
     },
+    requireConfirm: true,
     handler: async () => {
       return new Promise((resolve) => {
         window.preload.inject.screen.capture((imgBase64: string) => {
@@ -25,6 +26,7 @@ export const injectScreenTools: ToolFunction[] = [
       type: 'object',
       properties: {},
     },
+    requireConfirm: true,
     handler: async () => {
       return new Promise((resolve) => {
         window.preload.inject.screen.colorPick((color) => {

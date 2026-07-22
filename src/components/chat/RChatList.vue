@@ -28,7 +28,8 @@
                           theme="primary"
                           variant="light"
                           :title="item.data.path"
-                          class="r-chat-list__inline-tag"
+                          size="small"
+                          class="r-chat-list__inline-tag mr-4px"
                         >
                           <template #icon><CodeIcon /></template>
                           {{ item.data.name }}
@@ -179,12 +180,9 @@ const scrollToMessage = (messageId: string) => {
   scroll-margin-top: var(--td-comp-margin-xxl);
 }
 
-// 用户消息内容：文本与标签整体内联，按需换行
+// 用户消息内容：文本与标签像一段文字内联排列，自然换行
 .r-chat-list__user-content {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
+  display: block;
   line-height: 22px;
   border: 1px solid var(--td-border-level-1-color);
   padding: 8px;
@@ -194,10 +192,6 @@ const scrollToMessage = (messageId: string) => {
 .r-chat-list__text {
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.r-chat-list__inline-tag {
-  vertical-align: middle;
 }
 
 .r-chat-list__locator-group {
