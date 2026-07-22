@@ -131,7 +131,7 @@
             v-for="item in discussions"
             :key="item.id"
             class="menu-item"
-            :class="{ active: isStartActive(`/discussion/${item.id}/`) }"
+            :class="{ active: isActive(`/discussion/${item.id}`) }"
             type="button"
             @click="goTo(`/discussion/${item.id}`)"
             @contextmenu="openDiscussionContextmenu($event, item.id)"
