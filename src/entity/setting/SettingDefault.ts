@@ -29,6 +29,10 @@ export interface SettingDefault {
    * > 音频服务使用的模型
    */
   defaultAudioModel: string
+  /**
+   * 扫描 Skill 目录时忽略的文件夹名
+   */
+  skillIgnoreDirs: string[]
 }
 
 export function buildSettingDefault(): SettingDefault {
@@ -38,6 +42,7 @@ export function buildSettingDefault(): SettingDefault {
     defaultTranslateModel: '',
     defaultVectorModel: '',
     defaultVideoModel: '',
-    defaultAudioModel: ''
+    defaultAudioModel: '',
+    skillIgnoreDirs: ['.git', '.svn', 'node_modules', '.hg', '.idea', '.vscode', 'dist', '.next', 'build']
   }
 }

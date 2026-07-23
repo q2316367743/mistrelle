@@ -2,29 +2,26 @@ import { useContextMenu } from '@/hooks'
 import { DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
 import { useAiChatStore } from '@/store'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
+import { AiChatItem } from '@/entity/ai'
 
 /**
  * 打开会话右键菜单
  * @param e 鼠标事件
- * @param agentId 会话ID
- * @param id 消息ID
+ * @param chat 会话
  * @param onUpdate 更新回调
  */
-export const openChatContextmenu = (
-  e: MouseEvent,
-  agentId: string,
-  id: string,
-  onUpdate?: () => void
-) => {
+export const openChatContextmenu = (e: MouseEvent, chat: AiChatItem, onUpdate?: () => void) => {
   useContextMenu(e, {
     items: [
       {
         icon: () => <EditIcon />,
         label: '重命名',
         onClick: () => {
-          MessageBoxUtil.prompt('请输入新的会话名称', '重命名会话').then((name) => {
+          MessageBoxUtil.prompt('请输入新的会话名称', '重命名会话', {
+            inputValue: chat.name
+          }).then((name) => {
             useAiChatStore()
-              .rename(id, name)
+              .rename(chat.id, name)
               .then(() => {
                 MessageUtil.success('重命名成功')
                 onUpdate?.()
@@ -41,7 +38,7 @@ export const openChatContextmenu = (
         onClick: () => {
           MessageBoxUtil.confirm('是否删除该会话？', '删除确认').then(() => {
             useAiChatStore()
-              .remove(id)
+              .remove(chat.id)
               .then(() => MessageUtil.success('删除成功'))
               .catch((e) => MessageUtil.error('删除失败', e))
               .finally(() => onUpdate?.())

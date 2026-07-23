@@ -1,5 +1,6 @@
 import { KeyValueUtil } from '@/utils/native/KeyValueUtil'
 import { LocalSkill, LocalSkillFile, LocalSkillForm, SkillAgent } from './types'
+import { useSettingDefaultStore } from '@/store'
 import { cloneDeep } from 'es-toolkit'
 
 const SKILL_FILE = 'SKILL.md'
@@ -274,6 +275,7 @@ export const localSkillContentSet = async (skill: LocalSkill, content: string) =
  * 递归列出 Skill 目录下全部文件
  */
 export const localSkillFiles = async (skill: LocalSkill): Promise<Array<LocalSkillFile>> => {
+  const ignoreDirs = new Set(useSettingDefaultStore().state.skillIgnoreDirs)
   const result: Array<LocalSkillFile> = []
   const walk = async (dir: string, relative: string) => {
     if (!window.preload.fs.existsSync(dir)) return
@@ -282,6 +284,7 @@ export const localSkillFiles = async (skill: LocalSkill): Promise<Array<LocalSki
       const full = window.preload.path.join(dir, item.name)
       const rel = relative ? `${relative}/${item.name}` : item.name
       if (item.isDirectory) {
+        if (ignoreDirs.has(item.name)) continue
         await walk(full, rel)
       } else {
         result.push({

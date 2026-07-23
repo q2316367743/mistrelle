@@ -52,6 +52,20 @@
           />
         </template>
       </t-list-item>
+      <t-list-item>
+        <t-list-item-meta
+          title="Skill 忽略目录"
+          description="扫描本地 Skill 文件时忽略的文件夹名称"
+        />
+        <template #action>
+          <t-tag-input
+            v-model="state.skillIgnoreDirs"
+            class="w-360px"
+            placeholder="输入文件夹名后回车"
+            clearable
+          />
+        </template>
+      </t-list-item>
     </t-list>
   </page-layout>
 </template>

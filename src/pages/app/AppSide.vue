@@ -86,7 +86,7 @@
             class="menu-item"
             :class="{ active: isActive(`/chat/${chat.id}`) }"
             type="button"
-            @contextmenu="openChatContextmenu($event, '0', chat.id)"
+            @contextmenu="openChatContextmenu($event, chat)"
             @click="goTo(`/chat/${chat.id}`)"
           >
             <FolderIcon class="menu-icon" />
