@@ -5,11 +5,7 @@
       <EditorContent :editor="editor" class="l-chat-sender__editor" />
     </div>
     <div class="l-chat-sender__footer">
-      <t-button shape="circle" variant="text">
-        <template #icon>
-          <add-icon />
-        </template>
-      </t-button>
+      <l-chat-attachment />
       <div class="flex gap-8px">
         <div class="l-chat-sender__tools">
           <t-select v-model="modelKey" :options="options" placeholder="请选择模型" />
@@ -247,4 +243,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => editor.value?.destroy())
 </script>
-<style scoped lang="less" src="./LChatSender.less"></style>
+<style scoped lang="less">
+@import 'LChatSender.less';
+</style>
