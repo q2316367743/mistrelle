@@ -4,7 +4,8 @@
       <r-chat-list
         :messages="messages"
         :clear-history="messages.length > 1 && status !== 'streaming'"
-        :loading="status === 'pending' || status === 'streaming'"
+        :text-loading="status === 'pending'"
+        :is-stream-load="status === 'streaming'"
         style="flex: 1"
         @clear="handleClear"
         @reask="handleReask"
@@ -14,6 +15,7 @@
       <l-chat-sender
         :initial-input="inputValue"
         :initial-model="modelValue"
+        :initial-agent-id="initialAgentId"
         :loading="status === 'pending' || status === 'streaming'"
         :root-dir="rootDir"
         @send="handleSend"
@@ -39,6 +41,7 @@ const props = withDefaults(
 
 const inputValue = ref('')
 const modelValue = ref('')
+const initialAgentId = ref('')
 
 const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<boolean> => {
   const tool = toolMap[toolName]
@@ -118,11 +121,13 @@ onMounted(async () => {
 
   if (!hasUserMessage && content?.draft) {
     const { draft } = content
+    initialAgentId.value = draft.agentId || ''
     instance.sendUserMessage(draft)
   } else if (messages.value.length > 1) {
-    const lastUser = messages.value.findLast((e) => e.role === 'user') as UserMessage
+    const lastUser = messages.value.findLast((e) => e.role === 'user') as UserMessage | undefined
     if (lastUser) {
       modelValue.value = `${lastUser.provide}:${lastUser.model}`
+      initialAgentId.value = lastUser.agentId || ''
     }
   }
 })

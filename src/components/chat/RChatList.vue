@@ -2,7 +2,8 @@
   <div class="r-chat-list">
     <ChatList
       :clear-history="clearHistory"
-      :text-loading="loading"
+      :text-loading="textLoading"
+      :is-stream-load="isStreamLoad"
       animation="gradient"
       class="r-chat-list__content"
       @clear="emit('clear')"
@@ -135,7 +136,11 @@ defineProps({
     type: Array as PropType<Array<ChatMessageType>>,
     default: () => []
   },
-  loading: {
+  textLoading: {
+    type: Boolean,
+    default: false
+  },
+  isStreamLoad: {
     type: Boolean,
     default: false
   }
