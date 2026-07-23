@@ -11,11 +11,14 @@ export type SSEChunkData = {
   data: unknown
 }
 
-export interface ChatRequestParams
-  extends Omit<UserMessage, 'id' | 'role' | 'datetime' | 'ext'> {
+export type ChatRequestParams = Pick<
+  UserMessage,
+  'content' | 'model' | 'provide' | 'agentId' | 'reasoning_effort'
+>
+
+export interface ResolvedChatRequestParams extends ChatRequestParams {
   baseURL: string
   apiKey?: string
-  referenceContext?: string
 }
 
 export interface ChatServiceConfig {
@@ -24,13 +27,15 @@ export interface ChatServiceConfig {
   maxRetries?: number
   timeout?: number
   onRequest?: (
-    params: ChatRequestParams
-  ) => (ChatRequestParams & RequestInit) | Promise<ChatRequestParams & RequestInit>
+    params: ResolvedChatRequestParams
+  ) =>
+    | (ResolvedChatRequestParams & RequestInit)
+    | Promise<ResolvedChatRequestParams & RequestInit>
   onStart?: (chunk: string) => void
   isValidChunk?: (chunk: SSEChunkData) => boolean
   onComplete?: (
     isAborted: boolean,
-    params?: ChatRequestParams,
+    params?: ResolvedChatRequestParams,
     result?: unknown
   ) => AIMessageContent | AIMessageContent[] | void
   onAbort?: () => Promise<void>

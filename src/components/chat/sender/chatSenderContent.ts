@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import type { AttachmentContent, SkillContent, UserMessageContent } from '@/domain'
+import type { AttachmentContent, SkillContent, ToolContent, UserMessageContent } from '@/domain'
 import { buildTextContent, toAttachmentItem } from '@/modules/chat/engine/userContent'
 
 export const serializeEditorContent = (editor: Editor): UserMessageContent[] => {
@@ -52,6 +52,20 @@ export const serializeEditorContent = (editor: Editor): UserMessageContent[] => 
     trimNextLeadingSpace = true
   }
 
+  const pushTool = (node: PMNode) => {
+    flushText()
+    content.push({
+      type: 'tool',
+      data: {
+        name: String(node.attrs.name ?? ''),
+        label: String(node.attrs.label ?? '')
+      },
+      status: 'complete',
+      time: Date.now()
+    } satisfies ToolContent)
+    trimNextLeadingSpace = true
+  }
+
   const serializeNode = (node: PMNode) => {
     if (node.type.name === 'text') {
       appendText(node.text ?? '')
@@ -67,6 +81,10 @@ export const serializeEditorContent = (editor: Editor): UserMessageContent[] => 
     }
     if (node.type.name === 'fileMention') {
       pushFile(node)
+      return
+    }
+    if (node.type.name === 'toolMention') {
+      pushTool(node)
       return
     }
     node.forEach(serializeNode)

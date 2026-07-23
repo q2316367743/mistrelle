@@ -1,6 +1,12 @@
 <template>
   <div class="r-chat-list">
-    <ChatList :clear-history="clearHistory" class="r-chat-list__content" @clear="emit('clear')">
+    <ChatList
+      :clear-history="clearHistory"
+      :text-loading="loading"
+      animation="gradient"
+      class="r-chat-list__content"
+      @clear="emit('clear')"
+    >
       <div class="px-8px">
         <ChatMessage
           v-for="message in messages"
@@ -128,6 +134,10 @@ defineProps({
   messages: {
     type: Array as PropType<Array<ChatMessageType>>,
     default: () => []
+  },
+  loading: {
+    type: Boolean,
+    default: false
   }
 })
 const emit = defineEmits<{

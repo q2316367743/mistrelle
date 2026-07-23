@@ -44,8 +44,7 @@
         <button class="menu-item" @click="toggleMore()">
           <ChatBubbleHistoryIcon class="menu-icon" />
           <span>灵感</span>
-          <chevron-down-icon v-if="more" class="ml-auto" />
-          <chevron-right-icon v-else class="ml-auto" />
+          <chevron-right-icon class="ml-auto" :style="addIconStyle" />
         </button>
         <div v-if="more" class="pl-16px">
           <button
@@ -205,6 +204,10 @@ const [more, toggleMore] = useBoolState(false)
 // 分组
 const chats = computed(() => useAiChatStore().state)
 const discussions = computed(() => useAiDiscussionStore().state)
+const addIconStyle = computed(() => ({
+  transform: more.value ? 'rotate(90deg)' : '',
+  transition: 'all 200ms ease-in-out'
+}))
 
 const isActive = (path: string) => route.path === path
 const isStartActive = (path: string) => route.path.startsWith(path)

@@ -31,9 +31,7 @@ const resolveModel = async (modelKey: string): Promise<ChatRequestParams> => {
   return {
     content: [],
     model: option.identifier,
-    provide: option.provideId,
-    baseURL: option.baseUrl,
-    apiKey: option.key
+    provide: option.provideId
   }
 }
 

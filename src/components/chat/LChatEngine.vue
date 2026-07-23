@@ -4,6 +4,7 @@
       <r-chat-list
         :messages="messages"
         :clear-history="messages.length > 1 && status !== 'streaming'"
+        :loading="status === 'pending' || status === 'streaming'"
         style="flex: 1"
         @clear="handleClear"
         @reask="handleReask"
@@ -14,7 +15,6 @@
         :initial-input="inputValue"
         :initial-model="modelValue"
         :loading="status === 'pending' || status === 'streaming'"
-        :placeholder="placeholder"
         :root-dir="rootDir"
         @send="handleSend"
         @stop="handleStop()"
@@ -24,26 +24,20 @@
 </template>
 <script lang="ts" setup>
 import { ChatRequestParams, ToolChat, aiChatContentGet, aiChatContentSet } from '@/modules/chat'
-import { useSettingAiStore } from '@/store'
-import { MessageUtil } from '@/utils/modal'
-import type { AttachmentContent, ToolFunction, UserMessage, UserMessageContent } from '@/domain'
-import type { AiChatContent, AiChatDraft } from '@/entity/ai'
+import type { UserMessage } from '@/domain'
+import type { AiChatContent } from '@/entity/ai'
 import { toolConfirmDialog } from '@/components/chat/modals/ToolConfirmDialog'
 import { toolMap } from '@/modules/tool'
 
 const props = withDefaults(
   defineProps<{
-    functions: ToolFunction[]
-    systemPrompt: string
     storageKey?: string
-    placeholder?: string
     rootDir?: string
   }>(),
   {}
 )
 
 const inputValue = ref('')
-const think = ref(false)
 const modelValue = ref('')
 
 const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<boolean> => {
@@ -53,53 +47,20 @@ const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<b
 }
 
 const instance = new ToolChat({
-  functions: props.functions,
-  systemPrompt: props.systemPrompt,
   toolConfirmHandler: confirmTool
 })
 
 const { messages, status } = instance
 
-const createRequestParams = (message: UserMessage): ChatRequestParams | null => {
-  const option = useSettingAiStore().optionMap.get(`${message.provide}:${message.model}`)
-  if (!option) {
-    MessageUtil.error('请选择模型')
-    return null
-  }
-  return {
-    content: message.content,
-    model: message.model,
-    provide: message.provide,
-    baseURL: option.baseUrl,
-    apiKey: option.key,
-    thinking: message.thinking
-  }
-}
-
-const buildReferenceContext = async (contents: UserMessageContent[]): Promise<string | null> => {
-  const attachments = contents
-    .filter((c): c is AttachmentContent => c.type === 'attachment')
-    .flatMap((c) => c.data)
-  if (attachments.length === 0) return ''
-  const parts: string[] = []
-  for (const item of attachments) {
-    try {
-      parts.push(
-        `## File: ${item.name ?? item.url}\n路径：${item.url}\n\n`
-      )
-    } catch (err) {
-      MessageUtil.error(`读取文件失败：${err instanceof Error ? err.message : String(err)}`)
-      return null
-    }
-  }
-  return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n\n---\n\n')}`
-}
+const createRequestParams = (message: UserMessage): ChatRequestParams => ({
+  content: message.content,
+  model: message.model,
+  provide: message.provide,
+  agentId: message.agentId,
+  reasoning_effort: message.reasoning_effort
+})
 
 const handleSend = async (message: ChatRequestParams) => {
-  const context = await buildReferenceContext(message.content)
-  if (context === null) return
-  if (context) message.referenceContext = context
-
   instance.sendUserMessage(message)
 }
 
@@ -117,7 +78,6 @@ const handleReask = (messageId: string) => {
   )
   if (!userMessage) return
   const requestParams = createRequestParams(userMessage)
-  if (!requestParams) return
   instance.reaskMessage(messageId, requestParams)
 }
 
@@ -127,15 +87,6 @@ const handleRollback = (messageId: string) => {
 
 const handleMessagesChange = () => {
   messages.value = [...messages.value]
-}
-
-const fillSenderFromDraft = (draft: AiChatDraft) => {
-  inputValue.value = draft.content
-    .filter((c) => c.type === 'text')
-    .map((c) => c.data)
-    .join('')
-  modelValue.value = `${draft.provide}:${draft.model}`
-  think.value = draft.thinking === 'enabled'
 }
 
 let unWatch: (() => void) | null = null
@@ -155,7 +106,6 @@ onMounted(async () => {
       async (val) => {
         await aiChatContentSet(props.storageKey!, {
           updatedTime: Date.now(),
-          systemPrompt: props.systemPrompt,
           draft: undefined,
           messages: toRaw(val)
         })
@@ -167,33 +117,12 @@ onMounted(async () => {
   const hasUserMessage = messages.value.some((m) => m.role === 'user')
 
   if (!hasUserMessage && content?.draft) {
-    const draft = content.draft
-    const option = useSettingAiStore().optionMap.get(`${draft.provide}:${draft.model}`)
-    if (!option) {
-      fillSenderFromDraft(draft)
-      MessageUtil.error('草稿中的模型不可用，请重新选择模型后发送')
-      return
-    }
-    const requestParams: ChatRequestParams = {
-      content: draft.content,
-      model: draft.model,
-      provide: draft.provide,
-      baseURL: option.baseUrl,
-      apiKey: option.key,
-      thinking: draft.thinking
-    }
-    const referenceContext = await buildReferenceContext(draft.content)
-    if (referenceContext === null) {
-      fillSenderFromDraft(draft)
-      return
-    }
-    if (referenceContext) requestParams.referenceContext = referenceContext
-    instance.sendUserMessage(requestParams)
+    const { draft } = content
+    instance.sendUserMessage(draft)
   } else if (messages.value.length > 1) {
-    const lastUser = messages.value.findLast((e) => e.role === 'user')
+    const lastUser = messages.value.findLast((e) => e.role === 'user') as UserMessage
     if (lastUser) {
       modelValue.value = `${lastUser.provide}:${lastUser.model}`
-      think.value = lastUser.thinking === 'enabled'
     }
   }
 })

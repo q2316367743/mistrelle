@@ -48,7 +48,7 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     }
   }
 
-  const add = async (draft: AiChatDraft, systemPrompt: string) => {
+  const add = async (draft: AiChatDraft) => {
     const id = useSnowflake().nextId()
     const now = Date.now()
     const preview = buildPreviewText(draft.content)
@@ -67,15 +67,16 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     // 保存聊天内容（含草稿）
     await aiChatContentSet(buildChatChatPath(id), {
       updatedTime: now,
-      systemPrompt,
       draft,
       messages: []
     })
 
     // 生成聊天消息
     logger.debug('AI 聊天消息生成')
-    const newName = await useChatName(item.preview || '')
-    await update(id, { name: newName })
+    useChatName(item.preview || '')
+      .then((newName) => update(id, { name: newName }))
+      .catch((e) => logger.error('AI 聊天消息生成失败', e))
+      .finally(() => logger.debug('AI 聊天消息生成完成'))
     return id
   }
 

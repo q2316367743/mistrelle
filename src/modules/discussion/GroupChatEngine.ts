@@ -111,9 +111,7 @@ const buildRequestParams = async (
   return {
     content: [buildTextContent(content)],
     model: option.identifier,
-    provide: option.provideId,
-    baseURL: option.baseUrl,
-    apiKey: option.key
+    provide: option.provideId
   }
 }
 

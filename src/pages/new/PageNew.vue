@@ -21,7 +21,7 @@ const router = useRouter()
 const model = ref('')
 
 const handleSend = async (message: ChatRequestParams) => {
-  const id = await useAiChatStore().add(message, '')
+  const id = await useAiChatStore().add(message)
   await router.push(`/chat/${id}`)
 }
 

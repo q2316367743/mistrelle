@@ -5,7 +5,12 @@
       <EditorContent :editor="editor" class="l-chat-sender__editor" />
     </div>
     <div class="l-chat-sender__footer">
-      <l-chat-attachment />
+      <l-chat-attachment
+        v-model:agent="agentId"
+        @add-skill="insertSkill"
+        @add-tool="insertTool"
+        @add-file="focusInput"
+      />
       <div class="flex gap-8px">
         <div class="l-chat-sender__tools">
           <t-select v-model="modelKey" :options="options" placeholder="请选择模型" />
@@ -26,16 +31,17 @@ import Mention from '@tiptap/extension-mention'
 import { mergeAttributes } from '@tiptap/core'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { nanoid } from 'nanoid'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { useSettingAiStore, useSettingDefaultStore } from '@/store'
-import { MessageUtil } from '@/utils/modal'
-import { toDateString } from '@/utils/lang'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
-import type { SkillItem, UserMessage, UserMessageContent } from '@/domain'
-import { buildFileSuggestion, buildSkillSuggestion } from './mentionSuggestion'
+import type { SkillItem, ToolItem, UserMessageContent } from '@/domain'
+import {
+  buildFileSuggestion,
+  buildSkillSuggestion,
+  buildToolSuggestion,
+  type ToolSuggestionItem
+} from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
-import { AddIcon } from 'tdesign-icons-vue-next'
 import { ChatRequestParams } from '@/modules/chat'
 
 const props = withDefaults(
@@ -45,6 +51,7 @@ const props = withDefaults(
     loading?: boolean
     placeholder?: string
     rootDir?: string
+    initialAgentId?: string
   }>(),
   {
     initialInput: '',
@@ -61,16 +68,23 @@ const emit = defineEmits<{
 const skills = ref<LocalSkill[]>([])
 const files = ref<ChatFileRef[]>([])
 const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaultAssistantModel)
+const agentId = ref(props.initialAgentId || '')
 
 const inputValue = ref('')
-const mentionState = ref<{ skills: SkillItem[]; files: ChatFileRef[] }>({ skills: [], files: [] })
+const mentionState = ref<{ skills: SkillItem[]; files: ChatFileRef[]; tools: ToolItem[] }>({
+  skills: [],
+  files: [],
+  tools: []
+})
 const suggestionOpen = ref(false)
 const suggestionOptions = { onOpenChange: (open: boolean) => (suggestionOpen.value = open) }
 
-// 从编辑器文档中提取结构化引用（不再解析文本）
-const extractMentions = (editor: Editor): { skills: SkillItem[]; files: ChatFileRef[] } => {
+type MentionState = { skills: SkillItem[]; files: ChatFileRef[]; tools: ToolItem[] }
+
+const extractMentions = (editor: Editor): MentionState => {
   const resultSkills: SkillItem[] = []
   const resultFiles: ChatFileRef[] = []
+  const resultTools: ToolItem[] = []
   editor.state.doc.descendants((node: PMNode) => {
     if (node.type.name === 'skillMention') {
       resultSkills.push({ path: node.attrs.id, name: node.attrs.label })
@@ -81,38 +95,25 @@ const extractMentions = (editor: Editor): { skills: SkillItem[]; files: ChatFile
         name: label.split('/').pop() || label,
         relativePath: label
       })
+    } else if (node.type.name === 'toolMention') {
+      resultTools.push({ name: node.attrs.name, label: node.attrs.label })
     }
   })
-  return { skills: resultSkills, files: resultFiles }
+  return { skills: resultSkills, files: resultFiles, tools: resultTools }
 }
 
-/**
- * 直接输出结构化的 UserMessageContent[]（文本 + SkillContent + AttachmentContent），
- * skill/file 仅存引用（path+name/url）。
- */
 const getContents = (): UserMessageContent[] => {
   const ed = editor.value
   return ed ? serializeEditorContent(ed) : []
 }
 
-/**
- * 把当前编辑器状态组装为完整的 UserMessage。
- * 模型选项在组件内部解析，保证 send 事件流出的是可直接落盘/请求的完整数据。
- */
 const buildUserMessage = (): ChatRequestParams | null => {
-  const option = useSettingAiStore().optionMap.get(modelKey.value)
-  if (!option) {
-    MessageUtil.error('请选择模型')
-    return null
-  }
+  const [provide = '', model = ''] = modelKey.value.split(':')
   return {
     content: getContents(),
-    model: option.identifier,
-    provide: option.provideId,
-    baseURL: option.baseUrl,
-    apiKey: option.key,
-    // 默认启用
-    thinking: 'enabled',
+    model,
+    provide,
+    agentId: agentId.value || undefined
   }
 }
 
@@ -146,6 +147,20 @@ const FileMention = Mention.extend({ name: 'fileMention' }).configure({
   ]
 })
 
+const ToolMention = Mention.extend({ name: 'toolMention' }).configure({
+  deleteTriggerWithBackspace: true,
+  suggestion: buildToolSuggestion(suggestionOptions),
+  renderHTML: ({ options, node }) => [
+    'span',
+    mergeAttributes(options.HTMLAttributes, {
+      class: 'l-chat-sender__inline-tag t-tag t-tag--warning t-tag--light t-tag--medium',
+      'data-type': 'tool',
+      contenteditable: 'false'
+    }),
+    `${node.attrs.label}`
+  ]
+})
+
 const editor = useEditor({
   extensions: [
     StarterKit.configure({
@@ -157,7 +172,8 @@ const editor = useEditor({
       horizontalRule: false
     }),
     SkillMention,
-    FileMention
+    FileMention,
+    ToolMention
   ],
   content: props.initialInput || '',
   editable: !props.loading,
@@ -182,24 +198,52 @@ const editor = useEditor({
 const options = computed<SelectProps['options']>(() => useSettingAiStore().options)
 const canSend = computed(() =>
   Boolean(
-    inputValue.value.trim() || mentionState.value.skills.length || mentionState.value.files.length
+    inputValue.value.trim() ||
+    mentionState.value.skills.length ||
+    mentionState.value.files.length ||
+    mentionState.value.tools.length
   )
 )
 const showPlaceholder = computed(
-  () => !inputValue.value && !mentionState.value.skills.length && !mentionState.value.files.length
+  () =>
+    !inputValue.value &&
+    !mentionState.value.skills.length &&
+    !mentionState.value.files.length &&
+    !mentionState.value.tools.length
 )
 
 const focusInput = () => editor.value?.commands.focus()
 
 const setText = (value: string) => editor.value?.commands.setContent(value || '')
 
+const insertSkill = (skill: LocalSkill) => {
+  editor.value
+    ?.chain()
+    .focus()
+    .insertContent([
+      { type: 'skillMention', attrs: { id: skill.path, label: skill.name } },
+      { type: 'text', text: ' ' }
+    ])
+    .run()
+}
+
+const insertTool = (tool: ToolSuggestionItem) => {
+  editor.value
+    ?.chain()
+    .focus()
+    .insertContent([
+      { type: 'toolMention', attrs: { name: tool.name, label: tool.label } },
+      { type: 'text', text: ' ' }
+    ])
+    .run()
+}
+
 const clear = () => {
   editor.value?.commands.clearContent(true)
   inputValue.value = ''
-  mentionState.value = { skills: [], files: [] }
+  mentionState.value = { skills: [], files: [], tools: [] }
 }
 
-// 发送：产出完整 UserMessage 向外 emit，并自行清空自身输入（高内聚）
 const handleSend = () => {
   if (!canSend.value) return
   const message = buildUserMessage()
@@ -220,6 +264,12 @@ watch(
   () => props.initialModel,
   (value) => {
     modelKey.value = value || useSettingDefaultStore().state.defaultAssistantModel
+  }
+)
+watch(
+  () => props.initialAgentId,
+  (value) => {
+    agentId.value = value || ''
   }
 )
 watch(

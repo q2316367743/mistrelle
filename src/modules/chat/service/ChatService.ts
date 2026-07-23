@@ -72,7 +72,6 @@ export const aiChatContentGet = async (path: string): Promise<AiChatContent | un
     if (Array.isArray(data.list)) {
       return {
         updatedTime: data.updatedAt || Date.now(),
-        systemPrompt: '',
         messages: data.list as ChatMessage[]
       }
     }

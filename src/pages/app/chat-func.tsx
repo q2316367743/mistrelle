@@ -39,17 +39,13 @@ export const openChatContextmenu = (
         icon: () => <DeleteIcon class={'color-red'} />,
         label: <span class={'color-red'}>删除</span>,
         onClick: () => {
-          MessageBoxUtil.confirm('是否删除该会话？', '删除确认')
-            .then(() => {
-              useAiChatStore()
-                .remove(agentId, id)
-                .then(() => MessageUtil.success('删除成功'))
-                .catch((e) => MessageUtil.error('删除失败', e))
-                .finally(() => onUpdate?.())
-            })
-            .then(() => {
-              MessageUtil.success('删除成功')
-            })
+          MessageBoxUtil.confirm('是否删除该会话？', '删除确认').then(() => {
+            useAiChatStore()
+              .remove(id)
+              .then(() => MessageUtil.success('删除成功'))
+              .catch((e) => MessageUtil.error('删除失败', e))
+              .finally(() => onUpdate?.())
+          })
         }
       }
     ]

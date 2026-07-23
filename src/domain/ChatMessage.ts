@@ -4,6 +4,8 @@ export type ChatStatus = 'idle' | ChatMessageStatus
 export type ChatContentType =
   | 'text'
   | 'markdown'
+  | 'skill'
+  | 'tool'
   | 'search'
   | 'attachment'
   | 'thinking'
@@ -23,7 +25,7 @@ export interface ChatBaseContent<T extends string, TData> {
   status?: ChatMessageStatus
   id?: string
   strategy?: 'merge' | 'append'
-  ext?: Record<string, any>
+  ext?: Record<string, unknown>
   // 创建时间
   time: number
 }
@@ -69,7 +71,7 @@ export type AttachmentItem = {
   width?: number
   height?: number
   extension?: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 export type AttachmentContent = ChatBaseContent<'attachment', AttachmentItem[]>
 // 用户在输入框中通过 "/" 引用的本地 skill（仅存引用，发送时按需读取全文）
@@ -80,6 +82,11 @@ export type SkillItem = {
   dirName?: string
 }
 export type SkillContent = ChatBaseContent<'skill', SkillItem>
+export type ToolItem = {
+  name: string
+  label: string
+}
+export type ToolContent = ChatBaseContent<'tool', ToolItem>
 export type ThinkingContent = ChatBaseContent<
   'thinking',
   {
@@ -97,10 +104,10 @@ export type ToolCall = {
   // 工具调用结果
   result?: string
   // 负载
-  payload?: Record<string, any>
+  payload?: Record<string, unknown>
 }
 export type ToolCallContent = ChatBaseContent<'toolcall', ToolCall>
-export type ActivityData<TContent = Record<string, any>> = {
+export type ActivityData<TContent = Record<string, unknown>> = {
   activityType: string
   messageId?: string
   content: TContent
@@ -110,7 +117,7 @@ export type ActivityData<TContent = Record<string, any>> = {
     toIndex: number
   }
 }
-export type ActivityContent<TContent = Record<string, any>> = ChatBaseContent<
+export type ActivityContent<TContent = Record<string, unknown>> = ChatBaseContent<
   'activity',
   ActivityData<TContent>
 >
@@ -118,7 +125,7 @@ export interface ChatBaseMessage {
   id: string
   status?: ChatMessageStatus
   datetime?: string
-  ext?: any
+  ext?: Record<string, unknown>
 }
 type AIContentTypeMap = {
   text: TextContent
@@ -133,14 +140,14 @@ type AIContentTypeMap = {
 }
 export type AIContentType = keyof AIContentTypeMap
 export type AIMessageContent = AIContentTypeMap[AIContentType]
-export type UserMessageContent = TextContent | AttachmentContent | SkillContent
+export type UserMessageContent = TextContent | AttachmentContent | SkillContent | ToolContent
 export interface UserMessage extends ChatBaseMessage {
   role: 'user'
   // 使用的模型
   model: string
   // 提供商
   provide: string
-  thinking?: 'enabled' | 'disabled'
+  agentId?: string
   reasoning_effort?: 'high' | 'max'
   content: UserMessageContent[]
 }

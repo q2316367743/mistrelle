@@ -14,11 +14,6 @@ import type { AssistantRequestMessage } from './agentTypes'
 
 const SKILL_TOOL_NAMES = new Set(['load_skill', 'read_skill_file'])
 
-const getReferenceContext = (ext: unknown): string => {
-  if (!ext || typeof ext !== 'object' || !('referenceContext' in ext)) return ''
-  return typeof ext.referenceContext === 'string' ? ext.referenceContext : ''
-}
-
 const getText = (contents: AIMessageContent[]): string =>
   contents
     .filter((item) => item.type === 'text' || item.type === 'markdown')
@@ -106,11 +101,14 @@ const appendAssistantMessage = (
 
 export const toAgentRequestMessages = (
   messages: ChatMessage[],
-  activeAssistantMessageId: string
+  activeAssistantMessageId: string,
+  activeReferenceContext = ''
 ): ChatCompletionMessageParam[] => {
   const out: ChatCompletionMessageParam[] = []
+  const activeAssistantIndex = messages.findIndex((message) => message.id === activeAssistantMessageId)
+  const activeUserIndex = activeAssistantIndex > 0 ? activeAssistantIndex - 1 : -1
 
-  for (const message of messages) {
+  for (const [index, message] of messages.entries()) {
     if (message.role === 'user') {
       const rawContent = message.content
         .filter((item): item is TextContent => item.type === 'text')
@@ -120,7 +118,7 @@ export const toAgentRequestMessages = (
       const content = command && command.rest.length > 0 ? command.rest : rawContent
       out.push({
         role: 'user',
-        content: `${content}${getReferenceContext(message.ext)}`
+        content: `${content}${index === activeUserIndex ? activeReferenceContext : ''}`
       })
       continue
     }

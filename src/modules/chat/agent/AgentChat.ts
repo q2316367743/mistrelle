@@ -4,20 +4,25 @@ import type {
 } from 'openai/resources/chat/completions'
 import type {
   AIMessage,
+  AttachmentContent,
   ChatMessage,
+  ToolContent,
   ToolFunction,
   UserMessage,
   UserMessageContent
 } from '@/domain'
 import { nanoid } from 'nanoid'
 import { buildSkillDynamicPrompt } from '@/modules/skill'
-import { shellTools, skillTools } from '@/modules/tool'
+import { buildAiAgentPrompt } from '@/entity/ai'
+import { shellTools, skillTools, toolMap } from '@/modules/tool'
+import { useAiAgentStore, useSettingAiStore } from '@/store'
 import type {
   ChatContext,
   ChatMessageSetterMode,
   ChatRequestParams,
   ChatServiceConfig,
-  ChatStatus
+  ChatStatus,
+  ResolvedChatRequestParams
 } from '@/modules/chat'
 import { toAgentRequestMessages } from './agentContext'
 import {
@@ -34,6 +39,7 @@ export interface UseChatOptions {
   chatServiceConfig?: ChatServiceConfig
   functions?: ToolFunction[]
   systemPrompt?: string
+  enableSkill?: boolean
   toolConfirmHandler?: (toolName: string, args: Record<string, unknown>) => Promise<boolean>
 }
 
@@ -42,12 +48,12 @@ export class ToolChat {
   readonly status = ref<ChatStatus>('idle')
   readonly toolCalls = ref<ToolCall[]>([])
   private readonly ctx: ChatContext
-  // 注入的工具
   private readonly functions: ToolFunction[]
   private readonly systemPrompt: string
+  private readonly enableSkill: boolean
   private readonly toolConfirmHandler?: UseChatOptions['toolConfirmHandler']
 
-  constructor(options: UseChatOptions) {
+  constructor(options: UseChatOptions = {}) {
     this.messages.value = [...(options.defaultMessages ?? [])]
     this.ctx = {
       config: { ...(options.chatServiceConfig ?? {}) },
@@ -56,11 +62,42 @@ export class ToolChat {
     }
     this.functions = options.functions ?? []
     this.systemPrompt = options.systemPrompt ?? ''
+    this.enableSkill = options.enableSkill ?? true
     this.toolConfirmHandler = options.toolConfirmHandler
   }
 
-  private getFunctions(): ToolFunction[] {
-    return [...this.functions, ...shellTools, ...skillTools]
+  private async resolveModel(params: ChatRequestParams): Promise<ResolvedChatRequestParams> {
+    const store = useSettingAiStore()
+    if (!store.ready) await store.initPromise
+    const option = store.optionMap.get(`${params.provide}:${params.model}`)
+    if (!option) throw new Error('模型不存在或未启用，请在 AI 设置中配置。')
+    return {
+      ...params,
+      baseURL: option.baseUrl,
+      apiKey: option.key
+    }
+  }
+
+  private getAgent(params: ChatRequestParams) {
+    return useAiAgentStore().getById(params.agentId)
+  }
+
+  private getUserToolNames(params: ChatRequestParams): string[] {
+    return params.content
+      .filter((content): content is ToolContent => content.type === 'tool')
+      .map((content) => content.data.name)
+  }
+
+  private getFunctions(params: ChatRequestParams): ToolFunction[] {
+    const agent = this.getAgent(params)
+    const names = [...(agent?.tools ?? []), ...this.getUserToolNames(params)]
+    const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
+    const map = new Map<string, ToolFunction>()
+    const defaultTools = this.enableSkill ? [...shellTools, ...skillTools] : shellTools
+    for (const fn of [...this.functions, ...selected, ...defaultTools]) {
+      map.set(fn.name, fn)
+    }
+    return Array.from(map.values())
   }
 
   private buildTools(functions: ToolFunction[]): ChatCompletionTool[] {
@@ -74,12 +111,28 @@ export class ToolChat {
     }))
   }
 
+  private buildReferenceContext(contents: UserMessageContent[]): string {
+    const attachments = contents
+      .filter((content): content is AttachmentContent => content.type === 'attachment')
+      .flatMap((content) => content.data)
+    if (attachments.length === 0) return ''
+    const parts = attachments.map((item) => `## File: ${item.name ?? item.url}\n路径：${item.url}\n`)
+    return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n---\n')}`
+  }
+
   private async buildRequestMessages(
+    params: ChatRequestParams,
     assistantMessageId: string
   ): Promise<ChatCompletionMessageParam[]> {
-    const dynamicPrompt = await buildSkillDynamicPrompt(this.messages.value)
-    const systemPrompt = [this.systemPrompt, dynamicPrompt].filter(Boolean).join('\n\n')
-    const messages = toAgentRequestMessages(this.messages.value, assistantMessageId)
+    const agent = this.getAgent(params)
+    const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
+    const dynamicPrompt = this.enableSkill ? await buildSkillDynamicPrompt(this.messages.value) : ''
+    const systemPrompt = [this.systemPrompt, agentPrompt, dynamicPrompt].filter(Boolean).join('\n\n')
+    const messages = toAgentRequestMessages(
+      this.messages.value,
+      assistantMessageId,
+      this.buildReferenceContext(params.content)
+    )
     return systemPrompt ? [{ role: 'system', content: systemPrompt }, ...messages] : messages
   }
 
@@ -90,17 +143,17 @@ export class ToolChat {
     signal: AbortSignal,
     seq: number
   ): Promise<void> {
-    const functions = this.getFunctions()
-    const tools = this.buildTools(functions)
     this.status.value = 'streaming'
 
     while (seq === this.ctx.requestSeq && !signal.aborted) {
+      const functions = this.getFunctions(params)
+      const resolvedParams = await this.resolveModel(params)
       const result = await streamAgentStep({
         messages: this.messages,
         assistantMessageId,
-        requestParams: params,
-        apiMessages: await this.buildRequestMessages(assistantMessageId),
-        tools,
+        requestParams: resolvedParams,
+        apiMessages: await this.buildRequestMessages(params, assistantMessageId),
+        tools: this.buildTools(functions),
         config: this.ctx.config,
         signal,
         seq,
@@ -109,7 +162,7 @@ export class ToolChat {
       if (result.cancelled) return
       if (result.toolCalls.length === 0) {
         this.status.value = result.finishReason === 'length' ? 'stop' : 'complete'
-        this.ctx.config.onComplete?.(false, params)
+        this.ctx.config.onComplete?.(false, resolvedParams)
         return
       }
 
@@ -164,7 +217,7 @@ export class ToolChat {
   ): void {
     if (error instanceof Error && error.name === 'AbortError') {
       this.status.value = 'stop'
-      this.ctx.config.onComplete?.(true, requestParams)
+      this.ctx.config.onComplete?.(true)
       setAssistantStatus(this.messages, assistantMessageId, 'stop')
       return
     }
@@ -187,11 +240,8 @@ export class ToolChat {
       content: requestParams.content,
       model: requestParams.model,
       provide: requestParams.provide,
-      thinking: requestParams.thinking,
-      reasoning_effort: requestParams.reasoning_effort,
-      ext: requestParams.referenceContext
-        ? { referenceContext: requestParams.referenceContext }
-        : undefined
+      agentId: requestParams.agentId,
+      reasoning_effort: requestParams.reasoning_effort
     }
     const assistantMessage = createPendingAssistantMessage()
     this.messages.value = [...this.messages.value, userMessage, assistantMessage]
@@ -217,10 +267,7 @@ export class ToolChat {
       assistantMessage = createPendingAssistantMessage()
       this.messages.value = [...this.messages.value.slice(0, userIndex + 1), assistantMessage]
     }
-    await this.executeRequest(
-      { ...requestParams, content: userMessage.content },
-      assistantMessage.id
-    )
+    await this.executeRequest({ ...requestParams, content: userMessage.content }, assistantMessage.id)
   }
 
   rollbackBeforeMessage(messageId: string): void {

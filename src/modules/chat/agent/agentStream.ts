@@ -8,7 +8,7 @@ import {
   createClient,
   extractReasoningContent,
   finishReasonToStatus,
-  type ChatRequestParams,
+  type ResolvedChatRequestParams,
   type ChatServiceConfig,
   type SSEChunkData
 } from '../engine/ChatCommon'
@@ -19,7 +19,7 @@ import type { AgentStreamingBody, StreamStepResult, ToolCall } from './agentType
 type StreamOptions = {
   messages: Ref<ChatMessage[]>
   assistantMessageId: string
-  requestParams: ChatRequestParams
+  requestParams: ResolvedChatRequestParams
   apiMessages: ChatCompletionCreateParamsStreaming['messages']
   tools: ChatCompletionTool[]
   config: ChatServiceConfig
@@ -59,7 +59,6 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
     stream: true,
     tools: options.tools
   }
-  if (options.requestParams.thinking) body.thinking = { type: options.requestParams.thinking }
   if (options.requestParams.reasoning_effort) {
     body.reasoning_effort = options.requestParams.reasoning_effort
   }

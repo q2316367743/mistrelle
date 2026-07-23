@@ -3,6 +3,7 @@ import type { SuggestionOptions } from '@tiptap/suggestion'
 import type { Ref } from 'vue'
 import type { ChatFileRef } from '@/utils/chatSender'
 import type { LocalSkill } from '@/modules/skill'
+import { toolOptions } from '@/modules/tool'
 
 // suggestion 运行时注入的 props（仅取框架确实会回传的字段；selectedIndex 由闭包维护，框架不回传）
 interface RuntimeSuggestionProps {
@@ -233,6 +234,51 @@ export const buildFileSuggestion = (
     (item) => {
       const f = item as FileSuggestionItem
       return { title: f.label, desc: f.data.path }
+    },
+    options
+  )
+})
+
+export interface ToolSuggestionItem {
+  name: string
+  label: string
+  group: string
+}
+
+const allToolSuggestionItems = (): ToolSuggestionItem[] =>
+  toolOptions.flatMap((group) =>
+    group.children.map((tool) => ({
+      name: String(tool.value),
+      label: String(tool.label),
+      group: group.group
+    }))
+  )
+
+export const buildToolSuggestion = (
+  options?: SuggestionRendererOptions
+): Partial<SuggestionOptions<ToolSuggestionItem>> => ({
+  char: '#',
+  pluginKey: new PluginKey('toolMention'),
+  items: ({ query }) =>
+    allToolSuggestionItems()
+      .filter((tool) =>
+        `${tool.label} ${tool.name} ${tool.group}`.toLowerCase().includes(query.toLowerCase())
+      )
+      .slice(0, 8),
+  command: ({ editor, range, props }) => {
+    editor
+      .chain()
+      .focus()
+      .insertContentAt(range, [
+        { type: 'toolMention', attrs: { name: props.name, label: props.label } },
+        { type: 'text', text: ' ' }
+      ])
+      .run()
+  },
+  render: makeSuggestionRenderer(
+    (item) => {
+      const tool = item as ToolSuggestionItem
+      return { title: tool.label, desc: `${tool.group} · ${tool.name}` }
     },
     options
   )

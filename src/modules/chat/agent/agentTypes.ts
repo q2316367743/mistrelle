@@ -18,7 +18,6 @@ export type AssistantRequestMessage = ChatCompletionAssistantMessageParam & {
 }
 
 export type AgentStreamingBody = ChatCompletionCreateParamsStreaming & {
-  thinking?: { type: 'enabled' | 'disabled' }
 }
 
 export type StreamStepResult = {

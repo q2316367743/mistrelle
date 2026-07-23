@@ -82,21 +82,25 @@ export const buildAiAgentForm = (): AiAgentForm => {
 
 export const buildAiAgentPrompt = (form: AiAgentForm) => {
   const parts: string[] = []
+  const identity = form.identity ?? ''
+  const personality = form.personality ?? ''
+  const aboutMe = form.aboutMe ?? ''
+  const tools = form.tools ?? []
 
-  if (form.identity.trim()) {
-    parts.push(`## 身份\n\n定义你是谁——你的名字、角色定位以及能力范围。这是你回答问题的根本出发点。\n${form.identity}`)
+  if (identity.trim()) {
+    parts.push(`## 身份\n\n定义你是谁——你的名字、角色定位以及能力范围。这是你回答问题的根本出发点。\n${identity}`)
   }
 
-  if (form.personality.trim()) {
-    parts.push(`## 性格\n\n设定你的性格特征、语气风格和行为准则。回复必须严格遵循此设定。\n${form.personality}`)
+  if (personality.trim()) {
+    parts.push(`## 性格\n\n设定你的性格特征、语气风格和行为准则。回复必须严格遵循此设定。\n${personality}`)
   }
 
-  if (form.aboutMe.trim()) {
-    parts.push(`## 关于我\n\n用户的个人信息（姓名、偏好、习惯等）。在对话中记住这些信息，并据此提供个性化回复。\n${form.aboutMe}`)
+  if (aboutMe.trim()) {
+    parts.push(`## 关于我\n\n用户的个人信息（姓名、偏好、习惯等）。在对话中记住这些信息，并据此提供个性化回复。\n${aboutMe}`)
   }
 
-  if (form.tools.length > 0) {
-    const labels = form.tools.map(name => toolMap[name]?.label || name)
+  if (tools.length > 0) {
+    const labels = tools.map(name => toolMap[name]?.label || name)
     parts.push(`## 可用工具\n\n你拥有以下工具的调用权限，可在需要时使用它们来获取信息或执行操作：\n- ${labels.join('\n- ')}`)
   }
 
