@@ -38,10 +38,10 @@ const systemPrompt = ref('')
 
 onMounted(async () => {
   try {
-    chat.value = await aiChatGet(route.params.agentId as string, route.params.id as string)
+    chat.value = await aiChatGet(route.params.id as string)
     if (!chat.value) {
       MessageUtil.error('聊天不存在')
-      await router.replace('/new//0')
+      await router.replace('/new')
       return
     }
     agent.value = useAiAgentStore().getById(route.params.agentId as string)

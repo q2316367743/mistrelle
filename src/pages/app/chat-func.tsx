@@ -22,16 +22,17 @@ export const openChatContextmenu = (
         icon: () => <EditIcon />,
         label: '重命名',
         onClick: () => {
-          const store = useAiChatStore()
-          store
-            .rename(agentId, id)
-            .then(() => {
-              MessageUtil.success('重命名成功')
-              onUpdate?.()
-            })
-            .catch((e) => {
-              MessageUtil.error('重命名失败', e.message)
-            })
+          MessageBoxUtil.prompt('请输入新的会话名称', '重命名会话').then((name) => {
+            useAiChatStore()
+              .rename(id, name)
+              .then(() => {
+                MessageUtil.success('重命名成功')
+                onUpdate?.()
+              })
+              .catch((e) => {
+                MessageUtil.error('重命名失败', e.message)
+              })
+          })
         }
       },
       {

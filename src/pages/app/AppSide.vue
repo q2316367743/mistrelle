@@ -20,96 +20,78 @@
         </t-button>
       </t-tooltip>
     </div>
-    <div class="h-40px grid grid-cols-3 gap-8px px-8px w-204px overflow-x-hidden">
-      <t-tooltip content="碎碎念">
-        <button
-          :class="['menu-item', 'search-button', { active: isActive('/note/ego') }]"
-          @click="handleNoteClick('ego')"
-        >
-          <span>自我</span>
-        </button>
-      </t-tooltip>
-      <t-tooltip content="感悟">
-        <button
-          :class="['menu-item', 'search-button', { active: isActive('/note/id') }]"
-          @click="handleNoteClick('id')"
-        >
-          <span>本我</span>
-        </button>
-      </t-tooltip>
-      <t-tooltip content="内心">
-        <button
-          :class="['menu-item', 'search-button', { active: isStartActive('/note/superego/') }]"
-          @click="handleNoteClick('superego/home')"
-        >
-          <span>超我</span>
-        </button>
-      </t-tooltip>
-    </div>
 
     <div class="side-container">
       <nav class="menu-list" aria-label="主菜单">
         <button
           class="menu-item"
-          :class="{ active: isActive('/new/0') }"
+          :class="{ active: isActive('/new') }"
           type="button"
-          @click="goTo('/new/0')"
+          @click="goTo('/new')"
         >
           <ChatIcon class="menu-icon" />
           <span>半窗烟雨</span>
         </button>
         <button
           class="menu-item"
-          :class="{
-            active: isActive(`/agent/0`) || isStartActive(`/chat/0/`)
-          }"
+          :class="{ active: isActive(`/agent`) }"
           type="button"
-          @click="goTo(`/agent/0`)"
+          @click="goTo(`/agent`)"
         >
-          <ChatBubbleHistoryIcon class="menu-icon" />
-          <span>聊天记录</span>
+          <RobotIcon class="menu-icon" />
+          <span>专家·工具</span>
         </button>
+        <button class="menu-item" @click="toggleMore()">
+          <ChatBubbleHistoryIcon class="menu-icon" />
+          <span>灵感</span>
+          <chevron-down-icon v-if="more" class="ml-auto" />
+          <chevron-right-icon v-else class="ml-auto" />
+        </button>
+        <div v-if="more" class="pl-16px">
+          <button
+            :class="['menu-item', { active: isActive('/note/ego') }]"
+            @click="handleNoteClick('ego')"
+          >
+            <edit-icon class="menu-icon" />
+            <span>自我</span>
+          </button>
+          <button
+            :class="['menu-item', { active: isActive('/note/id') }]"
+            @click="handleNoteClick('id')"
+          >
+            <article-icon class="menu-icon" />
+            <span>本我</span>
+          </button>
+          <button
+            :class="['menu-item', { active: isStartActive('/note/superego/') }]"
+            @click="handleNoteClick('superego/home')"
+          >
+            <usergroup-icon class="menu-icon" />
+            <span>超我</span>
+          </button>
+        </div>
 
         <t-divider size="1px" />
 
         <t-radio-group v-model="active" variant="primary-filled">
-          <t-radio-button value="agent" class="w-100px flex justify-center">Agent</t-radio-button>
+          <t-radio-button value="agent" class="w-100px flex justify-center"> 任务 </t-radio-button>
           <t-radio-button value="discussion" class="w-100px flex justify-center">
             讨论组
           </t-radio-button>
         </t-radio-group>
 
         <div v-if="active === 'agent'" class="menu-section">
-          <div class="section-title">
-            <span>我的 Agent</span>
-            <t-button
-              theme="primary"
-              variant="text"
-              shape="square"
-              size="small"
-              @click="openAgentPut()"
-            >
-              <template #icon>
-                <add-icon />
-              </template>
-            </t-button>
-          </div>
           <button
-            v-for="agent in agents"
-            :key="agent.id"
+            v-for="chat in chats"
+            :key="chat.id"
             class="menu-item"
-            :class="{
-              active:
-                isActive(`/agent/${agent.id}`) ||
-                isActive(`/new/${agent.id}`) ||
-                isStartActive(`/chat/${agent.id}/`)
-            }"
+            :class="{ active: isActive(`/chat/${chat.id}`) }"
             type="button"
-            @contextmenu="openAgentContextmenu($event, agent.id)"
-            @click="goTo(`/agent/${agent.id}`)"
+            @contextmenu="openChatContextmenu($event, '0', chat.id)"
+            @click="goTo(`/chat/${chat.id}`)"
           >
             <FolderIcon class="menu-icon" />
-            <span>{{ agent.name }}</span>
+            <span>{{ chat.name }}</span>
           </button>
         </div>
         <div v-else-if="active === 'discussion'" class="menu-section">
@@ -198,13 +180,19 @@ import {
   InternetIcon,
   UserIcon,
   UsergroupIcon,
-  ChatBubbleHistoryIcon
+  ChatBubbleHistoryIcon,
+  RobotIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  EditIcon,
+  ArticleIcon
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark } from '@/global/BeanFactory'
-import { useAiDiscussionStore, useAiAgentStore } from '@/store'
-import { openAgentContextmenu, openAgentPut } from '@/pages/app/agent-func'
+import { useAiDiscussionStore, useAiChatStore } from '@/store'
 import { openDiscussionPut, openDiscussionContextmenu } from '@/pages/app/discussion-func'
+import { openChatContextmenu } from '@/pages/app/chat-func'
+import { useBoolState } from '@/hooks'
 
 const router = useRouter()
 const route = useRoute()
@@ -212,9 +200,10 @@ const route = useRoute()
 const profile = getUserProfile()
 
 const active = ref('agent')
+const [more, toggleMore] = useBoolState(false)
 
 // 分组
-const agents = computed(() => useAiAgentStore().state)
+const chats = computed(() => useAiChatStore().state)
 const discussions = computed(() => useAiDiscussionStore().state)
 
 const isActive = (path: string) => route.path === path
@@ -238,7 +227,7 @@ onMounted(() => {
 <style scoped lang="less">
 .side-container {
   position: absolute;
-  top: 88px;
+  top: 40px;
   left: 0;
   right: 0;
   bottom: 56px;
@@ -254,14 +243,14 @@ onMounted(() => {
   gap: var(--td-comp-margin-s);
   width: calc(100% - 16px);
   min-width: 204px;
-  min-height: var(--td-comp-size-xl);
+  min-height: var(--td-comp-size-m);
   padding: 0 var(--td-comp-paddingLR-s);
   color: var(--td-text-color-primary);
   font: var(--td-font-body-medium);
   text-align: left;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--fluent-radius-smooth);
+  border-radius: var(--td-radius-small);
   outline: none;
   cursor: pointer;
   transition:
@@ -279,20 +268,6 @@ onMounted(() => {
   }
 }
 
-.search-button {
-  color: var(--td-text-color-secondary);
-  background: var(--td-bg-color-container);
-  border-color: var(--td-component-border);
-  box-shadow: var(--fluent-elevation-1);
-  overflow-x: hidden;
-  width: 62px;
-  min-width: 62px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .menu-list {
   display: flex;
   flex-direction: column;
@@ -301,6 +276,7 @@ onMounted(() => {
   overflow-y: auto;
   width: 204px;
   overflow-x: hidden;
+  height: 100%;
 }
 
 .menu-section,
@@ -315,6 +291,8 @@ onMounted(() => {
 .menu-section {
   margin-top: var(--td-comp-margin-xs);
   padding-top: var(--td-comp-paddingTB-xs);
+  height: calc(100%);
+  overflow: auto;
 }
 
 .bottom-menu {

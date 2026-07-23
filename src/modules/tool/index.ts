@@ -10,7 +10,6 @@ import {
 } from '@/modules/tool/components/inject'
 import { objectify } from '@/utils/lang'
 import { nativeHttpTools } from '@/modules/tool/components/native/http'
-import { shellTools } from '@/modules/tool/components/native/shell'
 
 interface ToolOption {
   group: string
@@ -19,6 +18,7 @@ interface ToolOption {
 
 const toOptions = (tools: ToolFunction[]) => tools.map((e) => ({ label: e.label, value: e.name }))
 
+// 此处都是附加能力
 export const toolOptions: Array<ToolOption> = [
   {
     group: '日期工具',
@@ -52,10 +52,6 @@ export const toolOptions: Array<ToolOption> = [
     group: '网络工具',
     children: toOptions(nativeHttpTools)
   },
-  {
-    group: 'Shell',
-    children: toOptions(shellTools)
-  }
 ]
 
 export const tools: Array<ToolFunction> = [
@@ -67,7 +63,6 @@ export const tools: Array<ToolFunction> = [
   ...injectBrowserTools,
   ...injectFfmpegTools,
   ...nativeHttpTools,
-  ...shellTools
 ]
 
 export const toolMap: Record<string, ToolFunction> = {
@@ -79,7 +74,7 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(injectBrowserTools, 'name'),
   ...objectify(injectFfmpegTools, 'name'),
   ...objectify(nativeHttpTools, 'name'),
-  ...objectify(shellTools, 'name')
 }
 
-export const defaultTools: ToolFunction[] = [...shellTools]
+export * from './components/native/shell'
+export * from './components/skill'

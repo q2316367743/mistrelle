@@ -1,5 +1,5 @@
 <template>
-  <page-layout :title="title">
+  <page-layout title="新建对话">
     <div class="p-8px flex flex-col items-center" style="height: calc(100% - 16px)">
       <div class="flex-1 flex flex-col items-center justify-center">
         <div style="font-size: var(--td-font-size-headline-medium); font-weight: bold">
@@ -7,62 +7,26 @@
         </div>
       </div>
       <div class="mt-auto w-full">
-        <l-chat-sender
-          :initial-model="model"
-          :placeholder="agent?.placeholder"
-          @send="handleSend"
-        />
+        <l-chat-sender :initial-model="model" placeholder="今天要做点什么呢？" @send="handleSend" />
       </div>
     </div>
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { useAiAgentStore, useAiChatStore, useSettingDefaultStore } from '@/store'
-import { AiAgent, buildAiAgentPrompt } from '@/entity/ai'
-import type { UserMessage } from '@/domain'
-import type { AiChatDraft } from '@/entity/ai'
+import { useAiChatStore, useSettingDefaultStore } from '@/store'
+import { ChatRequestParams } from '@/modules/chat'
 
-const route = useRoute()
 const router = useRouter()
 
-const agent = ref<AiAgent>()
 const model = ref('')
 
-const title = computed(() => {
-  if (agent.value) {
-    return `${agent.value.name} | 新建对话`
-  }
-  return '新建对话'
-})
-
-const handleSend = async (message: UserMessage) => {
-  const agentId = agent.value?.id || '0'
-  const draft: AiChatDraft = {
-    content: message.content,
-    model: message.model,
-    provide: message.provide,
-    thinking: message.thinking,
-    reasoning_effort: message.reasoning_effort
-  }
-  const id = await useAiChatStore().add(draft, agentId, agent.value ? buildAiAgentPrompt(agent.value) : '')
-  await router.push(`/chat/${agentId}/${id}`)
+const handleSend = async (message: ChatRequestParams) => {
+  const id = await useAiChatStore().add(message, '')
+  await router.push(`/chat/${id}`)
 }
 
 onMounted(async () => {
-  agent.value = useAiAgentStore().getById(route.params.id as string)
-  model.value = agent.value?.model || useSettingDefaultStore().state.defaultAssistantModel
-
-  watch(
-    () => route.params.id,
-    (val) => {
-      if (val === '0') {
-        agent.value = undefined
-      } else {
-        agent.value = useAiAgentStore().getById(route.params.id as string)
-      }
-      model.value = agent.value?.model || useSettingDefaultStore().state.defaultAssistantModel
-    }
-  )
+  model.value = useSettingDefaultStore().state.defaultAssistantModel
 })
 </script>
 <style scoped lang="less"></style>

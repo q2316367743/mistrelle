@@ -23,12 +23,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import {
-  ChatRequestParams,
-  ToolChat,
-  aiChatContentGet,
-  aiChatContentSet
-} from '@/modules/chat'
+import { ChatRequestParams, ToolChat, aiChatContentGet, aiChatContentSet } from '@/modules/chat'
 import { useSettingAiStore } from '@/store'
 import { MessageUtil } from '@/utils/modal'
 import type { AttachmentContent, ToolFunction, UserMessage, UserMessageContent } from '@/domain'
@@ -90,7 +85,7 @@ const buildReferenceContext = async (contents: UserMessageContent[]): Promise<st
   for (const item of attachments) {
     try {
       parts.push(
-        `## File: ${item.name ?? item.url}\n路径：${item.url}\n\n${await window.preload.fs.readTextFile(item.url ?? '')}`
+        `## File: ${item.name ?? item.url}\n路径：${item.url}\n\n`
       )
     } catch (err) {
       MessageUtil.error(`读取文件失败：${err instanceof Error ? err.message : String(err)}`)
@@ -100,14 +95,12 @@ const buildReferenceContext = async (contents: UserMessageContent[]): Promise<st
   return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n\n---\n\n')}`
 }
 
-const handleSend = async (message: UserMessage) => {
-  const requestParams = createRequestParams(message)
-  if (!requestParams) return
+const handleSend = async (message: ChatRequestParams) => {
   const context = await buildReferenceContext(message.content)
   if (context === null) return
-  if (context) requestParams.referenceContext = context
+  if (context) message.referenceContext = context
 
-  instance.sendUserMessage(requestParams)
+  instance.sendUserMessage(message)
 }
 
 const handleStop = () => {

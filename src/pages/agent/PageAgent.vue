@@ -1,231 +1,113 @@
 <template>
-  <page-layout :title="agent?.name || '分组'">
+  <page-layout title="专家">
+    <template #extra>
+      <t-button theme="primary" @click="handleAdd">
+        <template #icon><AddIcon /></template>
+        新增专家
+      </t-button>
+    </template>
+
     <div class="agent-page">
-      <div v-if="agent" class="agent-summary">
-        <t-card title="提示词" size="small" hover-shadow class="summary-card">
-          <p class="prompt-text" :title="promptPreview">{{ promptPreview }}</p>
-        </t-card>
-        <t-card title="启用的工具" size="small" hover-shadow class="summary-card">
-          <p class="tools-text" :title="enabledToolsText">{{ enabledToolsText }}</p>
-        </t-card>
+      <div class="agent-page__toolbar">
+        <t-input
+          v-model="keyword"
+          clearable
+          placeholder="搜索专家名称、描述..."
+          class="agent-page__search"
+        >
+          <template #prefix-icon>
+            <search-icon />
+          </template>
+        </t-input>
       </div>
 
-      <div class="chat-section">
-        <div class="chat-section__header">
-          <div>
-            <div class="chat-section__title">历史对话</div>
-            <div class="chat-section__desc">共 {{ chats.length }} 条对话</div>
-          </div>
-          <t-button theme="primary" @click="openNewGroup()">
-            <template #icon>
-              <add-icon />
-            </template>
-            新建对话
-          </t-button>
+      <div class="agent-page__body">
+        <div v-if="filteredList.length > 0" class="agent-page__grid">
+          <agent-card
+            v-for="item in filteredList"
+            :key="item.id"
+            :agent="item"
+            @preview="handlePreview(item.id)"
+            @edit="handleEdit(item.id)"
+            @delete="handleDelete(item.id)"
+          />
         </div>
-
-        <div v-if="chats.length > 0" class="chat-list">
-          <div v-for="chat in chats" :key="chat.id" class="chat-card">
-            <t-card
-              size="small"
-              hover-shadow
-              @click="openGroupChat(chat)"
-              @contextmenu="openChatContextmenu($event, agent?.id || '0', chat.id, initFunc)"
-              :title="chat.name || '未命名对话'"
-            >
-              <div class="chat-card__content">
-                <div class="chat-card__main">
-                  <div class="chat-card__message">{{ chat.preview || (chat as any).form?.content || '暂无首条消息' }}</div>
-                </div>
-              </div>
-              <template #actions>
-                <t-tag v-if="chat.top" theme="primary" variant="light" size="small">置顶</t-tag>
-                <span>{{ resolvePreviewModel(chat) || '未设置模型' }}</span>
-              </template>
-            </t-card>
-          </div>
-        </div>
-        <t-empty v-else description="暂无历史对话">
-          <template #action>
-            <t-button theme="primary" @click="openNewGroup()">开始新对话</t-button>
-          </template>
-        </t-empty>
+        <t-empty
+          v-else
+          title="暂无专家"
+          description="点击右上角新增专家"
+          class="agent-page__empty"
+        />
       </div>
     </div>
   </page-layout>
 </template>
+
 <script lang="ts" setup>
-import { AddIcon } from 'tdesign-icons-vue-next'
-import { AiChatItem, AiAgent, buildAiAgentPrompt } from '@/entity/ai'
-import { useAiAgentStore, useSettingAiStore } from '@/store'
-import { toolMap } from '@/modules/tool'
-import { aiChatList } from '@/modules/chat'
-import { openChatContextmenu } from '@/pages/app/chat-func'
+import { AddIcon, SearchIcon } from 'tdesign-icons-vue-next'
+import { useAiAgentStore } from '@/store'
+import { openAgentPut, openAgentPreview } from '@/pages/app/agent-func'
+import { MessageUtil } from '@/utils/modal'
+import AgentCard from './components/AgentCard.vue'
 
-const route = useRoute()
-const router = useRouter()
+const store = useAiAgentStore()
+const keyword = ref('')
 
-const agent = ref<AiAgent>()
-const chats = ref<Array<AiChatItem>>([])
-
-const promptPreview = computed(() => (agent.value ? buildAiAgentPrompt(agent.value) : '暂无提示词'))
-const enabledToolsText = computed(
-  () => agent.value?.tools.map((e) => toolMap[e]?.label).join('、') || '暂无启用工具'
-)
-
-const openNewGroup = () => router.push(`/new/${agent.value?.id || '0'}`)
-const openGroupChat = (chat: AiChatItem) =>
-  router.push(`/chat/${agent.value?.id || '0'}/${chat.id}`)
-
-const { optionMap } = useSettingAiStore()
-
-const resolvePreviewModel = (chat: AiChatItem) => {
-  const modelKey = chat.previewModel || (chat as any).form?.model
-  if (!modelKey) return ''
-  return optionMap.get(modelKey)?.model || modelKey
-}
-
-const initFunc = async () => {
-  agent.value = useAiAgentStore().getById(route.params.id as string)
-  chats.value = (await aiChatList(agent.value?.id || '0')).sort(
-    (a, b) => b.createdAt - a.createdAt
+const filteredList = computed(() => {
+  const text = keyword.value.trim().toLowerCase()
+  if (!text) return store.state
+  return store.state.filter(
+    (item) =>
+      item.name.toLowerCase().includes(text) || item.description.toLowerCase().includes(text)
   )
-}
+})
 
-watch(
-  () => route.params.id,
-  () => initFunc(),
-  { immediate: true }
-)
+const handleAdd = () => openAgentPut()
+const handlePreview = (id: string) => openAgentPreview(id)
+const handleEdit = (id: string) => openAgentPut(id)
+
+const handleDelete = (id: string) => {
+  store
+    .remove(id)
+    .then(() => MessageUtil.success('删除成功'))
+    .catch((e) => MessageUtil.error('删除失败', e))
+}
 </script>
+
 <style scoped lang="less">
 .agent-page {
-  padding: 0 24px 24px;
-}
-
-.agent-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--td-comp-margin-l);
-  margin-bottom: var(--td-comp-margin-xl);
-}
-
-.summary-card {
-  border-radius: var(--td-radius-large);
-}
-
-.prompt-text,
-.tools-text {
-  display: -webkit-box;
-  margin: 0;
-  min-height: 44px;
-  overflow: hidden;
-  color: var(--td-text-color-secondary);
-  font: var(--td-font-body-medium);
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.tools-text {
-  line-height: 22px;
-}
-
-.chat-section {
-  padding: var(--td-comp-paddingTB-l) 0;
-}
-
-.chat-section__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--td-comp-margin-l);
-  margin-bottom: var(--td-comp-margin-l);
-}
-
-.chat-section__title {
-  color: var(--td-text-color-primary);
-  font: var(--td-font-title-medium);
-}
-
-.chat-section__desc {
-  margin-top: var(--td-comp-margin-xxs);
-  color: var(--td-text-color-placeholder);
-  font: var(--td-font-body-small);
-}
-
-.chat-list {
   display: flex;
   flex-direction: column;
-  gap: var(--td-comp-margin-s);
-  overflow-x: hidden;
-  position: relative;
-}
+  height: calc(100% - 8px);
+  padding: 0 8px 8px;
+  overflow: auto;
 
-.chat-card {
-  border-radius: var(--td-radius-large);
-  cursor: pointer;
-  &:hover {
-    .chat-card__title {
-      color: var(--td-brand-color);
-    }
-  }
-}
-
-.chat-card__content {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--td-comp-margin-l);
-}
-
-.chat-card__main {
-  min-width: 0;
-}
-
-.chat-card__title {
-  overflow: hidden;
-  color: var(--td-text-color-primary);
-  font: var(--td-font-body-medium);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color 0.3s ease-in-out;
-}
-
-.chat-card__message {
-  margin-top: var(--td-comp-margin-xs);
-  overflow: hidden;
-  color: var(--td-text-color-secondary);
-  font: var(--td-font-body-small);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-card__meta {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: var(--td-comp-margin-s);
-  color: var(--td-text-color-placeholder);
-  font: var(--td-font-body-small);
-}
-
-@media (max-width: 720px) {
-  .agent-page {
-    padding: 0 16px 16px;
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    flex-shrink: 0;
   }
 
-  .agent-summary {
-    grid-template-columns: 1fr;
+  &__search {
+    width: 320px;
   }
 
-  .chat-section__header,
-  .chat-card__content {
-    align-items: stretch;
-    flex-direction: column;
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
-  .chat-card__meta {
-    justify-content: space-between;
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  &__empty {
+    margin-top: 15vh;
   }
 }
 </style>

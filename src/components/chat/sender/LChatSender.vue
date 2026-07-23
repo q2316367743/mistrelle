@@ -36,6 +36,7 @@ import type { SkillItem, UserMessage, UserMessageContent } from '@/domain'
 import { buildFileSuggestion, buildSkillSuggestion } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
 import { AddIcon } from 'tdesign-icons-vue-next'
+import { ChatRequestParams } from '@/modules/chat'
 
 const props = withDefaults(
   defineProps<{
@@ -53,7 +54,7 @@ const props = withDefaults(
   }
 )
 const emit = defineEmits<{
-  send: [message: UserMessage]
+  send: [message: ChatRequestParams]
   stop: []
 }>()
 
@@ -98,21 +99,20 @@ const getContents = (): UserMessageContent[] => {
  * 把当前编辑器状态组装为完整的 UserMessage。
  * 模型选项在组件内部解析，保证 send 事件流出的是可直接落盘/请求的完整数据。
  */
-const buildUserMessage = (): UserMessage | null => {
+const buildUserMessage = (): ChatRequestParams | null => {
   const option = useSettingAiStore().optionMap.get(modelKey.value)
   if (!option) {
     MessageUtil.error('请选择模型')
     return null
   }
   return {
-    id: nanoid(),
-    role: 'user',
     content: getContents(),
     model: option.identifier,
     provide: option.provideId,
+    baseURL: option.baseUrl,
+    apiKey: option.key,
     // 默认启用
     thinking: 'enabled',
-    datetime: toDateString(null)
   }
 }
 

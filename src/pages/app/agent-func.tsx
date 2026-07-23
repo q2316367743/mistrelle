@@ -1,7 +1,9 @@
 import { AiAgentForm, buildAiAgentForm } from '@/entity/ai'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
-import { toolOptions } from '@/modules/tool'
+import { toolOptions, toolMap } from '@/modules/tool'
 import {
+  Avatar,
+  Button,
   DialogPlugin,
   Form,
   FormItem,
@@ -9,6 +11,7 @@ import {
   Select,
   Switch,
   TabPanel,
+  Tag,
   Tabs,
   Textarea
 } from 'tdesign-vue-next'
@@ -137,5 +140,90 @@ export const openAgentContextmenu = (e: MouseEvent, id: string) => {
         }
       }
     ]
+  })
+}
+
+const renderPreviewSection = (title: string, content?: string) => {
+  if (!content || !content.trim()) return null
+  return (
+    <div class={'agent-preview__section'}>
+      <div class={'agent-preview__section-title'}>{title}</div>
+      <div class={'agent-preview__section-body'}>{content}</div>
+    </div>
+  )
+}
+
+/**
+ * 打开专家预览弹窗，展示身份/性格/关于我/工具等详情，并提供编辑入口
+ */
+export const openAgentPreview = (id: string) => {
+  const agent = useAiAgentStore().getById(id)
+  if (!agent) {
+    MessageUtil.error('专家不存在')
+    return
+  }
+
+  const modelLabel = (() => {
+    for (const group of useSettingAiStore().options) {
+      const hit = group.children?.find((item) => item.value === agent.model)
+      if (hit) return String(hit.label)
+    }
+    return agent.model
+  })()
+
+  const dp = DialogPlugin({
+    header: agent.name,
+    width: '520px',
+    placement: 'center',
+    footer: false,
+    default: () => (
+      <div class={'agent-preview'}>
+        <div class={'agent-preview__head'}>
+          <Avatar size="48px" shape="round">
+            {agent.name.slice(0, 1) || 'A'}
+          </Avatar>
+          <div class={'agent-preview__head-info'}>
+            <div class={'agent-preview__name'}>{agent.name}</div>
+            <div class={'agent-preview__desc'}>{agent.description || '暂无描述'}</div>
+          </div>
+        </div>
+        <div class={'agent-preview__meta'}>
+          <Tag size="small" variant="outline">
+            {modelLabel || '默认模型'}
+          </Tag>
+          {agent.think && (
+            <Tag size="small" theme="warning" variant="light">
+              深度思考
+            </Tag>
+          )}
+        </div>
+        {renderPreviewSection('身份', agent.identity)}
+        {renderPreviewSection('性格', agent.personality)}
+        {renderPreviewSection('关于我', agent.aboutMe)}
+        {agent.tools.length > 0 && (
+          <div class={'agent-preview__section'}>
+            <div class={'agent-preview__section-title'}>工具</div>
+            <div class={'agent-preview__tools'}>
+              {agent.tools.map((name) => (
+                <Tag key={name} size="small" variant="outline">
+                  {toolMap[name]?.label || name}
+                </Tag>
+              ))}
+            </div>
+          </div>
+        )}
+        <div class={'agent-preview__footer'}>
+          <Button
+            theme="default"
+            onClick={() => {
+              dp.destroy()
+              openAgentPut(id)
+            }}
+          >
+            编辑
+          </Button>
+        </div>
+      </div>
+    )
   })
 }

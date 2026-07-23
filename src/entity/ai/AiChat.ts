@@ -1,5 +1,6 @@
 import { BaseEntity } from '@/entity'
-import { ChatMessage, UserMessage } from '@/domain'
+import { ChatMessage } from '@/domain'
+import { ChatRequestParams } from '@/modules/chat'
 
 /**
  * 聊天索引中的轻量元信息（index.json）
@@ -17,7 +18,7 @@ export interface AiChatItem extends BaseEntity {
 /**
  * 待发送的首条消息草稿（chat.json）
  */
-export type AiChatDraft = Omit<UserMessage, 'id' | 'role' | 'datetime' | 'ext'>
+export type AiChatDraft = ChatRequestParams
 
 export interface AiChatContent {
   /**

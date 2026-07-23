@@ -4,7 +4,6 @@ import { listByAsync, saveListByAsync } from '@/utils/native'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
-import { aiChatRemoveAll } from '@/modules/chat'
 
 export const useAiAgentStore = defineStore('ai-agent', () => {
   const logger = useLog({ name: 'store:ai-agent' })
@@ -48,8 +47,6 @@ export const useAiAgentStore = defineStore('ai-agent', () => {
   const remove = async (id: string) => {
     state.value = state.value.filter((item) => item.id !== id)
     rev.value = await saveListByAsync(LocalNameEnum.LIST_AI_AGENT, state.value, rev.value)
-    // 删除全部的聊天记录
-    await aiChatRemoveAll(id)
   }
 
   const getById = (id?: string): AiAgent | undefined => {

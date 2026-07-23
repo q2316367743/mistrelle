@@ -5,7 +5,7 @@ export const routes: Array<RouteRecordRaw> = [
   {
     name: 'redirect',
     path: '/',
-    redirect: '/new/0'
+    redirect: '/new'
   },
 
   {
@@ -18,21 +18,21 @@ export const routes: Array<RouteRecordRaw> = [
     path: '/skill',
     component: () => import('@/pages/skill/index.vue')
   },
+  {
+    name: 'Agent',
+    path: '/agent',
+    component: () => import('@/pages/agent/PageAgent.vue')
+  },
 
   {
     name: '新建聊天',
-    path: '/new/:id',
+    path: '/new',
     component: () => import('@/pages/new/PageNew.vue')
   },
   {
     name: '聊天内容',
-    path: '/chat/:agentId/:id',
+    path: '/chat/:id',
     component: () => import('@/pages/chat/PageChat.vue')
-  },
-  {
-    name: 'Agent',
-    path: '/agent/:id',
-    component: () => import('@/pages/agent/PageAgent.vue')
   },
   {
     name: '讨论组',
