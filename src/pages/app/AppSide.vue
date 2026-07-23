@@ -133,8 +133,8 @@
           min-column-width="188px"
         >
           <button class="menu-item" type="button">
-            <t-avatar :image="profile.avatar" size="24px" />
-            <span>{{ profile.nickname }}</span>
+            <t-avatar image="./logo.png" size="24px" />
+            <span>{{ nickname }}</span>
           </button>
           <t-dropdown-menu>
             <t-dropdown-item @click="handleSettingClick('account')">
@@ -188,15 +188,13 @@ import {
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark } from '@/global/BeanFactory'
-import { useAiDiscussionStore, useAiChatStore } from '@/store'
+import { useAiDiscussionStore, useAiChatStore, useSettingAccountStore } from '@/store'
 import { openDiscussionPut, openDiscussionContextmenu } from '@/pages/app/discussion-func'
 import { openChatContextmenu } from '@/pages/app/chat-func'
 import { useBoolState } from '@/hooks'
 
 const router = useRouter()
 const route = useRoute()
-
-const profile = getUserProfile()
 
 const active = ref('agent')
 const [more, toggleMore] = useBoolState(false)
@@ -208,6 +206,7 @@ const addIconStyle = computed(() => ({
   transform: more.value ? 'rotate(90deg)' : '',
   transition: 'all 200ms ease-in-out'
 }))
+const nickname = computed(() => useSettingAccountStore().state.nickname)
 
 const isActive = (path: string) => route.path === path
 const isStartActive = (path: string) => route.path.startsWith(path)

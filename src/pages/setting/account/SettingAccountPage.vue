@@ -2,9 +2,15 @@
   <page-layout title="账号设置">
     <t-list class="setting-list" split size="small">
       <t-list-item>
+        <t-list-item-meta title="用户名" />
+        <template #action>
+          <t-input v-model="state.nickname" style="width: 200px" allow-clear />
+        </template>
+      </t-list-item>
+      <t-list-item>
         <t-list-item-meta
           title="SkillHub API Key"
-          description="用于访问 SkillHub 服务，可前往 skillhub.cn/dashboard/keys 获取"
+          description="用于访问 SkillHub 服务"
         />
         <template #action>
           <div class="flex items-center gap-8px">
@@ -29,6 +35,6 @@ const { state } = toRefs(useSettingAccountStore())
 </script>
 <style scoped lang="less">
 .setting-list {
-  padding: 0 16px 16px 16px;
+  padding: 0 8px 8px 8px;
 }
 </style>
