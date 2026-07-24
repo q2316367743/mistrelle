@@ -51,7 +51,7 @@ export const toolOptions: Array<ToolOption> = [
   {
     group: '网络工具',
     children: toOptions(nativeHttpTools)
-  },
+  }
 ]
 
 export const tools: Array<ToolFunction> = [
@@ -62,7 +62,7 @@ export const tools: Array<ToolFunction> = [
   ...injectScreenTools,
   ...injectBrowserTools,
   ...injectFfmpegTools,
-  ...nativeHttpTools,
+  ...nativeHttpTools
 ]
 
 export const toolMap: Record<string, ToolFunction> = {
@@ -73,8 +73,13 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(injectScreenTools, 'name'),
   ...objectify(injectBrowserTools, 'name'),
   ...objectify(injectFfmpegTools, 'name'),
-  ...objectify(nativeHttpTools, 'name'),
+  ...objectify(nativeHttpTools, 'name')
 }
 
-export * from './components/native/shell'
-export * from './components/skill'
+import { shellTools } from './components/native/shell'
+import { skillTools } from './components/skill'
+
+export const defaultTools: ToolFunction[] = [
+  ...shellTools,
+  ...skillTools
+]

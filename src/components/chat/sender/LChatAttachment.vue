@@ -149,7 +149,9 @@
                 <button class="l-chat-attachment__footer-btn" @click="emit('addLocalSkill')">
                   <upload-icon />从本地添加技能
                 </button>
-                <button class="l-chat-attachment__footer-btn" @click="emitManage">管理技能</button>
+                <button class="l-chat-attachment__footer-btn" @click="goToSkillPage">
+                  管理技能
+                </button>
               </template>
               <template v-else>
                 <button class="l-chat-attachment__footer-btn" @click="emitManage">
@@ -225,7 +227,6 @@ const emit = defineEmits<{
   addFile: []
   addRefFile: []
   addLocalSkill: []
-  manage: [panel: PanelType]
 }>()
 
 // ─── Router ──────────────────────────────────────────────
@@ -247,7 +248,7 @@ const panelItems: NavItem[] = [
   { value: 'file', label: '添加文件', icon: FileAddIcon },
   { value: 'ref-file', label: '引用对话中的文件', icon: FolderIcon },
   { value: 'mode', label: '模式', icon: CodeIcon },
-  { value: 'expert', label: '专家', icon: AiEducationIcon },
+  { value: 'expert', label: 'Agent', icon: AiEducationIcon },
   { value: 'skill', label: '技能', icon: LightbulbIcon },
   { value: 'tool', label: '工具', icon: ToolsIcon }
 ]
@@ -346,12 +347,14 @@ const selectFile = () => emit('addFile')
 const selectRefFile = () => emit('addRefFile')
 
 /** 跳转到专家管理页面 */
-const goToAgentPage = () => {
-  keyword.value = ''
-  router.push('/agent')
-}
+const goToAgentPage = () => router.push('/agent')
+const goToSkillPage = () => router.push('/skill')
 
-const emitManage = () => emit('manage', activePanel.value)
+const emitManage = () => {
+  if (activePanel.value === 'expert') {
+    goToAgentPage()
+  }
+}
 
 // ─── Lifecycle ───────────────────────────────────────────
 onMounted(async () => {

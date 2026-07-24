@@ -5,20 +5,7 @@
     :class="['sidebar', 'shrink-0']"
   >
     <div class="h-32px pl-40px">
-      <t-tooltip content="提示词管理">
-        <t-button theme="primary" shape="square" variant="text" @click="handlePromptClick">
-          <template #icon>
-            <ai-textformat-italic-icon />
-          </template>
-        </t-button>
-      </t-tooltip>
-      <t-tooltip content="skill">
-        <t-button theme="primary" shape="square" variant="text" @click="handleSkillClick">
-          <template #icon>
-            <ai-book-open-icon />
-          </template>
-        </t-button>
-      </t-tooltip>
+
     </div>
 
     <div class="side-container">
@@ -32,21 +19,12 @@
           <ChatIcon class="menu-icon" />
           <span>半窗烟雨</span>
         </button>
-        <button
-          class="menu-item"
-          :class="{ active: isActive(`/agent`) }"
-          type="button"
-          @click="goTo(`/agent`)"
-        >
-          <RobotIcon class="menu-icon" />
-          <span>专家·工具</span>
-        </button>
-        <button class="menu-item" @click="toggleMore()">
+        <button class="menu-item" @click="toggleNote()">
           <ChatBubbleHistoryIcon class="menu-icon" />
           <span>灵感</span>
-          <chevron-right-icon class="ml-auto" :style="addIconStyle" />
+          <chevron-right-icon class="ml-auto" :style="noteIconStyle" />
         </button>
-        <div v-if="more" class="pl-16px">
+        <div v-if="note" class="pl-16px">
           <button
             :class="['menu-item', { active: isActive('/note/ego') }]"
             @click="handleNoteClick('ego')"
@@ -67,6 +45,30 @@
           >
             <usergroup-icon class="menu-icon" />
             <span>超我</span>
+          </button>
+        </div>
+        <button class="menu-item" type="button" @click="toggleMore()">
+          <app-icon class="menu-icon" />
+          <span>更多拓展</span>
+          <chevron-right-icon class="ml-auto" :style="moreIconStyle" />
+        </button>
+        <div v-if="more" class="pl-16px">
+          <button
+            class="menu-item"
+            :class="{ active: isActive(`/agent`) }"
+            type="button"
+            @click="goTo(`/agent`)"
+          >
+            <AiEducationIcon class="menu-icon" />
+            <span>Agent</span>
+          </button>
+          <button :class="['menu-item', { active: isActive('/skill') }]" @click="goTo(`/skill`)">
+            <LightbulbIcon class="menu-icon" />
+            <span>技能</span>
+          </button>
+          <button :class="['menu-item', { active: isActive(`/tool`) }]" @click="goTo(`/tool`)">
+            <tools-icon class="menu-icon" />
+            <span>工具</span>
           </button>
         </div>
 
@@ -157,25 +159,23 @@
 import {
   AddIcon,
   AiArticleIcon,
-  AiBookOpenIcon,
   AiIcon,
-  AiTextformatItalicIcon,
   ChatIcon,
   FolderIcon,
   InternetIcon,
   UserIcon,
   UsergroupIcon,
   ChatBubbleHistoryIcon,
-  RobotIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   EditIcon,
   ArticleIcon,
   Setting1Icon,
   SecuredIcon,
-  AppIcon
+  AppIcon,
+  ToolsIcon,
+  AiEducationIcon,
+  LightbulbIcon
 } from 'tdesign-icons-vue-next'
-import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useAiDiscussionStore, useAiChatStore, useSettingAccountStore } from '@/store'
 import { openDiscussionPut, openDiscussionContextmenu } from '@/pages/app/discussion-func'
@@ -186,6 +186,7 @@ const router = useRouter()
 const route = useRoute()
 
 const active = ref('agent')
+const [note, toggleNote] = useBoolState(false)
 const [more, toggleMore] = useBoolState(false)
 
 const settingOptions = [
@@ -202,7 +203,11 @@ const settingOptions = [
 // 分组
 const chats = computed(() => useAiChatStore().state)
 const discussions = computed(() => useAiDiscussionStore().state)
-const addIconStyle = computed(() => ({
+const noteIconStyle = computed(() => ({
+  transform: note.value ? 'rotate(90deg)' : '',
+  transition: 'all 200ms ease-in-out'
+}))
+const moreIconStyle = computed(() => ({
   transform: more.value ? 'rotate(90deg)' : '',
   transition: 'all 200ms ease-in-out'
 }))
@@ -217,8 +222,6 @@ const goTo = (path: string) => {
   }
 }
 
-const handlePromptClick = () => router.push('/prompt')
-const handleSkillClick = () => router.push('/skill')
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
 const handleNoteClick = (key: string) => router.push(`/note/${key}`)
 

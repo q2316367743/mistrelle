@@ -14,7 +14,7 @@ import type {
 import { nanoid } from 'nanoid'
 import { buildSkillDynamicPrompt } from '@/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
-import { shellTools, skillTools, toolMap } from '@/modules/tool'
+import { defaultTools, toolMap } from '@/modules/tool'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
 import type {
   ChatContext,
@@ -39,7 +39,6 @@ export interface UseChatOptions {
   chatServiceConfig?: ChatServiceConfig
   functions?: ToolFunction[]
   systemPrompt?: string
-  enableSkill?: boolean
   toolConfirmHandler?: (toolName: string, args: Record<string, unknown>) => Promise<boolean>
 }
 
@@ -50,7 +49,6 @@ export class ToolChat {
   private readonly ctx: ChatContext
   private readonly functions: ToolFunction[]
   private readonly systemPrompt: string
-  private readonly enableSkill: boolean
   private readonly toolConfirmHandler?: UseChatOptions['toolConfirmHandler']
 
   constructor(options: UseChatOptions = {}) {
@@ -62,7 +60,6 @@ export class ToolChat {
     }
     this.functions = options.functions ?? []
     this.systemPrompt = options.systemPrompt ?? ''
-    this.enableSkill = options.enableSkill ?? true
     this.toolConfirmHandler = options.toolConfirmHandler
   }
 
@@ -93,7 +90,6 @@ export class ToolChat {
     const names = [...(agent?.tools ?? []), ...this.getUserToolNames(params)]
     const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
     const map = new Map<string, ToolFunction>()
-    const defaultTools = this.enableSkill ? [...shellTools, ...skillTools] : shellTools
     for (const fn of [...this.functions, ...selected, ...defaultTools]) {
       map.set(fn.name, fn)
     }
@@ -126,7 +122,7 @@ export class ToolChat {
   ): Promise<ChatCompletionMessageParam[]> {
     const agent = this.getAgent(params)
     const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
-    const dynamicPrompt = this.enableSkill ? await buildSkillDynamicPrompt(this.messages.value) : ''
+    const dynamicPrompt = await buildSkillDynamicPrompt(this.messages.value)
     const systemPrompt = [this.systemPrompt, agentPrompt, dynamicPrompt].filter(Boolean).join('\n\n')
     const messages = toAgentRequestMessages(
       this.messages.value,
