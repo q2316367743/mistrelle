@@ -47,10 +47,6 @@ export const toolOptions: Array<ToolOption> = [
   {
     group: 'FFmpeg',
     children: toOptions(injectFfmpegTools)
-  },
-  {
-    group: '网络工具',
-    children: toOptions(nativeHttpTools)
   }
 ]
 

@@ -11,12 +11,17 @@ export const routes: Array<RouteRecordRaw> = [
   {
     name: 'Skill',
     path: '/skill',
-    component: () => import('@/pages/skill/index.vue')
+    component: () => import('@/pages/more/skill/index.vue')
   },
   {
     name: 'Agent',
     path: '/agent',
-    component: () => import('@/pages/agent/PageAgent.vue')
+    component: () => import('@/pages/more/agent/PageAgent.vue')
+  },
+  {
+    name: 'Tool',
+    path: '/tool',
+    component: () => import('@/pages/more/tool/PageTool.vue')
   },
 
   {

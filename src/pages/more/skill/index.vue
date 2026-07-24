@@ -13,8 +13,8 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import SkillLocal from '@/pages/skill/SkillLocal/SkillLocal.vue'
-import SkillHub from '@/pages/skill/SkillHub/SkillHub.vue'
+import SkillLocal from '@/pages/more/skill/SkillLocal/SkillLocal.vue'
+import SkillHub from '@/pages/more/skill/SkillHub/SkillHub.vue'
 
 const active = ref('local')
 </script>
