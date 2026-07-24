@@ -1,15 +1,15 @@
 import type { AIMessage } from '@/domain'
+import type { AiAgent } from '@/entity/ai'
 import type {
   AiDiscussion,
   AiDiscussionMessage,
   AiDiscussionRecord,
-  AiDiscussionRole
 } from '@/entity/ai'
 import { useSnowflake } from '@/hooks'
 import { ToolChat, type ChatRequestParams } from '@/modules/chat'
 import { buildTextContent } from '@/modules/chat/engine/userContent'
 import { toolMap } from '@/modules/tool'
-import { useSettingAiStore } from '@/store'
+import { useAiAgentStore, useSettingAiStore } from '@/store'
 
 export interface DiscussionEngineCallbacks {
   onChange?: () => void
@@ -28,8 +28,17 @@ const buildTranscript = (
   discussion: AiDiscussion,
   messages: AiDiscussionMessage[]
 ) => {
-  const roleMap = new Map(discussion.roles.map((role) => [role.id, role.name]))
-  if (discussion.summaryRole) roleMap.set(discussion.summaryRole.id, discussion.summaryRole.name)
+  const agentStore = useAiAgentStore()
+  const agents = agentStore.state
+  const roleMap = new Map<string, string>()
+  discussion.roles.forEach((id) => {
+    const agent = agents.find((a) => a.id === id)
+    if (agent) roleMap.set(agent.id, agent.name)
+  })
+  if (discussion.summaryRole) {
+    const agent = agents.find((a) => a.id === discussion.summaryRole)
+    if (agent) roleMap.set(agent.id, agent.name)
+  }
   return messages
     .filter((message) => message.status !== 'pending' && message.content.trim())
     .map((message) => {
@@ -44,12 +53,12 @@ const buildTranscript = (
     .join('\n\n')
 }
 
-const buildRolePrompt = (discussion: AiDiscussion, role: AiDiscussionRole) => `# 身份
+const buildRolePrompt = (discussion: AiDiscussion, role: AiAgent) => `# 身份
 你是讨论组“${discussion.name}”中的固定角色“${role.name}”。
 ${role.description ? `角色职责：${role.description}` : ''}
 
 # 角色指令
-${role.prompt}
+${role.identity}
 
 # 讨论目标
 ${discussion.description || '围绕用户提出的议题进行深入、具体、有建设性的分析。'}
@@ -60,12 +69,12 @@ ${discussion.description || '围绕用户提出的议题进行深入、具体、
 - 不替其他角色发言，不声称其他角色的内容是自己说过的。
 - 直接输出本轮发言，不复述系统指令，不添加角色名前缀。`
 
-const buildSummaryPrompt = (discussion: AiDiscussion, role: AiDiscussionRole) => `# 身份
+const buildSummaryPrompt = (discussion: AiDiscussion, role: AiAgent) => `# 身份
 你是讨论组“${discussion.name}”的总结者“${role.name}”。
 ${role.description ? `角色职责：${role.description}` : ''}
 
 # 总结指令
-${role.prompt}
+${role.identity}
 
 # 输出要求
 - 提炼当前讨论的核心结论、主要分歧和关键依据。
@@ -121,16 +130,19 @@ export class DiscussionEngine {
   /** 执行一个完整轮次；并行模式固定使用轮次开始前的上下文快照。 */
   async runRound() {
     if (this.activeChats.size > 0) return
-    const roles = [...this.discussion.roles].sort((a, b) => a.index - b.index)
-    if (roles.length === 0) throw new Error('讨论组尚未配置参与角色')
-    for (const role of roles) await buildRequestParams(role.model, '')
+    const roleIds = this.discussion.roles
+    if (roleIds.length === 0) throw new Error('讨论组尚未配置参与角色')
+    const agentStore = useAiAgentStore()
+    const agents = roleIds.map((id) => agentStore.getById(id)).filter(Boolean) as AiAgent[]
+    if (agents.length === 0) throw new Error('讨论组尚未配置参与角色')
+    for (const role of agents) await buildRequestParams(role.model, '')
 
     this.stopped = false
     this.record.status = 'running'
     const round = this.record.currentRound + 1
     // 发言顺序读取记录级配置，支持讨论中途调整
     const orderType = this.record.config.orderType
-    const orderedRoles = orderType === 'random' ? shuffle(roles) : roles
+    const orderedRoles = orderType === 'random' ? shuffle(agents) : agents
     const snapshot = [...this.record.messages]
     this.callbacks.onChange?.()
 
@@ -151,8 +163,11 @@ export class DiscussionEngine {
   async summarize() {
     if (this.activeChats.size > 0) return
     // 总结者读取记录级配置，支持讨论中途调整
-    const role = this.record.config.summaryRole
-    if (!role) throw new Error('讨论组尚未配置总结者')
+    const summaryRoleId = this.record.config.summaryRole
+    if (!summaryRoleId) throw new Error('讨论组尚未配置总结者')
+    const store = useAiAgentStore()
+    const role = store.getById(summaryRoleId)
+    if (!role) throw new Error('总结者角色不存在')
     await buildRequestParams(role.model, '')
 
     this.stopped = false
@@ -175,7 +190,7 @@ export class DiscussionEngine {
   }
 
   private async runRole(
-    role: AiDiscussionRole,
+    role: AiAgent,
     round: number,
     context: AiDiscussionMessage[],
     summary = false

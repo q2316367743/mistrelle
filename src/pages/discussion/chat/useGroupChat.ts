@@ -5,7 +5,7 @@ import type { AiDiscussion, AiGroupChat, AiGroupChatMessage, MessageSegment } fr
 import { useSnowflake } from '@/hooks'
 import { ToolChat, type ChatRequestParams } from '@/modules/chat'
 import { buildTextContent } from '@/modules/chat/engine/userContent'
-import { useAiDiscussionStore, useSettingAiStore, useSettingDefaultStore } from '@/store'
+import { useAiAgentStore, useAiDiscussionStore, useSettingAiStore, useSettingDefaultStore } from '@/store'
 import { MessageUtil } from '@/utils/modal'
 import {
   groupChatGet,
@@ -55,7 +55,7 @@ export const useGroupChat = () => {
   let engine: GroupChatEngine | undefined
 
   const orderedRoles = computed(() =>
-    [...(discussion.value?.roles ?? [])].sort((a, b) => a.index - b.index)
+    [...(discussion.value?.roles ?? [])]
   )
 
   const persist = throttle(
@@ -130,12 +130,12 @@ export const useGroupChat = () => {
 
     if (mentionedRoleIds.length === 0) return
 
-    const responderRoles = discussion.value.roles.filter((r) => mentionedRoleIds.includes(r.id))
-    if (responderRoles.length === 0) return
+    const responderRoleIds = discussion.value.roles.filter((r) => mentionedRoleIds.includes(r))
+    if (responderRoleIds.length === 0) return
 
     running.value = true
     try {
-      await engine?.runResponders(userMsg, responderRoles)
+      await engine?.runResponders(userMsg, responderRoleIds)
     } catch (err) {
       MessageUtil.error('群聊执行失败', err)
     } finally {
@@ -164,7 +164,9 @@ export const useGroupChat = () => {
         return
       }
       const transcript = buildTranscript(discussion.value, ctxMessages)
-      const modelKey = discussion.value.roles[0]?.model || useSettingDefaultStore().state.defaultAssistantModel
+      const firstRoleId = discussion.value.roles[0]
+      const firstAgent = firstRoleId ? useAiAgentStore().getById(firstRoleId) : undefined
+      const modelKey = firstAgent?.model || useSettingDefaultStore().state.defaultAssistantModel
       const params = await resolveModel(modelKey)
       const summarizer = new ToolChat({
         functions: [],

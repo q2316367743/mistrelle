@@ -1,3 +1,4 @@
+import type { AiAgent } from '@/entity/ai'
 import type {
   AiDiscussion,
   AiDiscussionRecord,
@@ -5,7 +6,7 @@ import type {
   AiDiscussionSessionConfig
 } from '@/entity/ai'
 import { buildDiscussionSessionConfig } from '@/entity/ai'
-import { useAiDiscussionStore } from '@/store'
+import { useAiAgentStore, useAiDiscussionStore } from '@/store'
 import {
   DiscussionEngine,
   discussionRecordCreate,
@@ -35,9 +36,14 @@ export const useDiscussionPage = () => {
   let engine: DiscussionEngine | undefined
 
   const running = computed(() => record.value?.status === 'running')
-  const orderedRoles = computed(() =>
-    [...(discussion.value?.roles || [])].sort((a, b) => a.index - b.index)
-  )
+  const orderedRoles = computed(() => {
+    if (!discussion.value) return []
+    const agentStore = useAiAgentStore()
+    const agents = agentStore.state
+    return discussion.value.roles
+      .map((id) => agents.find((a) => a.id === id))
+      .filter(Boolean) as AiAgent[]
+  })
   // 是否已开启过讨论（用于切换「引子输入」与「轮后控制」两种形态）
   const started = computed(() => Boolean(record.value && record.value.messages.length > 0))
   const canStart = computed(() => {
@@ -229,7 +235,7 @@ export const useDiscussionPage = () => {
     if (!initial) return
     openDiscussionSettingsDrawer({
       title: discussion.value.name,
-      summaryRole: discussion.value.summaryRole,
+      summaryRoleId: discussion.value.summaryRole,
       initial,
       onApply: async (config) => {
         if (record.value) {

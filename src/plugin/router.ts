@@ -9,11 +9,6 @@ export const routes: Array<RouteRecordRaw> = [
   },
 
   {
-    name: '提示词管理',
-    path: '/prompt',
-    component: () => import('@/pages/prompt/PagePrompt.vue')
-  },
-  {
     name: 'Skill',
     path: '/skill',
     component: () => import('@/pages/skill/index.vue')

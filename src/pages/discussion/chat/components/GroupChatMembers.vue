@@ -8,15 +8,10 @@
       群成员 <span class="group-members__count">{{ sortedRoles.length }}</span>
     </div>
     <div class="group-members__grid">
-      <div
-        v-for="role in displayRoles"
-        :key="role.id"
-        class="group-members__cell"
-        @click="editRole(role)"
-      >
+      <div v-for="(role, index) in displayRoles" :key="role.id" class="group-members__cell">
         <t-avatar
           size="48px"
-          :style="{ background: avatarColor(role.index), color: 'var(--td-text-color-anti)' }"
+          :style="{ background: avatarColor(index), color: 'var(--td-text-color-anti)' }"
           >{{ (role.name || '?').charAt(0) }}</t-avatar
         >
         <span class="group-members__name">{{ role.name || '未命名成员' }}</span>
@@ -63,7 +58,7 @@
         <label>讨论模式</label>
         <t-select
           :value="discussion?.mode"
-          :options="modeOptions"
+          :options="AiDiscussionModeOptions"
           @change="(v) => update('mode', v)"
         />
       </div>
@@ -79,7 +74,7 @@
         <label>发言顺序</label>
         <t-select
           :value="discussion?.orderType"
-          :options="orderOptions"
+          :options="AiDiscussionOrderTypeOptions"
           @change="(v) => update('orderType', v)"
         />
       </div>
@@ -87,7 +82,7 @@
         <label>总结触发</label>
         <t-select
           :value="discussion?.summaryTrigger"
-          :options="summaryTriggerOptions"
+          :options="AiDiscussionSummaryTriggerOptions"
           @change="(v) => update('summaryTrigger', v)"
         />
       </div>
@@ -95,37 +90,27 @@
 
     <div class="group-members__section-title">总结者角色</div>
     <div class="group-members__summary">
-      <div
-        v-if="discussion?.summaryRole"
-        class="group-members__summary-item"
-        @click="editSummaryRole"
-      >
-        <t-avatar
-          size="36px"
-          :style="{ background: 'var(--td-brand-color)', color: 'var(--td-text-color-anti)' }"
-          >{{ (discussion.summaryRole.name || '?').charAt(0) }}</t-avatar
-        >
-        <span class="group-members__name">{{ discussion.summaryRole.name || '总结者' }}</span>
-        <t-button theme="danger" variant="text" size="small" @click.stop="removeSummaryRole"
-          >移除</t-button
-        >
-      </div>
-      <t-button v-else variant="outline" block @click="addSummaryRole">
-        <template #icon><add-icon /></template>
-        添加总结者角色
-      </t-button>
+      <t-select
+        :value="discussion.summaryRole"
+        :options="summaryRoleOptions"
+        @change="selectSummaryRole"
+        clearable
+        filterable
+      />
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
 import { throttle } from 'es-toolkit'
 import { SearchIcon, AddIcon, ChevronDownIcon } from 'tdesign-icons-vue-next'
-import type { AiDiscussion, AiDiscussionRole } from '@/entity/ai'
-import { useSnowflake } from '@/hooks'
-import { useAiDiscussionStore } from '@/store'
-import { openRoleEdit } from './GroupChatRoleDialog'
+import {
+  AiDiscussion,
+  AiDiscussionModeOptions,
+  AiDiscussionOrderTypeOptions,
+  AiDiscussionSummaryTriggerOptions
+} from '@/entity/ai'
+import { useAiAgentStore, useAiDiscussionStore } from '@/store'
 
 const props = defineProps<{
   discussion: AiDiscussion
@@ -134,9 +119,12 @@ const props = defineProps<{
 const keyword = ref('')
 const expanded = ref(false)
 
-const sortedRoles = computed(() =>
-  [...(props.discussion?.roles ?? [])].sort((a, b) => a.index - b.index)
-)
+// 全部的成员
+const sortedRoles = computed(() => {
+  // 全部的 agent
+  return useAiAgentStore().state.filter((e) => props.discussion.roles.includes(e.id))
+})
+const summaryRoleOptions = computed(() => useAiAgentStore().options)
 
 const searching = computed(() => keyword.value.trim().length > 0)
 
@@ -185,64 +173,17 @@ const update = (field: keyof AiDiscussion, value: unknown) => {
   saveDiscussion()
 }
 
-const editRole = (role: AiDiscussionRole) =>
-  openRoleEdit(props.discussion, role, { deletable: true })
-
 const addRole = () => {
   if (!props.discussion) return
-  const role: AiDiscussionRole = {
-    id: useSnowflake().nextId(),
-    name: '',
-    description: '',
-    prompt: '',
-    model: '',
-    index: props.discussion.roles.length,
-    tools: []
-  }
-  props.discussion.roles.push(role)
-  openRoleEdit(props.discussion, role, { deletable: true })
+  // TODO: 选择成员
 }
 
-const addSummaryRole = () => {
+const selectSummaryRole = (val: any) => {
   if (!props.discussion) return
-  props.discussion.summaryRole = {
-    id: useSnowflake().nextId(),
-    name: '',
-    description: '',
-    prompt: '',
-    model: '',
-    index: -1,
-    tools: []
-  }
-  openRoleEdit(props.discussion, props.discussion.summaryRole, { deletable: false })
-}
-
-const editSummaryRole = () => {
-  if (props.discussion?.summaryRole)
-    openRoleEdit(props.discussion, props.discussion.summaryRole, { deletable: false })
-}
-
-const removeSummaryRole = () => {
-  if (!props.discussion) return
-  props.discussion.summaryRole = undefined
+  props.discussion.summaryRole = val
   saveDiscussion()
 }
 
-const modeOptions = [
-  { label: '自动推进', value: 'auto' },
-  { label: '手动推进', value: 'manual' },
-  { label: '限制轮数', value: 'rounds_limit' }
-]
-const orderOptions = [
-  { label: '顺序发言', value: 'sequential' },
-  { label: '随机发言', value: 'random' },
-  { label: '并行发言', value: 'parallel' }
-]
-const summaryTriggerOptions = [
-  { label: '每轮结束后', value: 'after_each_round' },
-  { label: '所有轮结束后', value: 'after_all_rounds' },
-  { label: '手动触发', value: 'manual' }
-]
 </script>
 
 <style scoped lang="less">

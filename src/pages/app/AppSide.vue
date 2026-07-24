@@ -133,33 +133,19 @@
           min-column-width="188px"
         >
           <button class="menu-item" type="button">
-            <t-avatar image="./logo.png" size="24px" />
+            <t-avatar image="./logo.png" size="24px" shape="circle" />
             <span>{{ nickname }}</span>
           </button>
           <t-dropdown-menu>
-            <t-dropdown-item @click="handleSettingClick('account')">
+            <t-dropdown-item
+              v-for="item in settingOptions"
+              :key="item.value"
+              @click="handleSettingClick(item.value)"
+            >
               <template #prefix-icon>
-                <user-icon />
+                <component :is="item.icon" />
               </template>
-              账号设置
-            </t-dropdown-item>
-            <t-dropdown-item @click="handleSettingClick('ai')">
-              <template #prefix-icon>
-                <ai-icon />
-              </template>
-              AI 设置
-            </t-dropdown-item>
-            <t-dropdown-item @click="handleSettingClick('default')">
-              <template #prefix-icon>
-                <ai-article-icon />
-              </template>
-              默认设置
-            </t-dropdown-item>
-            <t-dropdown-item @click="handleSettingClick('network')">
-              <template #prefix-icon>
-                <internet-icon />
-              </template>
-              网络设置
+              {{ item.label }}
             </t-dropdown-item>
           </t-dropdown-menu>
         </t-dropdown>
@@ -184,7 +170,10 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   EditIcon,
-  ArticleIcon
+  ArticleIcon,
+  Setting1Icon,
+  SecuredIcon,
+  AppIcon
 } from 'tdesign-icons-vue-next'
 import { getUserProfile } from '@/utils/native'
 import { collapsed, isDark } from '@/global/BeanFactory'
@@ -198,6 +187,17 @@ const route = useRoute()
 
 const active = ref('agent')
 const [more, toggleMore] = useBoolState(false)
+
+const settingOptions = [
+  { label: '系统设置～', icon: Setting1Icon, value: 'system' },
+  { label: '账户设置', icon: UserIcon, value: 'account' },
+  { label: '智能体设置', icon: AiArticleIcon, value: 'default' },
+  { label: '个性化～', icon: AiIcon, value: 'ai' },
+  { label: '记忆～', icon: AiIcon, value: 'ai' },
+  { label: '模型', icon: AppIcon, value: 'ai' },
+  { label: '安全中心～', icon: SecuredIcon, value: 'network' },
+  { label: '网络设置', icon: InternetIcon, value: 'network' }
+]
 
 // 分组
 const chats = computed(() => useAiChatStore().state)

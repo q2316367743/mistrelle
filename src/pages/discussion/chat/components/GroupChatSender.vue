@@ -50,7 +50,8 @@ import { computed, ref, watch, nextTick } from 'vue'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { useChatSender, type ChatSenderSegment } from '@/hooks'
 import { matchKeyword, formatSkillDescription, type ChatFileRef } from '@/utils/chatSender'
-import type { AiDiscussionRole } from '@/entity/ai'
+import type { AiAgent } from '@/entity/ai'
+import { useAiAgentStore } from '@/store'
 
 interface RoleMention {
   id: string
@@ -62,7 +63,7 @@ type Suggestion = SkillSuggestion | RoleSuggestion
 
 const props = withDefaults(
   defineProps<{
-    roles: Array<AiDiscussionRole>
+    roles: Array<string>
     loading?: boolean
     placeholder?: string
   }>(),
@@ -76,7 +77,14 @@ const emit = defineEmits<{
 
 const skills = ref<LocalSkill[]>([])
 const files = ref<ChatFileRef[]>([])
-const roleMentions = computed<RoleMention[]>(() => props.roles.map((r) => ({ id: r.id, name: r.name })))
+const aiAgentStore = useAiAgentStore()
+const roleMentions = computed<RoleMention[]>(() => {
+  const agents = aiAgentStore.state
+  return props.roles
+    .map((id) => agents.find((r) => r.id === id))
+    .filter((r): r is AiAgent => !!r)
+    .map((r) => ({ id: r.id, name: r.name }))
+})
 
 const { editorRef, inputValue, selectedSkills, selectedRoles, segments, setText, insertTag, clear, focus: focusInput, handleInput, handleKeydown, handlePaste } =
   useChatSender({

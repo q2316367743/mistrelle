@@ -50,16 +50,17 @@
 <script setup lang="ts">
 import { ChatContent } from '@tdesign-vue-next/chat'
 import { DeleteIcon } from 'tdesign-icons-vue-next'
+import type { AiAgent } from '@/entity/ai'
 import type {
   AiDiscussionMessage,
   AiDiscussionMessageStatus,
-  AiDiscussionRole
 } from '@/entity/ai'
+import { useAiAgentStore } from '@/store'
 
 const props = defineProps<{
   messages: AiDiscussionMessage[]
-  roles: AiDiscussionRole[]
-  summaryRole?: AiDiscussionRole
+  roles: string[]
+  summaryRole?: string
 }>()
 
 const emit = defineEmits<{
@@ -68,9 +69,18 @@ const emit = defineEmits<{
 
 const listRef = ref<HTMLElement>()
 
+const aiAgentStore = useAiAgentStore()
 const roleMap = computed(() => {
-  const map = new Map(props.roles.map((role) => [role.id, role]))
-  if (props.summaryRole) map.set(props.summaryRole.id, props.summaryRole)
+  const map = new Map<string, AiAgent>()
+  const agents = aiAgentStore.state
+  props.roles.forEach((id) => {
+    const agent = agents.find((a) => a.id === id)
+    if (agent) map.set(agent.id, agent)
+  })
+  if (props.summaryRole) {
+    const agent = agents.find((a) => a.id === props.summaryRole)
+    if (agent) map.set(agent.id, agent)
+  }
   return map
 })
 

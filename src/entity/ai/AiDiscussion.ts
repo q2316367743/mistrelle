@@ -39,6 +39,22 @@ export type AiDiscussionSessionStatus = 'idle' | 'running' | 'stopped' | 'comple
 
 export type AiDiscussionMessageStatus = 'pending' | 'streaming' | 'complete' | 'stop' | 'error'
 
+export const AiDiscussionModeOptions = [
+  { label: '自动推进', value: 'auto' },
+  { label: '手动推进', value: 'manual' },
+  { label: '限制轮数', value: 'rounds_limit' }
+]
+export const AiDiscussionOrderTypeOptions = [
+  { label: '顺序发言', value: 'sequential' },
+  { label: '随机发言', value: 'random' },
+  { label: '并行发言', value: 'parallel' }
+]
+export const AiDiscussionSummaryTriggerOptions = [
+  { label: '每轮结束后', value: 'after_each_round' },
+  { label: '所有轮结束后', value: 'after_all_rounds' },
+  { label: '手动触发', value: 'manual' }
+]
+
 /**
  * AI 讨论组列表项
  */
@@ -57,43 +73,16 @@ export interface AiDiscussionItem extends BaseEntity {
   top: boolean
 }
 
-export interface AiDiscussionRole {
-  id: string
-  /**
-   * 角色名称
-   */
-  name: string
-  /**
-   * 角色描述
-   */
-  description: string
-  /**
-   * 角色提示
-   */
-  prompt: string
-  /**
-   * 关联模型
-   */
-  model: string
-  /**
-   * 角色索引
-   */
-  index: number
-  /**
-   * 关联的提示词 ID，用于修改时回显选中项
-   */
-  promptId?: string
-  /**
-   * 启用的工具（工具名列表），参考 AiAgent.tools
-   */
-  tools: Array<string>
-}
 
 /**
  * AI 讨论组
  */
 export interface AiDiscussion extends AiDiscussionItem {
-  roles: Array<AiDiscussionRole>
+  /**
+   * Agent ID
+   * @see AiAgent
+   */
+  roles: Array<string>
   // 新增字段
   mode: AiDiscussionMode
   /** 最大轮数（mode为RoundsLimit时有效） */
@@ -103,8 +92,11 @@ export interface AiDiscussion extends AiDiscussionItem {
   /** 每轮发言顺序：按角色index顺序 / 随机 / 并行 */
   orderType: AiDiscussionOrderType
 
-  // 总结者角色
-  summaryRole?: AiDiscussionRole // 可选，专门的总结者
+  /**
+   * 总结者角色
+   * @see AiAgent
+   */
+  summaryRole?: string // 可选，专门的总结者
   // 总结触发条件
   summaryTrigger: AiDiscussionSummaryTrigger
 }
@@ -118,7 +110,7 @@ export interface AiDiscussionForm {
    * 讨论组描述
    */
   description: string
-  roles: Array<AiDiscussionRole>
+  roles: Array<string>
   // 新增字段
   mode: AiDiscussionMode
   /** 最大轮数（mode为RoundsLimit时有效） */
@@ -129,7 +121,7 @@ export interface AiDiscussionForm {
   orderType: AiDiscussionOrderType
 
   // 总结者角色
-  summaryRole?: AiDiscussionRole // 可选，专门的总结者
+  summaryRole?: string // 可选，专门的总结者
   // 总结触发条件
   summaryTrigger: AiDiscussionSummaryTrigger
 }
@@ -176,7 +168,7 @@ export interface AiDiscussionSessionConfig {
   /** 发言顺序 */
   orderType: AiDiscussionOrderType
   /** 总结者角色，未配置则不总结 */
-  summaryRole?: AiDiscussionRole
+  summaryRole?: string
 }
 
 /**

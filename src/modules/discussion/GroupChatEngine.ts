@@ -1,11 +1,11 @@
 import { watch } from 'vue'
 import type { AIMessage } from '@/domain'
-import type { AiDiscussion, AiDiscussionRole, AiGroupChat, AiGroupChatMessage } from '@/entity/ai'
+import type { AiAgent, AiDiscussion, AiGroupChat, AiGroupChatMessage } from '@/entity/ai'
 import { useSnowflake } from '@/hooks'
 import { ToolChat, type ChatRequestParams } from '@/modules/chat'
 import { buildTextContent } from '@/modules/chat/engine/userContent'
 import { toolMap } from '@/modules/tool'
-import { useSettingAiStore } from '@/store'
+import { useAiAgentStore, useSettingAiStore } from '@/store'
 import { buildMemoryTools } from '@/modules/discussion/DiscussionChatService'
 
 export interface GroupChatEngineCallbacks {
@@ -24,8 +24,8 @@ const toMessageStatus = (status: ToolChat['status']['value']) =>
 /** 成员系统提示词：身份 + 讨论目标 + 成员花名册 + 隔离规则 */
 const buildMemberPrompt = (
   discussion: AiDiscussion,
-  role: AiDiscussionRole,
-  allRoles: AiDiscussionRole[]
+  role: AiAgent,
+  allRoles: AiAgent[]
 ) => {
   const roster = allRoles
     .map(
@@ -42,7 +42,7 @@ const buildMemberPrompt = (
 ${role.description ? `成员职责：${role.description}` : ''}
 
 # 你的指令
-${role.prompt}
+${role.identity}
 
 # 讨论目标
 ${discussion.description || '围绕用户提出的议题进行深入、具体、有建设性的交流。'}
@@ -60,7 +60,13 @@ ${othersHint}
 
 /** 把上下文消息转成带说话人标签的 transcript，供每个成员参考（保留 @ 原文） */
 export const buildTranscript = (discussion: AiDiscussion, messages: AiGroupChatMessage[]) => {
-  const roleMap = new Map(discussion.roles.map((role) => [role.id, role.name]))
+  const agentStore = useAiAgentStore()
+  const agents = agentStore.state
+  const roleMap = new Map<string, string>()
+  discussion.roles.forEach((id) => {
+    const agent = agents.find((a) => a.id === id)
+    if (agent) roleMap.set(agent.id, agent.name)
+  })
   return messages
     .filter((message) => message.status !== 'pending' && message.content.trim())
     .map((message) => {
@@ -126,14 +132,17 @@ export class GroupChatEngine {
   ) {}
 
   /** 并发驱动多个被 @ 的成员各自作答 */
-  async runResponders(userMessage: AiGroupChatMessage, responderRoles: AiDiscussionRole[]) {
-    if (this.activeChats.size > 0 || responderRoles.length === 0) return
-    for (const role of responderRoles) await buildRequestParams(role.model, '')
+  async runResponders(userMessage: AiGroupChatMessage, responderRoleIds: string[]) {
+    if (this.activeChats.size > 0 || responderRoleIds.length === 0) return
+    const agentStore = useAiAgentStore()
+    const responderAgents = responderRoleIds.map((id) => agentStore.getById(id)).filter(Boolean) as AiAgent[]
+    if (responderAgents.length === 0) return
+    for (const role of responderAgents) await buildRequestParams(role.model, '')
 
     this.stopped = false
     // 上下文快照：所有成员看到同一份历史，互不窥探对方正在生成的回答
     const transcript = buildPublicContext(this.discussion, this.chat)
-    await Promise.all(responderRoles.map((role) => this.runMember(role, transcript)))
+    await Promise.all(responderAgents.map((role) => this.runMember(role, transcript)))
   }
 
   stop() {
@@ -147,7 +156,7 @@ export class GroupChatEngine {
     this.activeChats.clear()
   }
 
-  private async runMember(role: AiDiscussionRole, transcript: string) {
+  private async runMember(role: AiAgent, transcript: string) {
     const raw: AiGroupChatMessage = {
       id: useSnowflake().nextId(),
       type: 'ai',
@@ -166,10 +175,13 @@ export class GroupChatEngine {
       ...(role.tools || []).map((name) => toolMap[name]).filter(Boolean),
       ...buildMemoryTools(this.chat.discussionId)
     ]
+    const agentStore = useAiAgentStore()
+    const agents = agentStore.state
+    const allRoles = this.discussion.roles.map((id) => agents.find((a) => a.id === id)).filter(Boolean) as AiAgent[]
     const chat = new ToolChat({
       functions,
       enableSkill: true,
-      systemPrompt: buildMemberPrompt(this.discussion, role, this.discussion.roles)
+      systemPrompt: buildMemberPrompt(this.discussion, role, allRoles)
     })
     this.activeChats.set(message.id, chat)
 

@@ -1,73 +1,36 @@
-import { useAiDiscussionStore, useAiPromptStore, useSettingAiStore } from '@/store'
-import { DialogPlugin, Form, FormItem, Input, Select, Textarea, Button } from 'tdesign-vue-next'
-import type { FormInstanceFunctions, FormRule } from 'tdesign-vue-next'
+import { useAiAgentStore, useAiDiscussionStore } from '@/store'
+import { DialogPlugin, Divider, Form, FormItem, Input, Select, Textarea } from 'tdesign-vue-next'
+import type { FormInstanceFunctions } from 'tdesign-vue-next'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
-import { useContextMenu, useSnowflake } from '@/hooks'
-import { AddIcon, DeleteIcon, EditIcon, ChevronDownIcon, ChevronRightIcon } from 'tdesign-icons-vue-next'
-import { AiDiscussionForm, buildAiDiscussionForm } from '@/entity/ai'
+import { useContextMenu } from '@/hooks'
+import { DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
+import {
+  AiDiscussionForm,
+  AiDiscussionModeOptions,
+  AiDiscussionOrderTypeOptions,
+  AiDiscussionSummaryTriggerOptions,
+  buildAiDiscussionForm
+} from '@/entity/ai'
 import { discussionRecordRemoveAll } from '@/modules/discussion'
-import { toolOptions } from '@/modules/tool'
 
 export const openDiscussionPut = async (id?: string, onSaved?: () => void) => {
   const { getById, put } = useAiDiscussionStore()
   const old = await getById(id)
   const form = ref<AiDiscussionForm>(old || buildAiDiscussionForm())
-  const expandedRoles = ref<number[]>([])
-  const summaryExpanded = ref(old?.summaryRole !== undefined)
 
   const formRef = ref<FormInstanceFunctions | null>(null)
-  const formRules = computed<Record<string, FormRule[]>>(() => {
-    const rules: Record<string, FormRule[]> = {}
-    form.value.roles.forEach((_, i) => {
-      rules[`roles[${i}].model`] = [
-        { required: true, message: '请选择关联模型', type: 'error', trigger: 'change' },
-      ]
-    })
-    if (form.value.summaryRole) {
-      rules['summaryRole.model'] = [
-        { required: true, message: '请选择关联模型', type: 'error', trigger: 'change' },
-      ]
-    }
-    return rules
-  })
-
-  const toggleRoleExpand = (index: number) => {
-    const idx = expandedRoles.value.indexOf(index)
-    if (idx > -1) {
-      expandedRoles.value.splice(idx, 1)
-    } else {
-      expandedRoles.value.push(index)
-    }
-  }
-
-  const addRole = () => {
-    form.value.roles.push({
-      id: useSnowflake().nextId(),
-      name: '',
-      description: '',
-      prompt: '',
-      model: '',
-      index: form.value.roles.length,
-      tools: [],
-    })
-    expandedRoles.value.push(form.value.roles.length - 1)
-  }
-
-  const removeRole = (index: number) => {
-    form.value.roles.splice(index, 1)
-    form.value.roles.forEach((r, i) => { r.index = i })
-    const idx = expandedRoles.value.indexOf(index)
-    if (idx > -1) expandedRoles.value.splice(idx, 1)
-  }
 
   const dp = DialogPlugin({
     header: (old ? '修改' : '新增') + '分组',
     placement: 'center',
-    width: '80vw',
+    width: '640px',
     onConfirm: async () => {
       const result = await formRef.value?.validate?.()
       if (result !== true) return
-      if (!summaryExpanded.value) form.value.summaryRole = undefined
+      if (!form.value.roles.length) {
+        MessageUtil.warning('请至少选择一个角色')
+        return
+      }
       put(form.value, id)
         .then(() => {
           MessageUtil.success('保存成功')
@@ -79,41 +42,37 @@ export const openDiscussionPut = async (id?: string, onSaved?: () => void) => {
         })
     },
     default: () => {
-      const promptStore = useAiPromptStore()
-      const promptOptions = computed(() => promptStore.state.map(p => ({ label: p.name, value: p.id })))
-      const modelOptions = useSettingAiStore().options
-      const modeOptions = [
-        { label: '自动推进', value: 'auto' },
-        { label: '手动推进', value: 'manual' },
-        { label: '限制轮数', value: 'rounds_limit' },
-      ]
-      const orderOptions = [
-        { label: '顺序发言', value: 'sequential' },
-        { label: '随机发言', value: 'random' },
-        { label: '并行发言', value: 'parallel' },
-      ]
-      const summaryTriggerOptions = [
-        { label: '每轮结束后', value: 'after_each_round' },
-        { label: '所有轮结束后', value: 'after_all_rounds' },
-        { label: '手动触发', value: 'manual' },
-      ]
+      const agentOptions = useAiAgentStore().options
 
       return (
-        <div style={{ height: 'calc(100vh - 280px)', overflow: 'auto' }}>
-          <Form ref={formRef} data={form.value} rules={formRules.value}>
-            <FormItem label={'分组名称'} name={'name'}>
-              <Input v-model={form.value.name} placeholder={'请输入分组名称'} />
+        <div class={'p-4px'}>
+          <Form ref={formRef} data={form.value}>
+            <FormItem label={'群组名称'} name={'name'}>
+              <Input v-model={form.value.name} placeholder={'请输入群组名称'} />
             </FormItem>
-            <FormItem label={'分组描述'} name={'description'}>
+            <FormItem label={'群组描述'} name={'description'}>
               <Textarea
                 v-model={form.value.description}
-                placeholder={'请输入分组描述'}
+                placeholder={'请输入群组描述'}
                 autosize={{ minRows: 2, maxRows: 4 }}
               />
             </FormItem>
 
+            <FormItem label={'参与者角色'} name={'roles'}>
+              <Select
+                v-model={form.value.roles}
+                options={agentOptions}
+                placeholder={'请选择参与讨论的角色'}
+                multiple={true}
+                filterable={true}
+                minCollapsedNum={2}
+              />
+            </FormItem>
+
+            <Divider>会议配置</Divider>
+
             <FormItem label={'讨论模式'} name={'mode'}>
-              <Select v-model={form.value.mode} options={modeOptions} />
+              <Select v-model={form.value.mode} options={AiDiscussionModeOptions} />
             </FormItem>
             {form.value.mode === 'rounds_limit' && (
               <FormItem label={'最大轮数'} name={'maxRounds'}>
@@ -121,246 +80,23 @@ export const openDiscussionPut = async (id?: string, onSaved?: () => void) => {
               </FormItem>
             )}
             <FormItem label={'发言顺序'} name={'orderType'}>
-              <Select v-model={form.value.orderType} options={orderOptions} />
+              <Select v-model={form.value.orderType} options={AiDiscussionOrderTypeOptions} />
             </FormItem>
             <FormItem label={'总结触发'} name={'summaryTrigger'}>
-              <Select v-model={form.value.summaryTrigger} options={summaryTriggerOptions} />
+              <Select
+                v-model={form.value.summaryTrigger}
+                options={AiDiscussionSummaryTriggerOptions}
+              />
             </FormItem>
-
-            <div style={{ marginTop: '16px' }}>
-              <div
-                style={{
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  color: 'var(--td-text-color-primary)'
-                }}
-              >
-                参与者角色
-              </div>
-              <Button icon={() => <AddIcon />} variant={'outline'} onClick={addRole}>
-                添加角色
-              </Button>
-              {form.value.roles.map((role, index) => (
-                <div
-                  key={role.id}
-                  style={{
-                    border: '1px solid var(--td-border-level-2-color)',
-                    borderRadius: 'var(--td-radius-default)',
-                    padding: '8px 12px',
-                    marginTop: '8px'
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => toggleRoleExpand(index)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {expandedRoles.value.includes(index) ? (
-                        <ChevronDownIcon />
-                      ) : (
-                        <ChevronRightIcon />
-                      )}
-                      <span>{role.name || `角色 ${index + 1}`}</span>
-                    </div>
-                    <Button
-                      theme={'danger'}
-                      variant={'text'}
-                      shape={'square'}
-                      icon={() => <DeleteIcon />}
-                      onClick={(e: MouseEvent) => {
-                        e.stopPropagation()
-                        removeRole(index)
-                      }}
-                    />
-                  </div>
-                  {expandedRoles.value.includes(index) && (
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        paddingTop: '8px',
-                        borderTop: '1px solid var(--td-border-level-2-color)'
-                      }}
-                    >
-                      <div style={{ marginBottom: '12px' }}>
-                        <div
-                          style={{
-                            marginBottom: '4px',
-                            fontSize: '14px',
-                            color: 'var(--td-text-color-secondary)'
-                          }}
-                        >
-                          选择提示词（快速填充）
-                        </div>
-                        <Select
-                          v-model={role.promptId}
-                          options={promptOptions.value}
-                          placeholder={'请选择提示词'}
-                          clearable={true}
-                          onChange={(value) => {
-                            if (value) {
-                              promptStore.getById(value as string).then(p => {
-                                if (p) {
-                                  role.name = p.name
-                                  role.description = p.description
-                                  role.prompt = p.prompt
-                                  role.model = p.model
-                                  role.tools = [...(p.tools || [])]
-                                }
-                              })
-                            }
-                          }}
-                        />
-                      </div>
-                      <FormItem label={'角色名称'}>
-                        <Input v-model={role.name} placeholder={'请输入角色名称'} />
-                      </FormItem>
-                      <FormItem label={'角色描述'}>
-                        <Textarea v-model={role.description} placeholder={'请输入角色描述'} autosize={{ minRows: 2, maxRows: 4 }} />
-                      </FormItem>
-                      <FormItem label={'系统提示词'}>
-                        <Textarea v-model={role.prompt} placeholder={'请输入系统提示词'} autosize={{ minRows: 3, maxRows: 8 }} />
-                      </FormItem>
-                      <FormItem label={'关联模型'} name={`roles[${index}].model`}>
-                        <Select v-model={role.model} options={modelOptions} placeholder={'请选择关联模型'} clearable={true} />
-                      </FormItem>
-                      <FormItem label={'启用工具'}>
-                        <Select
-                          v-model={role.tools}
-                          options={toolOptions}
-                          placeholder={'请选择角色启用的工具'}
-                          multiple={true}
-                          filterable={true}
-                        />
-                      </FormItem>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: '16px' }}>
-              <div
-                style={{
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  color: 'var(--td-text-color-primary)'
-                }}
-              >
-                总结者角色
-              </div>
-              {form.value.summaryRole ? (
-                <div
-                  style={{
-                    border: '1px solid var(--td-border-level-2-color)',
-                    borderRadius: 'var(--td-radius-default)',
-                    padding: '8px 12px'
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => {
-                      summaryExpanded.value = !summaryExpanded.value
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {summaryExpanded.value ? <ChevronDownIcon /> : <ChevronRightIcon />}
-                      <span>{form.value.summaryRole.name || '总结者'}</span>
-                    </div>
-                    <Button
-                      theme={'danger'}
-                      variant={'text'}
-                      shape={'square'}
-                      icon={() => <DeleteIcon />}
-                      onClick={(e: MouseEvent) => {
-                        e.stopPropagation()
-                        form.value.summaryRole = undefined
-                        summaryExpanded.value = false
-                      }}
-                    />
-                  </div>
-                  {summaryExpanded.value && (
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        paddingTop: '8px',
-                        borderTop: '1px solid var(--td-border-level-2-color)'
-                      }}
-                    >
-                      <div style={{ marginBottom: '12px' }}>
-                        <div
-                          style={{
-                            marginBottom: '4px',
-                            fontSize: '14px',
-                            color: 'var(--td-text-color-secondary)'
-                          }}
-                        >
-                          选择提示词（快速填充）
-                        </div>
-                        <Select
-                          v-model={form.value.summaryRole.promptId}
-                          options={promptOptions.value}
-                          placeholder={'请选择提示词'}
-                          clearable={true}
-                          onChange={(value) => {
-                            if (value) {
-                              promptStore.getById(value as string).then(p => {
-                                if (p) {
-                                  form.value.summaryRole!.name = p.name
-                                  form.value.summaryRole!.description = p.description
-                                  form.value.summaryRole!.prompt = p.prompt
-                                  form.value.summaryRole!.model = p.model
-                                }
-                              })
-                            }
-                          }}
-                        />
-                      </div>
-                      <FormItem label={'角色名称'}>
-                        <Input v-model={form.value.summaryRole.name} placeholder={'请输入角色名称'} />
-                      </FormItem>
-                      <FormItem label={'角色描述'}>
-                        <Textarea v-model={form.value.summaryRole.description} placeholder={'请输入角色描述'} autosize={{ minRows: 2, maxRows: 4 }} />
-                      </FormItem>
-                      <FormItem label={'系统提示词'}>
-                        <Textarea v-model={form.value.summaryRole.prompt} placeholder={'请输入系统提示词'} autosize={{ minRows: 3, maxRows: 8 }} />
-                      </FormItem>
-                      <FormItem label={'关联模型'} name={'summaryRole.model'}>
-                        <Select v-model={form.value.summaryRole.model} options={modelOptions} placeholder={'请选择关联模型'} clearable={true} />
-                      </FormItem>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Button
-                  icon={() => <AddIcon />}
-                  variant={'outline'}
-                  onClick={() => {
-                    form.value.summaryRole = {
-                      id: useSnowflake().nextId(),
-                      name: '',
-                      description: '',
-                      prompt: '',
-                      model: '',
-                      index: -1,
-                      tools: [],
-                    }
-                    summaryExpanded.value = true
-                  }}
-                >
-                  添加总结者角色
-                </Button>
-              )}
-            </div>
+            <FormItem label={'总结者角色'}>
+              <Select
+                v-model={form.value.summaryRole}
+                options={agentOptions}
+                placeholder={'不设置'}
+                clearable={true}
+                filterable={true}
+              />
+            </FormItem>
           </Form>
         </div>
       )
@@ -385,10 +121,13 @@ export const openDiscussionContextmenu = (e: MouseEvent, id: string) => {
             '删除确认'
           ).then(() => {
             const store = useAiDiscussionStore()
-            store.remove(id).then(() => {
-              discussionRecordRemoveAll(id)
-              MessageUtil.success('删除成功')
-            }).catch((e) => MessageUtil.error('删除失败', e))
+            store
+              .remove(id)
+              .then(() => {
+                discussionRecordRemoveAll(id)
+                MessageUtil.success('删除成功')
+              })
+              .catch((e) => MessageUtil.error('删除失败', e))
           })
         }
       }

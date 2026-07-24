@@ -59,6 +59,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { ChatContent, ChatLoading, ChatMessage } from '@tdesign-vue-next/chat'
 import type { AiDiscussion, AiGroupChat, AiGroupChatMessage } from '@/entity/ai'
+import { useAiAgentStore } from '@/store'
 import { getUserProfile } from '@/utils/native/NativeUtil'
 
 const userProfile = getUserProfile()
@@ -72,7 +73,16 @@ const containerRef = ref<HTMLElement>()
 
 const messages = computed(() => props.chat?.messages ?? [])
 
-const roleNameMap = computed(() => new Map(props.discussion.roles.map((r) => [r.id, r.name])))
+const aiAgentStore = useAiAgentStore()
+const roleNameMap = computed(() => {
+  const map = new Map<string, string>()
+  const agents = aiAgentStore.state
+  props.discussion.roles.forEach((id) => {
+    const agent = agents.find((a) => a.id === id)
+    if (agent) map.set(agent.id, agent.name)
+  })
+  return map
+})
 
 const roleName = (id?: string): string => {
   if (!id) return '未知成员'

@@ -4,12 +4,17 @@ import { listByAsync, saveListByAsync } from '@/utils/native'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
+import { CommonSelect } from '@/domain'
 
 export const useAiAgentStore = defineStore('ai-agent', () => {
   const logger = useLog({ name: 'store:ai-agent' })
 
   const state = ref(new Array<AiAgent>())
   const rev = ref<string>()
+
+  const options = computed<Array<CommonSelect>>(() => {
+    return state.value.map((e) => ({ label: e.name, value: e.id }))
+  })
 
   const init = async () => {
     const res = await listByAsync<AiAgent>(LocalNameEnum.LIST_AI_AGENT)
@@ -56,6 +61,7 @@ export const useAiAgentStore = defineStore('ai-agent', () => {
 
   return {
     state,
+    options,
     put,
     remove,
     getById

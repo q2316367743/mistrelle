@@ -1,11 +1,12 @@
 import { DrawerPlugin, Form, FormItem, InputNumber, RadioGroup, Select } from 'tdesign-vue-next'
-import type { AiDiscussionRole, AiDiscussionSessionConfig } from '@/entity/ai'
+import type { AiDiscussionSessionConfig } from '@/entity/ai'
+import { useAiAgentStore } from '@/store'
 
 interface DiscussionSettingsDrawerOptions {
   /** 讨论组名称，用于标题展示 */
   title?: string
-  /** 可选的总结者角色（来自讨论组配置） */
-  summaryRole?: AiDiscussionRole
+  /** 可选的总结者角色 ID（来自讨论组配置） */
+  summaryRoleId?: string
   /** 打开时的初始配置 */
   initial: AiDiscussionSessionConfig
   /** 确认时回调，接收编辑后的配置副本 */
@@ -29,18 +30,16 @@ const orderOptions = [
  * 创建讨论前可通过「高级」打开以覆盖默认配置；讨论进行中可随时打开调整当前会话配置。
  */
 export const openDiscussionSettingsDrawer = (options: DiscussionSettingsDrawerOptions) => {
-  const { initial, summaryRole, onApply } = options
+  const { initial, summaryRoleId: summaryRoleIdOption, onApply } = options
   // 编辑副本，避免直接修改外部状态，确认后才回写
   const config = ref<AiDiscussionSessionConfig>({
     ...initial,
-    summaryRole: initial.summaryRole ?? summaryRole
+    summaryRole: initial.summaryRole ?? summaryRoleIdOption
   })
-  // 总结者至多来自讨论组配置的一个角色，用 id 作为选择值再映射回对象
-  const summaryRoleId = computed<string | undefined>({
-    get: () => config.value.summaryRole?.id,
-    set: (value) => {
-      config.value.summaryRole = value && summaryRole ? { ...summaryRole } : undefined
-    }
+  const agentStore = useAiAgentStore()
+  const summaryAgent = computed(() => {
+    const id = config.value.summaryRole
+    return id ? agentStore.getById(id) : undefined
   })
 
   const dp = DrawerPlugin({
@@ -70,11 +69,13 @@ export const openDiscussionSettingsDrawer = (options: DiscussionSettingsDrawerOp
         <FormItem label={'发言顺序'}>
           <Select v-model={config.value.orderType} options={orderOptions} />
         </FormItem>
-        <FormItem label={'总结者'} help={summaryRole ? undefined : '当前讨论组未配置总结者'}>
+        <FormItem label={'总结者'} help={summaryAgent.value ? undefined : '当前讨论组未配置总结者'}>
           <Select
-            v-model={summaryRoleId.value}
+            v-model={config.value.summaryRole}
             options={
-              summaryRole ? [{ label: summaryRole.name || '总结者', value: summaryRole.id }] : []
+              summaryAgent.value
+                ? [{ label: summaryAgent.value.name || '总结者', value: summaryAgent.value.id }]
+                : []
             }
             placeholder={'不总结'}
             clearable={true}
