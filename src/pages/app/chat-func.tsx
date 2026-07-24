@@ -10,7 +10,7 @@ import { AiChatItem } from '@/entity/ai'
  * @param chat 会话
  * @param onUpdate 更新回调
  */
-export const openChatContextmenu = (e: MouseEvent, chat: AiChatItem, onUpdate?: () => void) => {
+export const openChatContextmenu = (e: MouseEvent, chat: AiChatItem, onUpdate: () => void) => {
   useContextMenu(e, {
     items: [
       {
@@ -24,7 +24,6 @@ export const openChatContextmenu = (e: MouseEvent, chat: AiChatItem, onUpdate?: 
               .rename(chat.id, name)
               .then(() => {
                 MessageUtil.success('重命名成功')
-                onUpdate?.()
               })
               .catch((e) => {
                 MessageUtil.error('重命名失败', e.message)
@@ -39,7 +38,10 @@ export const openChatContextmenu = (e: MouseEvent, chat: AiChatItem, onUpdate?: 
           MessageBoxUtil.confirm('是否删除该会话？', '删除确认').then(() => {
             useAiChatStore()
               .remove(chat.id)
-              .then(() => MessageUtil.success('删除成功'))
+              .then(() => {
+                MessageUtil.success('删除成功')
+                onUpdate()
+              })
               .catch((e) => MessageUtil.error('删除失败', e))
               .finally(() => onUpdate?.())
           })

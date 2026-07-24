@@ -4,9 +4,7 @@
     :width="collapsed ? '0px' : '220px'"
     :class="['sidebar', 'shrink-0']"
   >
-    <div class="h-32px pl-40px">
-
-    </div>
+    <div class="h-32px pl-40px"></div>
 
     <div class="side-container">
       <nav class="menu-list" aria-label="主菜单">
@@ -88,7 +86,7 @@
             class="menu-item"
             :class="{ active: isActive(`/chat/${chat.id}`) }"
             type="button"
-            @contextmenu="openChatContextmenu($event, chat)"
+            @contextmenu="openChatContextmenu($event, chat, handleHome)"
             @click="goTo(`/chat/${chat.id}`)"
           >
             <FolderIcon class="menu-icon" />
@@ -224,6 +222,8 @@ const goTo = (path: string) => {
 
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
 const handleNoteClick = (key: string) => router.push(`/note/${key}`)
+
+const handleHome = () => goTo('/')
 
 onMounted(() => {
   console.log('plugin enter', isDark.value)

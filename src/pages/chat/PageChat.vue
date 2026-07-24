@@ -13,10 +13,25 @@ import { useSafeBack } from '@/hooks'
 
 const route = useRoute()
 
-const chat = computed<AiChatItem | undefined>(() =>
-  useAiChatStore().state.find((e) => e.id === (route.params.id as string))
-)
+const chat = ref<AiChatItem>()
+const storageKey = ref<string>()
+
 const title = computed(() => chat.value?.name || '聊天')
-const storageKey = computed(() => (chat.value ? buildChatChatPath(chat.value.id) : ''))
+
+watch(
+  () => route.params.id,
+  (val) => {
+    const res = useAiChatStore().state.find((e) => e.id === (val as string))
+    if (res) {
+      chat.value = undefined
+      storageKey.value = ''
+      nextTick(() => {
+        chat.value = res
+        storageKey.value = buildChatChatPath(res.id)
+      })
+    }
+  },
+  { immediate: true }
+)
 </script>
 <style scoped lang="less"></style>
