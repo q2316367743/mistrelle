@@ -194,6 +194,7 @@ import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { toolOptions } from '@/modules/tool'
 import { useAiAgentStore } from '@/store'
 import type { ToolSuggestionItem } from './mentionSuggestion'
+import { CommonSelect } from '@/domain'
 
 /** 面板类型 */
 type PanelType = 'skill' | 'tool' | 'expert' | 'mode' | 'file' | 'ref-file'
@@ -211,8 +212,6 @@ interface ModeToggleOption {
   label: string
   en: string
 }
-
-type ToolOptionItem = (typeof toolOptions)[number]['children'][number]
 
 // ─── Props & Emits ───────────────────────────────────────
 const props = withDefaults(defineProps<{ agent?: string; mode?: string }>(), {
@@ -323,7 +322,7 @@ const selectSkill = (skill: LocalSkill) => {
   show.value = false
 }
 
-const selectTool = (tool: ToolOptionItem, group: string) => {
+const selectTool = (tool: CommonSelect, group: string) => {
   emit('addTool', { name: String(tool.value), label: String(tool.label), group })
   keyword.value = ''
   show.value = false

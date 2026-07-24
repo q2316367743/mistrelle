@@ -14,7 +14,7 @@ import type {
 import { nanoid } from 'nanoid'
 import { buildSkillDynamicPrompt } from '@/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
-import { defaultTools, toolMap } from '@/modules/tool'
+import { defaultTools, getMcpTools, toolMap } from '@/modules/tool'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
 import type {
   ChatContext,
@@ -89,8 +89,9 @@ export class ToolChat {
     const agent = this.getAgent(params)
     const names = [...(agent?.tools ?? []), ...this.getUserToolNames(params)]
     const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
+    const mcpTools = getMcpTools()
     const map = new Map<string, ToolFunction>()
-    for (const fn of [...this.functions, ...selected, ...defaultTools]) {
+    for (const fn of [...this.functions, ...selected, ...defaultTools, ...mcpTools]) {
       map.set(fn.name, fn)
     }
     return Array.from(map.values())
