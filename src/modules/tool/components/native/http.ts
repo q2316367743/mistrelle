@@ -1,11 +1,22 @@
 import { ToolFunction, HttpRequestMethod } from '@/domain'
 import { requestText } from '@/plugin/http'
+import { useSettingSecureStore } from '@/store/setting/SettingSecureStore'
+import { isDomainBlocked } from '@/utils/sandbox'
+
+function getHostname(url: string): string {
+  try {
+    return new URL(url.startsWith('http') ? url : `https://${url}`).hostname
+  } catch {
+    return ''
+  }
+}
 
 export const nativeHttpTools: ToolFunction[] = [
   {
     name: 'http_request',
     label: '执行 http 请求',
-    description: 'Execute an HTTP request with customizable method, headers, body, query params, timeout, and encoding',
+    description:
+      'Execute an HTTP request with customizable method, headers, body, query params, timeout, and encoding. Respects the security center\'s network access policy (domain allow/block lists).',
     parameters: {
       type: 'object',
       properties: {
@@ -59,6 +70,22 @@ export const nativeHttpTools: ToolFunction[] = [
         timeout?: number
         charset?: string
       }
+
+      const store = useSettingSecureStore()
+      const { sandbox } = store.state
+      if (sandbox.enabled) {
+        const hostname = getHostname(url)
+        if (hostname) {
+          const { blocked, reason } = isDomainBlocked(
+            hostname,
+            sandbox.blockAllNetworkAccess,
+            sandbox.allowDomain,
+            sandbox.rejectDomain
+          )
+          if (blocked) return { error: reason }
+        }
+      }
+
       const { data: responseData } = await requestText({
         url,
         method: method as HttpRequestMethod,

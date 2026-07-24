@@ -9,7 +9,6 @@ import {
   injectFfmpegTools
 } from '@/modules/tool/components/inject'
 import { objectify } from '@/utils/lang'
-import { nativeHttpTools } from '@/modules/tool/components/native/http'
 
 interface ToolOption {
   group: string
@@ -44,10 +43,6 @@ export const toolOptions: Array<ToolOption> = [
     group: '浏览器',
     children: toOptions(injectBrowserTools)
   },
-  {
-    group: 'FFmpeg',
-    children: toOptions(injectFfmpegTools)
-  }
 ]
 
 export const tools: Array<ToolFunction> = [
@@ -57,8 +52,7 @@ export const tools: Array<ToolFunction> = [
   ...injectNotificationTools,
   ...injectScreenTools,
   ...injectBrowserTools,
-  ...injectFfmpegTools,
-  ...nativeHttpTools
+  ...injectFfmpegTools
 ]
 
 export const toolMap: Record<string, ToolFunction> = {
@@ -68,14 +62,17 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(injectNotificationTools, 'name'),
   ...objectify(injectScreenTools, 'name'),
   ...objectify(injectBrowserTools, 'name'),
-  ...objectify(injectFfmpegTools, 'name'),
-  ...objectify(nativeHttpTools, 'name')
+  ...objectify(injectFfmpegTools, 'name')
 }
 
 import { shellTools } from './components/native/shell'
+import { fileTools } from './components/native/file'
+import { nativeHttpTools } from './components/native/http'
 import { skillTools } from './components/skill'
 
 export const defaultTools: ToolFunction[] = [
   ...shellTools,
-  ...skillTools
+  ...skillTools,
+  ...fileTools,
+  ...nativeHttpTools
 ]
