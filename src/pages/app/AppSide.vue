@@ -195,7 +195,7 @@ const settingOptions = [
   { label: '个性化～', icon: AiIcon, value: 'ai' },
   { label: '记忆～', icon: AiIcon, value: 'ai' },
   { label: '模型', icon: AppIcon, value: 'ai' },
-  { label: '安全中心～', icon: SecuredIcon, value: 'network' },
+  { label: '安全中心', icon: SecuredIcon, value: 'secure' },
   { label: '网络设置', icon: InternetIcon, value: 'network' }
 ]
 

@@ -70,6 +70,11 @@ export const routes: Array<RouteRecordRaw> = [
     name: '设置/default',
     path: '/setting/default',
     component: () => import('@/pages/setting/default/SettingDefault.vue')
+  },
+  {
+    name: '设置/安全中心',
+    path: '/setting/secure',
+    component: () => import('@/pages/setting/secure/SettingSecurePage.vue')
   }
 ]
 
