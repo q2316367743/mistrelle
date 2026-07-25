@@ -1,20 +1,10 @@
 <template>
   <t-space size="4px" class="r-chat-actionbar">
-    <t-popconfirm v-if="role === 'user'" content="确认重新回答？" @confirm="emit('reask')">
-      <t-tooltip content="重新回答">
+    <t-popconfirm v-if="role === 'user'" content="确认删除此消息及后续所有消息？" @confirm="emit('delete')">
+      <t-tooltip content="删除此消息及后续">
         <t-button variant="text" shape="square" size="small">
           <template #icon>
-            <RefreshIcon />
-          </template>
-        </t-button>
-      </t-tooltip>
-    </t-popconfirm>
-
-    <t-popconfirm v-if="role === 'user'" content="确认回滚到此消息前？" @confirm="emit('rollback')">
-      <t-tooltip content="回滚到此消息前">
-        <t-button variant="text" shape="square" size="small">
-          <template #icon>
-            <RollbackIcon />
+            <DeleteIcon />
           </template>
         </t-button>
       </t-tooltip>
@@ -63,8 +53,7 @@
 <script lang="ts" setup>
 import {
   CopyIcon,
-  RefreshIcon,
-  RollbackIcon,
+  DeleteIcon,
   ThumbDownFilledIcon,
   ThumbDownIcon,
   ThumbUpFilledIcon,
@@ -87,8 +76,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  reask: []
-  rollback: []
+  delete: []
   'comment-change': [comment: ChatComment]
 }>()
 

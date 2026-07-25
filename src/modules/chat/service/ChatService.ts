@@ -35,8 +35,11 @@ export const aiChatSandbox = async (id: string) => {
   await window.preload.fs.mkdir(folder, true)
   const outputs = window.preload.path.join(folder, 'outputs')
   const inputs = window.preload.path.join(folder, 'inputs')
-  await Promise.all([window.preload.fs.mkdir(outputs), window.preload.fs.mkdir(inputs)])
+  const tmp = window.preload.path.join(folder, 'tmp')
+  await Promise.all([window.preload.fs.mkdir(outputs), window.preload.fs.mkdir(inputs), window.preload.fs.mkdir(tmp)])
 }
+
+export const getSandboxDir = (id: string) => window.preload.path.join(getDataForWorkspace(), id)
 
 /**
  * 获取聊天列表
@@ -80,6 +83,7 @@ export const aiChatContentGet = async (path: string): Promise<AiChatContent | un
     const data = JSON.parse(await window.preload.fs.readTextFile(path))
     if (Array.isArray(data.list)) {
       return {
+        agentId: '',
         workspace: '',
         updatedTime: data.updatedAt || Date.now(),
         messages: data.list as ChatMessage[]

@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import type { ChatCompletionChunk } from 'openai/resources/chat/completions'
-import type { AIMessageContent, UserMessage } from '@/domain'
+import type { AIMessageContent, UserMessageContent } from '@/domain'
 
 // ==========================================
 //  公共类型定义
@@ -11,10 +11,16 @@ export type SSEChunkData = {
   data: unknown
 }
 
-export type ChatRequestParams = Pick<
-  UserMessage,
-  'content' | 'model' | 'provide' | 'agentId' | 'reasoning_effort'
->
+export interface ChatRequestParams {
+  message: {
+    content: UserMessageContent[]
+    model: string
+    provide: string
+    reasoning_effort?: 'high' | 'max'
+  }
+  agentId?: string
+  workspace?: string
+}
 
 export interface ResolvedChatRequestParams extends ChatRequestParams {
   baseURL: string

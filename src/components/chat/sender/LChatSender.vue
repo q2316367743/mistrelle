@@ -5,12 +5,33 @@
       <EditorContent :editor="editor" class="l-chat-sender__editor" />
     </div>
     <div class="l-chat-sender__footer">
-      <l-chat-attachment
-        v-model:agent="agentId"
-        @add-skill="insertSkill"
-        @add-tool="insertTool"
-        @add-file="focusInput"
-      />
+      <div class="l-chat-sender__footer-left">
+        <l-chat-attachment
+          v-model:agent="agentId"
+          :sandbox-dir="sandboxDir"
+          @add-skill="insertSkill"
+          @add-tool="insertTool"
+          @add-file="focusInput"
+          @add-ref-file="insertFile"
+        />
+        <template v-if="workspaceRef">
+          <t-tag
+            closable
+            theme="primary"
+            variant="light-outline"
+            @close="workspaceRef = ''"
+            style="cursor: pointer"
+            @click="selectWorkspace"
+          >
+            <template #icon><folder-open-icon /></template>
+            {{ workspaceRef.split('/').pop() || workspaceRef.split('\\').pop() }}
+          </t-tag>
+        </template>
+        <t-button v-else variant="text" class="l-chat-sender__ws-btn" @click="selectWorkspace">
+          <template #icon><folder-icon /></template>
+          选择目录
+        </t-button>
+      </div>
       <div class="flex gap-8px">
         <div class="l-chat-sender__tools">
           <t-select v-model="modelKey" :options="options" placeholder="请选择模型" />
@@ -31,6 +52,7 @@ import Mention from '@tiptap/extension-mention'
 import { mergeAttributes } from '@tiptap/core'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
+import { FolderIcon, FolderOpenIcon } from 'tdesign-icons-vue-next'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { useSettingAiStore, useSettingDefaultStore } from '@/store'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
@@ -50,14 +72,17 @@ const props = withDefaults(
     initialModel?: string
     loading?: boolean
     placeholder?: string
-    rootDir?: string
+    sandboxDir?: string
+    initialWorkspace?: string
     initialAgentId?: string
   }>(),
   {
     initialInput: '',
     initialModel: '',
     loading: false,
-    placeholder: '说点什么吧...'
+    placeholder: '说点什么吧...',
+    sandboxDir: '',
+    initialWorkspace: ''
   }
 )
 const emit = defineEmits<{
@@ -69,6 +94,7 @@ const skills = ref<LocalSkill[]>([])
 const files = ref<ChatFileRef[]>([])
 const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaultAssistantModel)
 const agentId = ref(props.initialAgentId || '')
+const workspaceRef = ref(props.initialWorkspace || '')
 
 const inputValue = ref('')
 const mentionState = ref<{ skills: SkillItem[]; files: ChatFileRef[]; tools: ToolItem[] }>({
@@ -110,10 +136,13 @@ const getContents = (): UserMessageContent[] => {
 const buildUserMessage = (): ChatRequestParams | null => {
   const [provide = '', model = ''] = modelKey.value.split(':')
   return {
-    content: getContents(),
-    model,
-    provide,
-    agentId: agentId.value || undefined
+    message: {
+      content: getContents(),
+      model,
+      provide
+    },
+    agentId: agentId.value,
+    workspace: workspaceRef.value
   }
 }
 
@@ -187,6 +216,27 @@ const editor = useEditor({
         return true
       }
       return false
+    },
+    handleDrop: (_view, event) => {
+      const files = event.dataTransfer?.files
+      if (!files || files.length === 0) return false
+      const file = files[0]
+      const filePath = (file as any).path as string | undefined
+      if (!filePath) return false
+      setTimeout(() => insertFileByPath(filePath))
+      return true
+    },
+    handlePaste: (_view, event) => {
+      const items = event.clipboardData?.items
+      if (!items) return false
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.type.startsWith('image/')) {
+          pasteImage(item)
+          return true
+        }
+      }
+      return false
     }
   },
   onUpdate: ({ editor: ed }) => {
@@ -238,6 +288,45 @@ const insertTool = (tool: ToolSuggestionItem) => {
     .run()
 }
 
+const insertFile = (file: ChatFileRef) => {
+  editor.value
+    ?.chain()
+    .focus()
+    .insertContent([
+      { type: 'fileMention', attrs: { id: file.path, label: file.relativePath } },
+      { type: 'text', text: ' ' }
+    ])
+    .run()
+}
+
+const insertFileByPath = (filePath: string) => {
+  const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'file'
+  insertFile({ name, path: filePath, relativePath: name })
+}
+
+const pasteImage = async (item: DataTransferItem) => {
+  const file = item.getAsFile()
+  if (!file || !props.sandboxDir) return
+  const reader = new FileReader()
+  reader.onload = async () => {
+    const base64 = (reader.result as string).split(',')[1]
+    if (!base64) return
+    const tmpDir = window.preload.path.join(props.sandboxDir, 'tmp')
+    const ext = file.type.split('/')[1] || 'png'
+    const fileName = `paste_${Date.now()}.${ext}`
+    const filePath = window.preload.path.join(tmpDir, fileName)
+    await window.preload.fs.writeBinaryFile(filePath, base64)
+    insertFile({ name: fileName, path: filePath, relativePath: fileName })
+  }
+  reader.readAsDataURL(file)
+}
+
+const selectWorkspace = () => {
+  const paths = window.preload.inject.dialog.open({ properties: ['openDirectory'] })
+  if (!paths || paths.length === 0) return
+  workspaceRef.value = paths[0]
+}
+
 const clear = () => {
   editor.value?.commands.clearContent(true)
   inputValue.value = ''
@@ -273,14 +362,27 @@ watch(
   }
 )
 watch(
+  () => props.initialWorkspace,
+  (value) => {
+    workspaceRef.value = value || ''
+  }
+)
+watch(
   () => props.loading,
   (value) => editor.value?.setEditable(!value)
 )
 watch(
-  () => props.rootDir,
+  () => props.sandboxDir,
   async (value) => {
     files.value = []
-    if (value) files.value = await loadChatFiles(value)
+    if (!value) return
+    const inputsDir = window.preload.path.join(value, 'inputs')
+    const outputsDir = window.preload.path.join(value, 'outputs')
+    const [inputs, outputs] = await Promise.all([
+      loadChatFiles(inputsDir),
+      loadChatFiles(outputsDir)
+    ])
+    files.value = [...inputs, ...outputs]
   },
   { immediate: true }
 )

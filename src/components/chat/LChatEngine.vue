@@ -8,16 +8,16 @@
         :is-stream-load="status === 'streaming'"
         style="flex: 1"
         @clear="handleClear"
-        @reask="handleReask"
-        @rollback="handleRollback"
+        @delete="handleDeleteMessage"
         @change="handleMessagesChange"
       />
       <l-chat-sender
         :initial-input="inputValue"
         :initial-model="modelValue"
         :initial-agent-id="initialAgentId"
+        :initial-workspace="workspace"
         :loading="status === 'pending' || status === 'streaming'"
-        :root-dir="rootDir"
+        :sandbox-dir="sandboxDir"
         @send="handleSend"
         @stop="handleStop()"
       />
@@ -25,7 +25,8 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ChatRequestParams, ToolChat, aiChatContentGet, aiChatContentSet } from '@/modules/chat'
+import type { ChatRequestParams } from '@/modules/chat'
+import { ToolChat, aiChatContentGet, aiChatContentSet, getSandboxDir } from '@/modules/chat'
 import type { UserMessage } from '@/domain'
 import type { AiChatContent } from '@/entity/ai'
 import { toolConfirmDialog } from '@/components/chat/modals/ToolConfirmDialog'
@@ -33,8 +34,8 @@ import { toolMap } from '@/modules/tool'
 
 const props = withDefaults(
   defineProps<{
-    storageKey?: string
-    rootDir?: string
+    chatId: string
+    storageKey: string
   }>(),
   {}
 )
@@ -42,6 +43,11 @@ const props = withDefaults(
 const inputValue = ref('')
 const modelValue = ref('')
 const initialAgentId = ref('')
+const workspace = ref('')
+
+const sandboxDir = computed(() => {
+  return getSandboxDir(props.chatId)
+})
 
 const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<boolean> => {
   const tool = toolMap[toolName]
@@ -53,15 +59,9 @@ const instance = new ToolChat({
   toolConfirmHandler: confirmTool
 })
 
-const { messages, status } = instance
+watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 
-const createRequestParams = (message: UserMessage): ChatRequestParams => ({
-  content: message.content,
-  model: message.model,
-  provide: message.provide,
-  agentId: message.agentId,
-  reasoning_effort: message.reasoning_effort
-})
+const { messages, status } = instance
 
 const handleSend = async (message: ChatRequestParams) => {
   instance.sendUserMessage(message)
@@ -75,17 +75,8 @@ const handleClear = () => {
   messages.value = []
 }
 
-const handleReask = (messageId: string) => {
-  const userMessage = messages.value.find(
-    (m): m is UserMessage => m.id === messageId && m.role === 'user'
-  )
-  if (!userMessage) return
-  const requestParams = createRequestParams(userMessage)
-  instance.reaskMessage(messageId, requestParams)
-}
-
-const handleRollback = (messageId: string) => {
-  instance.rollbackBeforeMessage(messageId)
+const handleDeleteMessage = (messageId: string) => {
+  instance.deleteFromUserMessage(messageId)
 }
 
 const handleMessagesChange = () => {
@@ -100,6 +91,11 @@ onMounted(async () => {
     content = await aiChatContentGet(props.storageKey)
     if (content) {
       instance.init(content.messages)
+      if (content.workspace) {
+        workspace.value = content.workspace
+        instance.setWorkspace(content.workspace)
+      }
+      if (content.agentId) initialAgentId.value = content.agentId
     }
   }
 
@@ -110,25 +106,25 @@ onMounted(async () => {
         await aiChatContentSet(props.storageKey!, {
           updatedTime: Date.now(),
           draft: undefined,
-          workspace: content?.workspace || '',
+          agentId: initialAgentId.value,
+          workspace: workspace.value || '',
           messages: toRaw(val)
         })
       },
       { throttle: 1000, deep: true }
     )
   }
+  initialAgentId.value = content?.agentId || ''
 
   const hasUserMessage = messages.value.some((m) => m.role === 'user')
 
   if (!hasUserMessage && content?.draft) {
     const { draft } = content
-    initialAgentId.value = draft!.agentId || ''
     instance.sendUserMessage(draft)
   } else if (messages.value.length > 1) {
     const lastUser = messages.value.findLast((e) => e.role === 'user') as UserMessage | undefined
     if (lastUser) {
       modelValue.value = `${lastUser.provide}:${lastUser.model}`
-      initialAgentId.value = lastUser.agentId || ''
     }
   }
 })

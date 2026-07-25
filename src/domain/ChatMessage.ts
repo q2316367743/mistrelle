@@ -147,7 +147,6 @@ export interface UserMessage extends ChatBaseMessage {
   model: string
   // 提供商
   provide: string
-  agentId?: string
   reasoning_effort?: 'high' | 'max'
   content: UserMessageContent[]
 }

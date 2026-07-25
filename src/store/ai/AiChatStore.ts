@@ -1,4 +1,5 @@
-import { AiChatDraft, AiChatItem } from '@/entity/ai'
+import type { ChatRequestParams } from '@/modules/chat'
+import { AiChatItem } from '@/entity/ai'
 import { defineStore } from 'pinia'
 import { useLog } from '@/hooks/UseLog'
 import {
@@ -49,11 +50,11 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     }
   }
 
-  const add = async (draft: AiChatDraft) => {
-    const { params, workspace } = draft
+  const add = async (params: ChatRequestParams) => {
+    const { message, workspace, agentId } = params
     const id = useSnowflake().nextId()
     const now = Date.now()
-    const preview = buildPreviewText(params.content)
+    const preview = buildPreviewText(message.content)
     const item: AiChatItem = {
       id,
       createdAt: now,
@@ -61,16 +62,17 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       name: preview.slice(0, 10),
       top: false,
       preview,
-      previewModel: `${params.provide}:${params.model}`
+      previewModel: `${message.provide}:${message.model}`
     }
     state.value.push(item)
     // 保存索引
     await aiChatIndexSave(state.value)
-    // 保存聊天内容（ n含草稿）
+    // 保存聊天内容（含草稿）
     await aiChatContentSet(buildChatChatPath(id), {
       updatedTime: now,
       draft: params,
-      workspace,
+      agentId: agentId || '',
+      workspace: workspace || '',
       messages: []
     })
     // 创建沙盒目录

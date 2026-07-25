@@ -33,6 +33,7 @@ import {
 import { streamAgentStep } from './agentStream'
 import { executeToolCalls } from './agentTools'
 import type { ToolCall } from './agentTypes'
+import { copyToInputs, isPathUnder } from '@/utils/chatSender'
 
 export interface UseChatOptions {
   defaultMessages?: ChatMessage[]
@@ -40,6 +41,9 @@ export interface UseChatOptions {
   functions?: ToolFunction[]
   systemPrompt?: string
   toolConfirmHandler?: (toolName: string, args: Record<string, unknown>) => Promise<boolean>
+  enableSkill?: boolean
+  sandboxDir?: string
+  workspace?: string
 }
 
 export class ToolChat {
@@ -50,6 +54,8 @@ export class ToolChat {
   private readonly functions: ToolFunction[]
   private readonly systemPrompt: string
   private readonly toolConfirmHandler?: UseChatOptions['toolConfirmHandler']
+  private sandboxDir = ''
+  private workspace = ''
 
   constructor(options: UseChatOptions = {}) {
     this.messages.value = [...(options.defaultMessages ?? [])]
@@ -61,12 +67,14 @@ export class ToolChat {
     this.functions = options.functions ?? []
     this.systemPrompt = options.systemPrompt ?? ''
     this.toolConfirmHandler = options.toolConfirmHandler
+    if (options.sandboxDir) this.sandboxDir = options.sandboxDir
+    if (options.workspace) this.workspace = options.workspace
   }
 
   private async resolveModel(params: ChatRequestParams): Promise<ResolvedChatRequestParams> {
     const store = useSettingAiStore()
     if (!store.ready) await store.initPromise
-    const option = store.optionMap.get(`${params.provide}:${params.model}`)
+    const option = store.optionMap.get(`${params.message.provide}:${params.message.model}`)
     if (!option) throw new Error('模型不存在或未启用，请在 AI 设置中配置。')
     return {
       ...params,
@@ -75,18 +83,14 @@ export class ToolChat {
     }
   }
 
-  private getAgent(params: ChatRequestParams) {
-    return useAiAgentStore().getById(params.agentId)
-  }
-
   private getUserToolNames(params: ChatRequestParams): string[] {
-    return params.content
+    return params.message.content
       .filter((content): content is ToolContent => content.type === 'tool')
       .map((content) => content.data.name)
   }
 
   private getFunctions(params: ChatRequestParams): ToolFunction[] {
-    const agent = this.getAgent(params)
+    const agent = params.message.agentId ? useAiAgentStore().getById(params.message.agentId) : undefined
     const names = [...(agent?.tools ?? []), ...this.getUserToolNames(params)]
     const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
     const mcpTools = getMcpTools()
@@ -108,7 +112,28 @@ export class ToolChat {
     }))
   }
 
-  private buildReferenceContext(contents: UserMessageContent[]): string {
+  private buildWorkspacePrompt(): string {
+    const parts: string[] = ['## 文件系统']
+    if (this.sandboxDir) {
+      parts.push(`- 沙盒目录：${this.sandboxDir}`)
+      parts.push(`  - inputs/：用户引入的附件文件`)
+      parts.push(`  - outputs/：你的产出文件（无工作空间时的默认输出位置）`)
+      parts.push(`  - tmp/：临时文件目录`)
+    }
+    if (this.workspace) {
+      parts.push(`- 用户工作空间：${this.workspace}`)
+      parts.push(`  最终交付物优先写入工作空间。`)
+    } else {
+      parts.push(`- 用户工作空间：（无）`)
+    }
+    parts.push(`用户消息中引用的文件路径为绝对路径，可直接读取。`)
+    return parts.join('\n')
+  }
+
+  private buildReferenceContext(): string {
+    const lastUserMessage = [...this.messages.value].reverse().find((m) => m.role === 'user')
+    if (!lastUserMessage || lastUserMessage.role !== 'user') return ''
+    const contents = lastUserMessage.content
     const attachments = contents
       .filter((content): content is AttachmentContent => content.type === 'attachment')
       .flatMap((content) => content.data)
@@ -121,14 +146,15 @@ export class ToolChat {
     params: ChatRequestParams,
     assistantMessageId: string
   ): Promise<ChatCompletionMessageParam[]> {
-    const agent = this.getAgent(params)
+    const agent = params.message.agentId ? useAiAgentStore().getById(params.message.agentId) : undefined
     const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
     const dynamicPrompt = await buildSkillDynamicPrompt(this.messages.value)
-    const systemPrompt = [this.systemPrompt, agentPrompt, dynamicPrompt].filter(Boolean).join('\n\n')
+    const workspacePrompt = this.buildWorkspacePrompt()
+    const systemPrompt = [this.systemPrompt, agentPrompt, dynamicPrompt, workspacePrompt].filter(Boolean).join('\n\n')
     const messages = toAgentRequestMessages(
       this.messages.value,
       assistantMessageId,
-      this.buildReferenceContext(params.content)
+      this.buildReferenceContext()
     )
     return systemPrompt ? [{ role: 'system', content: systemPrompt }, ...messages] : messages
   }
@@ -229,69 +255,51 @@ export class ToolChat {
     setAssistantStatus(this.messages, assistantMessageId, 'error')
   }
 
+  private async resolveAttachmentFiles(requestParams: ChatRequestParams): Promise<void> {
+    if (!this.sandboxDir) return
+    const contents = requestParams.message.content
+    const inputsDir = window.preload.path.join(this.sandboxDir, 'inputs')
+    for (const content of contents) {
+      if (content.type !== 'attachment') continue
+      for (const item of content.data) {
+        if (!item.url) continue
+        if (this.workspace && isPathUnder(item.url, this.workspace)) continue
+        if (isPathUnder(item.url, inputsDir)) continue
+        if (isPathUnder(item.url, this.sandboxDir)) {
+          if (isPathUnder(item.url, window.preload.path.join(this.sandboxDir, 'tmp'))) {
+            item.url = await copyToInputs(item.url, this.sandboxDir)
+          }
+          continue
+        }
+        item.url = await copyToInputs(item.url, this.sandboxDir)
+      }
+    }
+  }
+
   async sendUserMessage(requestParams: ChatRequestParams): Promise<void> {
     if (!this.canStartRequest()) return
+    if (requestParams.workspace) this.workspace = requestParams.workspace
+    await this.resolveAttachmentFiles(requestParams)
+    const { message } = requestParams
     const userMessage: UserMessage = {
       id: nanoid(),
       role: 'user',
-      content: requestParams.content,
-      model: requestParams.model,
-      provide: requestParams.provide,
-      agentId: requestParams.agentId,
-      reasoning_effort: requestParams.reasoning_effort
+      content: message.content,
+      model: message.model,
+      provide: message.provide,
+      reasoning_effort: message.reasoning_effort
     }
     const assistantMessage = createPendingAssistantMessage()
     this.messages.value = [...this.messages.value, userMessage, assistantMessage]
     await this.executeRequest(requestParams, assistantMessage.id)
   }
 
-  async reaskMessage(messageId: string, requestParams: ChatRequestParams): Promise<void> {
+  deleteFromUserMessage(messageId: string): void {
     if (!this.canStartRequest()) return
-    const userIndex = this.getUserMessageIndex(messageId)
-    const userMessage = this.messages.value[userIndex]
-    if (userMessage.role !== 'user') return
-    const nextMessage = this.messages.value[userIndex + 1]
-    let assistantMessage: AIMessage
-    if (nextMessage?.role === 'assistant') {
-      assistantMessage = nextMessage
-      if (assistantMessage.content?.length) {
-        ;(assistantMessage.history ??= []).push([...assistantMessage.content])
-      }
-      assistantMessage.content = []
-      assistantMessage.status = 'pending'
-      this.messages.value = this.messages.value.slice(0, userIndex + 2)
-    } else {
-      assistantMessage = createPendingAssistantMessage()
-      this.messages.value = [...this.messages.value.slice(0, userIndex + 1), assistantMessage]
-    }
-    await this.executeRequest({ ...requestParams, content: userMessage.content }, assistantMessage.id)
-  }
-
-  rollbackBeforeMessage(messageId: string): void {
-    if (!this.canStartRequest()) return
-    this.messages.value = this.messages.value.slice(0, this.getUserMessageIndex(messageId))
-  }
-
-  async modifyAndReaskMessage(
-    messageId: string,
-    content: UserMessageContent[],
-    requestParams: ChatRequestParams
-  ): Promise<void> {
-    if (!this.canStartRequest()) return
-    const userIndex = this.getUserMessageIndex(messageId)
-    const userMessage = this.messages.value[userIndex]
-    if (userMessage.role !== 'user') return
-    userMessage.content = content
-    const assistantMessage = createPendingAssistantMessage()
-    this.messages.value = [...this.messages.value.slice(0, userIndex + 1), assistantMessage]
-    await this.executeRequest({ ...requestParams, content }, assistantMessage.id)
-  }
-
-  private getUserMessageIndex(messageId: string): number {
     const index = this.messages.value.findIndex((message) => message.id === messageId)
     if (index < 0) throw new Error('消息不存在')
     if (this.messages.value[index].role !== 'user') throw new Error('该消息不是用户消息')
-    return index
+    this.messages.value = this.messages.value.slice(0, index)
   }
 
   async abortChat(): Promise<void> {
@@ -299,6 +307,14 @@ export class ToolChat {
     this.ctx.abortController = null
     this.status.value = 'stop'
     await this.ctx.config.onAbort?.()
+  }
+
+  setWorkspace(path: string): void {
+    this.workspace = path
+  }
+
+  setSandboxDir(path: string): void {
+    this.sandboxDir = path
   }
 
   init(initialMessages?: ChatMessage[]): void {

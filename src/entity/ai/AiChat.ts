@@ -1,6 +1,6 @@
 import { BaseEntity } from '@/entity'
 import { ChatMessage } from '@/domain'
-import { ChatRequestParams } from '@/modules/chat'
+import type { ChatRequestParams } from '@/modules/chat'
 
 /**
  * 聊天索引中的轻量元信息（index.json）
@@ -22,10 +22,7 @@ export interface AiChatItem extends BaseEntity {
 /**
  * 待发送的首条消息草稿（chat.json）
  */
-export interface AiChatDraft {
-  params: ChatRequestParams
-  workspace: string
-}
+export type AiChatDraft = ChatRequestParams
 
 export interface AiChatContent {
   /**
@@ -34,7 +31,8 @@ export interface AiChatContent {
   updatedTime: number
   // 待发送的首条消息草稿
   draft?: ChatRequestParams
-
+  // 当前对话选中的 agent
+  agentId: string
   // 工作空间，用户可以指定
   workspace: string
   messages: Array<ChatMessage>

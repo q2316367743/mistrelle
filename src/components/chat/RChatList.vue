@@ -61,8 +61,7 @@
                     <RChatActionbar
                       :content="getUserText(message)"
                       role="user"
-                      @reask="emit('reask', message.id)"
-                      @rollback="emit('rollback', message.id)"
+        @delete="emit('delete', message.id)"
                     />
                   </template>
                 </ChatMessage>
@@ -147,8 +146,7 @@ defineProps({
 })
 const emit = defineEmits<{
   clear: []
-  reask: [messageId: string]
-  rollback: [messageId: string]
+  delete: [messageId: string]
   change: []
 }>()
 

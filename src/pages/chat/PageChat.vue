@@ -1,6 +1,6 @@
 <template>
   <page-layout :title="title">
-    <l-chat-engine v-if="storageKey" :storage-key="storageKey" />
+    <l-chat-engine v-if="storageKey" :storage-key="storageKey" :chat-id="chatId" />
     <loading-result v-else title="正在加载中" />
   </page-layout>
 </template>
@@ -15,6 +15,7 @@ const route = useRoute()
 
 const chat = ref<AiChatItem>()
 const storageKey = ref<string>()
+const chatId = ref('')
 
 const title = computed(() => chat.value?.name || '聊天')
 
@@ -27,6 +28,7 @@ watch(
       storageKey.value = ''
       nextTick(() => {
         chat.value = res
+        chatId.value = res.id
         storageKey.value = buildChatChatPath(res.id)
       })
     }

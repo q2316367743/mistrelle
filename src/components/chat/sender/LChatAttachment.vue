@@ -136,10 +136,42 @@
                 <div class="l-chat-attachment__row" @click="selectRefFile">
                   <folder-icon class="l-chat-attachment__row-icon" />
                   <div class="l-chat-attachment__row-info">
-                    <span class="l-chat-attachment__row-name">引用文件</span>
-                    <span class="l-chat-attachment__row-desc">从当前工作目录选择或输入 @ 搜索</span>
+                    <span class="l-chat-attachment__row-name">从本地选择</span>
+                    <span class="l-chat-attachment__row-desc">从文件系统选择文件</span>
                   </div>
                 </div>
+                <div v-if="sandboxFiles.loading" class="l-chat-attachment__empty">加载中...</div>
+                <template v-else>
+                  <div v-if="sandboxFiles.inputs.length > 0" class="l-chat-attachment__group-title">输入 (inputs)</div>
+                  <div
+                    v-for="file in sandboxFiles.inputs"
+                    :key="file.path"
+                    class="l-chat-attachment__row"
+                    @click="selectSandboxFile(file)"
+                  >
+                    <file-icon class="l-chat-attachment__row-icon" />
+                    <div class="l-chat-attachment__row-info">
+                      <span class="l-chat-attachment__row-name">{{ file.name }}</span>
+                      <span class="l-chat-attachment__row-desc">{{ file.relativePath }}</span>
+                    </div>
+                  </div>
+                  <div v-if="sandboxFiles.outputs.length > 0" class="l-chat-attachment__group-title">输出 (outputs)</div>
+                  <div
+                    v-for="file in sandboxFiles.outputs"
+                    :key="file.path"
+                    class="l-chat-attachment__row"
+                    @click="selectSandboxFile(file)"
+                  >
+                    <file-icon class="l-chat-attachment__row-icon" />
+                    <div class="l-chat-attachment__row-info">
+                      <span class="l-chat-attachment__row-name">{{ file.name }}</span>
+                      <span class="l-chat-attachment__row-desc">{{ file.relativePath }}</span>
+                    </div>
+                  </div>
+                  <div v-if="sandboxFiles.inputs.length === 0 && sandboxFiles.outputs.length === 0" class="l-chat-attachment__empty">
+                    暂无文件
+                  </div>
+                </template>
               </template>
             </div>
 
@@ -181,6 +213,7 @@ import {
   AiEducationIcon,
   ArrowRightIcon,
   FileAddIcon,
+  FileIcon,
   FolderIcon,
   SearchIcon,
   UploadIcon,
@@ -195,6 +228,7 @@ import { toolOptions } from '@/modules/tool'
 import { useAiAgentStore } from '@/store'
 import type { ToolSuggestionItem } from './mentionSuggestion'
 import { CommonSelect } from '@/domain'
+import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
 
 /** 面板类型 */
 type PanelType = 'skill' | 'tool' | 'expert' | 'mode' | 'file' | 'ref-file'
@@ -214,9 +248,10 @@ interface ModeToggleOption {
 }
 
 // ─── Props & Emits ───────────────────────────────────────
-const props = withDefaults(defineProps<{ agent?: string; mode?: string }>(), {
+const props = withDefaults(defineProps<{ agent?: string; mode?: string; sandboxDir?: string }>(), {
   agent: '',
-  mode: ''
+  mode: '',
+  sandboxDir: ''
 })
 const emit = defineEmits<{
   'update:agent': [agentId: string]
@@ -224,7 +259,7 @@ const emit = defineEmits<{
   addSkill: [skill: LocalSkill]
   addTool: [tool: ToolSuggestionItem]
   addFile: []
-  addRefFile: []
+  addRefFile: [file: ChatFileRef]
   addLocalSkill: []
 }>()
 
@@ -236,6 +271,30 @@ const activePanel = ref<PanelType>('skill')
 const keyword = ref('')
 const skills = ref<LocalSkill[]>([])
 const show = ref(false)
+const sandboxFiles = ref<{ inputs: ChatFileRef[]; outputs: ChatFileRef[]; loading: boolean }>({
+  inputs: [],
+  outputs: [],
+  loading: false
+})
+
+watch(
+  () => props.sandboxDir,
+  async (dir) => {
+    if (!dir) {
+      sandboxFiles.value = { inputs: [], outputs: [], loading: false }
+      return
+    }
+    sandboxFiles.value = { ...sandboxFiles.value, loading: true }
+    const inputsDir = window.preload.path.join(dir, 'inputs')
+    const outputsDir = window.preload.path.join(dir, 'outputs')
+    const [inputs, outputs] = await Promise.all([
+      loadChatFiles(inputsDir),
+      loadChatFiles(outputsDir)
+    ])
+    sandboxFiles.value = { inputs, outputs, loading: false }
+  },
+  { immediate: true }
+)
 
 // ─── Computed ─────────────────────────────────────────────
 const agents = computed(() => useAiAgentStore().state)
@@ -343,7 +402,18 @@ const selectMode = (mode: string) => {
 
 const selectFile = () => emit('addFile')
 
-const selectRefFile = () => emit('addRefFile')
+const selectRefFile = () => {
+  const paths = window.preload.inject.dialog.open({ properties: ['openFile'] })
+  if (!paths || paths.length === 0) return
+  const filePath = paths[0]
+  const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'file'
+  emit('addRefFile', { name, path: filePath, relativePath: name })
+}
+
+const selectSandboxFile = (file: ChatFileRef) => {
+  emit('addRefFile', file)
+  show.value = false
+}
 
 /** 跳转到专家管理页面 */
 const goToAgentPage = () => router.push('/agent')

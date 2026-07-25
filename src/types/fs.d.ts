@@ -17,4 +17,6 @@ declare interface FsApi {
   existsSync: (path: string) => boolean
   mkdir: (path: string, recursive = true) => Promise<void>
   rm: (path: string, options = { recursive: true, force: true }) => Promise<void>
+  copyFile: (src: string, dest: string) => Promise<void>
+  writeBinaryFile: (path: string, base64Content: string) => Promise<void>
 }

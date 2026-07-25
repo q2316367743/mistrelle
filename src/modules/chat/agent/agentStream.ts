@@ -54,13 +54,13 @@ const toStringHeaders = (headers: unknown): Record<string, string> => {
 export const streamAgentStep = async (options: StreamOptions): Promise<StreamStepResult> => {
   const stepId = nanoid()
   const body: AgentStreamingBody = {
-    model: options.requestParams.model,
+    model: options.requestParams.message.model,
     messages: options.apiMessages,
     stream: true,
     tools: options.tools
   }
-  if (options.requestParams.reasoning_effort) {
-    body.reasoning_effort = options.requestParams.reasoning_effort
+  if (options.requestParams.message.reasoning_effort) {
+    body.reasoning_effort = options.requestParams.message.reasoning_effort
   }
 
   const finalBody: ChatCompletionCreateParamsStreaming = { ...body }
