@@ -28,3 +28,14 @@ export const getAppData2Chat = () => {
 export const getAppData2Discussion = () => {
   return window.preload.path.join(getAppData(), 'discussion')
 }
+
+// ~/.mistrelle
+export const getDataFolder  = () => {
+  return window.preload.path.join(
+    window.preload.inject.os.getPath('home'),
+    `.${Constant.id}`
+  )
+}
+export const getDataForWorkspace = () => {
+  return window.preload.path.join(getDataFolder(), 'workspace')
+}

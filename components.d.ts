@@ -33,6 +33,8 @@ declare module 'vue' {
     TBackTop: typeof import('tdesign-vue-next')['BackTop']
     TButton: typeof import('tdesign-vue-next')['Button']
     TCard: typeof import('tdesign-vue-next')['Card']
+    TCollapse: typeof import('tdesign-vue-next')['Collapse']
+    TCollapsePanel: typeof import('tdesign-vue-next')['CollapsePanel']
     TContent: typeof import('tdesign-vue-next')['Content']
     TDivider: typeof import('tdesign-vue-next')['Divider']
     TDropdown: typeof import('tdesign-vue-next')['Dropdown']

@@ -6,6 +6,7 @@ import {
   aiChatIndexSave,
   aiChatList,
   aiChatRemove,
+  aiChatSandbox,
   buildChatChatPath,
   useChatName
 } from '@/modules/chat'
@@ -49,9 +50,10 @@ export const useAiChatStore = defineStore('ai-chat', () => {
   }
 
   const add = async (draft: AiChatDraft) => {
+    const { params, workspace } = draft
     const id = useSnowflake().nextId()
     const now = Date.now()
-    const preview = buildPreviewText(draft.content)
+    const preview = buildPreviewText(params.content)
     const item: AiChatItem = {
       id,
       createdAt: now,
@@ -59,17 +61,20 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       name: preview.slice(0, 10),
       top: false,
       preview,
-      previewModel: `${draft.provide}:${draft.model}`
+      previewModel: `${params.provide}:${params.model}`
     }
     state.value.push(item)
     // 保存索引
     await aiChatIndexSave(state.value)
-    // 保存聊天内容（含草稿）
+    // 保存聊天内容（ n含草稿）
     await aiChatContentSet(buildChatChatPath(id), {
       updatedTime: now,
-      draft,
+      draft: params,
+      workspace,
       messages: []
     })
+    // 创建沙盒目录
+    await aiChatSandbox(id)
 
     // 生成聊天消息
     logger.debug('AI 聊天消息生成')

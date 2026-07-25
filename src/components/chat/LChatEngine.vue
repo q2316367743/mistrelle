@@ -110,6 +110,7 @@ onMounted(async () => {
         await aiChatContentSet(props.storageKey!, {
           updatedTime: Date.now(),
           draft: undefined,
+          workspace: content?.workspace || '',
           messages: toRaw(val)
         })
       },
@@ -121,7 +122,7 @@ onMounted(async () => {
 
   if (!hasUserMessage && content?.draft) {
     const { draft } = content
-    initialAgentId.value = draft.agentId || ''
+    initialAgentId.value = draft!.agentId || ''
     instance.sendUserMessage(draft)
   } else if (messages.value.length > 1) {
     const lastUser = messages.value.findLast((e) => e.role === 'user') as UserMessage | undefined

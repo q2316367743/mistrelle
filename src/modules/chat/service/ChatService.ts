@@ -1,5 +1,5 @@
 import { AiChatContent, AiChatItem } from '@/entity/ai'
-import { getAppData2Chat } from '@/global/Constant'
+import { getAppData2Chat, getDataForWorkspace } from '@/global/Constant'
 import { ChatMessage } from '@/domain'
 
 let chatIndexPath: string | undefined = undefined
@@ -27,6 +27,15 @@ export const aiChatIndexSave = async (list: Array<AiChatItem>) => {
  */
 export const aiChatContentSet = async (path: string, content: AiChatContent) => {
   await window.preload.fs.writeTextFile(path, JSON.stringify(content))
+}
+
+// 创建此次聊天的沙盒目录
+export const aiChatSandbox = async (id: string) => {
+  const folder = window.preload.path.join(getDataForWorkspace(), id)
+  await window.preload.fs.mkdir(folder, true)
+  const outputs = window.preload.path.join(folder, 'outputs')
+  const inputs = window.preload.path.join(folder, 'inputs')
+  await Promise.all([window.preload.fs.mkdir(outputs), window.preload.fs.mkdir(inputs)])
 }
 
 /**
@@ -71,6 +80,7 @@ export const aiChatContentGet = async (path: string): Promise<AiChatContent | un
     const data = JSON.parse(await window.preload.fs.readTextFile(path))
     if (Array.isArray(data.list)) {
       return {
+        workspace: '',
         updatedTime: data.updatedAt || Date.now(),
         messages: data.list as ChatMessage[]
       }
