@@ -5,7 +5,7 @@
 </template>
 <script lang="ts" setup>
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
-import DefaultChatTool from '@/components/chat/tool/DefaultChatTool.vue'
+import DefaultChatTool from '@/components/chat/chat-assistant/tool/DefaultChatTool.vue'
 
 defineProps({
   content: {

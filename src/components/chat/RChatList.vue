@@ -19,71 +19,12 @@
           :variant="message.role === 'user' ? 'base' : 'text'"
         >
           <template #content>
-            <div class="flex flex-col gap-4px">
-              <r-chat-system v-if="message.role === 'system'" :prompt="message.content[0]?.data" />
-              <template v-else-if="message.role === 'user'">
-                <ChatMessage variant="outline" placement="right" :role="message.role">
-                  <template #content>
-                    <!-- 用户消息内联展示：文本为文字，skill/file 为不同色与图标的标签，整行内联 -->
-                    <div class="r-chat-list__user-content">
-                      <template v-for="(item, index) in message.content" :key="item.id || index">
-                        <span v-if="item.type === 'text'" class="r-chat-list__text">{{
-                          item.data
-                        }}</span>
-                        <t-tag
-                          v-else-if="item.type === 'skill'"
-                          theme="primary"
-                          variant="light"
-                          :title="item.data.path"
-                          size="small"
-                          class="r-chat-list__inline-tag mr-4px"
-                        >
-                          <template #icon><CodeIcon /></template>
-                          {{ item.data.name }}
-                        </t-tag>
-                        <template v-else-if="item.type === 'attachment'">
-                          <t-tag
-                            v-for="(file, fi) in item.data"
-                            :key="file.url || fi"
-                            theme="success"
-                            variant="light"
-                            :title="file.url"
-                            class="r-chat-list__inline-tag"
-                          >
-                            <template #icon><FileIcon /></template>
-                            @{{ file.name }}
-                          </t-tag>
-                        </template>
-                      </template>
-                    </div>
-                  </template>
-                  <template #actionbar>
-                    <RChatActionbar
-                      :content="getUserText(message)"
-                      role="user"
-        @delete="emit('delete', message.id)"
-                    />
-                  </template>
-                </ChatMessage>
-              </template>
-              <template v-else>
-                <template
-                  v-for="(contentItem, contentIndex) in message.content"
-                  :key="contentItem.id || contentIndex"
-                >
-                  <ChatContent
-                    v-if="contentItem.type === 'text' || contentItem.type === 'markdown'"
-                    :content="contentItem.data"
-                  />
-                  <r-chat-think
-                    v-else-if="contentItem.type === 'thinking'"
-                    :content="contentItem"
-                    :index="contentIndex"
-                  />
-                  <r-chat-tool v-else-if="contentItem.type === 'toolcall'" :content="contentItem" />
-                </template>
-              </template>
-            </div>
+            <m-chat-user
+              v-if="message.role === 'user'"
+              :message="message"
+              @delete="emit('delete', $event)"
+            />
+            <m-chat-assistant v-else-if="message.role === 'assistant'" :message="message" />
           </template>
           <template #actionbar>
             <RChatActionbar
@@ -122,7 +63,7 @@
 import { ChatContent, ChatList, ChatMessage } from '@tdesign-vue-next/chat'
 import { CodeIcon, FileIcon } from 'tdesign-icons-vue-next'
 import type { AIMessage, ChatComment, ChatMessage as ChatMessageType, UserMessage } from '@/domain'
-import RChatTool from '@/components/chat/RChatTool.vue'
+import RChatTool from '@/components/chat/chat-assistant/RChatTool.vue'
 import RChatSystem from '@/components/chat/RChatSystem.vue'
 import RChatActionbar from '@/components/chat/RChatActionbar.vue'
 
@@ -149,10 +90,6 @@ const emit = defineEmits<{
   delete: [messageId: string]
   change: []
 }>()
-
-const getUserText = (message: UserMessage) => {
-  return message.content.find((item) => item.type === 'text')?.data ?? ''
-}
 
 const getAssistantText = (message: AIMessage) => {
   return (
@@ -208,8 +145,8 @@ const scrollToMessage = (messageId: string) => {
 }
 
 .r-chat-list__locator-group {
-  position: absolute;
-  top: 0;
+  position: fixed;
+  top: 56px;
   right: -8px;
   z-index: 2;
   display: flex;
