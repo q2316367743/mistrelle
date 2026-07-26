@@ -153,6 +153,12 @@ export interface UserMessage extends ChatBaseMessage {
 export type ChatComment = 'good' | 'bad' | ''
 export interface AIMessage extends ChatBaseMessage {
   role: 'assistant'
+  // 使用的模型
+  model: string
+  // 提供商
+  provide: string
+  // agent ID
+  agentId?: string
   // 内容
   content?: AIMessageContent[]
   // 历史消息

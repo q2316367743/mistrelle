@@ -3,13 +3,11 @@ import type {
   ChatCompletionTool
 } from 'openai/resources/chat/completions'
 import type {
-  AIMessage,
   AttachmentContent,
   ChatMessage,
   ToolContent,
   ToolFunction,
   UserMessage,
-  UserMessageContent
 } from '@/domain'
 import { nanoid } from 'nanoid'
 import { buildSkillDynamicPrompt } from '@/modules/skill'
@@ -90,7 +88,7 @@ export class ToolChat {
   }
 
   private getFunctions(params: ChatRequestParams): ToolFunction[] {
-    const agent = params.message.agentId ? useAiAgentStore().getById(params.message.agentId) : undefined
+    const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
     const names = [...(agent?.tools ?? []), ...this.getUserToolNames(params)]
     const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
     const mcpTools = getMcpTools()
@@ -146,7 +144,7 @@ export class ToolChat {
     params: ChatRequestParams,
     assistantMessageId: string
   ): Promise<ChatCompletionMessageParam[]> {
-    const agent = params.message.agentId ? useAiAgentStore().getById(params.message.agentId) : undefined
+    const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
     const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
     const dynamicPrompt = await buildSkillDynamicPrompt(this.messages.value)
     const workspacePrompt = this.buildWorkspacePrompt()
@@ -289,7 +287,11 @@ export class ToolChat {
       provide: message.provide,
       reasoning_effort: message.reasoning_effort
     }
-    const assistantMessage = createPendingAssistantMessage()
+    const assistantMessage = createPendingAssistantMessage({
+      model: message.model,
+      provide: message.provide,
+      agentId: requestParams.agentId
+    })
     this.messages.value = [...this.messages.value, userMessage, assistantMessage]
     await this.executeRequest(requestParams, assistantMessage.id)
   }

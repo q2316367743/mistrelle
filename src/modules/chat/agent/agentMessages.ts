@@ -9,12 +9,19 @@ import type {
 import { nanoid } from 'nanoid'
 import { prettyDurationTime, toDateString } from '@/utils/lang'
 
-export const createPendingAssistantMessage = (): AIMessage => ({
+export const createPendingAssistantMessage = (params: {
+  model: string
+  provide: string
+  agentId?: string
+}): AIMessage => ({
   role: 'assistant',
   content: [],
   status: 'pending',
   datetime: toDateString(null),
-  id: nanoid()
+  id: nanoid(),
+  model: params.model,
+  provide: params.provide,
+  agentId: params.agentId
 })
 
 const getAssistant = (messages: Ref<ChatMessage[]>, messageId: string): AIMessage | undefined => {
