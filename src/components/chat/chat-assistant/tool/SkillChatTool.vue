@@ -1,8 +1,9 @@
 <template>
   <div class="chat-tool">
     <div class="tool-row">
-      <ToolsIcon class="tool-icon" />
-      <span class="tool-value">{{ content.data.toolCallName }}</span>
+      <component :is="skillIconComponent" class="tool-icon" />
+      <span class="tool-op">{{ skillLabel }}</span>
+      <span class="tool-value">{{ skillValue }}</span>
       <div class="tool-end">
         <t-loading v-if="isLoading" size="small" />
         <t-tag
@@ -18,14 +19,34 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, shallowRef, type Component } from 'vue'
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
-import { ToolsIcon } from 'tdesign-icons-vue-next'
+import { BookOpenIcon, FileIcon } from 'tdesign-icons-vue-next'
 
 const props = defineProps({
   content: {
     type: Object as PropType<ToolCallContent>,
     required: true
+  }
+})
+
+const skillIconComponent = computed<Component>(() => {
+  return props.content.data.toolCallName === 'load_skill' ? BookOpenIcon : FileIcon
+})
+
+const skillLabel = computed(() => {
+  return props.content.data.toolCallName === 'load_skill' ? '加载技能' : '读取'
+})
+
+const skillValue = computed(() => {
+  const { toolCallName, args } = props.content.data
+  if (!args) return ''
+  try {
+    const parsed = JSON.parse(args)
+    if (toolCallName === 'load_skill') return parsed.name ?? ''
+    return parsed.path ?? ''
+  } catch {
+    return ''
   }
 })
 
@@ -70,6 +91,13 @@ const isLoading = computed(() => {
 .tool-icon {
   flex-shrink: 0;
   color: var(--td-text-color-placeholder);
+}
+
+.tool-op {
+  flex-shrink: 0;
+  color: var(--td-brand-color);
+  font-weight: var(--td-font-weight-medium, 500);
+  font: var(--td-font-body-small);
 }
 
 .tool-value {

@@ -1,8 +1,9 @@
 <template>
   <div class="chat-tool">
     <div class="tool-row">
-      <ToolsIcon class="tool-icon" />
-      <span class="tool-value">{{ content.data.toolCallName }}</span>
+      <FileIcon class="tool-icon" />
+      <span class="tool-op">{{ operationLabel }}</span>
+      <span class="tool-value">{{ filePath }}</span>
       <div class="tool-end">
         <t-loading v-if="isLoading" size="small" />
         <t-tag
@@ -20,12 +21,36 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
-import { ToolsIcon } from 'tdesign-icons-vue-next'
+import { FileIcon } from 'tdesign-icons-vue-next'
 
 const props = defineProps({
   content: {
     type: Object as PropType<ToolCallContent>,
     required: true
+  }
+})
+
+const operationMap: Record<string, string> = {
+  file_list: '列出',
+  file_read: '读取',
+  file_write: '写入',
+  file_delete: '删除',
+  file_mkdir: '创建目录',
+  file_exists: '检查',
+}
+
+const operationLabel = computed(() => {
+  return operationMap[props.content.data.toolCallName] ?? props.content.data.toolCallName
+})
+
+const filePath = computed(() => {
+  const { args } = props.content.data
+  if (!args) return ''
+  try {
+    const parsed = JSON.parse(args)
+    return parsed.path ?? ''
+  } catch {
+    return ''
   }
 })
 
@@ -70,6 +95,13 @@ const isLoading = computed(() => {
 .tool-icon {
   flex-shrink: 0;
   color: var(--td-text-color-placeholder);
+}
+
+.tool-op {
+  flex-shrink: 0;
+  color: var(--td-brand-color);
+  font-weight: var(--td-font-weight-medium, 500);
+  font: var(--td-font-body-small);
 }
 
 .tool-value {

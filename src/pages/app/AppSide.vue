@@ -199,7 +199,7 @@ const settingOptions = [
 ]
 
 // 分组
-const chats = computed(() => useAiChatStore().state)
+const chats = computed(() => useAiChatStore().state.sort((a, b) => b.createdAt - a.createdAt))
 const discussions = computed(() => useAiDiscussionStore().state)
 const noteIconStyle = computed(() => ({
   transform: note.value ? 'rotate(90deg)' : '',

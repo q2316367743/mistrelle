@@ -9,6 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     DefaultChatTool: typeof import('./src/components/chat/chat-assistant/tool/DefaultChatTool.vue')['default']
     EmptyResult: typeof import('./src/components/Result/EmptyResult.vue')['default']
+    FileChatTool: typeof import('./src/components/chat/chat-assistant/tool/FileChatTool.vue')['default']
     InfoResult: typeof import('./src/components/Result/InfoResult.vue')['default']
     LChatAttachment: typeof import('./src/components/chat/sender/LChatAttachment.vue')['default']
     LChatEngine: typeof import('./src/components/chat/LChatEngine.vue')['default']
@@ -25,6 +26,8 @@ declare module 'vue' {
     RChatTool: typeof import('./src/components/chat/chat-assistant/RChatTool.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ShellChatTool: typeof import('./src/components/chat/chat-assistant/tool/ShellChatTool.vue')['default']
+    SkillChatTool: typeof import('./src/components/chat/chat-assistant/tool/SkillChatTool.vue')['default']
     SubPageLayout: typeof import('./src/components/PageLayout/SubPageLayout.vue')['default']
     SubTitle: typeof import('./src/components/PageLayout/SubTitle.vue')['default']
     SuccessResult: typeof import('./src/components/Result/SuccessResult.vue')['default']

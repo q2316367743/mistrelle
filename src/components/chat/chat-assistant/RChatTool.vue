@@ -1,17 +1,37 @@
 <template>
-  <div class="chat-tool">
-    <default-chat-tool :content="content" />
+  <div class="chat-tool-wrapper">
+    <file-chat-tool v-if="isFileTool" :content="content" />
+    <shell-chat-tool v-else-if="isShellTool" :content="content" />
+    <skill-chat-tool v-else-if="isSkillTool" :content="content" />
+    <default-chat-tool v-else :content="content" />
   </div>
 </template>
 <script lang="ts" setup>
+import { computed } from 'vue'
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
 import DefaultChatTool from '@/components/chat/chat-assistant/tool/DefaultChatTool.vue'
+import FileChatTool from '@/components/chat/chat-assistant/tool/FileChatTool.vue'
+import ShellChatTool from '@/components/chat/chat-assistant/tool/ShellChatTool.vue'
+import SkillChatTool from '@/components/chat/chat-assistant/tool/SkillChatTool.vue'
 
-defineProps({
+const props = defineProps({
   content: {
     type: Object as PropType<ToolCallContent>,
     required: true
   }
 })
+
+const shellToolNames = new Set(['cli_run', 'js_run', 'python_run', 'node_run', 'git_exec'])
+const skillToolNames = new Set(['load_skill', 'read_skill_file'])
+
+const toolCallName = computed(() => props.content.data.toolCallName)
+
+const isFileTool = computed(() => toolCallName.value.startsWith('file_'))
+const isShellTool = computed(() => shellToolNames.has(toolCallName.value))
+const isSkillTool = computed(() => skillToolNames.has(toolCallName.value))
 </script>
-<style scoped lang="less"></style>
+<style scoped lang="less">
+.chat-tool-wrapper {
+  display: contents;
+}
+</style>
