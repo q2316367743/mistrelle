@@ -28,6 +28,10 @@ module.exports = {
   readTextFile: (path) => {
     return readFile(path, 'utf-8')
   },
+  readBinaryFile: async (path) => {
+    const buffer = await readFile(path)
+    return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+  },
   existsSync: (path) => {
     return existsSync(path)
   },
@@ -40,7 +44,7 @@ module.exports = {
   copyFile: (src, dest) => {
     return copyFile(src, dest)
   },
-  writeBinaryFile: (path, base64Content) => {
-    return writeFile(path, Buffer.from(base64Content, 'base64'))
+  writeBinaryFile: (path, arrayBuffer) => {
+    return writeFile(path, Buffer.from(arrayBuffer))
   }
 }

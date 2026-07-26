@@ -10,6 +10,7 @@ declare module 'vue' {
     DefaultChatTool: typeof import('./src/components/chat/chat-assistant/tool/DefaultChatTool.vue')['default']
     EmptyResult: typeof import('./src/components/Result/EmptyResult.vue')['default']
     FileChatTool: typeof import('./src/components/chat/chat-assistant/tool/FileChatTool.vue')['default']
+    FileProductList: typeof import('./src/components/chat/chat-assistant/FileProductList.vue')['default']
     InfoResult: typeof import('./src/components/Result/InfoResult.vue')['default']
     LChatAttachment: typeof import('./src/components/chat/sender/LChatAttachment.vue')['default']
     LChatEngine: typeof import('./src/components/chat/LChatEngine.vue')['default']

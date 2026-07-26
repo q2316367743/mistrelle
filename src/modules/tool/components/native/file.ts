@@ -34,7 +34,7 @@ export const fileTools: ToolFunction[] = [
   {
     name: 'file_read',
     label: '读取文件',
-    description: '读取指定文本文件的全部内容（UTF-8 编码）',
+    description: '读取纯文本文件的全部内容（UTF-8 编码），适用于 .txt/.md/.json/.csv/.ts/.js/.css 等文本格式。docx/xlsx/pdf 请使用 file_read_docx / file_read_xlsx / file_read_pdf',
     parameters: {
       type: 'object',
       properties: {

@@ -26,15 +26,6 @@
             />
             <m-chat-assistant v-else-if="message.role === 'assistant'" :message="message" />
           </template>
-          <template #actionbar>
-            <RChatActionbar
-              v-if="message.role === 'assistant'"
-              role="assistant"
-              :comment="message.comment"
-              :content="getAssistantText(message)"
-              @comment-change="handleCommentChange(message, $event)"
-            />
-          </template>
         </ChatMessage>
       </div>
     </ChatList>
@@ -90,17 +81,6 @@ const emit = defineEmits<{
   delete: [messageId: string]
   change: []
 }>()
-
-const getAssistantText = (message: AIMessage) => {
-  return (
-    message.content?.find((item) => item.type === 'markdown' || item.type === 'text')?.data ?? ''
-  )
-}
-
-const handleCommentChange = (message: AIMessage, comment: ChatComment) => {
-  message.comment = comment
-  emit('change')
-}
 
 const scrollToMessage = (messageId: string) => {
   const target = document.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(messageId)}"]`)

@@ -68,6 +68,7 @@ export const toolMap: Record<string, ToolFunction> = {
 
 import { shellTools } from './components/native/shell'
 import { fileTools } from './components/native/file'
+import { fileParseTools } from './components/native/fileParse'
 import { nativeHttpTools } from './components/native/http'
 import { skillTools } from './components/skill'
 
@@ -75,6 +76,7 @@ export const defaultTools: ToolFunction[] = [
   ...shellTools,
   ...skillTools,
   ...fileTools,
+  ...fileParseTools,
   ...nativeHttpTools
 ]
 

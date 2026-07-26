@@ -307,18 +307,13 @@ const insertFileByPath = (filePath: string) => {
 const pasteImage = async (item: DataTransferItem) => {
   const file = item.getAsFile()
   if (!file || !props.sandboxDir) return
-  const reader = new FileReader()
-  reader.onload = async () => {
-    const base64 = (reader.result as string).split(',')[1]
-    if (!base64) return
-    const tmpDir = window.preload.path.join(props.sandboxDir, 'tmp')
-    const ext = file.type.split('/')[1] || 'png'
-    const fileName = `paste_${Date.now()}.${ext}`
-    const filePath = window.preload.path.join(tmpDir, fileName)
-    await window.preload.fs.writeBinaryFile(filePath, base64)
-    insertFile({ name: fileName, path: filePath, relativePath: fileName })
-  }
-  reader.readAsDataURL(file)
+  const arrayBuffer = await file.arrayBuffer()
+  const tmpDir = window.preload.path.join(props.sandboxDir, 'tmp')
+  const ext = file.type.split('/')[1] || 'png'
+  const fileName = `paste_${Date.now()}.${ext}`
+  const filePath = window.preload.path.join(tmpDir, fileName)
+  await window.preload.fs.writeBinaryFile(filePath, arrayBuffer)
+  insertFile({ name: fileName, path: filePath, relativePath: fileName })
 }
 
 const selectWorkspace = () => {
