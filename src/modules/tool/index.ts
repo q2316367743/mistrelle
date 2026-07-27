@@ -9,6 +9,12 @@ import {
   injectBrowserTools,
   injectFfmpegTools
 } from '@/modules/tool/components/inject'
+import { shellTools } from './components/native/shell'
+import { fileTools } from './components/native/file'
+import { fileParseTools } from './components/native/fileParse'
+import { nativeHttpTools } from './components/native/http'
+import { nativeBrowserAutomationTools } from './components/native/browserAutomation'
+import { skillTools } from './components/skill'
 import { objectify } from '@/utils/lang'
 
 interface ToolOption {
@@ -42,8 +48,8 @@ export const toolOptions: Array<ToolOption> = [
   },
   {
     group: '浏览器',
-    children: toOptions(injectBrowserTools)
-  },
+    children: toOptions([...injectBrowserTools, ...nativeBrowserAutomationTools])
+  }
 ]
 
 export const tools: Array<ToolFunction> = [
@@ -53,7 +59,8 @@ export const tools: Array<ToolFunction> = [
   ...injectNotificationTools,
   ...injectScreenTools,
   ...injectBrowserTools,
-  ...injectFfmpegTools
+  ...injectFfmpegTools,
+  ...nativeBrowserAutomationTools
 ]
 
 export const toolMap: Record<string, ToolFunction> = {
@@ -63,14 +70,9 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(injectNotificationTools, 'name'),
   ...objectify(injectScreenTools, 'name'),
   ...objectify(injectBrowserTools, 'name'),
-  ...objectify(injectFfmpegTools, 'name')
+  ...objectify(injectFfmpegTools, 'name'),
+  ...objectify(nativeBrowserAutomationTools, 'name')
 }
-
-import { shellTools } from './components/native/shell'
-import { fileTools } from './components/native/file'
-import { fileParseTools } from './components/native/fileParse'
-import { nativeHttpTools } from './components/native/http'
-import { skillTools } from './components/skill'
 
 export const defaultTools: ToolFunction[] = [
   ...shellTools,

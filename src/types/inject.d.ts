@@ -488,6 +488,144 @@ interface InjectTeam {
   allPresets(): Promise<{ key: string; value: any }[]>
 }
 
+interface CookieFilter {
+  url?: string
+  name?: string
+  domain?: string
+  path?: string
+  secure?: boolean
+  session?: boolean
+  httpOnly?: boolean
+}
+
+/**
+ * 浏览器自动化 API（uTools uBrowser / ZTools zBrowser 的兼容层）
+ *
+ * 链式调用，所有中间方法返回 this，最终通过 run() 执行并返回 Promise
+ */
+interface InjectCBrowser {
+  useragent(userAgent: string): this
+  /**
+   * 前往指定地址
+   * @param url 链接地址，支持 http 或 file 协议
+   * @param headers 请求头参数
+   * @param timeout 加载超时，默认 60000 ms
+   */
+  goto(url: string, headers?: { Referer: string; userAgent: string }, timeout?: number): this
+  viewport(width: number, height: number): this
+  hide(): this
+  show(): this
+  /** 注入样式 */
+  css(css: string): this
+  /** 键盘按键 */
+  press(key: string, ...modifier: ('ctrl' | 'shift' | 'alt' | 'meta')[]): this
+  /**
+   * 粘贴
+   * @param text 图片 base64 编码字符串时粘贴图片，为空只执行粘贴动作
+   */
+  paste(text?: string): this
+  /**
+   * 页面截图
+   * @param arg 字符串为 CSS 选择器，对象为截图区域，空为截取整个窗口
+   * @param savePath 保存路径，默认临时目录
+   */
+  screenshot(arg: string | { x: number; y: number; width: number; height: number }, savePath?: string): this
+  /** 转为 markdown 文本 */
+  markdown(selector?: string): this
+  /** 保存为 PDF */
+  pdf(options?: { marginsType: 0 | 1 | 2; pageSize: 'A3' | 'A4' | 'A5' | 'Legal' | 'Letter' | 'Tabloid' | { width: number; height: number } }, savePath?: string): this
+  /** 模拟设备 */
+  device(arg: { size: { width: number; height: number }; useragent: string }): this
+  /** 获取 cookie，name 为空时获取当前 url 全部 cookie */
+  cookies(name?: string): this
+  /** 按条件获取 cookie */
+  cookies(filter: CookieFilter): this
+  /** 设置单个 cookie */
+  setCookies(name: string, value: string): this
+  /** 批量设置 cookie */
+  setCookies(cookies: { name: string; value: string }[]): this
+  /** 删除 cookie */
+  removeCookies(name: string): this
+  /** 清空 cookie */
+  clearCookies(url?: string): this
+  /** 打开开发者工具 */
+  devTools(mode?: 'right' | 'bottom' | 'undocked' | 'detach'): this
+  /** 在目标页面中执行 JS 并获取结果 */
+  evaluate<T extends any[]>(func: (...params: T) => any, ...params: T): this
+  /** 等待指定毫秒 */
+  wait(ms: number): this
+  /** 等待元素出现 */
+  wait(selector: string, timeout?: number): this
+  /** 等待 JS 函数返回 true */
+  wait<T extends any[]>(func: (...params: T) => boolean, timeout?: number, ...params: T): this
+  /** 当元素存在时执行，直到碰到 end */
+  when(selector: string): this
+  /** 当 JS 函数返回 true 时执行，直到碰到 end */
+  when<T extends any[]>(func: (...params: T) => boolean, ...params: T): this
+  /** 配合 when 使用，结束 when 块 */
+  end(): this
+  /** 单击元素 */
+  click(selector: string): this
+  /** 元素触发按下鼠标左键 */
+  mousedown(selector: string): this
+  /** 元素触发释放鼠标左键 */
+  mouseup(selector: string): this
+  /** 赋值 file input */
+  file(selector: string, payload: string | string[] | Uint8Array): this
+  /** input/textarea/select 赋值并触发 input/change 事件 */
+  value(selector: string, value: string): this
+  /** checkbox/radio 选中或取消选中 */
+  check(selector: string, checked: boolean): this
+  /** 元素获得焦点 */
+  focus(selector: string): this
+  /** 滚动到元素位置 */
+  scroll(selector: string): this
+  /** Y 轴滚动 */
+  scroll(y: number): this
+  /** X 轴和 Y 轴滚动 */
+  scroll(x: number, y: number): this
+  /** 下载文件 */
+  download(url: string, savePath?: string): this
+  /** 下载文件（通过函数生成 url） */
+  download(func: (...params: any[]) => string, savePath: string | null, ...params: any[]): this
+  /**
+   * 启动 ubrowser 运行，运行结束后隐藏窗口自动销毁
+   * @platform ZTools 部分参数可能不支持
+   */
+  run<T = any>(options?: {
+    show?: boolean
+    width?: number
+    height?: number
+    x?: number
+    y?: number
+    center?: boolean
+    minWidth?: number
+    minHeight?: number
+    maxWidth?: number
+    maxHeight?: number
+    resizable?: boolean
+    movable?: boolean
+    minimizable?: boolean
+    maximizable?: boolean
+    alwaysOnTop?: boolean
+    fullscreen?: boolean
+    fullscreenable?: boolean
+    enableLargerThanScreen?: boolean
+    opacity?: number
+    frame?: boolean
+    closable?: boolean
+    focusable?: boolean
+    skipTaskbar?: boolean
+    backgroundColor?: string
+    hasShadow?: boolean
+    transparent?: boolean
+    titleBarStyle?: string
+    thickFrame?: boolean
+  }): Promise<T>
+  /** 在闲置的 ubrowser 实例上运行 */
+  run<T = any>(ubrowserId: number): Promise<T>
+}
+
 interface InjectApi {
   getPlatform(): 'ZTools' | 'utools' | 'browser'
 
@@ -498,6 +636,7 @@ interface InjectApi {
   display: InjectDisplay
   window: InjectWindow
   browser: InjectBrowser
+  cBrowser: InjectCBrowser
   input: InjectInput
   simulate: InjectSimulate
   notification: InjectNotification
