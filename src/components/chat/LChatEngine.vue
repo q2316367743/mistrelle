@@ -31,6 +31,7 @@ import type { UserMessage } from '@/domain'
 import type { AiChatContent } from '@/entity/ai'
 import { toolConfirmDialog } from '@/components/chat/modals/ToolConfirmDialog'
 import { toolMap } from '@/modules/tool'
+import { isPathUnder } from '@/utils/chatSender'
 
 const props = withDefaults(
   defineProps<{
@@ -50,6 +51,13 @@ const sandboxDir = computed(() => {
 })
 
 const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<boolean> => {
+  const path = args.path as string | undefined
+  if (path) {
+    const sd = sandboxDir.value
+    const ws = workspace.value
+    if (sd && isPathUnder(path, sd)) return Promise.resolve(true)
+    if (ws && isPathUnder(path, ws)) return Promise.resolve(true)
+  }
   const tool = toolMap[toolName]
   const label = tool?.label || toolName
   return toolConfirmDialog(label, toolName, JSON.stringify(args, null, 2))
@@ -64,6 +72,7 @@ watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 const { messages, status } = instance
 
 const handleSend = async (message: ChatRequestParams) => {
+  if (message.workspace) workspace.value = message.workspace
   instance.sendUserMessage(message)
 }
 
