@@ -8,7 +8,8 @@
         class="product-card"
         @click="showInFolder(file.fullPath)"
       >
-        <FileExcelIcon v-if="file.fullPath.endsWith('.xls')" class="product-icon" />
+        <FileMarkdownIcon v-if="file.fullPath.endsWith('.md')" class="product-icon" />
+        <FileExcelIcon v-else-if="file.fullPath.endsWith('.xls')" class="product-icon" />
         <FileExcelIcon v-else-if="file.fullPath.endsWith('.xlsx')" class="product-icon" />
         <FileWordIcon v-else-if="file.fullPath.endsWith('.doc')" class="product-icon" />
         <FileWordIcon v-else-if="file.fullPath.endsWith('.docx')" class="product-icon" />
@@ -22,7 +23,7 @@
 import { computed } from 'vue'
 import type { PropType } from 'vue'
 import type { AIMessage, ToolCallContent } from '@/domain'
-import { FileExcelIcon, FileIcon, FileWordIcon } from 'tdesign-icons-vue-next'
+import { FileExcelIcon, FileIcon, FileMarkdownIcon, FileWordIcon } from 'tdesign-icons-vue-next'
 
 const props = defineProps({
   message: {

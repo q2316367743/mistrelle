@@ -1,51 +1,41 @@
 <template>
-  <div class="l-chat-sender">
-    <div class="l-chat-sender__input" :class="{ 'is-disabled': loading }" @click="focusInput">
-      <span v-if="showPlaceholder" class="l-chat-sender__placeholder">{{ placeholder }}</span>
-      <EditorContent :editor="editor" class="l-chat-sender__editor" />
-    </div>
-    <div class="l-chat-sender__footer">
-      <div class="l-chat-sender__footer-left">
-        <l-chat-attachment
-          v-model:agent="agentId"
-          :sandbox-dir="sandboxDir"
-          @add-skill="insertSkill"
-          @add-tool="insertTool"
-          @add-file="focusInput"
-          @add-ref-file="insertFile"
-        />
-        <template v-if="workspaceRef">
-          <t-tag
-            closable
-            theme="primary"
-            variant="light-outline"
-            @close="workspaceRef = ''"
-            style="cursor: pointer"
-            @click="selectWorkspace"
-          >
-            <template #icon><folder-open-icon /></template>
-            {{ workspaceRef.split('/').pop() || workspaceRef.split('\\').pop() }}
-          </t-tag>
-        </template>
-        <t-button v-else variant="text" class="l-chat-sender__ws-btn" @click="selectWorkspace">
-          <template #icon><folder-icon /></template>
-          选择目录
-        </t-button>
+  <div class="l-chat-sender-container">
+    <div class="l-chat-sender">
+      <div class="l-chat-sender__input" :class="{ 'is-disabled': loading }" @click="focusInput">
+        <span v-if="showPlaceholder" class="l-chat-sender__placeholder">{{ placeholder }}</span>
+        <EditorContent :editor="editor" class="l-chat-sender__editor" />
       </div>
-      <div class="flex gap-8px">
-        <div class="l-chat-sender__tools">
-          <t-select v-model="modelKey" :options="options" placeholder="请选择模型" />
+      <div class="l-chat-sender__footer">
+        <div class="l-chat-sender__footer-left">
+          <l-chat-attachment
+            v-model:agent="agentId"
+            :sandbox-dir="sandboxDir"
+            @add-skill="insertSkill"
+            @add-tool="insertTool"
+            @add-file="focusInput"
+            @add-ref-file="insertFile"
+          />
         </div>
-        <t-button v-if="loading" theme="danger" variant="outline" @click="handleStop">
-          停止
-        </t-button>
-        <t-button v-else theme="primary" :disabled="!canSend" @click="handleSend">发送</t-button>
+        <div class="flex gap-8px">
+          <div class="l-chat-sender__tools">
+            <ai-model-select v-model="modelKey" />
+          </div>
+          <t-button v-if="loading" theme="danger" variant="outline" @click="handleStop">
+            停止
+          </t-button>
+          <t-button v-else theme="primary" :disabled="!canSend" @click="handleSend">发送</t-button>
+        </div>
+      </div>
+    </div>
+    <div class="l-chat-sender__more">
+      <ai-workspace v-model="workspaceRef" />
+      <div class="w-160px">
+        <t-progress :percentage="18" />
       </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import type { SelectProps } from 'tdesign-vue-next'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Mention from '@tiptap/extension-mention'
@@ -245,7 +235,6 @@ const editor = useEditor({
   }
 })
 
-const options = computed<SelectProps['options']>(() => useSettingAiStore().options)
 const canSend = computed(() =>
   Boolean(
     inputValue.value.trim() ||

@@ -7,6 +7,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AiModelSelect: typeof import('./src/components/chat/AiModelSelect.vue')['default']
+    AiWorkspace: typeof import('./src/components/chat/AiWorkspace.vue')['default']
     DefaultChatTool: typeof import('./src/components/chat/chat-assistant/tool/DefaultChatTool.vue')['default']
     EmptyResult: typeof import('./src/components/Result/EmptyResult.vue')['default']
     FileChatTool: typeof import('./src/components/chat/chat-assistant/tool/FileChatTool.vue')['default']
@@ -63,6 +65,7 @@ declare module 'vue' {
     TPagination: typeof import('tdesign-vue-next')['Pagination']
     TPopconfirm: typeof import('tdesign-vue-next')['Popconfirm']
     TPopup: typeof import('tdesign-vue-next')['Popup']
+    TProgress: typeof import('tdesign-vue-next')['Progress']
     TRadio: typeof import('tdesign-vue-next')['Radio']
     TRadioButton: typeof import('tdesign-vue-next')['RadioButton']
     TRadioGroup: typeof import('tdesign-vue-next')['RadioGroup']

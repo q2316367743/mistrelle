@@ -1,6 +1,7 @@
 export const LocalNameEnum = {
   KEY_APP_COLLAPSED: '/key/app/collapsed',
   KEY_AI_COMMON_MODEL: '/key/ai/common/model',
+  KEY_AI_WORKSPACE: '/key/ai/workspace',
 
   SETTING_NETWORK: '/setting/network',
   SETTING_AI: '/setting/ai',
