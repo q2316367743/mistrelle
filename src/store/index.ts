@@ -9,4 +9,6 @@ export * from '@/store/ai/AiDiscussionStore'
 export * from '@/store/ai/AiAgentStore'
 export * from '@/store/ai/AiToolStore'
 
+export * from './project/ProjectStore'
+
 export * from '@/store/note/NoteTraceStore'

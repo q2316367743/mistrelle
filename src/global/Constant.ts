@@ -63,3 +63,8 @@ export const getDataFolder  = () => {
 export const getDataForWorkspace = () => {
   return window.preload.path.join(getDataFolder(), 'workspace')
 }
+
+// ~/.mistrelle/project
+export const getAppData2Project = () => {
+  return window.preload.path.join(getDataFolder(), 'project')
+}

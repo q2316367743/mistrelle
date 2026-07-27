@@ -6,7 +6,7 @@ export interface Project extends BaseEntity {
   /**
    * ## 指令
    * 提供当前项目的背景信息和规范，让助手的回复更加准确，更符合要求，比如项目目标、团队习惯、风格偏好、输出约束等。
-   */
+   * */
   prompt: string
 
   /**

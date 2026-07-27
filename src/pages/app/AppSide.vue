@@ -17,6 +17,15 @@
           <ChatIcon class="menu-icon" />
           <span>半窗烟雨</span>
         </button>
+        <button
+          class="menu-item"
+          :class="{ active: isActive('/project/list') }"
+          type="button"
+          @click="goTo('/project/list')"
+        >
+          <AbilityOpenIcon class="menu-icon" />
+          <span>项目</span>
+        </button>
         <button class="menu-item" @click="toggleNote()">
           <ChatBubbleHistoryIcon class="menu-icon" />
           <span>灵感</span>
@@ -172,7 +181,8 @@ import {
   AppIcon,
   ToolsIcon,
   AiEducationIcon,
-  LightbulbIcon
+  LightbulbIcon,
+  AbilityOpenIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useAiDiscussionStore, useAiChatStore, useSettingAccountStore } from '@/store'

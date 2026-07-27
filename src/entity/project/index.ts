@@ -1,4 +1,5 @@
 export * from './Project'
+export * from './ProjectForm'
 export * from './ProjectChat'
 export * from './ProjectDynamics'
 export * from './ProjectTask'
@@ -6,8 +7,10 @@ export * from './ProjectTask'
 
 /*
 ## 项目目录结构
+~/.mistrelle
 
 |- project
+  |- index.json                   # 项目索引
   |- {projectId}
     |-files                       # 项目文件（资产）
     |-chat                        # 项目对话（对话）

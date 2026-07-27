@@ -56,6 +56,46 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/pages/note/superego/home/index.vue')
   },
 
+  // --------------------------------- 项目相关 ---------------------------------
+
+  {
+    name: '项目列表',
+    path: '/project/list',
+    component: () => import('@/pages/project/list/index.vue')
+  },
+  {
+    path: '/project/:id',
+    component: () => import('@/pages/project/detail/index.vue'),
+    children: [
+      {
+        path: '',
+        redirect: (to) => `/project/${(to.params as { id: string }).id}/dynamics`
+      },
+      {
+        name: '项目-动态',
+        path: 'dynamics',
+        component: () => import('@/pages/project/dynamics/DynamicsPage.vue')
+      },
+      {
+        name: '项目-计划',
+        path: 'plan',
+        component: () => import('@/pages/project/plan/PlanPage.vue')
+      },
+      {
+        name: '项目-任务',
+        path: 'task',
+        component: () => import('@/pages/project/task/TaskPage.vue')
+      },
+      {
+        name: '项目-资产',
+        path: 'asset',
+        component: () => import('@/pages/project/asset/AssetPage.vue')
+      }
+    ]
+  },
+
+  // --------------------------------- 设置 ---------------------------------
+
   {
     name: '设置/account',
     path: '/setting/account',
