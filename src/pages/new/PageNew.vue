@@ -8,51 +8,20 @@
       <div class="page-new__sender">
         <l-chat-sender :initial-model="model" placeholder="描述任务，/ 调用技能，@ 添加上下文" @send="handleSend" />
       </div>
-      <div class="page-new__suggestions">
-        <t-tag
-          v-for="item in suggestions"
-          :key="item.label"
-          theme="default"
-          variant="light"
-          class="page-new__suggestion"
-          @click="handleSuggestion(item)"
-        >
-          <template #icon><component :is="item.icon" /></template>
-          {{ item.label }}
-        </t-tag>
-      </div>
     </div>
   </page-layout>
 </template>
 <script lang="ts" setup>
 import { useAiChatStore, useSettingDefaultStore } from '@/store'
 import { ChatRequestParams } from '@/modules/chat'
-import { FileIcon, ChatIcon, LightbulbIcon } from 'tdesign-icons-vue-next'
 
 const router = useRouter()
 
 const model = ref('')
 
-const suggestions = [
-  { label: '写一份文档', icon: FileIcon },
-  { label: '聊聊想法', icon: ChatIcon },
-  { label: '帮我分析', icon: LightbulbIcon }
-]
-
 const handleSend = async (message: ChatRequestParams) => {
   const id = await useAiChatStore().add(message)
   await router.push(`/chat/${id}`)
-}
-
-const handleSuggestion = (item: { label: string }) => {
-  handleSend({
-    message: {
-      content: [{ type: 'text', data: item.label, time: Date.now() }],
-      model: model.value,
-      provide: ''
-    },
-    workspace: ''
-  })
 }
 
 onMounted(async () => {

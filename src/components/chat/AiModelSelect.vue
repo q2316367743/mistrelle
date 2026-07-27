@@ -57,6 +57,7 @@ const handleSelect = (val: string) => {
 .ai-select-label {
   width: 120px;
   overflow: hidden;
+  text-align: right;
 }
 
 .ai-select-options {

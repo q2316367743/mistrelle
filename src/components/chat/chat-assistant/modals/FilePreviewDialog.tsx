@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { DialogPlugin, Button, TabPanel, Tabs } from 'tdesign-vue-next'
+import { DialogPlugin, Button, TabPanel, Table, Tabs } from 'tdesign-vue-next'
 import { ChatContent } from '@tdesign-vue-next/chat'
 import { MessageUtil } from '@/utils/modal'
 import mammoth from 'mammoth'
@@ -309,23 +309,30 @@ async function openXlsxPreview(file: ProductFile) {
         <Tabs v-model={activeTab.value}>
           {workbook.SheetNames.map((name) => {
             const ws = workbook.Sheets[name]
-            const html = XLSX.utils.sheet_to_html(ws)
-            const styledHtml = `<style>
-              table { border-collapse: collapse; width: 100%; font: var(--td-font-body-medium); color: var(--td-text-color-primary); }
-              table th, table td { border: 1px solid var(--td-component-border); padding: 4px 10px; text-align: left; }
-              table th { background: var(--td-bg-color-secondarycontainer); font-weight: 600; white-space: nowrap; }
-              table tr:nth-child(even) { background: var(--td-bg-color-container); }
-            </style>${html}`
+            const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 })
+            const headerRow = rows[0] ?? []
+            const columns = headerRow.map((h, i) => ({
+              colKey: `col_${i}`,
+              title: h ?? `列${i + 1}`,
+            }))
+            const data = rows.slice(1).map((row, rowIdx) => {
+              const item: Record<string, unknown> = { _index: rowIdx }
+              columns.forEach((col, i) => {
+                item[col.colKey] = row[i]
+              })
+              return item
+            })
             return (
               <TabPanel key={name} label={name} value={name}>
-                <div
-                  innerHTML={styledHtml}
-                  style={{
-                    maxHeight: '60vh',
-                    overflow: 'auto',
-                    padding: 'var(--td-comp-paddingTB-m) var(--td-comp-paddingLR-m)',
-                    borderRadius: 'var(--td-radius-medium)',
-                  }}
+                <Table
+                  columns={columns as any}
+                  data={data}
+                  rowKey="_index"
+                  bordered
+                  stripe
+                  hover
+                  maxHeight="60vh"
+                  tableLayout="auto"
                 />
               </TabPanel>
             )
