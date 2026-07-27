@@ -110,20 +110,6 @@ const scrollToMessage = (messageId: string) => {
   scroll-margin-top: var(--td-comp-margin-xxl);
 }
 
-// 用户消息内容：文本与标签像一段文字内联排列，自然换行
-.r-chat-list__user-content {
-  display: block;
-  line-height: 22px;
-  border: 1px solid var(--td-border-level-1-color);
-  padding: 8px;
-  border-radius: var(--td-radius-large);
-}
-
-.r-chat-list__text {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 .r-chat-list__locator-group {
   position: fixed;
   top: 56px;

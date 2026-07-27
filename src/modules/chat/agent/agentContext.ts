@@ -10,9 +10,24 @@ import type {
   ToolCallContent
 } from '@/domain'
 import { parseSkillCommand } from '@/modules/skill'
+import { toolMap } from '@/modules/tool'
 import type { AssistantRequestMessage } from './agentTypes'
 
 const SKILL_TOOL_NAMES = new Set(['load_skill', 'read_skill_file'])
+
+/** 根据 tool 定义的 stripFields 剥离历史 args 中的冗余字段（如写入内容），节省 token */
+const slimToolArgs = (toolName: string, args: string | undefined): string => {
+  const raw = args ?? '{}'
+  const stripFields = toolMap[toolName]?.stripFields
+  if (!stripFields || stripFields.length === 0) return raw
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    for (const field of stripFields) delete parsed[field]
+    return JSON.stringify(parsed)
+  } catch {
+    return raw
+  }
+}
 
 const getText = (contents: AIMessageContent[]): string =>
   contents
@@ -52,7 +67,7 @@ const appendAssistantStep = (
         type: 'function',
         function: {
           name: item.data.toolCallName,
-          arguments: item.data.args ?? '{}'
+          arguments: slimToolArgs(item.data.toolCallName, item.data.args)
         }
       })
     )

@@ -165,6 +165,8 @@ export interface AIMessage extends ChatBaseMessage {
   history?: AIMessageContent[][]
   /** 点赞点踩 */
   comment?: ChatComment
+  /** 完成时间戳（ms） */
+  finishedAt?: number
 }
 export interface SystemMessage extends ChatBaseMessage {
   role: 'system'

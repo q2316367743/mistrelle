@@ -19,4 +19,6 @@ export interface ToolFunction {
   }
   handler: (...params: unknown[]) => Promise<unknown>
   requireConfirm?: boolean
+  /** 序列化历史消息时从 args 中剥离的字段，节省 token（如写入类 tool 的 content） */
+  stripFields?: string[]
 }

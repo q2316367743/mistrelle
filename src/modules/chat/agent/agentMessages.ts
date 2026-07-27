@@ -93,4 +93,7 @@ export const setAssistantStatus = (
   assistant.status = status
   const last = assistant.content?.[assistant.content.length - 1]
   if (last) last.status = status
+  if (status === 'complete' || status === 'stop') {
+    assistant.finishedAt = Date.now()
+  }
 }

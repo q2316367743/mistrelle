@@ -249,6 +249,7 @@ export const fileParseTools: ToolFunction[] = [
       required: ['path', 'sheets']
     },
     requireConfirm: true,
+    stripFields: ['sheets'],
     handler: async (...params: unknown[]) => {
       const { path, sheets } = params[0] as { path: string; sheets: SheetInput[] }
       const error = checkBlacklist(path)

@@ -60,11 +60,19 @@ const getUserText = (message: UserMessage) => {
 .m-chat-user {
   width: 80%;
   margin-left: auto;
+  // 用户消息内容：文本与标签像一段文字内联排列，自然换行
   .r-chat-list__user-content {
     padding: 8px;
     border: 1px solid var(--td-border-level-1-color);
     border-radius: var(--td-radius-large);
     word-wrap: break-word;
+    display: block;
+    line-height: 22px;
+
+    .r-chat-list__text {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
   }
   .footer {
     display: flex;

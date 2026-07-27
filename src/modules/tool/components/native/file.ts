@@ -64,6 +64,7 @@ export const fileTools: ToolFunction[] = [
       required: ['path', 'content']
     },
     requireConfirm: true,
+    stripFields: ['content'],
     handler: async (...params: unknown[]) => {
       const { path, content } = params[0] as { path: string; content: string }
       const error = checkBlacklist(path)
