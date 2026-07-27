@@ -5,8 +5,13 @@
       <chevron-down-icon :style="chevronIconStyle" />
     </div>
     <template #content>
+      <t-input v-model="keyword" clearable class="w-200px mt-4px">
+        <template #prefix-icon>
+          <search-icon />
+        </template>
+      </t-input>
       <div class="ai-select-options">
-        <div v-for="provide in items" :key="provide.group" class="ai-provide">
+        <div v-for="provide in filteredItems" :key="provide.group" class="ai-provide">
           <div class="provide-name">{{ provide.group }}</div>
           <div
             v-for="model in provide.children"
@@ -18,12 +23,17 @@
           </div>
         </div>
       </div>
+      <div class="ai-provide-setting flex mb-4px">
+        <setting1-icon />
+        <span class="ml-8px">模型设置</span>
+        <chevron-right-icon class="ml-auto" />
+      </div>
     </template>
   </t-popup>
 </template>
 <script lang="ts" setup>
 import { useSettingAiStore } from '@/store'
-import { ChevronDownIcon } from 'tdesign-icons-vue-next'
+import { ChevronDownIcon, ChevronRightIcon, SearchIcon, Setting1Icon } from 'tdesign-icons-vue-next'
 
 const modelValue = defineModel({
   type: String,
@@ -32,7 +42,21 @@ const modelValue = defineModel({
 
 const visible = ref(false)
 
+const keyword = ref('')
+
 const items = computed(() => useSettingAiStore().options)
+const filteredItems = computed(() => {
+  const kw = keyword.value.trim().toLowerCase()
+  if (!kw) return items.value
+  return items.value
+    .map((group) => ({
+      ...group,
+      children: group.children.filter(
+        (m) => m.label?.toLowerCase().includes(kw) || String(m.value).toLowerCase().includes(kw)
+      )
+    }))
+    .filter((group) => group.children.length > 0)
+})
 const select = computed(() => {
   if (!modelValue.value) return '请选择模型'
   return modelValue.value.split(':').pop() || '请选择模型'
@@ -61,7 +85,8 @@ const handleSelect = (val: string) => {
 }
 
 .ai-select-options {
-  height: 320px;
+  height: 240px;
+  margin: 8px 0;
   overflow: auto;
   padding: var(--td-pop-padding-m);
 
@@ -109,6 +134,18 @@ const handleSelect = (val: string) => {
       color: var(--td-brand-color);
       font-weight: bold;
     }
+  }
+  border-bottom: 1px solid var(--td-border-level-1-color);
+}
+.ai-provide-setting {
+  padding: 4px;
+  align-items: center;
+  align-content: center;
+  border-radius: var(--td-radius-medium);
+  &:hover {
+    background-color: var(--td-bg-color-component-hover);
+    cursor: pointer;
+    transition: background-color 0.3s ease-in-out;
   }
 }
 </style>

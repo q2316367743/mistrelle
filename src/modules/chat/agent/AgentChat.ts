@@ -54,6 +54,8 @@ export class ToolChat {
   private readonly toolConfirmHandler?: UseChatOptions['toolConfirmHandler']
   private sandboxDir = ''
   private workspace = ''
+  /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
+  private workspaceSettingsCache: { path: string; content: string } | null = null
 
   constructor(options: UseChatOptions = {}) {
     this.messages.value = [...(options.defaultMessages ?? [])]
@@ -128,6 +130,36 @@ export class ToolChat {
     return parts.join('\n')
   }
 
+  /**
+   * 读取工作空间下的设定文件（AGENTS.md / CLAUDE.md）并组装为提示词段落。
+   * 设定文件包含项目约束与开发约定，需在系统提示词中告知模型遵循；
+   * 使用缓存避免 agent 循环中重复读取磁盘。
+   */
+  private async buildWorkspaceSettingsPrompt(): Promise<string> {
+    if (!this.workspace) return ''
+    if (this.workspaceSettingsCache && this.workspaceSettingsCache.path === this.workspace) {
+      return this.workspaceSettingsCache.content
+    }
+    const settingFiles = ['AGENTS.md', 'CLAUDE.md']
+    const sections: string[] = []
+    for (const fileName of settingFiles) {
+      const filePath = window.preload.path.join(this.workspace, fileName)
+      if (!window.preload.fs.existsSync(filePath)) continue
+      try {
+        const content = await window.preload.fs.readTextFile(filePath)
+        if (content.trim()) sections.push(`### ${fileName}\n\n${content.trim()}`)
+      } catch {
+        // 读取失败（权限/编码）不阻断对话，跳过该设定文件
+        continue
+      }
+    }
+    const content = sections.length
+      ? `## 工作空间设定文件\n\n以下是工作空间（${this.workspace}）下的设定文件内容，请严格遵循其中的约束与开发约定：\n\n${sections.join('\n\n')}`
+      : ''
+    this.workspaceSettingsCache = { path: this.workspace, content }
+    return content
+  }
+
   private buildReferenceContext(): string {
     const lastUserMessage = [...this.messages.value].reverse().find((m) => m.role === 'user')
     if (!lastUserMessage || lastUserMessage.role !== 'user') return ''
@@ -148,7 +180,8 @@ export class ToolChat {
     const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
     const dynamicPrompt = await buildSkillDynamicPrompt(this.messages.value)
     const workspacePrompt = this.buildWorkspacePrompt()
-    const systemPrompt = [this.systemPrompt, agentPrompt, dynamicPrompt, workspacePrompt].filter(Boolean).join('\n\n')
+    const workspaceSettingsPrompt = await this.buildWorkspaceSettingsPrompt()
+    const systemPrompt = [this.systemPrompt, agentPrompt, dynamicPrompt, workspacePrompt, workspaceSettingsPrompt].filter(Boolean).join('\n\n')
     const messages = toAgentRequestMessages(
       this.messages.value,
       assistantMessageId,
@@ -276,7 +309,10 @@ export class ToolChat {
 
   async sendUserMessage(requestParams: ChatRequestParams): Promise<void> {
     if (!this.canStartRequest()) return
-    if (requestParams.workspace) this.workspace = requestParams.workspace
+    if (requestParams.workspace && requestParams.workspace !== this.workspace) {
+      this.workspace = requestParams.workspace
+      this.workspaceSettingsCache = null
+    }
     await this.resolveAttachmentFiles(requestParams)
     const { message } = requestParams
     const userMessage: UserMessage = {
@@ -312,7 +348,9 @@ export class ToolChat {
   }
 
   setWorkspace(path: string): void {
+    if (path === this.workspace) return
     this.workspace = path
+    this.workspaceSettingsCache = null
   }
 
   setSandboxDir(path: string): void {
