@@ -21,6 +21,7 @@ declare module 'vue' {
     MChatAssistant: typeof import('./src/components/chat/chat-assistant/MChatAssistant.vue')['default']
     MChatUser: typeof import('./src/components/chat/chat-user/MChatUser.vue')['default']
     MLink: typeof import('./src/components/ui/MLink.vue')['default']
+    MonacoEditorView: typeof import('./src/components/view/MonacoEditorView.vue')['default']
     PageLayout: typeof import('./src/components/PageLayout/PageLayout.vue')['default']
     RChatActionbar: typeof import('./src/components/chat/RChatActionbar.vue')['default']
     RChatList: typeof import('./src/components/chat/RChatList.vue')['default']

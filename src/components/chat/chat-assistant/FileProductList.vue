@@ -6,13 +6,17 @@
         v-for="file in products"
         :key="file.fullPath"
         class="product-card"
-        @click="showInFolder(file.fullPath)"
+        @click="openFilePreview(file)"
       >
-        <FileMarkdownIcon v-if="file.fullPath.endsWith('.md')" class="product-icon" />
+        <FileCodeIcon v-if="isCodeFile(file.fullPath)" class="product-icon" />
+        <FileImageIcon v-else-if="isImageFile(file.fullPath)" class="product-icon" />
+        <VideoIcon v-else-if="isVideoFile(file.fullPath)" class="product-icon" />
+        <FileMusicIcon v-else-if="isAudioFile(file.fullPath)" class="product-icon" />
         <FileExcelIcon v-else-if="file.fullPath.endsWith('.xls')" class="product-icon" />
         <FileExcelIcon v-else-if="file.fullPath.endsWith('.xlsx')" class="product-icon" />
         <FileWordIcon v-else-if="file.fullPath.endsWith('.doc')" class="product-icon" />
         <FileWordIcon v-else-if="file.fullPath.endsWith('.docx')" class="product-icon" />
+        <FileMarkdownIcon v-else-if="file.fullPath.endsWith('.md')" class="product-icon" />
         <FileIcon v-else class="product-icon" />
         <span class="product-name">{{ file.fileName }}</span>
       </div>
@@ -20,10 +24,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed } from 'vue'
-import type { PropType } from 'vue'
 import type { AIMessage, ToolCallContent } from '@/domain'
-import { FileExcelIcon, FileIcon, FileMarkdownIcon, FileWordIcon } from 'tdesign-icons-vue-next'
+import { FileCodeIcon, FileExcelIcon, FileIcon, FileImageIcon, FileMarkdownIcon, FileMusicIcon, FileWordIcon, VideoIcon } from 'tdesign-icons-vue-next'
+import { openFilePreview, type ProductFile } from './modals/FilePreviewDialog'
 
 const props = defineProps({
   message: {
@@ -31,11 +34,6 @@ const props = defineProps({
     required: true
   }
 })
-
-interface ProductFile {
-  fileName: string
-  fullPath: string
-}
 
 const toolCallNames = ['file_write_xlsx', 'file_write']
 
@@ -61,8 +59,45 @@ const products = computed<ProductFile[]>(() => {
   return result
 })
 
-const showInFolder = (path: string) => {
-  window.preload.inject.shell.showItemInFolder(path)
+const CODE_EXTS = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.vue', '.json', '.css', '.less', '.html',
+  '.py', '.rs', '.go', '.java', '.c', '.cpp', '.h', '.hpp', '.yaml', '.yml',
+  '.toml', '.xml', '.sh', '.bat', '.cmd', '.sql', '.rb', '.php',
+  '.swift', '.kt', '.dart', '.scss', '.sass', '.styl', '.pl', '.lua', '.r',
+  '.groovy', '.tex', '.ini', '.cfg', '.conf', '.env', '.gradle', '.tf',
+])
+
+const IMAGE_EXTS = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp', '.avif',
+])
+
+const VIDEO_EXTS = new Set([
+  '.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv',
+])
+
+const AUDIO_EXTS = new Set([
+  '.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus',
+])
+
+function getExt(path: string) {
+  const i = path.lastIndexOf('.')
+  return i >= 0 ? path.slice(i).toLowerCase() : ''
+}
+
+function isCodeFile(path: string) {
+  return CODE_EXTS.has(getExt(path))
+}
+
+function isImageFile(path: string) {
+  return IMAGE_EXTS.has(getExt(path))
+}
+
+function isVideoFile(path: string) {
+  return VIDEO_EXTS.has(getExt(path))
+}
+
+function isAudioFile(path: string) {
+  return AUDIO_EXTS.has(getExt(path))
 }
 </script>
 <style scoped lang="less">
