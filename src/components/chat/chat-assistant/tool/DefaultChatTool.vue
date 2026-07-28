@@ -30,7 +30,6 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
 import { ChevronDownIcon, ChevronRightIcon, ToolsIcon } from 'tdesign-icons-vue-next'
 

@@ -6,7 +6,7 @@
         <div class="page-new__subtitle">描述你的想法，我来帮你搞定</div>
       </div>
       <div class="page-new__sender">
-        <l-chat-sender :initial-model="model" placeholder="描述任务，/ 调用技能，@ 添加上下文" @send="handleSend" />
+        <l-chat-sender :initial-model="model" @send="handleSend" />
       </div>
     </div>
   </page-layout>

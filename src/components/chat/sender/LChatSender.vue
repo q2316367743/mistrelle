@@ -74,7 +74,7 @@ const props = withDefaults(
     initialInput: '',
     initialModel: '',
     loading: false,
-    placeholder: '说点什么吧...',
+    placeholder: '描述任务，/ 调用技能，# 使用工具，@ 添加上下文',
     sandboxDir: '',
     initialWorkspace: ''
   }
@@ -116,7 +116,7 @@ const extractMentions = (editor: Editor): MentionState => {
         relativePath: label
       })
     } else if (node.type.name === 'toolMention') {
-      resultTools.push({ name: node.attrs.name, label: node.attrs.label })
+      resultTools.push({ name: node.attrs.id, label: node.attrs.label })
     }
   })
   return { skills: resultSkills, files: resultFiles, tools: resultTools }

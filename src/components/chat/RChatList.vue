@@ -55,18 +55,8 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ChatContent, ChatList, ChatMessage } from '@tdesign-vue-next/chat'
-import { CodeIcon, FileIcon } from 'tdesign-icons-vue-next'
-import {
-  AIMessage,
-  ChatComment,
-  ChatMessage as ChatMessageType,
-  ChatStatus,
-  UserMessage
-} from '@/domain'
-import RChatTool from '@/components/chat/chat-assistant/RChatTool.vue'
-import RChatSystem from '@/components/chat/RChatSystem.vue'
-import RChatActionbar from '@/components/chat/RChatActionbar.vue'
+import { ChatList, ChatMessage } from '@tdesign-vue-next/chat'
+import { ChatMessage as ChatMessageType, ChatStatus } from '@/domain'
 import type { PropType } from 'vue'
 
 const props = defineProps({

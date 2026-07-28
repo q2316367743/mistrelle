@@ -6,10 +6,11 @@ import type {
   AIMessage,
   AIMessageContent,
   ChatMessage,
+  SkillContent,
   TextContent,
-  ToolCallContent
+  ToolCallContent,
+  ToolContent
 } from '@/domain'
-import { parseSkillCommand } from '@/modules/skill'
 import { toolMap } from '@/modules/tool'
 import type { AssistantRequestMessage } from './agentTypes'
 
@@ -114,6 +115,33 @@ const appendAssistantMessage = (
   flush()
 }
 
+/**
+ * 把用户消息中显式指定的 Skill / 工具渲染成给模型的指令文本。
+ * 仅识别结构化的 SkillContent / ToolContent（UI 输入框引用产生），不做文本解析与兼容。
+ * 返回空串表示该消息无显式指定；调用方只把它拼到当前用户消息上，不进入 system 前缀。
+ */
+const buildPinnedContext = (msg: ChatMessage): string => {
+  if (msg.role !== 'user') return ''
+  const skills = msg.content.filter((c): c is SkillContent => c.type === 'skill')
+  const tools = msg.content.filter((c): c is ToolContent => c.type === 'tool')
+  if (skills.length === 0 && tools.length === 0) return ''
+
+  const parts: string[] = []
+  if (skills.length > 0) {
+    const list = skills
+      .map((s) => `- Skill「${s.data.name}」：请调用 load_skill("${s.data.name}") 加载完整指令并严格遵循`)
+      .join('\n')
+    parts.push(`用户在本条消息中指定了以下 Skill，请直接加载并遵循（无需再确认）：\n${list}`)
+  }
+  if (tools.length > 0) {
+    const list = tools
+      .map((t) => `- 工具「${t.data.label}」（调用名 ${t.data.name}）：请直接调用 ${t.data.name} 执行`)
+      .join('\n')
+    parts.push(`用户在本条消息中指定了以下工具，请直接调用（无需再确认）：\n${list}`)
+  }
+  return parts.join('\n\n')
+}
+
 export const toAgentRequestMessages = (
   messages: ChatMessage[],
   activeAssistantMessageId: string,
@@ -125,15 +153,20 @@ export const toAgentRequestMessages = (
 
   for (const [index, message] of messages.entries()) {
     if (message.role === 'user') {
-      const rawContent = message.content
+      const content = message.content
         .filter((item): item is TextContent => item.type === 'text')
         .map((item) => item.data)
         .join('')
-      const command = parseSkillCommand(rawContent)
-      const content = command && command.rest.length > 0 ? command.rest : rawContent
+      let extra = ''
+      if (index === activeUserIndex) {
+        // 当前用户消息：引用文件上下文 + 显式指定的 skill/工具 指令，二者都不进 system 前缀
+        const ref = activeReferenceContext.replace(/^\n+/, '')
+        const pinned = buildPinnedContext(message)
+        extra = [ref, pinned].filter(Boolean).join('\n\n')
+      }
       out.push({
         role: 'user',
-        content: `${content}${index === activeUserIndex ? activeReferenceContext : ''}`
+        content: extra ? `${content}\n\n${extra}` : content
       })
       continue
     }

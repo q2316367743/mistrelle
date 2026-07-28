@@ -10,7 +10,7 @@ import type {
   UserMessage,
 } from '@/domain'
 import { nanoid } from 'nanoid'
-import { buildSkillDynamicPrompt } from '@/modules/skill'
+import { buildSkillCatalogPrompt, localSkillList } from '@/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
 import { defaultTools, getMcpTools, toolMap } from '@/modules/tool'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
@@ -178,10 +178,12 @@ export class ToolChat {
   ): Promise<ChatCompletionMessageParam[]> {
     const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
     const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
-    const dynamicPrompt = await buildSkillDynamicPrompt(this.messages.value)
+    const skills = await localSkillList()
+    const catalogPrompt = buildSkillCatalogPrompt(skills)
     const workspacePrompt = this.buildWorkspacePrompt()
     const workspaceSettingsPrompt = await this.buildWorkspaceSettingsPrompt()
-    const systemPrompt = [this.systemPrompt, agentPrompt, dynamicPrompt, workspacePrompt, workspaceSettingsPrompt].filter(Boolean).join('\n\n')
+    // system 前缀保持稳定的可缓存内容；skill 正文由 load_skill 工具按需在对话中加载，不进 system
+    const systemPrompt = [this.systemPrompt, agentPrompt, catalogPrompt, workspacePrompt, workspaceSettingsPrompt].filter(Boolean).join('\n\n')
     const messages = toAgentRequestMessages(
       this.messages.value,
       assistantMessageId,
