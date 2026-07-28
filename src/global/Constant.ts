@@ -37,34 +37,31 @@ export const LOADING_TEXTS = [
   '正在把0和1排成队…'
 ]
 
-export const getAppData = () => {
-  return window.preload.path.join(
-    window.preload.inject.os.getPath('appData'),
-    window.preload.inject.getPlatform(),
-    Constant.id
-  )
-}
+export const appData = window.preload.path.join(
+  window.preload.inject.os.getPath('appData'),
+  window.preload.inject.getPlatform(),
+  Constant.id
+)
 
 export const getAppData2Chat = () => {
-  return window.preload.path.join(getAppData(), 'chat')
+  return window.preload.path.join(appData, 'chat')
 }
 
 export const getAppData2Discussion = () => {
-  return window.preload.path.join(getAppData(), 'discussion')
+  return window.preload.path.join(appData, 'discussion')
 }
 
 // ~/.mistrelle
-export const getDataFolder  = () => {
-  return window.preload.path.join(
-    window.preload.inject.os.getPath('home'),
-    `.${Constant.id}`
-  )
-}
+export const dataFolder = window.preload.path.join(
+  window.preload.inject.os.getPath('home'),
+  `.${Constant.id}`
+)
+
 export const getDataForWorkspace = () => {
-  return window.preload.path.join(getDataFolder(), 'workspace')
+  return window.preload.path.join(dataFolder, 'workspace')
 }
 
 // ~/.mistrelle/project
 export const getAppData2Project = () => {
-  return window.preload.path.join(getDataFolder(), 'project')
+  return window.preload.path.join(dataFolder, 'project')
 }

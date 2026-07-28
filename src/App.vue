@@ -17,7 +17,7 @@
 import { ViewListIcon } from 'tdesign-icons-vue-next'
 import { toggleCollapsed } from '@/global/BeanFactory'
 import AppSide from '@/pages/app/AppSide.vue'
-import { getAppData } from '@/global/Constant'
+import { appData, dataFolder } from '@/global/Constant'
 
 window.preload.inject.onPluginEnter((action) => {
   // 对关键字进行处理
@@ -25,7 +25,9 @@ window.preload.inject.onPluginEnter((action) => {
 })
 
 onMounted(() => {
-  console.log('插件已启动', getAppData())
+  console.log(`插件已启动:
+程序目录：${appData}
+数据目录：${dataFolder}`, )
 })
 </script>
 <style scoped lang="less">

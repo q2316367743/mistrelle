@@ -170,6 +170,7 @@ onMounted(() => {
   padding: 16px;
   overflow: hidden;
   height: calc(100vh - 125px);
+  background-color: var(--td-bg-color-container) !important;
 }
 
 .project-detail-side {
