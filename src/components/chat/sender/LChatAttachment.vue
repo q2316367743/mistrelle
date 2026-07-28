@@ -122,11 +122,58 @@
 
               <!-- 添加文件 -->
               <template v-else-if="activePanel === 'file'">
-                <div class="l-chat-attachment__row" @click="selectFile">
+                <template v-if="projectFiles.length > 0">
+                  <div class="l-chat-attachment__group-title">项目资产</div>
+                  <div
+                    v-for="file in projectFiles"
+                    :key="file.path"
+                    class="l-chat-attachment__row"
+                    @click="selectRefItem(file)"
+                  >
+                    <file-icon class="l-chat-attachment__row-icon" />
+                    <div class="l-chat-attachment__row-info">
+                      <span class="l-chat-attachment__row-name">{{ file.name }}</span>
+                      <span class="l-chat-attachment__row-desc">{{ file.relativePath }}</span>
+                    </div>
+                  </div>
+                </template>
+                <template v-if="workspaceDir">
+                  <div class="l-chat-attachment__group-title">工作空间</div>
+                  <div v-if="canBackWorkspace" class="l-chat-attachment__row" @click="backWorkspaceDir">
+                    <folder-icon class="l-chat-attachment__row-icon" />
+                    <div class="l-chat-attachment__row-info">
+                      <span class="l-chat-attachment__row-name">返回上级</span>
+                      <span class="l-chat-attachment__row-desc">{{ workspaceRelativeDir }}</span>
+                    </div>
+                  </div>
+                  <div v-if="workspaceFiles.loading" class="l-chat-attachment__empty">加载中...</div>
+                  <template v-else>
+                    <div
+                      v-for="item in workspaceFiles.items"
+                      :key="item.path"
+                      class="l-chat-attachment__row"
+                      @click="selectWorkspaceItem(item)"
+                    >
+                      <component
+                        :is="item.isDirectory ? FolderIcon : FileIcon"
+                        class="l-chat-attachment__row-icon"
+                      />
+                      <div class="l-chat-attachment__row-info">
+                        <span class="l-chat-attachment__row-name">{{ item.name }}</span>
+                        <span class="l-chat-attachment__row-desc">{{ workspaceItemDesc(item) }}</span>
+                      </div>
+                    </div>
+                    <div v-if="workspaceFiles.items.length === 0" class="l-chat-attachment__empty">
+                      当前目录暂无文件
+                    </div>
+                  </template>
+                </template>
+                <div class="l-chat-attachment__group-title">本地文件</div>
+                <div class="l-chat-attachment__row" @click="selectRefFile">
                   <file-add-icon class="l-chat-attachment__row-icon" />
                   <div class="l-chat-attachment__row-info">
-                    <span class="l-chat-attachment__row-name">上传文件</span>
-                    <span class="l-chat-attachment__row-desc">从本地选择文件上传</span>
+                    <span class="l-chat-attachment__row-name">从本地选择</span>
+                    <span class="l-chat-attachment__row-desc">从文件系统选择文件</span>
                   </div>
                 </div>
               </template>
@@ -258,17 +305,27 @@ interface ModeToggleOption {
 }
 
 // ─── Props & Emits ───────────────────────────────────────
-const props = withDefaults(defineProps<{ agent?: string; mode?: string; sandboxDir?: string }>(), {
-  agent: '',
-  mode: '',
-  sandboxDir: ''
-})
+const props = withDefaults(
+  defineProps<{
+    agent?: string
+    mode?: string
+    sandboxDir?: string
+    workspaceDir?: string
+    projectFiles?: ChatFileRef[]
+  }>(),
+  {
+    agent: '',
+    mode: '',
+    sandboxDir: '',
+    workspaceDir: '',
+    projectFiles: () => []
+  }
+)
 const emit = defineEmits<{
   'update:agent': [agentId: string]
   'update:mode': [mode: string]
   addSkill: [skill: LocalSkill]
   addTool: [tool: ToolSuggestionItem]
-  addFile: []
   addRefFile: [file: ChatFileRef]
   addLocalSkill: []
 }>()
@@ -286,6 +343,8 @@ const sandboxFiles = ref<{ inputs: ChatFileRef[]; outputs: ChatFileRef[]; loadin
   outputs: [],
   loading: false
 })
+const workspaceCurrentDir = ref('')
+const workspaceFiles = ref<{ items: FileItem[]; loading: boolean }>({ items: [], loading: false })
 
 watch(
   () => props.sandboxDir,
@@ -310,6 +369,16 @@ watch(
 const agents = computed(() => useAiAgentStore().state)
 const selectedAgent = computed(() => agents.value.find((item) => item.id === props.agent))
 const currentMode = computed(() => props.mode || 'craft')
+const projectFiles = computed(() => props.projectFiles)
+const workspaceDir = computed(() => props.workspaceDir)
+const canBackWorkspace = computed(() => {
+  if (!workspaceCurrentDir.value || !props.workspaceDir) return false
+  return window.preload.path.resolve(workspaceCurrentDir.value) !== window.preload.path.resolve(props.workspaceDir)
+})
+const workspaceRelativeDir = computed(() => {
+  if (!workspaceCurrentDir.value || !props.workspaceDir) return ''
+  return relativeFromRoot(workspaceCurrentDir.value, props.workspaceDir) || window.preload.path.basename(props.workspaceDir)
+})
 
 /** 导航项配置（左侧） */
 const panelItems: NavItem[] = [
@@ -410,19 +479,70 @@ const selectMode = (mode: string) => {
   keyword.value = ''
 }
 
-const selectFile = () => emit('addFile')
-
 const selectRefFile = () => {
   const paths = window.preload.inject.dialog.open({ properties: ['openFile'] })
   if (!paths || paths.length === 0) return
   const filePath = paths[0]
   const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'file'
   emit('addRefFile', { name, path: filePath, relativePath: name })
+  show.value = false
 }
 
 const selectSandboxFile = (file: ChatFileRef) => {
   emit('addRefFile', file)
   show.value = false
+}
+
+const selectRefItem = (file: ChatFileRef) => {
+  emit('addRefFile', file)
+  show.value = false
+}
+
+const selectWorkspaceItem = async (item: FileItem) => {
+  if (item.isDirectory) {
+    await loadWorkspaceDir(item.path)
+    return
+  }
+  if (!item.isFile) return
+  selectRefItem({
+    name: item.name,
+    path: item.path,
+    relativePath: relativeFromRoot(item.path, props.workspaceDir)
+  })
+}
+
+const backWorkspaceDir = async () => {
+  if (!canBackWorkspace.value) return
+  await loadWorkspaceDir(window.preload.path.dirname(workspaceCurrentDir.value))
+}
+
+const loadWorkspaceDir = async (dir: string) => {
+  if (!props.workspaceDir || !dir) return
+  workspaceCurrentDir.value = dir
+  workspaceFiles.value = { ...workspaceFiles.value, loading: true }
+  try {
+    const items = (await window.preload.fs.readDir(dir))
+      .filter((item) => !item.name.startsWith('.'))
+      .sort((a, b) => {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
+        return a.name.localeCompare(b.name)
+      })
+    workspaceFiles.value = { items, loading: false }
+  } catch {
+    workspaceFiles.value = { items: [], loading: false }
+  }
+}
+
+const workspaceItemDesc = (item: FileItem) =>
+  item.isDirectory ? '目录' : relativeFromRoot(item.path, props.workspaceDir)
+
+const relativeFromRoot = (filePath: string, rootDir: string): string => {
+  if (!rootDir) return filePath
+  const root = window.preload.path.resolve(rootDir)
+  const full = window.preload.path.resolve(filePath)
+  const prefix = root.endsWith(window.preload.path.sep) ? root : `${root}${window.preload.path.sep}`
+  if (full === root) return ''
+  return full.startsWith(prefix) ? full.slice(prefix.length).split(window.preload.path.sep).join('/') : full
 }
 
 /** 跳转到专家管理页面 */
@@ -439,6 +559,18 @@ const emitManage = () => {
 onMounted(async () => {
   skills.value = await localSkillList()
 })
+
+watch(
+  () => [props.workspaceDir, activePanel.value, show.value],
+  async () => {
+    if (!show.value || activePanel.value !== 'file' || !props.workspaceDir) {
+      workspaceCurrentDir.value = ''
+      workspaceFiles.value = { items: [], loading: false }
+      return
+    }
+    await loadWorkspaceDir(props.workspaceDir)
+  }
+)
 </script>
 
 <style scoped lang="less">

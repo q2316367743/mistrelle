@@ -216,7 +216,7 @@ export interface FileSuggestionItem {
 }
 
 export const buildFileSuggestion = (
-  files: Ref<ChatFileRef[]>,
+  files: Readonly<Ref<ChatFileRef[]>>,
   options?: SuggestionRendererOptions
 ): Partial<SuggestionOptions<FileSuggestionItem>> => ({
   char: '@',

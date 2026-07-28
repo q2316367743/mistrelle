@@ -10,9 +10,10 @@
           <l-chat-attachment
             v-model:agent="agentId"
             :sandbox-dir="sandboxDir"
+            :workspace-dir="workspaceRef"
+            :project-files="projectAssetFiles"
             @add-skill="insertSkill"
             @add-tool="insertTool"
-            @add-file="focusInput"
             @add-ref-file="insertFile"
           />
           <ai-workspace v-model="workspaceRef" />
@@ -46,7 +47,6 @@ import Mention from '@tiptap/extension-mention'
 import { mergeAttributes } from '@tiptap/core'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { FolderIcon, FolderOpenIcon } from 'tdesign-icons-vue-next'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { useSettingAiStore, useSettingDefaultStore } from '@/store'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
@@ -61,7 +61,8 @@ import {
   type ToolSuggestionItem
 } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
-import { ChatRequestParams } from '@/modules/chat'
+import type { ChatRequestParams } from '@/modules/chat'
+import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
 
 const props = withDefaults(
   defineProps<{
@@ -88,10 +89,13 @@ const emit = defineEmits<{
 }>()
 
 const skills = ref<LocalSkill[]>([])
-const files = ref<ChatFileRef[]>([])
+const sandboxFiles = ref<ChatFileRef[]>([])
 const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaultAssistantModel)
 const agentId = ref(props.initialAgentId || '')
 const workspaceRef = ref(props.initialWorkspace || '')
+const projectAssetContext = inject(projectAssetContextKey, null)
+const projectAssetFiles = computed(() => projectAssetContext?.files.value ?? [])
+const files = computed(() => [...sandboxFiles.value, ...projectAssetFiles.value])
 
 const inputValue = ref('')
 const mentionState = ref<{ skills: SkillItem[]; files: ChatFileRef[]; tools: ToolItem[] }>({
@@ -216,7 +220,7 @@ const editor = useEditor({
       const files = event.dataTransfer?.files
       if (!files || files.length === 0) return false
       const file = files[0]
-      const filePath = (file as any).path as string | undefined
+      const filePath = 'path' in file && typeof file.path === 'string' ? file.path : undefined
       if (!filePath) return false
       setTimeout(() => insertFileByPath(filePath))
       return true
@@ -363,7 +367,7 @@ watch(
 watch(
   () => props.sandboxDir,
   async (value) => {
-    files.value = []
+    sandboxFiles.value = []
     if (!value) return
     const inputsDir = window.preload.path.join(value, 'inputs')
     const outputsDir = window.preload.path.join(value, 'outputs')
@@ -371,7 +375,7 @@ watch(
       loadChatFiles(inputsDir),
       loadChatFiles(outputsDir)
     ])
-    files.value = [...inputs, ...outputs]
+    sandboxFiles.value = [...inputs, ...outputs]
   },
   { immediate: true }
 )

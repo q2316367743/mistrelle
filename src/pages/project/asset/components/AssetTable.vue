@@ -52,7 +52,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
+import { computed, inject, watch } from 'vue'
 import {
   FileCodeIcon,
   FileExcelIcon,
@@ -65,22 +65,19 @@ import {
   MoreIcon,
   VideoIcon
 } from 'tdesign-icons-vue-next'
-import { buildProjectAssetDirPath } from '@/modules/project'
 import { prettyDataUnit, toDateString } from '@/utils/lang/FormatUtil'
 import { MessageUtil } from '@/utils/modal'
+import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
+import type { ProjectAssetTreeNode } from '@/modules/project'
 
 interface SortOption {
   by: 'name' | 'size' | 'mtime'
   order: 'asc' | 'desc'
 }
 
-type AssetTreeNode = FileItem & { children?: AssetTreeNode[] }
-
 const props = defineProps<{
-  id: string
   keyword: string
   sort: SortOption
-  reloadKey: number
   selected: string[]
 }>()
 
@@ -92,62 +89,22 @@ const emit = defineEmits<{
   'filtered-count': [number]
 }>()
 
-const tree = ref<AssetTreeNode[]>([])
-const loading = ref(false)
+const assetContext = inject(projectAssetContextKey)
+if (!assetContext) throw new Error('Project asset context is required')
+const tree = assetContext.tree
+const loading = assetContext.loading
 
-/**
- * 递归读取目录构建资产树（一次拉全量；个人项目量级可控）
- */
-const readTree = async (dir: string): Promise<AssetTreeNode[]> => {
-  const items = await window.preload.fs.readDir(dir)
-  const result: AssetTreeNode[] = []
-  for (const item of items) {
-    if (item.name.startsWith('.')) continue
-    if (item.isDirectory) {
-      const children = await readTree(item.path)
-      result.push({ ...item, children })
-    } else {
-      result.push({ ...item, children: undefined })
-    }
-  }
-  return result
-}
-
-const load = async () => {
-  loading.value = true
-  try {
-    const dir = buildProjectAssetDirPath(props.id)
-    if (!window.preload.fs.existsSync(dir)) {
-      await window.preload.fs.mkdir(dir)
-    }
-    tree.value = await readTree(dir)
-  } catch (e) {
-    MessageUtil.error('读取资产失败', e)
-    tree.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(
-  () => [props.id, props.reloadKey],
-  () => {
-    load()
-  },
-  { immediate: true }
-)
-
-const rowClassName = ({ row }: { row: AssetTreeNode }) =>
+const rowClassName = ({ row }: { row: ProjectAssetTreeNode }) =>
   row.isDirectory ? 'asset-table__row asset-table__row--dir' : 'asset-table__row'
 
-const sortByName = (a: AssetTreeNode, b: AssetTreeNode) => a.name.localeCompare(b.name)
-const sortBySize = (a: AssetTreeNode, b: AssetTreeNode) => a.size - b.size
-const sortByMtime = (a: AssetTreeNode, b: AssetTreeNode) => a.mtime - b.mtime
+const sortByName = (a: ProjectAssetTreeNode, b: ProjectAssetTreeNode) => a.name.localeCompare(b.name)
+const sortBySize = (a: ProjectAssetTreeNode, b: ProjectAssetTreeNode) => a.size - b.size
+const sortByMtime = (a: ProjectAssetTreeNode, b: ProjectAssetTreeNode) => a.mtime - b.mtime
 
-const sortNodes = (nodes: AssetTreeNode[]): AssetTreeNode[] => {
+const sortNodes = (nodes: ProjectAssetTreeNode[]): ProjectAssetTreeNode[] => {
   const cmp =
     props.sort.by === 'name' ? sortByName : props.sort.by === 'size' ? sortBySize : sortByMtime
-  const dirFirst = (a: AssetTreeNode, b: AssetTreeNode) => {
+  const dirFirst = (a: ProjectAssetTreeNode, b: ProjectAssetTreeNode) => {
     if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
     return 0
   }
@@ -160,9 +117,9 @@ const sortNodes = (nodes: AssetTreeNode[]): AssetTreeNode[] => {
   )
 }
 
-const filterTree = (nodes: AssetTreeNode[], kw: string): AssetTreeNode[] => {
+const filterTree = (nodes: ProjectAssetTreeNode[], kw: string): ProjectAssetTreeNode[] => {
   if (!kw) return nodes
-  const result: AssetTreeNode[] = []
+  const result: ProjectAssetTreeNode[] = []
   for (const node of nodes) {
     if (node.isFile) {
       if (node.name.toLowerCase().includes(kw)) result.push(node)
@@ -176,7 +133,7 @@ const filterTree = (nodes: AssetTreeNode[], kw: string): AssetTreeNode[] => {
   return result
 }
 
-const countTree = (nodes: AssetTreeNode[]): number =>
+const countTree = (nodes: ProjectAssetTreeNode[]): number =>
   nodes.reduce((acc, n) => acc + 1 + (n.children ? countTree(n.children) : 0), 0)
 
 const displayTree = computed(() => {
@@ -197,9 +154,30 @@ const handleSelectChange = (keys: string[]) => {
   emit('update:selected', keys)
 }
 
-const handleRowDblclick = (ctx: any) => {
-  const row = ctx.row as FileItem
+const handleRowDblclick = (ctx: unknown) => {
+  const row = getRowFileItem(ctx)
+  if (!row) return
   if (row.isFile) emit('open', row)
+}
+
+const getRowFileItem = (ctx: unknown): FileItem | null => {
+  if (!ctx || typeof ctx !== 'object' || !('row' in ctx)) return null
+  const row = ctx.row
+  return isFileItem(row) ? row : null
+}
+
+const isFileItem = (value: unknown): value is FileItem => {
+  if (!value || typeof value !== 'object') return false
+  return (
+    'name' in value &&
+    'path' in value &&
+    'isDirectory' in value &&
+    'isFile' in value &&
+    typeof value.name === 'string' &&
+    typeof value.path === 'string' &&
+    typeof value.isDirectory === 'boolean' &&
+    typeof value.isFile === 'boolean'
+  )
 }
 
 /**

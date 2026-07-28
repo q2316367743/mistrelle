@@ -57,15 +57,25 @@ import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import ProjectSidePanel from './components/ProjectSidePanel.vue'
 import { useBoolState } from '@/hooks'
 import ProjectFooterPanel from '@/pages/project/detail/components/ProjectFooterPanel.vue'
+import {
+  buildProjectAssetDirPath,
+  flattenProjectAssetFiles,
+  readProjectAssetTree,
+  type ProjectAssetTreeNode
+} from '@/modules/project'
+import { projectAssetContextKey } from './context/projectAssetContext'
 
 const route = useRoute()
 const router = useRouter()
 const store = useProjectStore()
 
 const [collapsed, toggleCollapsed] = useBoolState(false)
+const assetTree = ref<ProjectAssetTreeNode[]>([])
+const assetLoading = ref(false)
 
 const id = computed(() => String(route.params.id))
 const project = computed(() => store.getById(id.value))
+const assetFiles = computed(() => flattenProjectAssetFiles(assetTree.value, buildProjectAssetDirPath(id.value)))
 
 const tabs = computed(() => [
   { key: 'dynamics', label: '动态', path: `/project/${id.value}/dynamics` },
@@ -90,6 +100,37 @@ const handleRename = async () => {
     // 用户取消
   }
 }
+
+const refreshAssets = async () => {
+  if (!project.value) {
+    assetTree.value = []
+    return
+  }
+  assetLoading.value = true
+  try {
+    assetTree.value = await readProjectAssetTree(id.value)
+  } catch (e) {
+    MessageUtil.error('读取资产失败', e)
+    assetTree.value = []
+  } finally {
+    assetLoading.value = false
+  }
+}
+
+provide(projectAssetContextKey, {
+  tree: assetTree,
+  files: assetFiles,
+  loading: assetLoading,
+  refresh: refreshAssets
+})
+
+watch(
+  () => project.value?.id,
+  () => {
+    refreshAssets()
+  },
+  { immediate: true }
+)
 
 onMounted(() => {
   if (!project.value) {

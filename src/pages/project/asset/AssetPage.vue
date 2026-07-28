@@ -12,10 +12,8 @@
       @batch-delete="handleBatchDelete"
     />
     <asset-table
-      :id="id"
       :keyword="keyword"
       :sort="sort"
-      :reload-key="reloadKey"
       v-model:selected="selectedKeys"
       @open="openItem"
       @rename="handleRename"
@@ -25,11 +23,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { inject, ref } from 'vue'
 import AssetToolbar from './components/AssetToolbar.vue'
 import AssetTable from './components/AssetTable.vue'
 import { openFilePreview, type ProductFile } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
+import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
 
 interface SortOption {
   by: 'name' | 'size' | 'mtime'
@@ -41,10 +40,11 @@ const props = defineProps<{ id: string }>()
 const selectedKeys = ref<string[]>([])
 const keyword = ref('')
 const sort = ref<SortOption>({ by: 'name', order: 'asc' })
-const reloadKey = ref(0)
+const assetContext = inject(projectAssetContextKey)
+if (!assetContext) throw new Error('Project asset context is required')
 
 const reload = () => {
-  reloadKey.value++
+  assetContext.refresh().catch((e) => MessageUtil.error('刷新资产失败', e))
 }
 
 const openItem = (item: FileItem) => {
