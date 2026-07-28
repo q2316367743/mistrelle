@@ -4,8 +4,7 @@
       <r-chat-list
         :messages="messages"
         :clear-history="messages.length > 1 && status !== 'streaming'"
-        :text-loading="status === 'pending'"
-        :is-stream-load="status === 'streaming'"
+        :status="status"
         style="flex: 1"
         @clear="handleClear"
         @delete="handleDeleteMessage"

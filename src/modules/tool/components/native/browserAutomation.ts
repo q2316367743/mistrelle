@@ -2,7 +2,7 @@ import { ToolFunction } from '@/domain'
 
 type CbStep = Record<string, any>
 
-export const nativeBrowserAutomationTools: ToolFunction[] = [
+const uBrowserAutomationTools: ToolFunction[] = [
   {
     name: 'browser_actions',
     label: '浏览器自动化操作',
@@ -36,30 +36,65 @@ Supported step types:
       properties: {
         steps: {
           type: 'array',
-          description: 'Array of browser operations to perform in sequence. Each step must have a "type" field and optionally type-specific fields.',
+          description:
+            'Array of browser operations to perform in sequence. Each step must have a "type" field and optionally type-specific fields.',
           items: {
             type: 'object',
             description: 'A single browser operation step with type and type-specific fields',
             properties: {
-              type: { type: 'string', description: 'Operation type: goto/click/value/evaluate/wait/screenshot/press/paste/scroll/cookies/getHtml/getText/getTitle/hide/show/viewport/useragent/css' },
+              type: {
+                type: 'string',
+                description:
+                  'Operation type: goto/click/value/evaluate/wait/screenshot/press/paste/scroll/cookies/getHtml/getText/getTitle/hide/show/viewport/useragent/css'
+              },
               url: { type: 'string', description: 'URL for goto step' },
               headers: { type: 'object', description: 'HTTP request headers for goto step' },
               timeout: { type: 'number', description: 'Timeout in milliseconds' },
-              selector: { type: 'string', description: 'CSS selector for click/value/wait/scroll/screenshot steps' },
+              selector: {
+                type: 'string',
+                description: 'CSS selector for click/value/wait/scroll/screenshot steps'
+              },
               value: { type: 'string', description: 'Value for value step' },
-              script: { type: 'string', description: 'JavaScript function body for evaluate step. Use "return" to get a result. If args are provided, they are accessible as $0, $1, etc.' },
-              args: { type: 'array', description: 'Arguments for evaluate function, accessible as $0, $1 in the script', items: { type: 'string', description: 'argument value' } },
+              script: {
+                type: 'string',
+                description:
+                  'JavaScript function body for evaluate step. Use "return" to get a result. If args are provided, they are accessible as $0, $1, etc.'
+              },
+              args: {
+                type: 'array',
+                description: 'Arguments for evaluate function, accessible as $0, $1 in the script',
+                items: { type: 'string', description: 'argument value' }
+              },
               savePath: { type: 'string', description: 'File save path for screenshot step' },
               key: { type: 'string', description: 'Keyboard key name for press step' },
-              modifiers: { type: 'array', description: 'Modifier keys: ctrl/shift/alt/meta', items: { type: 'string', description: 'modifier key' } },
+              modifiers: {
+                type: 'array',
+                description: 'Modifier keys: ctrl/shift/alt/meta',
+                items: { type: 'string', description: 'modifier key' }
+              },
               text: { type: 'string', description: 'Text or base64 image for paste step' },
               x: { type: 'number', description: 'X scroll position for scroll step' },
               y: { type: 'number', description: 'Y scroll position for scroll step' },
               ms: { type: 'number', description: 'Milliseconds for wait step' },
               action: { type: 'string', description: 'Cookie action: get/set/remove/clear' },
               name: { type: 'string', description: 'Cookie name' },
-              filter: { type: 'object', description: 'Cookie filter: { url?, name?, domain?, path?, secure?, session?, httpOnly? }' },
-              cookies: { type: 'array', description: 'Cookies array for set action: [{ name, value }]', items: { type: 'object', description: 'cookie item', properties: { name: { type: 'string', description: 'cookie name' }, value: { type: 'string', description: 'cookie value' } } } },
+              filter: {
+                type: 'object',
+                description:
+                  'Cookie filter: { url?, name?, domain?, path?, secure?, session?, httpOnly? }'
+              },
+              cookies: {
+                type: 'array',
+                description: 'Cookies array for set action: [{ name, value }]',
+                items: {
+                  type: 'object',
+                  description: 'cookie item',
+                  properties: {
+                    name: { type: 'string', description: 'cookie name' },
+                    value: { type: 'string', description: 'cookie value' }
+                  }
+                }
+              },
               width: { type: 'number', description: 'Viewport width for viewport step' },
               height: { type: 'number', description: 'Viewport height for viewport/step' },
               userAgent: { type: 'string', description: 'User agent string for useragent step' },
@@ -70,9 +105,14 @@ Supported step types:
         },
         options: {
           type: 'object',
-          description: 'Browser window options passed to run(). If options.show is true, the window is shown.',
+          description:
+            'Browser window options passed to run(). If options.show is true, the window is shown.',
           properties: {
-            show: { type: 'boolean', description: 'Show browser window (default false, set to true only if user asks to see the browser)' },
+            show: {
+              type: 'boolean',
+              description:
+                'Show browser window (default false, set to true only if user asks to see the browser)'
+            },
             width: { type: 'number', description: 'Window width' },
             height: { type: 'number', description: 'Window height' },
             x: { type: 'number', description: 'Window X position' },
@@ -82,7 +122,10 @@ Supported step types:
             fullscreen: { type: 'boolean', description: 'Open in fullscreen mode' },
             frame: { type: 'boolean', description: 'Show window frame' },
             backgroundColor: { type: 'string', description: 'Window background color' },
-            titleBarStyle: { type: 'string', description: 'Title bar style: default/hidden/hiddenInset/customButtonsOnHover' },
+            titleBarStyle: {
+              type: 'string',
+              description: 'Title bar style: default/hidden/hiddenInset/customButtonsOnHover'
+            },
             resizable: { type: 'boolean', description: 'Allow window resize' },
             minimizable: { type: 'boolean', description: 'Allow window minimize' },
             maximizable: { type: 'boolean', description: 'Allow window maximize' },
@@ -95,9 +138,12 @@ Supported step types:
     },
     requireConfirm: true,
     handler: async (...params: unknown[]) => {
-      const { steps = [], options } = params[0] as { steps: CbStep[]; options?: Record<string, any> }
+      const { steps = [], options } = params[0] as {
+        steps: CbStep[]
+        options?: Record<string, any>
+      }
 
-      const wantsVisible = steps.some(s => s.type === 'show') || options?.show === true
+      const wantsVisible = steps.some((s) => s.type === 'show') || options?.show === true
 
       let browser = window.preload.inject.cBrowser
 
@@ -145,11 +191,17 @@ function applyStep(browser: InjectCBrowser, step: CbStep): InjectCBrowser {
     case 'cookies':
       return handleCookies(browser, step)
     case 'getHtml':
-      return browser.evaluate(function () { return document.documentElement.outerHTML })
+      return browser.evaluate(function () {
+        return document.documentElement.outerHTML
+      })
     case 'getText':
-      return browser.evaluate(function () { return document.body.innerText })
+      return browser.evaluate(function () {
+        return document.body.innerText
+      })
     case 'getTitle':
-      return browser.evaluate(function () { return document.title })
+      return browser.evaluate(function () {
+        return document.title
+      })
     case 'hide':
       return browser.hide()
     case 'show':
@@ -171,7 +223,8 @@ function handleCookies(browser: InjectCBrowser, step: CbStep): InjectCBrowser {
       if (step.filter) return browser.cookies(step.filter as any)
       return browser.cookies(step.name)
     case 'set':
-      if (step.name && step.value !== undefined) return (browser as any).setCookies(step.name, step.value)
+      if (step.name && step.value !== undefined)
+        return (browser as any).setCookies(step.name, step.value)
       if (step.cookies) return (browser as any).setCookies(step.cookies)
       return browser
     case 'remove':
@@ -182,3 +235,6 @@ function handleCookies(browser: InjectCBrowser, step: CbStep): InjectCBrowser {
       return browser.cookies()
   }
 }
+
+export const nativeBrowserAutomationTools: ToolFunction[] =
+  window.preload.inject.getPlatform() === 'utools' ? uBrowserAutomationTools : []

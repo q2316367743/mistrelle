@@ -15,6 +15,17 @@
           <template #icon><CodeIcon /></template>
           {{ item.data.name }}
         </t-tag>
+        <t-tag
+          v-else-if="item.type === 'tool'"
+          theme="warning"
+          variant="light"
+          :title="item.data.label"
+          size="small"
+          class="r-chat-list__inline-tag mr-4px"
+        >
+          <template #icon><ToolsIcon /></template>
+          {{ item.data.name }}
+        </t-tag>
         <template v-else-if="item.type === 'attachment'">
           <t-tag
             v-for="(file, fi) in item.data"
@@ -42,7 +53,7 @@
 <script lang="ts" setup>
 import { UserMessage } from '@/domain'
 import { ChatMessage } from '@tdesign-vue-next/chat'
-import { CodeIcon, FileIcon } from 'tdesign-icons-vue-next'
+import { CodeIcon, FileIcon, ToolsIcon } from 'tdesign-icons-vue-next'
 
 defineProps({
   message: {

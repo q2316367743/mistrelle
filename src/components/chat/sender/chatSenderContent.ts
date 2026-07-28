@@ -57,7 +57,7 @@ export const serializeEditorContent = (editor: Editor): UserMessageContent[] => 
     content.push({
       type: 'tool',
       data: {
-        name: String(node.attrs.name ?? ''),
+        name: String(node.attrs.id ?? ''),
         label: String(node.attrs.label ?? '')
       },
       status: 'complete',

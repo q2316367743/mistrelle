@@ -24,7 +24,11 @@
               :message="message"
               @delete="emit('delete', $event)"
             />
-            <m-chat-assistant v-else-if="message.role === 'assistant'" :message="message" />
+            <m-chat-assistant
+              v-else-if="message.role === 'assistant'"
+              :message="message"
+              :status="status"
+            />
           </template>
         </ChatMessage>
       </div>
@@ -53,12 +57,19 @@
 <script lang="ts" setup>
 import { ChatContent, ChatList, ChatMessage } from '@tdesign-vue-next/chat'
 import { CodeIcon, FileIcon } from 'tdesign-icons-vue-next'
-import type { AIMessage, ChatComment, ChatMessage as ChatMessageType, UserMessage } from '@/domain'
+import {
+  AIMessage,
+  ChatComment,
+  ChatMessage as ChatMessageType,
+  ChatStatus,
+  UserMessage
+} from '@/domain'
 import RChatTool from '@/components/chat/chat-assistant/RChatTool.vue'
 import RChatSystem from '@/components/chat/RChatSystem.vue'
 import RChatActionbar from '@/components/chat/RChatActionbar.vue'
+import type { PropType } from 'vue'
 
-defineProps({
+const props = defineProps({
   clearHistory: {
     type: Boolean,
     default: false
@@ -67,13 +78,9 @@ defineProps({
     type: Array as PropType<Array<ChatMessageType>>,
     default: () => []
   },
-  textLoading: {
-    type: Boolean,
-    default: false
-  },
-  isStreamLoad: {
-    type: Boolean,
-    default: false
+  status: {
+    type: String as PropType<ChatStatus>,
+    required: true
   }
 })
 const emit = defineEmits<{
@@ -81,6 +88,9 @@ const emit = defineEmits<{
   delete: [messageId: string]
   change: []
 }>()
+
+const textLoading = computed(() => props.status === 'pending')
+const isStreamLoad = computed(() => props.status === 'streaming')
 
 const scrollToMessage = (messageId: string) => {
   const target = document.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(messageId)}"]`)

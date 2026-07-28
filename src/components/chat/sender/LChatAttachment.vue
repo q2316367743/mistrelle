@@ -142,7 +142,9 @@
                 </div>
                 <div v-if="sandboxFiles.loading" class="l-chat-attachment__empty">加载中...</div>
                 <template v-else>
-                  <div v-if="sandboxFiles.inputs.length > 0" class="l-chat-attachment__group-title">输入 (inputs)</div>
+                  <div v-if="sandboxFiles.inputs.length > 0" class="l-chat-attachment__group-title">
+                    输入 (inputs)
+                  </div>
                   <div
                     v-for="file in sandboxFiles.inputs"
                     :key="file.path"
@@ -155,7 +157,12 @@
                       <span class="l-chat-attachment__row-desc">{{ file.relativePath }}</span>
                     </div>
                   </div>
-                  <div v-if="sandboxFiles.outputs.length > 0" class="l-chat-attachment__group-title">输出 (outputs)</div>
+                  <div
+                    v-if="sandboxFiles.outputs.length > 0"
+                    class="l-chat-attachment__group-title"
+                  >
+                    输出 (outputs)
+                  </div>
                   <div
                     v-for="file in sandboxFiles.outputs"
                     :key="file.path"
@@ -168,7 +175,10 @@
                       <span class="l-chat-attachment__row-desc">{{ file.relativePath }}</span>
                     </div>
                   </div>
-                  <div v-if="sandboxFiles.inputs.length === 0 && sandboxFiles.outputs.length === 0" class="l-chat-attachment__empty">
+                  <div
+                    v-if="sandboxFiles.inputs.length === 0 && sandboxFiles.outputs.length === 0"
+                    class="l-chat-attachment__empty"
+                  >
                     暂无文件
                   </div>
                 </template>
@@ -382,7 +392,7 @@ const selectSkill = (skill: LocalSkill) => {
 }
 
 const selectTool = (tool: CommonSelect, group: string) => {
-  emit('addTool', { name: String(tool.value), label: String(tool.label), group })
+  emit('addTool', { id: String(tool.value), label: String(tool.label), group })
   keyword.value = ''
   show.value = false
 }

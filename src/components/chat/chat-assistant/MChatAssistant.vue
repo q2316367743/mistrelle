@@ -40,7 +40,7 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { PropType } from 'vue'
-import { AIMessage, type ChatComment } from '@/domain'
+import { AIMessage, type ChatComment, ChatStatus } from '@/domain'
 import RChatTool from '@/components/chat/chat-assistant/RChatTool.vue'
 import FileProductList from '@/components/chat/chat-assistant/FileProductList.vue'
 import { ChatContent } from '@tdesign-vue-next/chat'
@@ -51,13 +51,19 @@ const props = defineProps({
   message: {
     type: Object as PropType<AIMessage>,
     required: true
+  },
+  status: {
+    type: String as PropType<ChatStatus>,
+    required: true
   }
 })
 
 const emit = defineEmits(['change'])
 
 const isLoading = computed(
-  () => props.message.status === 'pending' || props.message.status === 'streaming'
+  () =>
+    (props.message.status === 'pending' || props.message.status === 'streaming') &&
+    (props.status === 'pending' || props.status === 'streaming')
 )
 
 const isCompleted = computed(

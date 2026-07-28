@@ -71,7 +71,7 @@ module.exports = {
     stopFindInPage: (action) => api.stopFindInPage(action),
   },
 
-  cBrowser: api.uBrowser || api.zBrowser,
+  cBrowser: api.ubrowser || api.zBrowser,
 
   input: {
     setSubInput: (onChange, placeholder, isFocus) => api.setSubInput(onChange, placeholder, isFocus),

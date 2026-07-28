@@ -275,7 +275,7 @@ const insertTool = (tool: ToolSuggestionItem) => {
     ?.chain()
     .focus()
     .insertContent([
-      { type: 'toolMention', attrs: { name: tool.name, label: tool.label } },
+      { type: 'toolMention', attrs: { id: tool.id, label: tool.label } },
       { type: 'text', text: ' ' }
     ])
     .run()

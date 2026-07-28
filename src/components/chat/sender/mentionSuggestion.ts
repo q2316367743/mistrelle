@@ -240,7 +240,7 @@ export const buildFileSuggestion = (
 })
 
 export interface ToolSuggestionItem {
-  name: string
+  id: string
   label: string
   group: string
 }
@@ -248,7 +248,7 @@ export interface ToolSuggestionItem {
 const allToolSuggestionItems = (): ToolSuggestionItem[] =>
   toolOptions.flatMap((group) =>
     group.children.map((tool) => ({
-      name: String(tool.value),
+      id: String(tool.value),
       label: String(tool.label),
       group: group.group
     }))
@@ -262,7 +262,7 @@ export const buildToolSuggestion = (
   items: ({ query }) =>
     allToolSuggestionItems()
       .filter((tool) =>
-        `${tool.label} ${tool.name} ${tool.group}`.toLowerCase().includes(query.toLowerCase())
+        `${tool.label} ${tool.id} ${tool.group}`.toLowerCase().includes(query.toLowerCase())
       )
       .slice(0, 8),
   command: ({ editor, range, props }) => {
@@ -270,7 +270,7 @@ export const buildToolSuggestion = (
       .chain()
       .focus()
       .insertContentAt(range, [
-        { type: 'toolMention', attrs: { name: props.name, label: props.label } },
+        { type: 'toolMention', attrs: { id: props.id, label: props.label } },
         { type: 'text', text: ' ' }
       ])
       .run()
@@ -278,7 +278,7 @@ export const buildToolSuggestion = (
   render: makeSuggestionRenderer(
     (item) => {
       const tool = item as ToolSuggestionItem
-      return { title: tool.label, desc: `${tool.group} · ${tool.name}` }
+      return { title: tool.label, desc: `${tool.group} · ${tool.id}` }
     },
     options
   )
