@@ -161,6 +161,5 @@ onUnmounted(() => {
   min-width: 0;
   min-height: 0;
   width: 100%;
-  max-width: 1080px;
 }
 </style>

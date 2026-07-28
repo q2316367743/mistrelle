@@ -12,7 +12,7 @@
         <ChatMessage
           v-for="message in messages"
           :key="message.id"
-          class="r-chat-list__item"
+          :class="['r-chat-list__item', message.role]"
           :data-message-id="message.id"
           :role="message.role"
           :placement="message.role === 'user' ? 'right' : 'left'"
@@ -118,6 +118,10 @@ const scrollToMessage = (messageId: string) => {
 
 .r-chat-list__item {
   scroll-margin-top: var(--td-comp-margin-xxl);
+  max-width: 1080px;
+  &.user {
+    margin-left: auto;
+  }
 }
 
 .r-chat-list__locator-group {
