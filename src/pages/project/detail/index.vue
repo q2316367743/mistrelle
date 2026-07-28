@@ -32,7 +32,7 @@
             <t-content class="overflow-auto">
               <router-view :id="id" />
             </t-content>
-            <t-footer style="padding: 0;margin-top: 8px;">
+            <t-footer style="padding: 0;margin-top: 16px;">
               <project-footer-panel />
             </t-footer>
           </t-layout>

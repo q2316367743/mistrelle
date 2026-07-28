@@ -102,6 +102,7 @@ const readTree = async (dir: string): Promise<AssetTreeNode[]> => {
   const items = await window.preload.fs.readDir(dir)
   const result: AssetTreeNode[] = []
   for (const item of items) {
+    if (item.name.startsWith('.')) continue
     if (item.isDirectory) {
       const children = await readTree(item.path)
       result.push({ ...item, children })
@@ -144,7 +145,8 @@ const sortBySize = (a: AssetTreeNode, b: AssetTreeNode) => a.size - b.size
 const sortByMtime = (a: AssetTreeNode, b: AssetTreeNode) => a.mtime - b.mtime
 
 const sortNodes = (nodes: AssetTreeNode[]): AssetTreeNode[] => {
-  const cmp = props.sort.by === 'name' ? sortByName : props.sort.by === 'size' ? sortBySize : sortByMtime
+  const cmp =
+    props.sort.by === 'name' ? sortByName : props.sort.by === 'size' ? sortBySize : sortByMtime
   const dirFirst = (a: AssetTreeNode, b: AssetTreeNode) => {
     if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
     return 0
@@ -154,9 +156,7 @@ const sortNodes = (nodes: AssetTreeNode[]): AssetTreeNode[] => {
     return d !== 0 ? d : props.sort.order === 'asc' ? cmp(a, b) : -cmp(a, b)
   })
   return sorted.map((n) =>
-    n.isDirectory && n.children
-      ? { ...n, children: sortNodes(n.children) }
-      : n
+    n.isDirectory && n.children ? { ...n, children: sortNodes(n.children) } : n
   )
 }
 
@@ -197,8 +197,9 @@ const handleSelectChange = (keys: string[]) => {
   emit('update:selected', keys)
 }
 
-const handleRowDblclick = (ctx: { row: any }) => {
-  if (ctx.row.isFile) emit('open', ctx.row)
+const handleRowDblclick = (ctx: any) => {
+  const row = ctx.row as FileItem
+  if (row.isFile) emit('open', row)
 }
 
 /**
@@ -222,13 +223,50 @@ const getExt = (name: string) => {
 }
 
 const CODE_EXTS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.vue', '.json', '.css', '.less', '.html',
-  '.py', '.rs', '.go', '.java', '.c', '.cpp', '.h', '.hpp', '.yaml', '.yml',
-  '.toml', '.xml', '.sh', '.bat', '.sql', '.rb', '.php', '.kt', '.dart',
-  '.scss', '.lua', '.ini', '.gradle', '.tf'
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.vue',
+  '.json',
+  '.css',
+  '.less',
+  '.html',
+  '.py',
+  '.rs',
+  '.go',
+  '.java',
+  '.c',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.yaml',
+  '.yml',
+  '.toml',
+  '.xml',
+  '.sh',
+  '.bat',
+  '.sql',
+  '.rb',
+  '.php',
+  '.kt',
+  '.dart',
+  '.scss',
+  '.lua',
+  '.ini',
+  '.gradle',
+  '.tf'
 ])
 const IMAGE_EXTS = new Set([
-  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp', '.avif'
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.webp',
+  '.ico',
+  '.bmp',
+  '.avif'
 ])
 const VIDEO_EXTS = new Set(['.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv'])
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus'])
