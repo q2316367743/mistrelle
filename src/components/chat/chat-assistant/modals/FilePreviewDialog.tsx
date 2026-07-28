@@ -3,7 +3,8 @@ import { ChatContent } from '@tdesign-vue-next/chat'
 import { MessageUtil } from '@/utils/modal'
 import MonacoEditorView from '@/components/view/MonacoEditorView.vue'
 
-import { FileViewer } from '@file-viewer/vue3-full'
+import { FileViewer } from '@file-viewer/vue3'
+import officePreset from '@file-viewer/preset-office'
 
 export interface ProductFile {
   fileName: string
@@ -103,76 +104,7 @@ const FILE_EXTS = new Set([
   '.ppsm',
   '.odp',
   '.pdf',
-  '.odf',
-  '.zip',
-  '.zipx',
-  '.7z',
-  '.rar',
-  '.tar',
-  '.gz',
-  '.gzip',
-  '.tgz',
-  '.bz2',
-  '.bzip2',
-  '.tbz',
-  '.tbz2',
-  '.xz',
-  '.txz',
-  '.lzma',
-  '.zst',
-  '.tzst',
-  '.cab',
-  '.ar',
-  '.cpio',
-  '.iso',
-  '.xar',
-  '.lha',
-  '.lzh',
-  '.jar',
-  '.war',
-  '.ear',
-  '.apk',
-  '.cbz',
-  '.cbr',
-  '.eml',
-  '.olb',
-  '.xmind',
-  '.excalidraw',
-  '.drawio',
-  '.dio',
-  '.mermaid',
-  '.md',
-  'plantuml',
-  '.puml',
-  '.epub',
-  '.umd',
-  '.mp3',
-  '.mpeg',
-  '.wav',
-  '.ogg',
-  '.oga',
-  '.opus',
-  '.m4a',
-  '.aac',
-  '.flac',
-  '.weba',
-  '.midi',
-  '.mid',
-  '.mp4',
-  '.webm',
-  '.m3u8',
-  '.ttf',
-  '.otf',
-  '.woff',
-  '.woff2',
-  '.psd',
-  '.ai',
-  '.eps',
-  '.sqlite',
-  '.wasm',
-  '.parquet',
-  '.avro',
-  '.webarchive'
+  '.odf'
 ])
 
 const EXT_LANG: Record<string, string> = {
@@ -400,7 +332,7 @@ async function openCommonFilePreview(file: ProductFile) {
             height: 'calc(100vh - 320px)'
           }}
         >
-          <FileViewer url={url} class={'h-full'} />
+          <FileViewer url={url} class={'h-full'} options={{ preset: officePreset }} />
         </div>
         {renderFooter(file.fullPath)}
       </div>

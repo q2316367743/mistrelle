@@ -11,7 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@file-viewer/vue3-full": "^2.2.3",
+    "@file-viewer/preset-office": "^2.2.3",
+    "@file-viewer/vue3": "^2.2.3",
     "@imengyu/vue3-context-menu": "^1.5.2",
     "@tdesign-vue-next/chat": "^0.5.2",
     "@tiptap/core": "^3.28.0",
@@ -43,6 +44,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.11",
+    "@file-viewer/vite-plugin": "^2.2.3",
     "@typescript-eslint/eslint-plugin": "^8.59.3",
     "@typescript-eslint/parser": "^8.59.3",
     "@vitejs/plugin-vue": "^4.6.2",
