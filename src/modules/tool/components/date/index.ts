@@ -28,6 +28,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['year', 'month', 'day']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
       return solarToLunar(args.year, args.month, args.day)
@@ -50,6 +51,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['year', 'month', 'day']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, unknown>
       return lunarToSolar(
@@ -74,6 +76,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['year', 'month', 'day']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
       return getDailyCalendar(args.year, args.month, args.day)
@@ -82,8 +85,7 @@ export const dateTools: ToolFunction[] = [
   {
     name: 'get_auspicious_directions',
     label: '吉神方位',
-    description:
-      '获取指定日期的吉神方位，包括喜神、福神、财神、阳贵神、阴贵神、太岁的方位及描述',
+    description: '获取指定日期的吉神方位，包括喜神、福神、财神、阳贵神、阴贵神、太岁的方位及描述',
     parameters: {
       type: 'object',
       properties: {
@@ -93,6 +95,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['year', 'month', 'day']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
       return getAuspiciousDirections(args.year, args.month, args.day)
@@ -112,6 +115,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['year', 'month', 'day']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
       return getTimeDetails(args.year, args.month, args.day)
@@ -133,6 +137,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['year', 'month', 'day', 'hour', 'minute']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
       return calculateBaziDetail(args.year, args.month, args.day, args.hour, args.minute)
@@ -141,7 +146,8 @@ export const dateTools: ToolFunction[] = [
   {
     name: 'calculate_da_yun',
     label: '大运推算',
-    description: '根据阳历（公历）出生年月日时、性别和起运流派推算大运，包含起运年龄、顺逆排、大运列表（每运干支及起止年份）',
+    description:
+      '根据阳历（公历）出生年月日时、性别和起运流派推算大运，包含起运年龄、顺逆排、大运列表（每运干支及起止年份）',
     parameters: {
       type: 'object',
       properties: {
@@ -151,19 +157,32 @@ export const dateTools: ToolFunction[] = [
         hour: { type: 'number', description: '阳历出生小时（0-23）' },
         minute: { type: 'number', description: '阳历出生分钟（0-59）' },
         gender: { type: 'number', description: '性别，1 表示男，0 表示女' },
-        sect: { type: 'number', description: '起运流派，1 表示按时辰折算，2 表示按分钟精确折算；默认 1' }
+        sect: {
+          type: 'number',
+          description: '起运流派，1 表示按时辰折算，2 表示按分钟精确折算；默认 1'
+        }
       },
       required: ['year', 'month', 'day', 'hour', 'minute', 'gender']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
-      return calculateDaYun(args.year, args.month, args.day, args.hour, args.minute, args.gender, args.sect)
+      return calculateDaYun(
+        args.year,
+        args.month,
+        args.day,
+        args.hour,
+        args.minute,
+        args.gender,
+        args.sect
+      )
     }
   },
   {
     name: 'get_solar_terms',
     label: '节气查询',
-    description: '获取指定日期前后的二十四节气信息，包括当前节气、上一个/下一个节气（含节和气）及全年节气时间表',
+    description:
+      '获取指定日期前后的二十四节气信息，包括当前节气、上一个/下一个节气（含节和气）及全年节气时间表',
     parameters: {
       type: 'object',
       properties: {
@@ -173,6 +192,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['year', 'month', 'day']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
       return getSolarTerms(args.year, args.month, args.day)
@@ -191,6 +211,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['year', 'month', 'day']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, number>
       return getShuJiuAndFu(args.year, args.month, args.day)
@@ -219,6 +240,7 @@ export const dateTools: ToolFunction[] = [
       },
       required: ['birthTimeISO', 'birthLon', 'birthLat']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const args = params[0] as Record<string, unknown>
       const birthTimeISO = args.birthTimeISO as string

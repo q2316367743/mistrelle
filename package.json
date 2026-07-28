@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@file-viewer/vue3-full": "^2.2.3",
     "@imengyu/vue3-context-menu": "^1.5.2",
     "@tdesign-vue-next/chat": "^0.5.2",
     "@tiptap/core": "^3.28.0",

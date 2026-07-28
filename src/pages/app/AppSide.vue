@@ -245,8 +245,9 @@ onMounted(() => {
   top: 40px;
   left: 0;
   right: 0;
-  bottom: 56px;
+  bottom: 48px;
   padding: 8px;
+  padding-bottom: 0;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -299,7 +300,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--td-comp-margin-xs);
-  padding-bottom: 8px;
   margin-top: 8px;
 }
 

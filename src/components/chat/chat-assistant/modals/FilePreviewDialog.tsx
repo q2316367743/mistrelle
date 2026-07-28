@@ -1,10 +1,9 @@
-import { ref } from 'vue'
-import { DialogPlugin, Button, TabPanel, Table, Tabs } from 'tdesign-vue-next'
+import { DialogPlugin, Button } from 'tdesign-vue-next'
 import { ChatContent } from '@tdesign-vue-next/chat'
 import { MessageUtil } from '@/utils/modal'
-import mammoth from 'mammoth'
-import * as XLSX from 'xlsx'
 import MonacoEditorView from '@/components/view/MonacoEditorView.vue'
+
+import { FileViewer } from '@file-viewer/vue3-full'
 
 export interface ProductFile {
   fileName: string
@@ -12,23 +11,168 @@ export interface ProductFile {
 }
 
 const CODE_EXTS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.vue', '.json', '.css', '.less', '.html',
-  '.py', '.rs', '.go', '.java', '.c', '.cpp', '.h', '.hpp', '.yaml', '.yml',
-  '.toml', '.xml', '.sh', '.bat', '.cmd', '.sql', '.rb', '.php',
-  '.swift', '.kt', '.dart', '.scss', '.sass', '.styl', '.pl', '.lua', '.r',
-  '.groovy', '.tex', '.ini', '.cfg', '.conf', '.env', '.gradle', '.tf',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.vue',
+  '.json',
+  '.css',
+  '.less',
+  '.html',
+  '.py',
+  '.rs',
+  '.go',
+  '.java',
+  '.c',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.yaml',
+  '.yml',
+  '.toml',
+  '.xml',
+  '.sh',
+  '.bat',
+  '.cmd',
+  '.sql',
+  '.rb',
+  '.php',
+  '.swift',
+  '.kt',
+  '.dart',
+  '.scss',
+  '.sass',
+  '.styl',
+  '.pl',
+  '.lua',
+  '.r',
+  '.groovy',
+  '.tex',
+  '.ini',
+  '.cfg',
+  '.conf',
+  '.env',
+  '.gradle',
+  '.tf'
 ])
 
 const IMAGE_EXTS = new Set([
-  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp', '.avif',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.webp',
+  '.ico',
+  '.bmp',
+  '.avif'
 ])
 
-const VIDEO_EXTS = new Set([
-  '.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv',
-])
+const VIDEO_EXTS = new Set(['.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv'])
 
-const AUDIO_EXTS = new Set([
-  '.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus',
+const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus'])
+
+const FILE_EXTS = new Set([
+  '.docx',
+  '.docm',
+  '.dotx',
+  '.dotm',
+  '.doc',
+  '.dot',
+  '.rt',
+  '.odt',
+  '.xlsx',
+  '.xltx',
+  '.xlsm',
+  '.xlsb',
+  '.xls',
+  '.xlt',
+  '.xltm',
+  '.csv',
+  '.tsv',
+  '.ods',
+  '.fods',
+  '.numbers',
+  '.ppt',
+  '.pptx',
+  '.pptm',
+  '.potx',
+  '.potm',
+  '.ppsx',
+  '.ppsm',
+  '.odp',
+  '.pdf',
+  '.odf',
+  '.zip',
+  '.zipx',
+  '.7z',
+  '.rar',
+  '.tar',
+  '.gz',
+  '.gzip',
+  '.tgz',
+  '.bz2',
+  '.bzip2',
+  '.tbz',
+  '.tbz2',
+  '.xz',
+  '.txz',
+  '.lzma',
+  '.zst',
+  '.tzst',
+  '.cab',
+  '.ar',
+  '.cpio',
+  '.iso',
+  '.xar',
+  '.lha',
+  '.lzh',
+  '.jar',
+  '.war',
+  '.ear',
+  '.apk',
+  '.cbz',
+  '.cbr',
+  '.eml',
+  '.olb',
+  '.xmind',
+  '.excalidraw',
+  '.drawio',
+  '.dio',
+  '.mermaid',
+  '.md',
+  'plantuml',
+  '.puml',
+  '.epub',
+  '.umd',
+  '.mp3',
+  '.mpeg',
+  '.wav',
+  '.ogg',
+  '.oga',
+  '.opus',
+  '.m4a',
+  '.aac',
+  '.flac',
+  '.weba',
+  '.midi',
+  '.mid',
+  '.mp4',
+  '.webm',
+  '.m3u8',
+  '.ttf',
+  '.otf',
+  '.woff',
+  '.woff2',
+  '.psd',
+  '.ai',
+  '.eps',
+  '.sqlite',
+  '.wasm',
+  '.parquet',
+  '.avro',
+  '.webarchive'
 ])
 
 const EXT_LANG: Record<string, string> = {
@@ -72,7 +216,7 @@ const EXT_LANG: Record<string, string> = {
   '.cfg': 'ini',
   '.conf': 'ini',
   '.gradle': 'groovy',
-  '.tf': 'hcl',
+  '.tf': 'hcl'
 }
 
 function getExt(path: string) {
@@ -239,112 +383,33 @@ function openAudioPreview(file: ProductFile) {
   })
 }
 
-async function openDocxPreview(file: ProductFile) {
-  let arrayBuffer: ArrayBuffer
-  try {
-    arrayBuffer = await window.preload.fs.readBinaryFile(file.fullPath)
-  } catch {
-    MessageUtil.error('无法读取文件')
-    return
-  }
-
-  let html: string
-  try {
-    const result = await mammoth.convertToHtml({ arrayBuffer })
-    html = result.value
-  } catch {
-    MessageUtil.error('文档解析失败')
-    return
-  }
+async function openCommonFilePreview(file: ProductFile) {
+  const url = window.preload.net.pathToHref(file.fullPath)
 
   DialogPlugin({
     header: file.fileName,
     placement: 'center',
-    width: '70vw',
-    footer: () => renderFooter(file.fullPath),
+    width: '80vw',
+    footer: false,
     default: () => (
       <div>
         <div
-          innerHTML={html}
           style={{
-            maxHeight: '60vh',
-            overflow: 'auto',
-            padding: 'var(--td-comp-paddingTB-m) var(--td-comp-paddingLR-m)',
-            background: '#fff',
-            borderRadius: 'var(--td-radius-medium)'
+            width: 'calc(100% - 2px)',
+            minHeight: 'calc(100vh - 320px)',
+            height: 'calc(100vh - 320px)'
           }}
-        />
+        >
+          <FileViewer url={url} class={'h-full'} />
+        </div>
+        {renderFooter(file.fullPath)}
       </div>
     )
   })
 }
 
-async function openXlsxPreview(file: ProductFile) {
-  let arrayBuffer: ArrayBuffer
-  try {
-    arrayBuffer = await window.preload.fs.readBinaryFile(file.fullPath)
-  } catch {
-    MessageUtil.error('无法读取文件')
-    return
-  }
-
-  let workbook: XLSX.WorkBook
-  try {
-    const data = new Uint8Array(arrayBuffer)
-    workbook = XLSX.read(data, { type: 'array' })
-  } catch {
-    MessageUtil.error('表格解析失败')
-    return
-  }
-
-  const activeTab = ref(workbook.SheetNames[0])
-
-  DialogPlugin({
-    header: file.fileName,
-    placement: 'center',
-    width: '70vw',
-    footer: () => renderFooter(file.fullPath),
-    default: () => (
-      <div style={{ width: 'calc(100% - 2px)' }}>
-        <Tabs v-model={activeTab.value}>
-          {workbook.SheetNames.map((name) => {
-            const ws = workbook.Sheets[name]
-            const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1 })
-            const headerRow = rows[0] ?? []
-            const columns = headerRow.map((h, i) => ({
-              colKey: `col_${i}`,
-              title: h ?? `列${i + 1}`,
-            }))
-            const data = rows.slice(1).map((row, rowIdx) => {
-              const item: Record<string, unknown> = { _index: rowIdx }
-              columns.forEach((col, i) => {
-                item[col.colKey] = row[i]
-              })
-              return item
-            })
-            return (
-              <TabPanel key={name} label={name} value={name}>
-                <Table
-                  columns={columns as any}
-                  data={data}
-                  rowKey="_index"
-                  bordered
-                  stripe
-                  hover
-                  maxHeight="60vh"
-                  tableLayout="auto"
-                />
-              </TabPanel>
-            )
-          })}
-        </Tabs>
-      </div>
-    ),
-  })
-}
-
 export function openFilePreview(file: ProductFile) {
-  const ext = getExt(file.fullPath)
+  const ext = window.preload.path.extname(file.fullPath)
 
   if (ext === '.md') {
     openMarkdownPreview(file)
@@ -356,10 +421,8 @@ export function openFilePreview(file: ProductFile) {
     openVideoPreview(file)
   } else if (AUDIO_EXTS.has(ext)) {
     openAudioPreview(file)
-  } else if (ext === '.docx') {
-    openDocxPreview(file)
-  } else if (ext === '.xlsx' || ext === '.xls') {
-    openXlsxPreview(file)
+  } else if (FILE_EXTS.has(ext)) {
+    openCommonFilePreview(file)
   } else {
     showInFolder(file.fullPath)
   }

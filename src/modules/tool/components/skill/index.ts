@@ -33,6 +33,7 @@ export const skillTools: ToolFunction[] = [
       },
       required: ['name']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { name } = params[0] as { name: string }
       const skill = await findSkill(name)
@@ -53,6 +54,7 @@ export const skillTools: ToolFunction[] = [
       },
       required: ['path']
     },
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path } = params[0] as { path: string }
       try {
