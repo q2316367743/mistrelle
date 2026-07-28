@@ -20,7 +20,7 @@ export const shellTools: ToolFunction[] = [
       },
       required: ['command']
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { command, args = [], cwd } = params[0] as {
         command: string
@@ -46,7 +46,7 @@ export const shellTools: ToolFunction[] = [
       },
       required: ['script']
     },
-    requireConfirm: true,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { script, args = {} } = params[0] as {
         script: string
@@ -73,7 +73,7 @@ export const shellTools: ToolFunction[] = [
         cwd: { type: 'string', description: '工作目录（可选）' }
       }
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { code, file, args = [], cwd } = params[0] as {
         code?: string
@@ -109,7 +109,7 @@ export const shellTools: ToolFunction[] = [
         cwd: { type: 'string', description: '工作目录（可选）' }
       }
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { code, file, args = [], cwd } = params[0] as {
         code?: string
@@ -144,7 +144,7 @@ export const shellTools: ToolFunction[] = [
       },
       required: ['args']
     },
-    requireConfirm: false,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { args, cwd } = params[0] as { args: string[]; cwd?: string }
       const { gitPath } = useSettingSecureStore()

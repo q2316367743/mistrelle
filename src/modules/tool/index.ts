@@ -84,3 +84,5 @@ export const defaultTools: ToolFunction[] = [
 
 /** 获取所有已启用且已连接的 MCP 工具（运行时动态） */
 export const getMcpTools = (): ToolFunction[] => useAiToolStore().getMcpTools()
+
+export { resolveToolPolicy, type ToolPolicyContext } from './toolPolicy'

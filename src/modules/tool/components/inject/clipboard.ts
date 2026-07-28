@@ -9,7 +9,7 @@ export const injectClipboardTools: ToolFunction[] = [
       type: 'object',
       properties: {},
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     handler: async () => {
       const text = await navigator.clipboard.readText()
       return { text }
@@ -26,7 +26,7 @@ export const injectClipboardTools: ToolFunction[] = [
       },
       required: ['text'],
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { text } = params[0] as { text: string }
       const ok = window.preload.inject.clipboard.copyText(text)

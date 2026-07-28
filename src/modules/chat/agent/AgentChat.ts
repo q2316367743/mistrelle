@@ -228,6 +228,7 @@ export class ToolChat {
         assistantMessageId,
         result.toolCalls,
         functions,
+        { sandboxDir: this.sandboxDir, workspace: this.workspace },
         this.toolConfirmHandler
       )
       this.toolCalls.value = [...this.toolCalls.value]

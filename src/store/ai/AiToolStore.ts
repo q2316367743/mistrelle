@@ -35,6 +35,8 @@ export const useAiToolStore = defineStore('ai:tool', () => {
         properties: (schema?.properties ?? {}) as Record<string, ToolProperty>,
         required: schema?.required ?? []
       },
+      // MCP 为外部工具，默认需审批
+      risk: 'sensitive',
       handler: async (args: unknown) => {
         return window.preload.mcp.callTool(
           serverName,

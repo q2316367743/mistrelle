@@ -43,17 +43,17 @@ export const openToolDetailDialog = (tool: ToolFunction) => {
     header: () => (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span>{tool.label}</span>
-        {tool.requireConfirm && (
+        {tool.risk && tool.risk !== 'safe' && (
           <span style={{
             display: 'inline-block',
             padding: '0 8px',
             fontSize: '12px',
             lineHeight: '22px',
             borderRadius: '4px',
-            color: 'var(--td-warning-color)',
+            color: tool.risk === 'dangerous' ? 'var(--td-error-color)' : 'var(--td-warning-color)',
             background: 'var(--td-bg-color-container-hover)',
-            border: '1px solid var(--td-warning-color)',
-          }}>需确认</span>
+            border: `1px solid ${tool.risk === 'dangerous' ? 'var(--td-error-color)' : 'var(--td-warning-color)'}`,
+          }}>{tool.risk === 'dangerous' ? '高危' : '需审批'}</span>
         )}
       </div>
     ),

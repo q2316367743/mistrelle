@@ -15,7 +15,7 @@ export const injectFfmpegTools: ToolFunction[] = [
       },
       required: ['args'],
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { args } = params[0] as { args: string[] }
       await window.preload.inject.ffmpeg.run(args)

@@ -2,6 +2,7 @@ import type { Ref } from 'vue'
 import type { ChatMessage, ToolFunction } from '@/domain'
 import type { ToolCall } from './agentTypes'
 import { updateToolCallContent } from './agentMessages'
+import { resolveToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
 
 type ConfirmHandler = (toolName: string, args: Record<string, unknown>) => Promise<boolean>
 
@@ -21,6 +22,7 @@ export const executeToolCalls = async (
   assistantMessageId: string,
   calls: ToolCall[],
   functions: ToolFunction[],
+  policyContext: ToolPolicyContext,
   confirmHandler?: ConfirmHandler
 ): Promise<void> => {
   for (const call of calls) {
@@ -42,7 +44,13 @@ export const executeToolCalls = async (
       continue
     }
 
-    if (fn.requireConfirm && confirmHandler) {
+    const verdict = resolveToolPolicy(fn, args, policyContext)
+    if (verdict === 'deny') {
+      call.result = '该操作被安全策略拦截'
+      updateToolCallContent(messages, assistantMessageId, call.toolCallId, call.result)
+      continue
+    }
+    if (verdict === 'ask' && confirmHandler) {
       const approved = await confirmHandler(fn.label || fn.name, args)
       if (!approved) {
         call.result = '用户拒绝了该工具调用'

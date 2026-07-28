@@ -136,7 +136,7 @@ Supported step types:
       },
       required: ['steps']
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { steps = [], options } = params[0] as {
         steps: CbStep[]

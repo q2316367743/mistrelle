@@ -23,7 +23,7 @@ export const fileTools: ToolFunction[] = [
       },
       required: ['path']
     },
-    requireConfirm: false,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path } = params[0] as { path: string }
       const error = checkBlacklist(path)
@@ -42,7 +42,7 @@ export const fileTools: ToolFunction[] = [
       },
       required: ['path']
     },
-    requireConfirm: false,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path } = params[0] as { path: string }
       const error = checkBlacklist(path)
@@ -63,7 +63,7 @@ export const fileTools: ToolFunction[] = [
       },
       required: ['path', 'content']
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     stripFields: ['content'],
     handler: async (...params: unknown[]) => {
       const { path, content } = params[0] as { path: string; content: string }
@@ -84,7 +84,7 @@ export const fileTools: ToolFunction[] = [
       },
       required: ['path']
     },
-    requireConfirm: true,
+    risk: 'dangerous',
     handler: async (...params: unknown[]) => {
       const { path } = params[0] as { path: string }
       const store = useSettingSecureStore()
@@ -111,7 +111,7 @@ export const fileTools: ToolFunction[] = [
       },
       required: ['path']
     },
-    requireConfirm: false,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path } = params[0] as { path: string }
       await window.preload.fs.mkdir(path)
@@ -129,7 +129,7 @@ export const fileTools: ToolFunction[] = [
       },
       required: ['path']
     },
-    requireConfirm: false,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path } = params[0] as { path: string }
       const exists = window.preload.fs.existsSync(path)

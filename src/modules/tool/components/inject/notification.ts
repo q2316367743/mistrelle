@@ -13,7 +13,7 @@ export const injectNotificationTools: ToolFunction[] = [
       },
       required: ['body'],
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { body, featureName } = params[0] as {
         body: string

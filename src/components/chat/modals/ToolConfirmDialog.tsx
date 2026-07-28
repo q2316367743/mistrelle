@@ -8,6 +8,9 @@ export const toolConfirmDialog = (
   return new Promise((resolve) => {
     const dp = DialogPlugin({
       header: `确认执行工具`,
+      closeBtn: false,
+      closeOnOverlayClick: false,
+      closeOnEscKeydown: false,
       body: () => (
         <div>
           <div style={{ color: 'var(--td-text-color-secondary)', marginBottom: '12px' }}>

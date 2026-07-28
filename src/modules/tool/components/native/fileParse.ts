@@ -156,7 +156,7 @@ export const fileParseTools: ToolFunction[] = [
       },
       required: ['path']
     },
-    requireConfirm: false,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path } = params[0] as { path: string }
       const error = checkBlacklist(path)
@@ -178,7 +178,7 @@ export const fileParseTools: ToolFunction[] = [
       },
       required: ['path']
     },
-    requireConfirm: false,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path, sheet, range } = params[0] as { path: string; sheet?: string; range?: string }
       const error = checkBlacklist(path)
@@ -199,7 +199,7 @@ export const fileParseTools: ToolFunction[] = [
       },
       required: ['path']
     },
-    requireConfirm: false,
+    risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path, pages } = params[0] as { path: string; pages?: string }
       const error = checkBlacklist(path)
@@ -248,7 +248,7 @@ export const fileParseTools: ToolFunction[] = [
       },
       required: ['path', 'sheets']
     },
-    requireConfirm: true,
+    risk: 'sensitive',
     stripFields: ['sheets'],
     handler: async (...params: unknown[]) => {
       const { path, sheets } = params[0] as { path: string; sheets: SheetInput[] }
