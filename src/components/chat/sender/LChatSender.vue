@@ -55,6 +55,9 @@ import {
   buildFileSuggestion,
   buildSkillSuggestion,
   buildToolSuggestion,
+  skillMentionPluginKey,
+  fileMentionPluginKey,
+  toolMentionPluginKey,
   type ToolSuggestionItem
 } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
@@ -96,8 +99,6 @@ const mentionState = ref<{ skills: SkillItem[]; files: ChatFileRef[]; tools: Too
   files: [],
   tools: []
 })
-const suggestionOpen = ref(false)
-const suggestionOptions = { onOpenChange: (open: boolean) => (suggestionOpen.value = open) }
 
 type MentionState = { skills: SkillItem[]; files: ChatFileRef[]; tools: ToolItem[] }
 
@@ -143,7 +144,7 @@ const buildUserMessage = (): ChatRequestParams | null => {
 const SkillMention = Mention.extend({ name: 'skillMention' }).configure({
   // 退格一次即整体删除标签，避免残留触发字符（默认 false 会把节点替换成 "/"）
   deleteTriggerWithBackspace: true,
-  suggestion: buildSkillSuggestion(skills, suggestionOptions),
+  suggestion: buildSkillSuggestion(skills),
   renderHTML: ({ options, node }) => [
     'span',
     mergeAttributes(options.HTMLAttributes, {
@@ -158,7 +159,7 @@ const SkillMention = Mention.extend({ name: 'skillMention' }).configure({
 const FileMention = Mention.extend({ name: 'fileMention' }).configure({
   // 退格一次即整体删除标签，避免残留触发字符（默认 false 会把节点替换成 "@"）
   deleteTriggerWithBackspace: true,
-  suggestion: buildFileSuggestion(files, suggestionOptions),
+  suggestion: buildFileSuggestion(files),
   renderHTML: ({ options, node }) => [
     'span',
     mergeAttributes(options.HTMLAttributes, {
@@ -172,7 +173,7 @@ const FileMention = Mention.extend({ name: 'fileMention' }).configure({
 
 const ToolMention = Mention.extend({ name: 'toolMention' }).configure({
   deleteTriggerWithBackspace: true,
-  suggestion: buildToolSuggestion(suggestionOptions),
+  suggestion: buildToolSuggestion(),
   renderHTML: ({ options, node }) => [
     'span',
     mergeAttributes(options.HTMLAttributes, {
@@ -203,9 +204,9 @@ const editor = useEditor({
   editorProps: {
     attributes: { class: 'l-chat-sender__pm' },
     handleKeyDown: (_view, event) => {
-      // suggestion 弹层打开时，让位给选择逻辑
-      if (suggestionOpen.value) return false
       if (event.key === 'Enter' && !event.shiftKey) {
+        // 任一 suggestion 弹层激活时，交由 suggestion 插件处理选中，禁止发送消息
+        if (isSuggestionActive(editor.value)) return false
         handleSend()
         return true
       }
@@ -382,6 +383,15 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => editor.value?.destroy())
+
+// 直接读取 suggestion 插件内部的 active 状态，作为回车是否让位给选中的权威判断，
+// 避免依赖易失同步的外部标志（曾导致弹层可见时回车误触发发送）。
+const isSuggestionActive = (ed?: Editor | null): boolean => {
+  if (!ed) return false
+  return [skillMentionPluginKey, fileMentionPluginKey, toolMentionPluginKey].some(
+    (key) => key.getState(ed.state)?.active
+  )
+}
 </script>
 <style scoped lang="less">
 @import 'LChatSender.less';

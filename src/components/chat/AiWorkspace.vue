@@ -1,14 +1,16 @@
 <template>
   <t-dropdown trigger="click" min-column-width="180px" @click="handleClick">
-    <div class="ai-workspace">
-      <div :class="['ai-workspace__icon', { active: active }]">
-        <folder-filled-icon v-if="workspace" />
-        <folder-add1-icon v-else size="14px" />
-      </div>
+    <t-button theme="default" variant="text" class="ai-workspace">
+      <template #icon>
+        <div :class="['ai-workspace__icon', { active: active }]">
+          <folder-filled-icon v-if="workspace" />
+          <folder-add1-icon v-else size="14px" />
+        </div>
+      </template>
       <div :class="['ai-workspace__text', { active: active }]">
         {{ workspace ? renderBasename(workspace) : '选择工作目录' }}
       </div>
-    </div>
+    </t-button>
     <t-dropdown-menu>
       <t-dropdown-item v-if="active" value="clearWorkspace">
         <template #prefix-icon>
@@ -100,7 +102,7 @@ const renderBasename = (path: string) => window.preload.path.basename(path)
 </script>
 <style scoped lang="less">
 .ai-workspace {
-  margin-left: 8px;
+  margin-left: 4px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -113,7 +115,7 @@ const renderBasename = (path: string) => window.preload.path.basename(path)
   }
   &__text {
     margin-left: 8px;
-    padding-top: 4px;
+    padding-top: 2px;
   }
 }
 </style>

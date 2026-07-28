@@ -5,6 +5,12 @@ import type { ChatFileRef } from '@/utils/chatSender'
 import type { LocalSkill } from '@/modules/skill'
 import { toolOptions } from '@/modules/tool'
 
+// 导出的稳定 PluginKey，供 LChatSender 在 keydown 时直接读取 suggestion 内部 active 状态，
+// 避免使用易失同步的外部标志（suggestionOpen）导致回车误触发发送。
+export const skillMentionPluginKey = new PluginKey('skillMention')
+export const fileMentionPluginKey = new PluginKey('fileMention')
+export const toolMentionPluginKey = new PluginKey('toolMention')
+
 // suggestion 运行时注入的 props（仅取框架确实会回传的字段；selectedIndex 由闭包维护，框架不回传）
 interface RuntimeSuggestionProps {
   items: unknown[]
@@ -176,7 +182,7 @@ export const buildSkillSuggestion = (
   options?: SuggestionRendererOptions
 ): Partial<SuggestionOptions<SkillSuggestionItem>> => ({
   char: '/',
-  pluginKey: new PluginKey('skillMention'),
+  pluginKey: skillMentionPluginKey,
   items: ({ query }) =>
     skills.value
       .filter((s) =>
@@ -214,7 +220,7 @@ export const buildFileSuggestion = (
   options?: SuggestionRendererOptions
 ): Partial<SuggestionOptions<FileSuggestionItem>> => ({
   char: '@',
-  pluginKey: new PluginKey('fileMention'),
+  pluginKey: fileMentionPluginKey,
   items: ({ query }) =>
     files.value
       .filter((f) => f.relativePath.toLowerCase().includes(query.toLowerCase()))
@@ -258,7 +264,7 @@ export const buildToolSuggestion = (
   options?: SuggestionRendererOptions
 ): Partial<SuggestionOptions<ToolSuggestionItem>> => ({
   char: '#',
-  pluginKey: new PluginKey('toolMention'),
+  pluginKey: toolMentionPluginKey,
   items: ({ query }) =>
     allToolSuggestionItems()
       .filter((tool) =>
