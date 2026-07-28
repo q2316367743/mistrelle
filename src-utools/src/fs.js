@@ -1,5 +1,5 @@
 const { statSync, existsSync } = require('node:fs')
-const { readdir, readFile, writeFile, mkdir, rm, copyFile } = require('node:fs/promises')
+const { readdir, readFile, writeFile, mkdir, rm, copyFile, rename } = require('node:fs/promises')
 const { join } = require('node:path')
 
 module.exports = {
@@ -43,6 +43,9 @@ module.exports = {
   },
   copyFile: (src, dest) => {
     return copyFile(src, dest)
+  },
+  rename: (src, dest) => {
+    return rename(src, dest)
   },
   writeBinaryFile: (path, arrayBuffer) => {
     return writeFile(path, Buffer.from(arrayBuffer))

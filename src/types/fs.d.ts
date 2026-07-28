@@ -19,5 +19,6 @@ declare interface FsApi {
   mkdir: (path: string, recursive = true) => Promise<void>
   rm: (path: string, options = { recursive: true, force: true }) => Promise<void>
   copyFile: (src: string, dest: string) => Promise<void>
+  rename: (src: string, dest: string) => Promise<void>
   writeBinaryFile: (path: string, arrayBuffer: ArrayBuffer) => Promise<void>
 }

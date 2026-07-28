@@ -10,6 +10,21 @@ export const buildProjectDirPath = (id: string) =>
 export const buildProjectDynamicsPath = (id: string) =>
   window.preload.path.join(buildProjectDirPath(id), 'dynamics.json')
 
+// ~/.mistrelle/project/{id}/files
+export const buildProjectAssetDirPath = (id: string) =>
+  window.preload.path.join(buildProjectDirPath(id), 'files')
+
+/**
+ * 读取项目资产目录顶层内容（仅一层），自动确保目录存在
+ */
+export const listProjectAssets = async (id: string): Promise<Array<FileItem>> => {
+  const dir = buildProjectAssetDirPath(id)
+  if (!window.preload.fs.existsSync(dir)) {
+    await window.preload.fs.mkdir(dir)
+  }
+  return window.preload.fs.readDir(dir)
+}
+
 export const projectList = async (): Promise<Array<Project>> => {
   const folder = getAppData2Project()
   const indexPath = buildProjectIndexPath()
