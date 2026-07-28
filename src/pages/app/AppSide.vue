@@ -307,7 +307,8 @@ onMounted(() => {
   margin-top: var(--td-comp-margin-xs);
   padding-top: var(--td-comp-paddingTB-xs);
   height: calc(100%);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .bottom-menu {

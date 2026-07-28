@@ -6,12 +6,7 @@
       <span class="tool-value">{{ skillValue }}</span>
       <div class="tool-end">
         <t-loading v-if="isLoading" size="small" />
-        <t-tag
-          v-if="statusConfig"
-          :theme="statusConfig.theme"
-          variant="light-outline"
-          size="small"
-        >
+        <t-tag v-if="statusConfig" :theme="statusConfig.theme" variant="light-outline" size="small">
           {{ statusConfig.label }}
         </t-tag>
       </div>
@@ -19,9 +14,8 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, shallowRef, type Component } from 'vue'
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
-import { BookOpenIcon, FileIcon } from 'tdesign-icons-vue-next'
+import { LightbulbIcon, FileIcon } from 'tdesign-icons-vue-next'
 
 const props = defineProps({
   content: {
@@ -31,7 +25,7 @@ const props = defineProps({
 })
 
 const skillIconComponent = computed<Component>(() => {
-  return props.content.data.toolCallName === 'load_skill' ? BookOpenIcon : FileIcon
+  return props.content.data.toolCallName === 'load_skill' ? LightbulbIcon : FileIcon
 })
 
 const skillLabel = computed(() => {
