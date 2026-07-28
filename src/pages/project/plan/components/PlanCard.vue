@@ -1,5 +1,5 @@
 <template>
-  <div class="plan-card" :class="`plan-card--${plan.status}`" @click="emit('edit', plan)">
+  <div class="plan-card" :class="`plan-card--${plan.status}`">
     <div class="plan-card__bar" />
     <div class="plan-card__body">
       <div class="plan-card__head">
@@ -7,7 +7,7 @@
         <t-tooltip v-if="overdue" content="已逾期">
           <time-icon class="plan-card__overdue" />
         </t-tooltip>
-        <t-dropdown :popup-props="{ trigger: 'click' }" @click.stop>
+        <t-dropdown :popup-props="{ trigger: 'click' }" @click.stop min-column-width="128px">
           <t-button
             theme="default"
             variant="text"
@@ -38,24 +38,18 @@
       <div class="plan-card__date">
         <calendar-icon class="plan-card__date-icon" />
         <span>{{ plan.startDate || '—' }}</span>
-        <span class="plan-card__date-sep">→</span>
-        <span>{{ plan.endDate || '—' }}</span>
-        <span v-if="diff !== null" class="plan-card__date-diff">· {{ diff }} 天</span>
+        <template v-if="plan.startDate !== plan.endDate">
+          <span class="plan-card__date-sep">→</span>
+          <span>{{ plan.endDate || '—' }}</span>
+          <div v-if="diff !== null" class="plan-card__date-diff">· {{ diff }} 天</div>
+        </template>
       </div>
 
       <div v-if="plan.tags.length > 0" class="plan-card__tags">
-        <t-tag
-          v-for="t in displayTags"
-          :key="t"
-          size="small"
-          variant="light"
-          theme="primary"
-        >
+        <t-tag v-for="t in displayTags" :key="t" size="small" variant="light" theme="primary">
           {{ t }}
         </t-tag>
-        <t-tag v-if="extraTagCount > 0" size="small" variant="light">
-          +{{ extraTagCount }}
-        </t-tag>
+        <t-tag v-if="extraTagCount > 0" size="small" variant="light"> +{{ extraTagCount }} </t-tag>
       </div>
 
       <div class="plan-card__foot">
@@ -63,9 +57,7 @@
           {{ priorityMeta.label }}
         </t-tag>
         <div class="plan-card__actions" @click.stop>
-          <t-link theme="primary" hover="color" @click="emit('files', plan)">
-            附件
-          </t-link>
+          <t-link theme="primary" hover="color" @click="emit('files', plan)"> 附件 </t-link>
           <t-link theme="primary" hover="color" @click="emit('edit', plan)">编辑</t-link>
           <t-link theme="danger" hover="color" @click="emit('remove', plan)">删除</t-link>
         </div>
@@ -77,11 +69,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
 import { CalendarIcon, MoreIcon, TimeIcon } from 'tdesign-icons-vue-next'
-import {
-  PLAN_STATUSES,
-  PLAN_STATUS_META,
-  PLAN_PRIORITY_META
-} from '@/modules/project'
+import { PLAN_STATUSES, PLAN_STATUS_META, PLAN_PRIORITY_META } from '@/modules/project'
 import { dayDiff, isPlanOverdue } from '../func'
 import type { ProjectPlan, ProjectPlanStatus } from '@/entity/project/ProjectPlan'
 
