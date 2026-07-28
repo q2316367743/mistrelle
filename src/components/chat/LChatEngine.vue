@@ -35,8 +35,13 @@ const props = withDefaults(
   defineProps<{
     chatId: string
     storageKey: string
+    /** 外部指定沙盒目录，缺省时按 chatId 自动推导 */
+    sandboxDir?: string
+    height?: string
   }>(),
-  {}
+  {
+    height: 'calc(100vh - 66px)'
+  }
 )
 
 const inputValue = ref('')
@@ -45,7 +50,7 @@ const initialAgentId = ref('')
 const workspace = ref('')
 
 const sandboxDir = computed(() => {
-  return getSandboxDir(props.chatId)
+  return props.sandboxDir || getSandboxDir(props.chatId)
 })
 
 /** 策略层已裁决为 ask，此处仅负责弹窗询问用户 */
@@ -140,11 +145,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: calc(100% - 16px);
   min-height: 0;
   overflow: hidden;
   padding: 8px;
-  height: calc(100vh - 66px);
+  height: v-bind(height);
 }
 
 .l-chat-tool__content {

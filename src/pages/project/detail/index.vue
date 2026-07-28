@@ -12,8 +12,7 @@
           v-for="t in tabs"
           :key="t.key"
           :to="t.path"
-          class="project-detail-tab"
-          active-class="is-active"
+          :class="['project-detail-tab', { 'is-active': t.active ? t.active($route.path) : t.path === $route.path }]"
         >
           {{ t.label }}
         </router-link>
@@ -32,7 +31,7 @@
             <t-content class="overflow-auto">
               <router-view :id="id" />
             </t-content>
-            <t-footer style="padding: 0;margin-top: 16px;">
+            <t-footer v-if="showFooter" style="padding: 0; margin-top: 16px">
               <project-footer-panel />
             </t-footer>
           </t-layout>
@@ -75,12 +74,22 @@ const assetLoading = ref(false)
 
 const id = computed(() => String(route.params.id))
 const project = computed(() => store.getById(id.value))
-const assetFiles = computed(() => flattenProjectAssetFiles(assetTree.value, buildProjectAssetDirPath(id.value)))
+const assetFiles = computed(() =>
+  flattenProjectAssetFiles(assetTree.value, buildProjectAssetDirPath(id.value))
+)
+const showFooter = computed(() => route.name !== '项目-聊天')
 
 const tabs = computed(() => [
   { key: 'dynamics', label: '动态', path: `/project/${id.value}/dynamics` },
   { key: 'plan', label: '计划', path: `/project/${id.value}/plan` },
-  { key: 'task', label: '任务', path: `/project/${id.value}/task` },
+  {
+    key: 'task',
+    label: '任务',
+    path: `/project/${id.value}/task`,
+    active: (p: string) => {
+      return p === `/project/${id.value}/task` || p.startsWith(`/project/${id.value}/chat`)
+    }
+  },
   { key: 'asset', label: '资产', path: `/project/${id.value}/asset` }
 ])
 

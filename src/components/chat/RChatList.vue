@@ -115,7 +115,7 @@ const scrollToMessage = (messageId: string) => {
 }
 
 .r-chat-list__locator-group {
-  position: fixed;
+  position: absolute;
   top: 56px;
   right: -8px;
   z-index: 2;

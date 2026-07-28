@@ -87,6 +87,11 @@ export const routes: Array<RouteRecordRaw> = [
         component: () => import('@/pages/project/task/TaskPage.vue')
       },
       {
+        name: '项目-聊天',
+        path: 'chat/:chatId',
+        component: () => import('@/pages/project/chat/ProjectChatPage.vue')
+      },
+      {
         name: '项目-资产',
         path: 'asset',
         component: () => import('@/pages/project/asset/AssetPage.vue')

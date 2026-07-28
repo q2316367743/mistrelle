@@ -24,7 +24,7 @@ export * from './ProjectPlan'
       |- {taskId}                 # 任务目录
         |- index.json             # 任务索引，即任务信息
         |- inputs                 # 任务附件，用户主动上传
-        |- outputs                 # 任务产物，在任务完成时，可能会生成产物
+        |- outputs                # 任务产物，在任务完成时，可能会生成产物
 
 
 

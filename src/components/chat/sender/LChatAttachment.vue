@@ -579,10 +579,6 @@ watch(
   width: 480px;
   height: 380px;
   overflow: hidden;
-  border: 1px solid var(--td-component-border);
-  border-radius: var(--td-radius-large);
-  background: var(--td-bg-color-container);
-  box-shadow: var(--td-shadow-3);
 }
 
 /* ─── 左侧导航 ──────────────────────────────────── */

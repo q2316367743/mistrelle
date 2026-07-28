@@ -102,7 +102,6 @@ const renderBasename = (path: string) => window.preload.path.basename(path)
 </script>
 <style scoped lang="less">
 .ai-workspace {
-  margin-left: 4px;
   display: flex;
   align-items: center;
   cursor: pointer;
