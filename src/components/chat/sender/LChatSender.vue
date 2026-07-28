@@ -15,9 +15,19 @@
             @add-file="focusInput"
             @add-ref-file="insertFile"
           />
+          <ai-workspace v-model="workspaceRef" />
         </div>
         <div class="flex gap-8px">
           <div class="l-chat-sender__tools">
+            <t-button shape="square" variant="text" theme="default">
+              <t-progress
+                :percentage="18"
+                theme="circle"
+                :size="18"
+                :label="false"
+                :stroke-width="2"
+              />
+            </t-button>
             <ai-model-select v-model="modelKey" />
           </div>
           <t-button v-if="loading" theme="danger" variant="outline" @click="handleStop">
@@ -25,12 +35,6 @@
           </t-button>
           <t-button v-else theme="primary" :disabled="!canSend" @click="handleSend">发送</t-button>
         </div>
-      </div>
-    </div>
-    <div class="l-chat-sender__more">
-      <ai-workspace v-model="workspaceRef" />
-      <div class="w-160px">
-        <t-progress :percentage="18" />
       </div>
     </div>
   </div>

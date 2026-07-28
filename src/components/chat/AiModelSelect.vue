@@ -23,7 +23,7 @@
           </div>
         </div>
       </div>
-      <div class="ai-provide-setting flex mb-4px">
+      <div class="ai-provide-setting flex mb-4px" @click="handleModelSetting()">
         <setting1-icon />
         <span class="ml-8px">模型设置</span>
         <chevron-right-icon class="ml-auto" />
@@ -39,6 +39,8 @@ const modelValue = defineModel({
   type: String,
   default: ''
 })
+
+const router = useRouter()
 
 const visible = ref(false)
 
@@ -71,6 +73,7 @@ const handleSelect = (val: string) => {
   modelValue.value = val
   visible.value = false
 }
+const handleModelSetting = () => router.push('/setting/ai')
 </script>
 <style scoped lang="less">
 .ai-model-select {
@@ -79,9 +82,10 @@ const handleSelect = (val: string) => {
   cursor: pointer;
 }
 .ai-select-label {
-  width: 120px;
+  max-width: 120px;
   overflow: hidden;
   text-align: right;
+  user-select: none;
 }
 
 .ai-select-options {

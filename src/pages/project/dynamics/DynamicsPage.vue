@@ -19,17 +19,6 @@
       />
     </div>
 
-    <div class="dynamics-page__chat">
-      <div class="dynamics-page__chat-input">
-        今天帮你做些什么？@ 引用资产文件、项目待办或调用技能
-      </div>
-      <div class="dynamics-page__chat-toolbar">
-        <span class="dynamics-page__chat-tool">+</span>
-        <span class="dynamics-page__chat-tool">本地任务 ▾</span>
-        <span class="dynamics-page__chat-tool">选择工作空间 ▾</span>
-        <span class="dynamics-page__chat-tool">默认权限 ▾</span>
-      </div>
-    </div>
   </div>
 </template>
 

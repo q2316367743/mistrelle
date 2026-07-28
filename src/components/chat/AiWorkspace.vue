@@ -6,7 +6,7 @@
         <folder-add1-icon v-else size="14px" />
       </div>
       <div :class="['ai-workspace__text', { active: active }]">
-        {{ workspace || '选择工作目录' }}
+        {{ workspace ? renderBasename(workspace) : '选择工作目录' }}
       </div>
     </div>
     <t-dropdown-menu>
@@ -35,7 +35,7 @@
         最近使用的目录
         <t-dropdown-menu v-if="history && history.length > 0">
           <t-dropdown-item v-for="item in history" :key="item" :title="item" :value="item">
-            {{ item.split(win ? '\\' : '/').pop() }}
+            {{ renderBasename(item) }}
           </t-dropdown-item>
         </t-dropdown-menu>
       </t-dropdown-item>
@@ -56,7 +56,6 @@ const workspace = defineModel({
 const history = useUtoolsDbAsync(LocalNameEnum.KEY_AI_WORKSPACE, new Array<string>())
 
 const active = computed(() => !!workspace.value)
-const win = window.preload.inject.os.isWindows()
 
 const clearWorkspace = () => {
   workspace.value = ''
@@ -96,6 +95,8 @@ const handleClickDebounced = debounce((val: string) => {
 const handleClick = ({ value }: any) => {
   handleClickDebounced(value)
 }
+
+const renderBasename = (path: string) => window.preload.path.basename(path)
 </script>
 <style scoped lang="less">
 .ai-workspace {

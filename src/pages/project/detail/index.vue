@@ -28,7 +28,14 @@
 
       <t-layout v-if="project" class="project-detail-body">
         <t-content class="project-detail-main">
-          <router-view :id="id" />
+          <t-layout class="h-full">
+            <t-content class="overflow-auto">
+              <router-view :id="id" />
+            </t-content>
+            <t-footer style="padding: 0">
+              <project-footer-panel />
+            </t-footer>
+          </t-layout>
         </t-content>
         <t-aside class="project-detail-side" :width="collapsed ? '0px' : '240px'">
           <project-side-panel :project="project" />
@@ -49,6 +56,7 @@ import { useProjectStore } from '@/store'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import ProjectSidePanel from './components/ProjectSidePanel.vue'
 import { useBoolState } from '@/hooks'
+import ProjectFooterPanel from '@/pages/project/detail/components/ProjectFooterPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -160,12 +168,14 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   padding: 16px;
-  overflow: auto;
+  overflow: hidden;
+  height: calc(100vh - 125px);
 }
 
 .project-detail-side {
   border-left: 1px solid var(--td-component-stroke);
   overflow: hidden;
+  background-color: var(--td-bg-color-container) !important;
 }
 
 .project-detail-empty {
