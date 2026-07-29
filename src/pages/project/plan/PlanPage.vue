@@ -157,10 +157,15 @@ const handleFiles = (plan: ProjectPlan) => {
   })
 }
 
-const handleDetail = async (plan: ProjectPlan) => {
-  openPlanDetailDialog(plan)
-}
 const handleAddTask = async (plan: ProjectPlan) => {}
+const handleDetail = async (plan: ProjectPlan) => {
+  openPlanDetailDialog({
+    projectId: props.id,
+    plan,
+    onChange: () => reload(),
+    onAddTask: () => handleAddTask(plan)
+  })
+}
 </script>
 
 <style scoped lang="less">
