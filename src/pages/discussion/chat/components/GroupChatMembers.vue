@@ -122,7 +122,7 @@ const expanded = ref(false)
 // 全部的成员
 const sortedRoles = computed(() => {
   // 全部的 agent
-  return useAiAgentStore().state.filter((e) => props.discussion.roles.includes(e.id))
+  return useAiAgentStore().all.filter((e) => props.discussion.roles.includes(e.id))
 })
 const summaryRoleOptions = computed(() => useAiAgentStore().options)
 

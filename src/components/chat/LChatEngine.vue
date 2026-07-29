@@ -127,6 +127,7 @@ onMounted(async () => {
   if (!hasUserMessage && content?.draft) {
     const { draft } = content
     instance.sendUserMessage(draft)
+    modelValue.value = `${draft?.message.provide}:${draft?.message.model}`
   } else if (messages.value.length > 1) {
     const lastUser = messages.value.findLast((e) => e.role === 'user') as UserMessage | undefined
     if (lastUser) {

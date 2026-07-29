@@ -1,12 +1,10 @@
 import type { ToolFunction, ToolPolicyVerdict } from '@/domain'
 import { useSettingSecureStore } from '@/store/setting/SettingSecureStore'
 import { isPathBlacklisted } from '@/utils/sandbox'
+import { browserActionsPolicy } from './policies/browserActionsPolicy'
+import type { ToolPolicy, ToolPolicyContext } from './toolPolicyTypes'
 
-/** 策略解析所需的运行时上下文 */
-export interface ToolPolicyContext {
-  sandboxDir: string
-  workspace: string
-}
+export type { ToolPolicyContext, ToolPolicy } from './toolPolicyTypes'
 
 // ─── 路径工具 ──────────────────────────────────────────────
 
@@ -43,43 +41,44 @@ function extractCommandName(args: Record<string, unknown>): string {
   return ''
 }
 
-// ─── 策略解析 ──────────────────────────────────────────────
+// ─── 策略注册表 ──────────────────────────────────────────────
+
+const toolPolicies = new Map<string, ToolPolicy>()
+
+/** 注册工具专属安全策略 */
+export function registerToolPolicy(policy: ToolPolicy): void {
+  toolPolicies.set(policy.name, policy)
+}
+
+// ─── 默认策略 ──────────────────────────────────────────────
 
 /**
- * 根据工具风险等级、运行时参数和安全设置，裁决本次工具调用的执行权限。
- *
- * 裁决优先级：deny > allow > ask
- * - 黑名单路径 / 拒绝域名 → deny（不可覆盖）
+ * 通用默认策略：
+ * - 黑名单路径 / 拒绝域名 → deny
  * - 可信区域内的路径操作 → allow
  * - 命令白名单 → allow
  * - 其余按 risk 等级映射默认行为
  */
-export function resolveToolPolicy(
+function defaultToolPolicy(
   tool: ToolFunction,
   args: Record<string, unknown>,
   ctx: ToolPolicyContext
 ): ToolPolicyVerdict {
-  const risk = tool.risk ?? 'sensitive'
-  if (risk === 'safe') return 'allow'
-
   const store = useSettingSecureStore()
   const { sandbox } = store.state
 
   if (!sandbox.enabled) {
-    // 沙箱未启用时按风险等级直接映射
-    return risk === 'dangerous' ? 'ask' : 'ask'
+    // 沙箱未启用时，非 safe 工具默认需要审批
+    return 'ask'
   }
 
-  // ── 路径类工具：file_write / file_delete / file_write_xlsx 等含 args.path 的工具 ──
+  // ── 路径类工具 ──
   const path = args.path
   if (typeof path === 'string' && path) {
-    // 黑名单强制拦截（写入/删除类操作）
     if (sandbox.fileBlackList.length && isPathBlacklisted(path, sandbox.fileBlackList)) {
       return 'deny'
     }
-    // 可信区域内自动放行（含沙盒内删除）
     if (isInTrustedZone(path, ctx)) return 'allow'
-    // 白名单放行
     if (sandbox.fileWhiteList.length && isPathUnderAny(path, sandbox.fileWhiteList)) {
       return 'allow'
     }
@@ -87,7 +86,7 @@ export function resolveToolPolicy(
     return 'ask'
   }
 
-  // ── 命令类工具：cli_run / python_run / node_run ──
+  // ── 命令类工具 ──
   const cmdName = extractCommandName(args)
   if (cmdName) {
     if (sandbox.commandWhiteList.length && matchCommand(cmdName, sandbox.commandWhiteList)) {
@@ -98,8 +97,34 @@ export function resolveToolPolicy(
     }
   }
 
-  // ── 默认：按风险等级映射 ──
-  return risk === 'dangerous' ? 'deny' : 'ask'
+  // ── 兜底：按风险等级映射 ──
+  return tool.risk === 'dangerous' ? 'deny' : 'ask'
+}
+
+// ─── 策略解析 ──────────────────────────────────────────────
+
+/**
+ * 根据工具风险等级、运行时参数和安全设置，裁决本次工具调用的执行权限。
+ *
+ * 裁决优先级：deny > allow > ask
+ * 1. safe 工具直接放行
+ * 2. 若存在工具专属策略，优先采用其返回结果
+ * 3. 否则回退到默认策略
+ */
+export function resolveToolPolicy(
+  tool: ToolFunction,
+  args: Record<string, unknown>,
+  ctx: ToolPolicyContext
+): ToolPolicyVerdict {
+  if (tool.risk === 'safe') return 'allow'
+
+  const policy = toolPolicies.get(tool.name)
+  if (policy) {
+    const verdict = policy.resolve(tool, args, ctx)
+    if (verdict !== null) return verdict
+  }
+
+  return defaultToolPolicy(tool, args, ctx)
 }
 
 // ─── 辅助 ──────────────────────────────────────────────
@@ -111,3 +136,6 @@ function isPathUnderAny(path: string, patterns: string[]): boolean {
 function matchCommand(name: string, list: string[]): boolean {
   return list.some((item) => item.toLowerCase() === name)
 }
+
+// 注册工具专属策略
+registerToolPolicy(browserActionsPolicy)

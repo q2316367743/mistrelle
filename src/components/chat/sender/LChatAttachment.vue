@@ -366,7 +366,7 @@ watch(
 )
 
 // ─── Computed ─────────────────────────────────────────────
-const agents = computed(() => useAiAgentStore().state)
+const agents = computed(() => useAiAgentStore().all)
 const selectedAgent = computed(() => agents.value.find((item) => item.id === props.agent))
 const currentMode = computed(() => props.mode || 'craft')
 const projectFiles = computed(() => props.projectFiles)

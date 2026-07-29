@@ -1,16 +1,49 @@
 import { DialogPlugin } from 'tdesign-vue-next'
 import type { ToolFunction, ToolProperty } from '@/domain'
 
-const PropertyRow = ({ name, prop, required }: { name: string; prop: ToolProperty; required: boolean }) => (
+const PropertyRow = ({
+  name,
+  prop,
+  required
+}: {
+  name: string
+  prop: ToolProperty
+  required: boolean
+}) => (
   <tr>
-    <td style={{ padding: '6px 12px', borderBottom: '1px solid var(--td-component-stroke)', fontSize: '13px' }}>
+    <td
+      style={{
+        padding: '6px 12px',
+        borderBottom: '1px solid var(--td-component-stroke)',
+        fontSize: '13px',
+        minWidth: '100px'
+      }}
+    >
       <span style={{ color: 'var(--td-text-color-primary)' }}>{name}</span>
       {required && <span style={{ color: 'var(--td-error-color)', marginLeft: '4px' }}>*</span>}
     </td>
-    <td style={{ padding: '6px 12px', borderBottom: '1px solid var(--td-component-stroke)', fontSize: '13px', color: 'var(--td-text-color-placeholder)', fontFamily: 'var(--td-font-family-mono, monospace)' }}>
-      {prop.type}{prop.items ? `[]` : ''}
+    <td
+      style={{
+        padding: '6px 12px',
+        borderBottom: '1px solid var(--td-component-stroke)',
+        fontSize: '13px',
+        color: 'var(--td-text-color-placeholder)',
+        fontFamily: 'var(--td-font-family-mono, monospace)',
+        width: '60px',
+        minWidth: '60px'
+      }}
+    >
+      {prop.type}
+      {prop.items ? `[]` : ''}
     </td>
-    <td style={{ padding: '6px 12px', borderBottom: '1px solid var(--td-component-stroke)', fontSize: '13px', color: 'var(--td-text-color-secondary)' }}>
+    <td
+      style={{
+        padding: '6px 12px',
+        borderBottom: '1px solid var(--td-component-stroke)',
+        fontSize: '13px',
+        color: 'var(--td-text-color-secondary)'
+      }}
+    >
       {prop.description || '-'}
     </td>
   </tr>
@@ -62,7 +95,7 @@ export const openToolDetailDialog = (tool: ToolFunction) => {
     footer: false,
     default: () => (
       <div>
-        <div style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--td-text-color-secondary)', marginBottom: '20px' }}>
+        <div style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--td-text-color-secondary)', marginBottom: '20px', maxHeight: '40vh', "overflow-y": 'auto' }}>
           {tool.description}
         </div>
         <div>
