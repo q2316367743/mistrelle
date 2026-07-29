@@ -6,7 +6,7 @@
         <div class="agent-card__name" :title="agent.name">{{ agent.name }}</div>
         <div class="agent-card__model" :title="modelLabel">{{ modelLabel || '默认模型' }}</div>
       </div>
-      <t-space size="small" class="agent-card__actions" @click.stop>
+      <t-space v-if="!agent.builtin" size="small" class="agent-card__actions" @click.stop>
         <t-button
           theme="primary"
           variant="text"
@@ -30,6 +30,7 @@
       {{ agent.description || '暂无描述' }}
     </div>
     <div class="agent-card__tags">
+      <t-tag v-if="agent.builtin" size="small" theme="primary" variant="light">内置</t-tag>
       <t-tag v-if="agent.think" size="small" theme="warning" variant="light">深度思考</t-tag>
       <t-tag v-for="tool in toolLabels" :key="tool" size="small" variant="outline">
         {{ tool }}

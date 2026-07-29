@@ -13,7 +13,8 @@ import {
   TabPanel,
   Tag,
   Tabs,
-  Textarea
+  Textarea,
+  DrawerPlugin
 } from 'tdesign-vue-next'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import { useContextMenu } from '@/hooks'
@@ -24,6 +25,8 @@ import { cloneDeep } from 'es-toolkit'
 export const openAgentPut = (id?: string) => {
   const { getById, put } = useAiAgentStore()
   const old = getById(id)
+  // 内置 Agent 只读，禁止编辑
+  if (old?.builtin) return
   const form = ref<AiAgentForm>(old ? cloneDeep(old) : buildAiAgentForm())
 
   const dp = DialogPlugin({
@@ -117,6 +120,8 @@ export const openAgentPut = (id?: string) => {
 }
 
 export const openAgentContextmenu = (e: MouseEvent, id: string) => {
+  // 内置 Agent 只读，不提供右键菜单
+  if (useAiAgentStore().getById(id)?.builtin) return
   useContextMenu(e, {
     items: [
       {
@@ -171,22 +176,36 @@ export const openAgentPreview = (id: string) => {
     return agent.model
   })()
 
-  const dp = DialogPlugin({
-    header: agent.name,
-    width: '520px',
-    placement: 'center',
-    footer: false,
+  const dp = DrawerPlugin({
+    header: () => (
+      <div class={'agent-preview__head'}>
+        <Avatar size="48px" shape="round">
+          {agent.name.slice(0, 1) || 'A'}
+        </Avatar>
+        <div class={'agent-preview__head-info'}>
+          <div class={'agent-preview__name'}>{agent.name}</div>
+          <div class={'agent-preview__desc'}>{agent.description || '暂无描述'}</div>
+        </div>
+      </div>
+    ),
+    size: '520px',
+    footer: () => (
+      <div class={'agent-preview__footer'}>
+        {!agent.builtin && (
+          <Button
+            theme="default"
+            onClick={() => {
+              dp.destroy?.()
+              openAgentPut(id)
+            }}
+          >
+            编辑
+          </Button>
+        )}
+      </div>
+    ),
     default: () => (
       <div class={'agent-preview'}>
-        <div class={'agent-preview__head'}>
-          <Avatar size="48px" shape="round">
-            {agent.name.slice(0, 1) || 'A'}
-          </Avatar>
-          <div class={'agent-preview__head-info'}>
-            <div class={'agent-preview__name'}>{agent.name}</div>
-            <div class={'agent-preview__desc'}>{agent.description || '暂无描述'}</div>
-          </div>
-        </div>
         <div class={'agent-preview__meta'}>
           <Tag size="small" variant="outline">
             {modelLabel || '默认模型'}
@@ -212,17 +231,6 @@ export const openAgentPreview = (id: string) => {
             </div>
           </div>
         )}
-        <div class={'agent-preview__footer'}>
-          <Button
-            theme="default"
-            onClick={() => {
-              dp.destroy()
-              openAgentPut(id)
-            }}
-          >
-            编辑
-          </Button>
-        </div>
       </div>
     )
   })

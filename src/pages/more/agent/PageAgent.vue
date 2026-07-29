@@ -55,8 +55,8 @@ const keyword = ref('')
 
 const filteredList = computed(() => {
   const text = keyword.value.trim().toLowerCase()
-  if (!text) return store.state
-  return store.state.filter(
+  if (!text) return store.all
+  return store.all.filter(
     (item) =>
       item.name.toLowerCase().includes(text) || item.description.toLowerCase().includes(text)
   )

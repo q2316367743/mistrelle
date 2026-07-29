@@ -63,6 +63,12 @@ export interface AiAgent extends BaseEntity, AiAgentForm {
    * 是否置顶
    */
   top: boolean
+
+  /**
+   * 是否内置 Agent
+   * > 内置 Agent 由代码预置、只读，不可编辑或删除。
+   */
+  builtin?: boolean
 }
 
 

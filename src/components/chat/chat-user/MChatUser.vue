@@ -24,7 +24,7 @@
           class="r-chat-list__inline-tag mr-4px"
         >
           <template #icon><ToolsIcon /></template>
-          {{ item.data.name }}
+          {{ item.data.label }}
         </t-tag>
         <template v-else-if="item.type === 'attachment'">
           <t-tag
