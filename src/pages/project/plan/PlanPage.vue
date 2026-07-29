@@ -8,22 +8,13 @@
 
       <t-radio-group v-model="filter" variant="primary-filled">
         <t-radio-button value="all">全部</t-radio-button>
-        <t-radio-button
-          v-for="s in PLAN_STATUSES"
-          :key="s"
-          :value="s"
-        >
+        <t-radio-button v-for="s in PLAN_STATUSES" :key="s" :value="s">
           {{ PLAN_STATUS_META[s].label }}
         </t-radio-button>
       </t-radio-group>
 
       <t-tooltip content="刷新">
-        <t-button
-          theme="primary"
-          variant="text"
-          shape="square"
-          @click="reload"
-        >
+        <t-button theme="primary" variant="text" shape="square" @click="reload">
           <template #icon><RefreshIcon /></template>
         </t-button>
       </t-tooltip>
@@ -42,6 +33,8 @@
         @edit="handleEdit"
         @remove="handleRemove"
         @files="handleFiles"
+        @detail="handleDetail"
+        @task="handleAddTask"
         @status-change="handleStatusChange"
       />
     </div>
@@ -60,13 +53,11 @@ import {
   projectPlanUpdate
 } from '@/modules/project'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
-import type {
-  ProjectPlan,
-  ProjectPlanStatus
-} from '@/entity/project/ProjectPlan'
+import type { ProjectPlan, ProjectPlanStatus } from '@/entity/project/ProjectPlan'
 import PlanColumn from './components/PlanColumn.vue'
 import { openPlanPutDialog } from './modals/PlanPutDialog'
 import { openPlanFilesDialog } from './modals/PlanFilesDialog'
+import { openPlanDetailDialog } from '@/pages/project/plan/modals/PlanDetailDialog'
 
 const props = defineProps<{ id: string }>()
 
@@ -127,10 +118,7 @@ const handleEdit = async (plan: ProjectPlan) => {
   })
 }
 
-const handleStatusChange = async (
-  plan: ProjectPlan,
-  next: ProjectPlanStatus
-) => {
+const handleStatusChange = async (plan: ProjectPlan, next: ProjectPlanStatus) => {
   try {
     await projectPlanUpdate(props.id, {
       ...plan,
@@ -168,6 +156,11 @@ const handleFiles = (plan: ProjectPlan) => {
     title: plan.title
   })
 }
+
+const handleDetail = async (plan: ProjectPlan) => {
+  openPlanDetailDialog(plan)
+}
+const handleAddTask = async (plan: ProjectPlan) => {}
 </script>
 
 <style scoped lang="less">
@@ -194,7 +187,7 @@ const handleFiles = (plan: ProjectPlan) => {
 
   &__board {
     display: grid;
-    grid-template-columns: repeat(4, minmax(220px, 1fr));
+    grid-template-columns: repeat(4, minmax(260px, 1fr));
     gap: 12px;
     flex: 1;
     min-height: 0;

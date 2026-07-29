@@ -27,6 +27,8 @@
         @edit="(plan) => emit('edit', plan)"
         @remove="(plan) => emit('remove', plan)"
         @files="(plan) => emit('files', plan)"
+        @task="(plan) => emit('task', plan)"
+        @detail="(plan) => emit('detail', plan)"
         @status-change="(plan, s) => emit('status-change', plan, s)"
       />
     </div>
@@ -50,6 +52,8 @@ const emit = defineEmits<{
   edit: [ProjectPlan]
   remove: [ProjectPlan]
   files: [ProjectPlan]
+  task: [ProjectPlan]
+  detail: [ProjectPlan]
   'status-change': [ProjectPlan, ProjectPlanStatus]
 }>()
 

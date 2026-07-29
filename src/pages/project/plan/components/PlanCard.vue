@@ -1,5 +1,17 @@
 <template>
-  <div class="plan-card" :class="`plan-card--${plan.status}`">
+  <div
+    class="plan-card"
+    :class="`plan-card--${plan.status}`"
+    @contextmenu="
+      usePlanContextmenu($event, {
+        addTask: () => emit('task', plan),
+        viewDetail: () => emit('detail', plan),
+        editPlan: () => emit('edit', plan),
+        deletePlan: () => emit('remove', plan),
+        viewAttachments: () => emit('files', plan),
+      })
+    "
+  >
     <div class="plan-card__bar" />
     <div class="plan-card__body">
       <div class="plan-card__head">
@@ -7,28 +19,6 @@
         <t-tooltip v-if="overdue" content="已逾期">
           <time-icon class="plan-card__overdue" />
         </t-tooltip>
-        <t-dropdown :popup-props="{ trigger: 'click' }" @click.stop min-column-width="128px">
-          <t-button
-            theme="default"
-            variant="text"
-            shape="square"
-            size="small"
-            class="plan-card__more"
-            @click.stop
-          >
-            <template #icon><MoreIcon /></template>
-          </t-button>
-          <t-dropdown-menu>
-            <t-dropdown-item
-              v-for="s in statusOptions"
-              :key="s.value"
-              :disabled="s.value === plan.status"
-              @click="emit('status-change', plan, s.value)"
-            >
-              标记为「{{ s.label }}」
-            </t-dropdown-item>
-          </t-dropdown-menu>
-        </t-dropdown>
       </div>
 
       <div v-if="plan.content" class="plan-card__content" :title="plan.content">
@@ -53,14 +43,12 @@
       </div>
 
       <div class="plan-card__foot">
+        <t-tag size="small" :theme="statusMeta.theme" variant="light">
+          {{ statusMeta.label }}
+        </t-tag>
         <t-tag size="small" :theme="priorityMeta.theme" variant="light">
           {{ priorityMeta.label }}
         </t-tag>
-        <div class="plan-card__actions" @click.stop>
-          <t-link theme="primary" hover="color" @click="emit('files', plan)"> 附件 </t-link>
-          <t-link theme="primary" hover="color" @click="emit('edit', plan)">编辑</t-link>
-          <t-link theme="danger" hover="color" @click="emit('remove', plan)">删除</t-link>
-        </div>
       </div>
     </div>
   </div>
@@ -72,6 +60,7 @@ import { CalendarIcon, MoreIcon, TimeIcon } from 'tdesign-icons-vue-next'
 import { PLAN_STATUSES, PLAN_STATUS_META, PLAN_PRIORITY_META } from '@/modules/project'
 import { dayDiff, isPlanOverdue } from '../func'
 import type { ProjectPlan, ProjectPlanStatus } from '@/entity/project/ProjectPlan'
+import { usePlanContextmenu } from '@/pages/project/plan/modals/PlanContextmenu'
 
 const props = defineProps<{ plan: ProjectPlan }>()
 
@@ -79,12 +68,15 @@ const emit = defineEmits<{
   edit: [ProjectPlan]
   remove: [ProjectPlan]
   files: [ProjectPlan]
+  task: [ProjectPlan]
+  detail: [ProjectPlan]
   'status-change': [ProjectPlan, ProjectPlanStatus]
 }>()
 
 const statusOptions = PLAN_STATUSES.map((s) => ({ value: s, label: PLAN_STATUS_META[s].label }))
 
 const priorityMeta = computed(() => PLAN_PRIORITY_META[props.plan.priority])
+const statusMeta = computed(() => PLAN_STATUS_META[props.plan.status])
 
 const overdue = computed(() => isPlanOverdue(props.plan))
 
@@ -209,7 +201,6 @@ const extraTagCount = computed(() => Math.max(0, props.plan.tags.length - 3))
   &__foot {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
     padding-top: 6px;
     border-top: 1px dashed var(--fluent-border-subtle);
