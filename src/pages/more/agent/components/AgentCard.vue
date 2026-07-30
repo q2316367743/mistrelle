@@ -30,7 +30,9 @@
       {{ agent.description || '暂无描述' }}
     </div>
     <div class="agent-card__tags">
-      <t-tag v-if="agent.category" size="small" variant="outline">{{ AI_AGENT_CATEGORY_MAP[agent.category] }}</t-tag>
+      <t-tag v-if="agent.category" size="small" variant="outline" theme="primary">{{
+        AI_AGENT_CATEGORY_MAP[agent.category]
+      }}</t-tag>
       <t-tag v-if="agent.think" size="small" theme="warning" variant="light">深度思考</t-tag>
       <t-tag v-for="tool in toolLabels" :key="tool" size="small" variant="outline">
         {{ tool }}
