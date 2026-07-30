@@ -156,7 +156,7 @@ const [note, toggleNote] = useBoolState(false)
 const [more, toggleMore] = useBoolState(false)
 
 const settingOptions = [
-  { label: '系统设置～', icon: Setting1Icon, value: 'system' },
+  { label: '系统设置', icon: Setting1Icon, value: 'global' },
   { label: '账户设置', icon: UserIcon, value: 'account' },
   { label: '智能体设置', icon: AiArticleIcon, value: 'default' },
   { label: '个性化～', icon: AiIcon, value: 'ai' },

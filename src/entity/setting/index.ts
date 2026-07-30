@@ -1,5 +1,6 @@
 export * from './SettingAccount'
 export * from './SettingAi'
 export * from './SettingDefault'
+export * from './SettingGlobal'
 export * from './SettingNetwork'
 export * from './SettingSecured'

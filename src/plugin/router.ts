@@ -102,6 +102,11 @@ export const routes: Array<RouteRecordRaw> = [
   // --------------------------------- 设置 ---------------------------------
 
   {
+    name: '设置/global',
+    path: '/setting/global',
+    component: () => import('@/pages/setting/global/SettingGlobalPage.vue')
+  },
+  {
     name: '设置/account',
     path: '/setting/account',
     component: () => import('@/pages/setting/account/SettingAccountPage.vue')

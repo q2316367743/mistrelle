@@ -9,6 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AiModelSelect: typeof import('./src/components/chat/AiModelSelect.vue')['default']
     AiWorkspace: typeof import('./src/components/chat/AiWorkspace.vue')['default']
+    BgResult: typeof import('./src/components/Result/BgResult.vue')['default']
     DefaultChatTool: typeof import('./src/components/chat/chat-assistant/tool/DefaultChatTool.vue')['default']
     EmptyResult: typeof import('./src/components/Result/EmptyResult.vue')['default']
     FileChatTool: typeof import('./src/components/chat/chat-assistant/tool/FileChatTool.vue')['default']
@@ -42,6 +43,7 @@ declare module 'vue' {
     TBackTop: typeof import('tdesign-vue-next')['BackTop']
     TButton: typeof import('tdesign-vue-next')['Button']
     TCard: typeof import('tdesign-vue-next')['Card']
+    TColorPicker: typeof import('tdesign-vue-next')['ColorPicker']
     TContent: typeof import('tdesign-vue-next')['Content']
     TDivider: typeof import('tdesign-vue-next')['Divider']
     TDropdown: typeof import('tdesign-vue-next')['Dropdown']
@@ -71,6 +73,7 @@ declare module 'vue' {
     TRadioButton: typeof import('tdesign-vue-next')['RadioButton']
     TRadioGroup: typeof import('tdesign-vue-next')['RadioGroup']
     TSelect: typeof import('tdesign-vue-next')['Select']
+    TSlider: typeof import('tdesign-vue-next')['Slider']
     TSpace: typeof import('tdesign-vue-next')['Space']
     TSwitch: typeof import('tdesign-vue-next')['Switch']
     TTabPanel: typeof import('tdesign-vue-next')['TabPanel']
