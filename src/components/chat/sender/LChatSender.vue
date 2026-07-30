@@ -1,7 +1,7 @@
 <template>
   <div class="l-chat-sender-container">
     <div class="l-chat-sender">
-      <div class="l-chat-sender__input" :class="{ 'is-disabled': loading }" @click="focusInput">
+      <div class="l-chat-sender__input" :class="{ 'is-disabled': loading }" @click="focusInput" @dragover.prevent @drop="handleContainerDrop">
         <span v-if="showPlaceholder" class="l-chat-sender__placeholder">{{ placeholder }}</span>
         <EditorContent :editor="editor" class="l-chat-sender__editor" />
       </div>
@@ -220,23 +220,51 @@ const editor = useEditor({
       const files = event.dataTransfer?.files
       if (!files || files.length === 0) return false
       const file = files[0]
-      const filePath = 'path' in file && typeof file.path === 'string' ? file.path : undefined
-      if (!filePath) return false
-      setTimeout(() => insertFileByPath(filePath))
+      resolveFilePath(file).then(filePath => {
+        if (filePath) insertFileByPath(filePath)
+      })
       return true
     },
     handlePaste: (_view, event) => {
-      const items = event.clipboardData?.items
-      if (!items) return false
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i]
-        if (item.type.startsWith('image/')) {
-          pasteImage(item)
+      const data = event.clipboardData
+      if (!data) return false
+
+      for (let i = 0; i < data.items.length; i++) {
+        if (data.items[i].type.startsWith('image/')) {
+          pasteImage(data.items[i])
+          event.preventDefault()
           return true
         }
       }
+
+      if (data.files.length > 0) {
+        const file = data.files[0]
+        resolveFilePath(file).then(filePath => {
+          if (filePath) insertFileByPath(filePath)
+        })
+        event.preventDefault()
+        return true
+      }
+
+      const uriList = data.getData('text/uri-list')
+      if (uriList) {
+        const match = uriList.match(/^file:\/\/(.+)/m)
+        if (match) {
+          insertFileByPath(decodeURIComponent(match[1].trim()))
+          event.preventDefault()
+          return true
+        }
+      }
+
+      const plainText = data.getData('text/plain')
+      if (plainText) {
+        editor.value?.chain().focus().insertContent(plainText).run()
+        event.preventDefault()
+        return true
+      }
+
       return false
-    }
+    },
   },
   onUpdate: ({ editor: ed }) => {
     inputValue.value = ed.getText()
@@ -302,16 +330,24 @@ const insertFileByPath = (filePath: string) => {
   insertFile({ name, path: filePath, relativePath: name })
 }
 
-const pasteImage = async (item: DataTransferItem) => {
-  const file = item.getAsFile()
-  if (!file || !props.sandboxDir) return
+const resolveFilePath = async (file: File): Promise<string | null> => {
+  if ('path' in file && typeof file.path === 'string' && file.path) {
+    return file.path
+  }
+  if (!props.sandboxDir) return null
   const arrayBuffer = await file.arrayBuffer()
   const tmpDir = window.preload.path.join(props.sandboxDir, 'tmp')
-  const ext = file.type.split('/')[1] || 'png'
-  const fileName = `paste_${Date.now()}.${ext}`
+  const fileName = `${Date.now()}_${file.name || 'unnamed'}`
   const filePath = window.preload.path.join(tmpDir, fileName)
   await window.preload.fs.writeBinaryFile(filePath, arrayBuffer)
-  insertFile({ name: fileName, path: filePath, relativePath: fileName })
+  return filePath
+}
+
+const pasteImage = async (item: DataTransferItem) => {
+  const file = item.getAsFile()
+  if (!file) return
+  const filePath = await resolveFilePath(file)
+  if (filePath) insertFileByPath(filePath)
 }
 
 const selectWorkspace = () => {
@@ -335,6 +371,16 @@ const handleSend = () => {
 }
 
 const handleStop = () => emit('stop')
+
+const handleContainerDrop = async (event: DragEvent) => {
+  const editorDom = editor.value?.view.dom
+  if (editorDom?.contains(event.target as Node)) return
+  const files = event.dataTransfer?.files
+  if (!files || files.length === 0) return
+  const file = files[0]
+  const filePath = await resolveFilePath(file)
+  if (filePath) insertFileByPath(filePath)
+}
 
 watch(
   () => props.initialInput,
