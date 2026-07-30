@@ -3,8 +3,6 @@ import { ChatContent } from '@tdesign-vue-next/chat'
 import { MessageUtil } from '@/utils/modal'
 import MonacoEditorView from '@/components/view/MonacoEditorView.vue'
 
-import { FileViewer } from '@file-viewer/vue3'
-import officePreset from '@file-viewer/preset-office'
 
 export interface ProductFile {
   fileName: string
@@ -73,39 +71,6 @@ const IMAGE_EXTS = new Set([
 const VIDEO_EXTS = new Set(['.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv'])
 
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus'])
-
-const FILE_EXTS = new Set([
-  '.docx',
-  '.docm',
-  '.dotx',
-  '.dotm',
-  '.doc',
-  '.dot',
-  '.rt',
-  '.odt',
-  '.xlsx',
-  '.xltx',
-  '.xlsm',
-  '.xlsb',
-  '.xls',
-  '.xlt',
-  '.xltm',
-  '.csv',
-  '.tsv',
-  '.ods',
-  '.fods',
-  '.numbers',
-  '.ppt',
-  '.pptx',
-  '.pptm',
-  '.potx',
-  '.potm',
-  '.ppsx',
-  '.ppsm',
-  '.odp',
-  '.pdf',
-  '.odf'
-])
 
 const EXT_LANG: Record<string, string> = {
   '.ts': 'typescript',
@@ -315,31 +280,6 @@ function openAudioPreview(file: ProductFile) {
   })
 }
 
-async function openCommonFilePreview(file: ProductFile) {
-  const url = window.preload.net.pathToHref(file.fullPath)
-
-  DialogPlugin({
-    header: file.fileName,
-    placement: 'center',
-    width: '80vw',
-    footer: false,
-    default: () => (
-      <div>
-        <div
-          style={{
-            width: 'calc(100% - 2px)',
-            minHeight: 'calc(100vh - 320px)',
-            height: 'calc(100vh - 320px)'
-          }}
-        >
-          <FileViewer url={url} class={'h-full'} options={{ preset: officePreset }} />
-        </div>
-        {renderFooter(file.fullPath)}
-      </div>
-    )
-  })
-}
-
 export function openFilePreview(file: ProductFile) {
   const ext = window.preload.path.extname(file.fullPath)
 
@@ -353,8 +293,6 @@ export function openFilePreview(file: ProductFile) {
     openVideoPreview(file)
   } else if (AUDIO_EXTS.has(ext)) {
     openAudioPreview(file)
-  } else if (FILE_EXTS.has(ext)) {
-    openCommonFilePreview(file)
   } else {
     showInFolder(file.fullPath)
   }

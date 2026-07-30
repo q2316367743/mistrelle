@@ -7,7 +7,6 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite';
 import {TDesignResolver} from 'unplugin-vue-components/resolvers';
 import monacoEditorPlugin from 'vite-plugin-monaco-editor'
-import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 
 function _resolve(dir: string) {
   return path.resolve(__dirname, dir);
@@ -45,11 +44,7 @@ export default defineConfig({
       ? monacoEditorPlugin({})
       : // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        monacoEditorPlugin.default({}),
-    fileViewerRenderers({
-      preset: 'office',
-      copyAssets: true
-    })
+        monacoEditorPlugin.default({})
   ],
   base: './',
   build: {
