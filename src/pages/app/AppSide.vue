@@ -88,48 +88,8 @@
           </t-radio-button>
         </t-radio-group>
 
-        <div v-if="active === 'agent'" class="menu-section">
-          <button
-            v-for="chat in chats"
-            :key="chat.id"
-            class="menu-item"
-            :class="{ active: isActive(`/chat/${chat.id}`) }"
-            type="button"
-            @contextmenu="openChatContextmenu($event, chat, handleHome)"
-            @click="goTo(`/chat/${chat.id}`)"
-          >
-            <FolderIcon class="menu-icon" />
-            <span>{{ chat.name }}</span>
-          </button>
-        </div>
-        <div v-else-if="active === 'discussion'" class="menu-section">
-          <div class="section-title">
-            <span>讨论组</span>
-            <t-button
-              theme="primary"
-              variant="text"
-              shape="square"
-              size="small"
-              @click="openDiscussionPut()"
-            >
-              <template #icon>
-                <add-icon />
-              </template>
-            </t-button>
-          </div>
-          <button
-            v-for="item in discussions"
-            :key="item.id"
-            class="menu-item"
-            :class="{ active: isActive(`/discussion/${item.id}`) }"
-            type="button"
-            @click="goTo(`/discussion/${item.id}`)"
-            @contextmenu="openDiscussionContextmenu($event, item.id)"
-          >
-            <UsergroupIcon class="menu-icon" />
-            <span>{{ item.name }}</span>
-          </button>
-        </div>
+        <ChatList v-if="active === 'agent'" />
+        <DiscussionList v-else-if="active === 'discussion'" />
       </nav>
     </div>
 
@@ -164,11 +124,9 @@
 </template>
 <script lang="ts" setup>
 import {
-  AddIcon,
   AiArticleIcon,
   AiIcon,
   ChatIcon,
-  FolderIcon,
   InternetIcon,
   UserIcon,
   UsergroupIcon,
@@ -185,10 +143,10 @@ import {
   AbilityOpenIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
-import { useAiDiscussionStore, useAiChatStore, useSettingAccountStore } from '@/store'
-import { openDiscussionPut, openDiscussionContextmenu } from '@/pages/app/discussion-func'
-import { openChatContextmenu } from '@/pages/app/chat-func'
+import { useSettingAccountStore } from '@/store'
 import { useBoolState } from '@/hooks'
+import ChatList from './components/ChatList.vue'
+import DiscussionList from './components/DiscussionList.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -208,9 +166,6 @@ const settingOptions = [
   { label: '网络设置', icon: InternetIcon, value: 'network' }
 ]
 
-// 分组
-const chats = computed(() => useAiChatStore().state.sort((a, b) => b.createdAt - a.createdAt))
-const discussions = computed(() => useAiDiscussionStore().state)
 const noteIconStyle = computed(() => ({
   transform: note.value ? 'rotate(90deg)' : '',
   transition: 'all 200ms ease-in-out'
@@ -232,8 +187,6 @@ const goTo = (path: string) => {
 
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
 const handleNoteClick = (key: string) => router.push(`/note/${key}`)
-
-const handleHome = () => goTo('/')
 
 onMounted(() => {
   console.log('plugin enter', isDark.value)
@@ -289,29 +242,16 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--td-comp-margin-xs);
   min-height: 0;
-  overflow-y: auto;
   width: 204px;
-  overflow-x: hidden;
   height: 100%;
+  overflow: hidden;
 }
 
-.menu-section,
 .bottom-menu {
   display: flex;
   flex-direction: column;
   gap: var(--td-comp-margin-xs);
   margin-top: 8px;
-}
-
-.menu-section {
-  margin-top: var(--td-comp-margin-xs);
-  padding-top: var(--td-comp-paddingTB-xs);
-  height: calc(100%);
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.bottom-menu {
   padding-top: var(--td-comp-paddingTB-s);
   border-top: 1px solid var(--fluent-sidebar-border);
   width: 204px;
@@ -324,15 +264,6 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   padding: 8px;
-}
-
-.section-title {
-  padding: var(--td-comp-paddingTB-xs) var(--td-comp-paddingLR-s);
-  color: var(--td-text-color-placeholder);
-  font: var(--td-font-mark-small);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .menu-item {

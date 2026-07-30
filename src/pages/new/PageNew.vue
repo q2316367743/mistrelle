@@ -24,9 +24,13 @@ const handleSend = async (message: ChatRequestParams) => {
   await router.push(`/chat/${id}`)
 }
 
-onMounted(async () => {
-  model.value = useSettingDefaultStore().state.defaultAssistantModel
-})
+watch(
+  () => useSettingDefaultStore().state.defaultAssistantModel,
+  (val) => {
+    model.value = val
+  },
+  { immediate: true }
+)
 </script>
 <style scoped lang="less">
 .page-new {

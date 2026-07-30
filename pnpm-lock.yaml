@@ -89,6 +89,9 @@ importers:
       tdesign-vue-next:
         specifier: ^1.15.5
         version: 1.20.1(vue@3.5.38(typescript@5.9.3))
+      virtua:
+        specifier: ^0.50.0
+        version: 0.50.0(vue@3.5.38(typescript@5.9.3))
       vue:
         specifier: ^3.5.20
         version: 3.5.38(typescript@5.9.3)
@@ -3685,6 +3688,32 @@ packages:
   validator@13.15.35:
     resolution: {integrity: sha512-TQ5pAGhd5whStmqWvYF4OjQROlmv9SMFVt37qoCBdqRffuuklWYQlCNnEs2ZaIBD1kZRNnikiZOS1eqgkar0iw==}
     engines: {node: '>= 0.10'}
+
+  virtua@0.50.0:
+    resolution: {integrity: sha512-W4lBvBqCIdNORXAVHHQbN+raBnViVZwKLk8BFhUAOOv8RashH/SU5DUSOk+RsS4UvqdZOaAylWC4pncw3JSaMQ==}
+    peerDependencies:
+      '@angular/common': '>=20.0.0'
+      '@angular/core': '>=20.0.0'
+      react: '>=16.14.0'
+      react-dom: '>=16.14.0'
+      solid-js: '>=1.0'
+      svelte: '>=5.0'
+      vue: '>=3.2'
+    peerDependenciesMeta:
+      '@angular/common':
+        optional: true
+      '@angular/core':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      solid-js:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
 
   vite-plugin-monaco-editor@1.1.0:
     resolution: {integrity: sha512-IvtUqZotrRoVqwT0PBBDIZPNraya3BxN/bfcNfnxZ5rkJiGcNtO5eAOWWSgT7zullIAEqQwxMU83yL9J5k7gww==}
@@ -7731,6 +7760,10 @@ snapshots:
     optional: true
 
   validator@13.15.35: {}
+
+  virtua@0.50.0(vue@3.5.38(typescript@5.9.3)):
+    optionalDependencies:
+      vue: 3.5.38(typescript@5.9.3)
 
   vite-plugin-monaco-editor@1.1.0(monaco-editor@0.56.0):
     dependencies:
