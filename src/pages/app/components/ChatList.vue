@@ -1,16 +1,17 @@
 <template>
   <div class="chat-list">
-    <VList :data="chats" :itemSize="36" style="height: 100%;">
+    <VList :data="chats" :itemSize="36" style="height: 100%">
       <template #default="{ item }">
         <button
           class="menu-item"
           :class="{ active: isActive(`/chat/${item.id}`) }"
           type="button"
+          :title="item.name"
           @contextmenu="openChatContextmenu($event, item, handleHome)"
           @click="goTo(`/chat/${item.id}`)"
         >
           <FolderIcon class="menu-icon" />
-          <span>{{ item.name }}</span>
+          <span class="ellipsis w-160px">{{ item.name }}</span>
         </button>
       </template>
     </VList>
