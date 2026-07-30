@@ -42,12 +42,14 @@ const BUILTIN_AGENTS: ReadonlyArray<AiAgent> = [
       '4. 确认后调用 create_agent / update_agent 落库，并回告结果与专家 id；',
       '5. 修改场景必须先 get_agent 获取当前配置，只改需要改的字段，不要覆盖使用者未提及的内容。'
     ].join('\n'),
-    personality: '严谨、耐心、结构化。先理解需求再动手；不臆造不存在的工具名（tools 字段只填系统已注册的工具名，不确定时留空）；落库前必须经使用者确认；用中文、条理清晰。',
+    personality:
+      '严谨、耐心、结构化。先理解需求再动手；不臆造不存在的工具名（tools 字段只填系统已注册的工具名，不确定时留空）；落库前必须经使用者确认；用中文、条理清晰。',
     aboutMe: '',
     tools: ['list_tools', 'list_agents', 'get_agent', 'create_agent', 'update_agent'],
     model: '',
     placeholder: '描述你想要创建的专家，例如：一个能帮我审代码的资深前端工程师',
     think: true,
+    category: 'built-in',
     top: false,
     builtin: true,
     createdAt: 0,
@@ -64,12 +66,14 @@ const BUILTIN_AGENTS: ReadonlyArray<AiAgent> = [
       '',
       '你的工作方式：先澄清技能要解决的任务、触发场景与输入/产出，再产出清晰可执行的技能定义；必要时直接落地为文件，让能力可被复用。'
     ].join('\n'),
-    personality: '务实、模块化、可复用优先。强调能力边界清晰、指令无歧义、示例充分；不臆造工具；用中文；引导使用者把能力沉淀为可复用技能。',
+    personality:
+      '务实、模块化、可复用优先。强调能力边界清晰、指令无歧义、示例充分；不臆造工具；用中文；引导使用者把能力沉淀为可复用技能。',
     aboutMe: '',
     tools: [],
     model: '',
     placeholder: '描述你想创建的技能，例如：一个把网页内容转成结构化摘要的技能',
     think: true,
+    category: 'built-in',
     top: false,
     builtin: true,
     createdAt: 0,

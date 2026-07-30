@@ -34,6 +34,7 @@ const slots = defineSlots()
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 
   .page-header {
     display: flex;
@@ -68,7 +69,8 @@ const slots = defineSlots()
     left: 0;
     right: 0;
     bottom: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 </style>

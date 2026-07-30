@@ -1,5 +1,31 @@
 import { BaseEntity } from '@/entity'
 import { toolMap } from '@/modules/tool'
+import type { CommonSelect } from '@/domain'
+
+export const AI_AGENT_CATEGORIES = [
+  { value: 'built-in', label: ' 内置' },
+  { value: 'industry-consulting', label: '行业顾问' },
+  { value: 'technology-engineering', label: '技术工程' },
+  { value: 'product-design', label: '产品设计' },
+  { value: 'education', label: '教育学习' },
+  { value: 'finance-investment', label: '金融投资' },
+  { value: 'global-development', label: '全球发展' },
+  { value: 'gaming', label: '游戏空间' },
+  { value: 'data-intelligence', label: '数据智能' },
+  { value: 'marketing-growth', label: '营销增长' },
+  { value: 'sales-commerce', label: '销售商务' },
+  { value: 'content-creation', label: '内容创作' },
+  { value: 'operations-hr', label: '运营人力' },
+  { value: 'legal-security', label: '法务安全' }
+] as const
+
+export type AiAgentCategory = (typeof AI_AGENT_CATEGORIES)[number]['value']
+export const AI_AGENT_CATEGORY_OPTIONS: CommonSelect[] = AI_AGENT_CATEGORIES.map(
+  (c) => ({ value: c.value, label: c.label })
+)
+export const AI_AGENT_CATEGORY_MAP: Record<string, string> = Object.fromEntries(
+  AI_AGENT_CATEGORIES.map((c) => [c.value, c.label])
+)
 
 export interface AiAgentForm {
   // ------------------------------- 基础 -------------------------------
@@ -53,6 +79,11 @@ export interface AiAgentForm {
    * 是否深度思考
    */
   think: boolean
+
+  /**
+   * 分类
+   */
+  category: AiAgentCategory | ''
 }
 
 export interface AiAgent extends BaseEntity, AiAgentForm {
@@ -82,7 +113,8 @@ export const buildAiAgentForm = (): AiAgentForm => {
     tools: [],
     model: '',
     placeholder: '',
-    think: false
+    think: false,
+    category: ''
   }
 }
 

@@ -85,17 +85,23 @@
 
               <!-- 专家面板 -->
               <template v-else-if="activePanel === 'expert'">
-                <div
-                  v-for="item in filteredAgents"
-                  :key="item.id"
-                  class="l-chat-attachment__row"
-                  :class="{ 'is-active': item.id === agent }"
-                  @click="selectAgent(item.id)"
-                >
-                  <span class="l-chat-attachment__row-avatar is-expert">{{
-                    item.name.charAt(0)
-                  }}</span>
-                  <span class="l-chat-attachment__row-name-inline">{{ item.name }}</span>
+                <template v-for="group in groupedAgents" :key="group.category">
+                  <div class="l-chat-attachment__group-title">{{ group.label }}</div>
+                  <div
+                    v-for="item in group.children"
+                    :key="item.id"
+                    class="l-chat-attachment__row"
+                    :class="{ 'is-active': item.id === agent }"
+                    @click="selectAgent(item.id)"
+                  >
+                    <span class="l-chat-attachment__row-avatar is-expert">{{
+                      item.name.charAt(0)
+                    }}</span>
+                    <span class="l-chat-attachment__row-name-inline">{{ item.name }}</span>
+                  </div>
+                </template>
+                <div v-if="groupedAgents.length === 0" class="l-chat-attachment__empty">
+                  暂无匹配结果
                 </div>
                 <button class="l-chat-attachment__more-btn" @click="goToAgentPage">
                   <arrow-right-icon />召唤更多专家
@@ -283,6 +289,7 @@ import type { Component } from 'vue'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { toolOptions } from '@/modules/tool'
 import { useAiAgentStore } from '@/store'
+import { AI_AGENT_CATEGORIES } from '@/entity/ai'
 import type { ToolSuggestionItem } from './mentionSuggestion'
 import { CommonSelect } from '@/domain'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
@@ -440,11 +447,26 @@ const filteredToolGroups = computed(() => {
     .filter((g) => g.children.length > 0)
 })
 
-/** 过滤后的 Agent 列表 */
-const filteredAgents = computed(() => {
-  if (!keyword.value) return agents.value
+/** 按分类分组的 Agent 列表 */
+const groupedAgents = computed(() => {
+  let list = agents.value
   const kw = keyword.value.toLowerCase()
-  return agents.value.filter((a) => `${a.name} ${a.description}`.toLowerCase().includes(kw))
+  if (kw) {
+    list = list.filter((a) => `${a.name} ${a.description}`.toLowerCase().includes(kw))
+  }
+  const groups: Array<{ category: string; label: string; children: typeof list }> = []
+  const uncategorized: typeof list = []
+  for (const cat of AI_AGENT_CATEGORIES) {
+    const children = list.filter((a) => a.category === cat.value)
+    if (children.length > 0) {
+      groups.push({ category: cat.value, label: cat.label, children })
+    }
+  }
+  const others = list.filter((a) => !a.category)
+  if (others.length > 0) {
+    groups.push({ category: '', label: '其他', children: others })
+  }
+  return groups
 })
 
 /** 模式切换选项 */

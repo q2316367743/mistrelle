@@ -22,7 +22,8 @@ const FORM_PROPERTIES: Record<string, ToolProperty> = {
   },
   model: { type: 'string', description: '默认使用的模型 id，留空表示跟随全局' },
   placeholder: { type: 'string', description: '聊天输入框占位文案' },
-  think: { type: 'boolean', description: '是否启用深度思考' }
+  think: { type: 'boolean', description: '是否启用深度思考' },
+  category: { type: 'string', description: '分类（可选值见 AI_AGENT_CATEGORIES）' }
 }
 
 /** 模型可能传入的表单字段（全部可选，具体必填由 parameters.required 声明） */
@@ -47,7 +48,8 @@ const toForm = (agent: AiAgent): AiAgentForm => ({
   tools: agent.tools,
   model: agent.model,
   placeholder: agent.placeholder,
-  think: agent.think
+  think: agent.think,
+  category: agent.category
 })
 
 /** 专家概要信息（列表用，避免 identity 等长文本撑爆上下文） */
@@ -58,7 +60,8 @@ const toSummary = (agent: AiAgent) => ({
   builtin: !!agent.builtin,
   tools: agent.tools,
   model: agent.model || '(跟随全局)',
-  think: agent.think
+  think: agent.think,
+  category: agent.category
 })
 
 export const agentTools: ToolFunction[] = [

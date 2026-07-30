@@ -1,4 +1,4 @@
-import { AiAgentForm, buildAiAgentForm } from '@/entity/ai'
+import { AiAgentForm, buildAiAgentForm, AI_AGENT_CATEGORY_OPTIONS, AI_AGENT_CATEGORY_MAP } from '@/entity/ai'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
 import { toolOptions, toolMap } from '@/modules/tool'
 import {
@@ -69,6 +69,9 @@ export const openAgentPut = (id?: string) => {
               </FormItem>
               <FormItem label={'启用思考'} name={'think'}>
                 <Switch v-model={form.value.think} />
+              </FormItem>
+              <FormItem label={'分类'} name={'category'}>
+                <Select v-model={form.value.category} options={AI_AGENT_CATEGORY_OPTIONS} placeholder={'请选择分类'} clearable />
               </FormItem>
             </Form>
           </TabPanel>
@@ -213,6 +216,11 @@ export const openAgentPreview = (id: string) => {
           {agent.think && (
             <Tag size="small" theme="warning" variant="light">
               深度思考
+            </Tag>
+          )}
+          {agent.category && (
+            <Tag size="small" variant="outline">
+              {AI_AGENT_CATEGORY_MAP[agent.category]}
             </Tag>
           )}
         </div>

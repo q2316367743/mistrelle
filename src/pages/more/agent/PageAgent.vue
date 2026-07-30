@@ -1,14 +1,7 @@
 <template>
   <page-layout title="专家">
     <template #extra>
-      <t-button theme="primary" @click="handleAdd">
-        <template #icon><AddIcon /></template>
-        新增专家
-      </t-button>
-    </template>
-
-    <div class="agent-page">
-      <div class="agent-page__toolbar">
+      <div class="flex gap-8px items-center">
         <t-input
           v-model="keyword"
           clearable
@@ -19,8 +12,26 @@
             <search-icon />
           </template>
         </t-input>
+        <t-button theme="primary" @click="handleAdd">
+          <template #icon><AddIcon /></template>
+          新增专家
+        </t-button>
       </div>
+    </template>
 
+    <div class="agent-page">
+      <div class="agent-page__toolbar">
+        <t-tabs v-model="categoryTab" class="agent-page__tabs">
+          <t-tab-panel value="" label="全部" />
+          <t-tab-panel
+            v-for="c in AI_AGENT_CATEGORIES"
+            :key="c.value"
+            :value="c.value"
+            :label="c.label"
+          />
+        </t-tabs>
+        <div class="agent-page__spacer" />
+      </div>
       <div class="agent-page__body">
         <div v-if="filteredList.length > 0" class="agent-page__grid">
           <agent-card
@@ -48,15 +59,21 @@ import { AddIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import { useAiAgentStore } from '@/store'
 import { openAgentPut, openAgentPreview } from '@/pages/app/agent-func'
 import { MessageUtil } from '@/utils/modal'
+import { AI_AGENT_CATEGORIES } from '@/entity/ai'
 import AgentCard from './components/AgentCard.vue'
 
 const store = useAiAgentStore()
 const keyword = ref('')
+const categoryTab = ref('')
 
 const filteredList = computed(() => {
+  let list = store.all
+  if (categoryTab.value) {
+    list = list.filter((item) => item.category === categoryTab.value)
+  }
   const text = keyword.value.trim().toLowerCase()
-  if (!text) return store.all
-  return store.all.filter(
+  if (!text) return list
+  return list.filter(
     (item) =>
       item.name.toLowerCase().includes(text) || item.description.toLowerCase().includes(text)
   )
@@ -75,6 +92,9 @@ const handleDelete = (id: string) => {
 </script>
 
 <style scoped lang="less">
+.agent-page__search {
+  width: 240px;
+}
 .agent-page {
   display: flex;
   flex-direction: column;
@@ -82,22 +102,16 @@ const handleDelete = (id: string) => {
   padding: 0 8px 8px;
   overflow: auto;
 
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding-bottom: 12px;
-    flex-shrink: 0;
-  }
-
-  &__search {
-    width: 320px;
+  &__spacer {
+    flex: 1;
+    min-width: 8px;
   }
 
   &__body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    margin-top: 8px;
   }
 
   &__grid {
