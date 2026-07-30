@@ -52,8 +52,8 @@ const handleHome = () => goTo('/')
   display: flex;
   align-items: center;
   gap: var(--td-comp-margin-s);
-  width: calc(100% - 16px);
-  min-width: 204px;
+  width: 196px;
+  min-width: 196px;
   min-height: var(--td-comp-size-m);
   padding: 0 var(--td-comp-paddingLR-s);
   color: var(--td-text-color-primary);
