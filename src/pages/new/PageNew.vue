@@ -14,12 +14,17 @@
 <script lang="ts" setup>
 import { useAiChatStore, useSettingDefaultStore } from '@/store'
 import { ChatRequestParams } from '@/modules/chat'
+import { MessageUtil } from '@/utils/modal'
 
 const router = useRouter()
 
 const model = ref('')
 
 const handleSend = async (message: ChatRequestParams) => {
+  if (!message.message.model) {
+    MessageUtil.error('请选择模型')
+    return
+  }
   const id = await useAiChatStore().add(message)
   await router.push(`/chat/${id}`)
 }
