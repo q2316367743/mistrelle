@@ -80,6 +80,7 @@ const handleModelSetting = () => router.push('/setting/ai')
   display: flex;
   align-items: center;
   cursor: pointer;
+  height: 32px;
 }
 .ai-select-label {
   max-width: 120px;

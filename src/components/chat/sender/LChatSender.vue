@@ -1,7 +1,13 @@
 <template>
   <div class="l-chat-sender-container">
     <div class="l-chat-sender">
-      <div class="l-chat-sender__input" :class="{ 'is-disabled': loading }" @click="focusInput" @dragover.prevent @drop="handleContainerDrop">
+      <div
+        class="l-chat-sender__input"
+        :class="{ 'is-disabled': loading }"
+        @click="focusInput"
+        @dragover.prevent
+        @drop="handleContainerDrop"
+      >
         <span v-if="showPlaceholder" class="l-chat-sender__placeholder">{{ placeholder }}</span>
         <EditorContent :editor="editor" class="l-chat-sender__editor" />
       </div>
@@ -18,19 +24,17 @@
           />
           <ai-workspace v-model="workspaceRef" />
         </div>
-        <div class="flex gap-8px">
-          <div class="l-chat-sender__tools">
-            <t-button shape="square" variant="text" theme="default">
-              <t-progress
-                :percentage="18"
-                theme="circle"
-                :size="18"
-                :label="false"
-                :stroke-width="2"
-              />
-            </t-button>
-            <ai-model-select v-model="modelKey" />
-          </div>
+        <div class="flex gap-8px items-center">
+          <t-button shape="square" variant="text" theme="default">
+            <t-progress
+              :percentage="18"
+              theme="circle"
+              :size="18"
+              :label="false"
+              :stroke-width="2"
+            />
+          </t-button>
+          <ai-model-select v-model="modelKey" />
           <t-button v-if="loading" theme="danger" variant="outline" @click="handleStop">
             停止
           </t-button>
@@ -220,7 +224,7 @@ const editor = useEditor({
       const files = event.dataTransfer?.files
       if (!files || files.length === 0) return false
       const file = files[0]
-      resolveFilePath(file).then(filePath => {
+      resolveFilePath(file).then((filePath) => {
         if (filePath) insertFileByPath(filePath)
       })
       return true
@@ -239,7 +243,7 @@ const editor = useEditor({
 
       if (data.files.length > 0) {
         const file = data.files[0]
-        resolveFilePath(file).then(filePath => {
+        resolveFilePath(file).then((filePath) => {
           if (filePath) insertFileByPath(filePath)
         })
         event.preventDefault()
@@ -264,7 +268,7 @@ const editor = useEditor({
       }
 
       return false
-    },
+    }
   },
   onUpdate: ({ editor: ed }) => {
     inputValue.value = ed.getText()
