@@ -19,7 +19,7 @@
         </button>
         <button
           class="menu-item"
-          :class="{ active: isActive('/project/list') }"
+          :class="{ active: isStartActive('/project/') }"
           type="button"
           @click="goTo('/project/list')"
         >

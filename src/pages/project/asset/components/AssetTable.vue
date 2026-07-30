@@ -5,12 +5,11 @@
     </div>
     <t-enhanced-table
       v-else
-      :data="displayTree"
+      :data="displayList"
       :columns="columns"
       row-key="path"
       :selected-row-keys="selected"
       row-selection-type="multiple"
-      :tree="{ childrenKey: 'children', indent: 20, defaultExpandAll: true }"
       hover
       size="small"
       table-layout="fixed"
@@ -52,7 +51,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, watch } from 'vue'
+import { computed, inject } from 'vue'
 import {
   FileCodeIcon,
   FileExcelIcon,
@@ -76,6 +75,8 @@ interface SortOption {
 }
 
 const props = defineProps<{
+  rootDir: string
+  currentDir: string
   keyword: string
   sort: SortOption
   selected: string[]
@@ -84,9 +85,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:selected': [string[]]
   open: [FileItem]
+  navigate: [path: string]
   rename: [FileItem]
   delete: [FileItem]
-  'filtered-count': [number]
 }>()
 
 const assetContext = inject(projectAssetContextKey)
@@ -94,61 +95,48 @@ if (!assetContext) throw new Error('Project asset context is required')
 const tree = assetContext.tree
 const loading = assetContext.loading
 
-const rowClassName = ({ row }: { row: ProjectAssetTreeNode }) =>
-  row.isDirectory ? 'asset-table__row asset-table__row--dir' : 'asset-table__row'
+const rowClassName = () => 'asset-table__row'
+
+const findNodeByPath = (
+  nodes: ProjectAssetTreeNode[],
+  targetPath: string
+): ProjectAssetTreeNode | null => {
+  for (const node of nodes) {
+    if (node.path === targetPath) return node
+    if (node.children) {
+      const found = findNodeByPath(node.children, targetPath)
+      if (found) return found
+    }
+  }
+  return null
+}
 
 const sortByName = (a: ProjectAssetTreeNode, b: ProjectAssetTreeNode) => a.name.localeCompare(b.name)
 const sortBySize = (a: ProjectAssetTreeNode, b: ProjectAssetTreeNode) => a.size - b.size
 const sortByMtime = (a: ProjectAssetTreeNode, b: ProjectAssetTreeNode) => a.mtime - b.mtime
 
-const sortNodes = (nodes: ProjectAssetTreeNode[]): ProjectAssetTreeNode[] => {
+const sortFlat = (nodes: ProjectAssetTreeNode[]): ProjectAssetTreeNode[] => {
   const cmp =
     props.sort.by === 'name' ? sortByName : props.sort.by === 'size' ? sortBySize : sortByMtime
   const dirFirst = (a: ProjectAssetTreeNode, b: ProjectAssetTreeNode) => {
     if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
     return 0
   }
-  const sorted = [...nodes].sort((a, b) => {
+  return [...nodes].sort((a, b) => {
     const d = dirFirst(a, b)
     return d !== 0 ? d : props.sort.order === 'asc' ? cmp(a, b) : -cmp(a, b)
   })
-  return sorted.map((n) =>
-    n.isDirectory && n.children ? { ...n, children: sortNodes(n.children) } : n
-  )
 }
 
-const filterTree = (nodes: ProjectAssetTreeNode[], kw: string): ProjectAssetTreeNode[] => {
-  if (!kw) return nodes
-  const result: ProjectAssetTreeNode[] = []
-  for (const node of nodes) {
-    if (node.isFile) {
-      if (node.name.toLowerCase().includes(kw)) result.push(node)
-    } else {
-      const children = node.children ? filterTree(node.children, kw) : []
-      if (node.name.toLowerCase().includes(kw) || children.length > 0) {
-        result.push({ ...node, children })
-      }
-    }
-  }
-  return result
-}
-
-const countTree = (nodes: ProjectAssetTreeNode[]): number =>
-  nodes.reduce((acc, n) => acc + 1 + (n.children ? countTree(n.children) : 0), 0)
-
-const displayTree = computed(() => {
+const displayList = computed(() => {
+  if (!tree.value || tree.value.length === 0) return []
+  const children = props.currentDir === props.rootDir
+    ? tree.value
+    : (findNodeByPath(tree.value, props.currentDir)?.children ?? [])
   const kw = props.keyword.trim().toLowerCase()
-  const filtered = filterTree(tree.value, kw)
-  return sortNodes(filtered)
+  const filtered = kw ? children.filter(c => c.name.toLowerCase().includes(kw)) : children
+  return sortFlat(filtered)
 })
-
-watch(
-  displayTree,
-  (nodes) => {
-    emit('filtered-count', countTree(nodes))
-  },
-  { immediate: true }
-)
 
 const handleSelectChange = (keys: string[]) => {
   emit('update:selected', keys)
@@ -157,7 +145,11 @@ const handleSelectChange = (keys: string[]) => {
 const handleRowDblclick = (ctx: unknown) => {
   const row = getRowFileItem(ctx)
   if (!row) return
-  if (row.isFile) emit('open', row)
+  if (row.isDirectory) {
+    emit('navigate', row.path)
+  } else {
+    emit('open', row)
+  }
 }
 
 const getRowFileItem = (ctx: unknown): FileItem | null => {
@@ -180,9 +172,6 @@ const isFileItem = (value: unknown): value is FileItem => {
   )
 }
 
-/**
- * 点击名称：目录行由 t-enhanced-table 处理展开；文件行触发打开
- */
 const handleNameClick = (row: FileItem) => {
   if (row.isFile) emit('open', row)
 }

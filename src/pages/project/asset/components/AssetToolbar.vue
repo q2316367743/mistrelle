@@ -65,7 +65,6 @@ import {
   SearchIcon,
   UploadIcon
 } from 'tdesign-icons-vue-next'
-import { buildProjectAssetDirPath } from '@/modules/project'
 import { MessageUtil } from '@/utils/modal'
 import { openAssetMkdirDialog } from '../modals/AssetMkdirDialog'
 
@@ -75,7 +74,7 @@ interface SortOption {
 }
 
 const props = defineProps<{
-  id: string
+  currentDir: string
   selected: string[]
   keyword: string
   sort: SortOption
@@ -95,8 +94,6 @@ const handleSortChange = (v: string) => {
   const [by, order] = v.split('-') as [SortOption['by'], SortOption['order']]
   emit('sort-change', { by, order })
 }
-
-const rootDir = computed(() => buildProjectAssetDirPath(props.id))
 
 const splitName = (p: string) => p.split('/').pop() || p.split('\\').pop() || 'file'
 
@@ -138,7 +135,7 @@ const handleUploadFile = async () => {
   })
   if (!paths || paths.length === 0) return
   try {
-    const target = rootDir.value
+    const target = props.currentDir
     for (const p of paths) {
       const dest = uniquePath(target, splitName(p))
       await window.preload.fs.copyFile(p, dest)
@@ -157,7 +154,7 @@ const handleUploadDir = async () => {
   })
   if (!paths || paths.length === 0) return
   try {
-    const target = rootDir.value
+    const target = props.currentDir
     for (const p of paths) {
       const destDir = uniquePath(target, splitName(p))
       await window.preload.fs.mkdir(destDir)
@@ -171,7 +168,7 @@ const handleUploadDir = async () => {
 }
 
 const handleMkdir = async () => {
-  await openAssetMkdirDialog({ targetDir: rootDir.value })
+  await openAssetMkdirDialog({ targetDir: props.currentDir })
   emit('uploaded')
 }
 </script>

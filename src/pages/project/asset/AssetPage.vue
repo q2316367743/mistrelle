@@ -1,7 +1,7 @@
 <template>
   <div class="asset-page">
     <asset-toolbar
-      :id="id"
+      :current-dir="currentDir"
       :selected="selectedKeys"
       :keyword="keyword"
       :sort="sort"
@@ -11,11 +11,26 @@
       @refresh="reload"
       @batch-delete="handleBatchDelete"
     />
+    <div class="asset-nav">
+      <t-button variant="text" shape="square" :disabled="!canGoBack" @click="handleGoBack">
+        <template #icon><ChevronLeftIcon /></template>
+      </t-button>
+      <template v-for="(crumb, i) in breadcrumbs" :key="crumb.path">
+        <t-link v-if="i < breadcrumbs.length - 1" theme="primary" @click="handleBreadcrumbClick(crumb.path)">
+          {{ crumb.label }}
+        </t-link>
+        <span v-else class="asset-nav__current">{{ crumb.label }}</span>
+        <span v-if="i < breadcrumbs.length - 1" class="asset-nav__sep">/</span>
+      </template>
+    </div>
     <asset-table
+      :root-dir="rootDir"
+      :current-dir="currentDir"
       :keyword="keyword"
       :sort="sort"
       v-model:selected="selectedKeys"
       @open="openItem"
+      @navigate="handleNavigate"
       @rename="handleRename"
       @delete="handleDelete"
     />
@@ -23,9 +38,11 @@
 </template>
 
 <script lang="ts" setup>
-import { inject, ref } from 'vue'
+import { computed, inject, ref } from 'vue'
+import { ChevronLeftIcon } from 'tdesign-icons-vue-next'
 import AssetToolbar from './components/AssetToolbar.vue'
 import AssetTable from './components/AssetTable.vue'
+import { buildProjectAssetDirPath } from '@/modules/project'
 import { openFilePreview, type ProductFile } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
@@ -43,8 +60,53 @@ const sort = ref<SortOption>({ by: 'name', order: 'asc' })
 const assetContext = inject(projectAssetContextKey)
 if (!assetContext) throw new Error('Project asset context is required')
 
+const rootDir = computed(() => buildProjectAssetDirPath(props.id))
+const currentDir = ref(rootDir.value)
+
+const breadcrumbs = computed(() => {
+  const root = rootDir.value
+  if (currentDir.value === root) return [{ label: '根目录', path: root }]
+  const rel = currentDir.value.slice(root.length).replace(/^\//, '').split('/')
+  const crumbs = [{ label: '根目录', path: root }]
+  let acc = root
+  for (const seg of rel) {
+    acc = window.preload.path.join(acc, seg)
+    crumbs.push({ label: seg, path: acc })
+  }
+  return crumbs
+})
+
+const canGoBack = computed(() => currentDir.value !== rootDir.value)
+
+const handleNavigate = (dir: string) => {
+  if (currentDir.value === dir) return
+  selectedKeys.value = []
+  currentDir.value = dir
+}
+
+const handleGoBack = () => {
+  const parent = window.preload.path.dirname(currentDir.value)
+  if (parent && parent.startsWith(rootDir.value)) {
+    currentDir.value = parent
+  } else {
+    currentDir.value = rootDir.value
+  }
+}
+
+const handleBreadcrumbClick = (path: string) => {
+  if (currentDir.value === path) return
+  selectedKeys.value = []
+  currentDir.value = path
+}
+
 const reload = () => {
-  assetContext.refresh().catch((e) => MessageUtil.error('刷新资产失败', e))
+  assetContext.refresh()
+    .then(() => {
+      if (!window.preload.fs.existsSync(currentDir.value)) {
+        currentDir.value = rootDir.value
+      }
+    })
+    .catch((e) => MessageUtil.error('刷新资产失败', e))
 }
 
 const openItem = (item: FileItem) => {
@@ -105,5 +167,24 @@ const handleBatchDelete = async (paths: string[]) => {
   flex-direction: column;
   height: 100%;
   gap: 12px;
+}
+
+.asset-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  min-height: 32px;
+  flex-shrink: 0;
+
+  &__sep {
+    color: var(--td-text-color-placeholder);
+    margin: 0 2px;
+  }
+
+  &__current {
+    color: var(--td-text-color-primary);
+    font-size: 14px;
+  }
 }
 </style>
