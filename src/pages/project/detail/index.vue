@@ -156,6 +156,7 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   background: var(--td-bg-color-page);
+  position: relative;
 }
 
 .project-detail-header {

@@ -36,7 +36,6 @@
 </template>
 <script lang="ts" setup>
 import { ChatMessage, type ToolCallContent } from '@/domain'
-import { AiChatItem } from '@/entity'
 import { FileIcon, FileMarkdownIcon, FolderIcon } from 'tdesign-icons-vue-next'
 import type { TreeOptionData, TreeNodeModel } from 'tdesign-vue-next'
 import { openFilePreview } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
@@ -52,10 +51,6 @@ const props = defineProps({
   messages: {
     type: Array as PropType<Array<ChatMessage>>,
     default: () => []
-  },
-  chat: {
-    type: Object as PropType<AiChatItem>,
-    required: true
   },
   workspace: {
     type: String

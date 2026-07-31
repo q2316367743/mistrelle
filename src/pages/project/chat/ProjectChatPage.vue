@@ -4,6 +4,7 @@
     class="project-chat-page"
     :storage-key="storageKey"
     :chat-id="taskId"
+    chat-name=""
     :sandbox-dir="sandboxDir"
     height="calc(100vh - 125px)"
   />

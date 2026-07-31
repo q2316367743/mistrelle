@@ -1,7 +1,8 @@
 <template>
     <l-chat-engine
       v-if="storageKey && chat"
-      :chat="chat"
+      :chat-id="chat.id"
+      :chat-name="chat.name"
       :storage-key="storageKey"
     />
     <loading-result v-else title="正在加载中" />

@@ -23,10 +23,10 @@
       />
     </t-content>
     <t-aside v-if="aside" width="240px" class="l-chat-tool__aside shrink-0">
-      <l-chat-aside :chat="chat" :messages="messages" :workspace="workspace" />
+      <l-chat-aside :messages="messages" :workspace="workspace" />
     </t-aside>
     <div class="l-chat-tool__header" :class="{ collapsed: collapsed }">
-      <div class="l-chat-tool__title">{{ chat.name }}</div>
+      <div class="l-chat-tool__title">{{ chatName }}</div>
       <t-button theme="default" variant="text" shape="square" @click="toggleAside()">
         <template #icon>
           <app-icon />
@@ -48,7 +48,8 @@ import { useBoolState } from '@/hooks'
 
 const props = withDefaults(
   defineProps<{
-    chat: AiChatItem
+    chatId: string
+    chatName: string
     storageKey: string
     /** 外部指定沙盒目录，缺省时按 chatId 自动推导 */
     sandboxDir?: string
@@ -67,7 +68,7 @@ const mode = ref<AiChatMode>(0)
 const [aside, toggleAside] = useBoolState(false)
 
 const sandboxDir = computed(() => {
-  return props.sandboxDir || getSandboxDir(props.chat.id)
+  return props.sandboxDir || getSandboxDir(props.chatId)
 })
 
 /** 策略层已裁决为 ask，此处仅负责弹窗询问用户 */
