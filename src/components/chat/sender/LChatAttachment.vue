@@ -47,7 +47,7 @@
                   @click="selectSkill(item)"
                 >
                   <span class="l-chat-attachment__row-avatar">{{ item.name.charAt(0) }}</span>
-                  <div class="l-chat-attachment__row-info">
+                  <div class="l-chat-attachment__row-info" :title="item.name">
                     <span class="l-chat-attachment__row-name">{{ item.name }}</span>
                     <span class="l-chat-attachment__row-desc">{{
                       item.description || item.dirName
@@ -72,7 +72,7 @@
                     <span class="l-chat-attachment__row-avatar is-tool">{{
                       String(tool.label).charAt(0)
                     }}</span>
-                    <div class="l-chat-attachment__row-info">
+                    <div class="l-chat-attachment__row-info" :title="tool.label">
                       <span class="l-chat-attachment__row-name">{{ tool.label }}</span>
                       <span class="l-chat-attachment__row-desc">{{ tool.value }}</span>
                     </div>
@@ -90,8 +90,8 @@
                   <div
                     v-for="item in group.children"
                     :key="item.id"
-                    class="l-chat-attachment__row"
-                    :class="{ 'is-active': item.id === agent }"
+                    :class="['l-chat-attachment__row', { 'is-active': item.id === agent }]"
+                    :title="item.name"
                     @click="selectAgent(item.id)"
                   >
                     <span class="l-chat-attachment__row-avatar is-expert">{{
@@ -115,6 +115,7 @@
                   v-for="item in modeToggleOptions"
                   :key="item.value"
                   class="l-chat-attachment__mode-row"
+                  :title="item.label"
                   @click="selectMode(item.value)"
                 >
                   <span class="l-chat-attachment__mode-label">{{ item.label }}</span>
@@ -137,7 +138,7 @@
                     @click="selectRefItem(file)"
                   >
                     <file-icon class="l-chat-attachment__row-icon" />
-                    <div class="l-chat-attachment__row-info">
+                    <div class="l-chat-attachment__row-info" :title="file.name">
                       <span class="l-chat-attachment__row-name">{{ file.name }}</span>
                       <span class="l-chat-attachment__row-desc">{{ file.relativePath }}</span>
                     </div>
@@ -145,14 +146,20 @@
                 </template>
                 <template v-if="workspaceDir">
                   <div class="l-chat-attachment__group-title">工作空间</div>
-                  <div v-if="canBackWorkspace" class="l-chat-attachment__row" @click="backWorkspaceDir">
+                  <div
+                    v-if="canBackWorkspace"
+                    class="l-chat-attachment__row"
+                    @click="backWorkspaceDir"
+                  >
                     <folder-icon class="l-chat-attachment__row-icon" />
                     <div class="l-chat-attachment__row-info">
                       <span class="l-chat-attachment__row-name">返回上级</span>
                       <span class="l-chat-attachment__row-desc">{{ workspaceRelativeDir }}</span>
                     </div>
                   </div>
-                  <div v-if="workspaceFiles.loading" class="l-chat-attachment__empty">加载中...</div>
+                  <div v-if="workspaceFiles.loading" class="l-chat-attachment__empty">
+                    加载中...
+                  </div>
                   <template v-else>
                     <div
                       v-for="item in workspaceFiles.items"
@@ -166,7 +173,9 @@
                       />
                       <div class="l-chat-attachment__row-info">
                         <span class="l-chat-attachment__row-name">{{ item.name }}</span>
-                        <span class="l-chat-attachment__row-desc">{{ workspaceItemDesc(item) }}</span>
+                        <span class="l-chat-attachment__row-desc">{{
+                          workspaceItemDesc(item)
+                        }}</span>
                       </div>
                     </div>
                     <div v-if="workspaceFiles.items.length === 0" class="l-chat-attachment__empty">
@@ -205,7 +214,7 @@
                     @click="selectSandboxFile(file)"
                   >
                     <file-icon class="l-chat-attachment__row-icon" />
-                    <div class="l-chat-attachment__row-info">
+                    <div class="l-chat-attachment__row-info" :title="file.name">
                       <span class="l-chat-attachment__row-name">{{ file.name }}</span>
                       <span class="l-chat-attachment__row-desc">{{ file.relativePath }}</span>
                     </div>
@@ -380,11 +389,17 @@ const projectFiles = computed(() => props.projectFiles)
 const workspaceDir = computed(() => props.workspaceDir)
 const canBackWorkspace = computed(() => {
   if (!workspaceCurrentDir.value || !props.workspaceDir) return false
-  return window.preload.path.resolve(workspaceCurrentDir.value) !== window.preload.path.resolve(props.workspaceDir)
+  return (
+    window.preload.path.resolve(workspaceCurrentDir.value) !==
+    window.preload.path.resolve(props.workspaceDir)
+  )
 })
 const workspaceRelativeDir = computed(() => {
   if (!workspaceCurrentDir.value || !props.workspaceDir) return ''
-  return relativeFromRoot(workspaceCurrentDir.value, props.workspaceDir) || window.preload.path.basename(props.workspaceDir)
+  return (
+    relativeFromRoot(workspaceCurrentDir.value, props.workspaceDir) ||
+    window.preload.path.basename(props.workspaceDir)
+  )
 })
 
 /** 导航项配置（左侧） */
@@ -564,7 +579,9 @@ const relativeFromRoot = (filePath: string, rootDir: string): string => {
   const full = window.preload.path.resolve(filePath)
   const prefix = root.endsWith(window.preload.path.sep) ? root : `${root}${window.preload.path.sep}`
   if (full === root) return ''
-  return full.startsWith(prefix) ? full.slice(prefix.length).split(window.preload.path.sep).join('/') : full
+  return full.startsWith(prefix)
+    ? full.slice(prefix.length).split(window.preload.path.sep).join('/')
+    : full
 }
 
 /** 跳转到专家管理页面 */
