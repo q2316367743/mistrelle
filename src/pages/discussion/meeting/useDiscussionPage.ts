@@ -39,7 +39,7 @@ export const useDiscussionPage = () => {
   const orderedRoles = computed(() => {
     if (!discussion.value) return []
     const agentStore = useAiAgentStore()
-    const agents = agentStore.state
+    const agents = agentStore.all
     return discussion.value.roles
       .map((id) => agents.find((a) => a.id === id))
       .filter(Boolean) as AiAgent[]

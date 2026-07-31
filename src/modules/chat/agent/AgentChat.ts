@@ -133,10 +133,9 @@ export class ToolChat {
   private buildWorkspacePrompt(): string {
     const parts: string[] = ['## 文件系统']
     if (this.sandboxDir) {
-      parts.push(`- 沙盒目录：${this.sandboxDir}`)
-      parts.push(`  - inputs/：用户引入的附件文件`)
-      parts.push(`  - outputs/：你的产出文件（无工作空间时的默认输出位置）`)
-      parts.push(`  - tmp/：临时文件目录`)
+      parts.push(
+        `- 沙盒目录：${this.sandboxDir}/inputs/：你的产出文件（无工作空间时的默认输出位置）`
+      )
     }
     if (this.workspace) {
       parts.push(`- 用户工作空间：${this.workspace}`)

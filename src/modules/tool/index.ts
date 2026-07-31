@@ -4,7 +4,6 @@ import { dateTools } from '@/modules/tool/components/date'
 import {
   injectOsTools,
   injectClipboardTools,
-  injectNotificationTools,
   injectScreenTools,
   injectBrowserTools,
   injectFfmpegTools
@@ -40,8 +39,8 @@ export const toolGroups: Array<ToolGroup> = [
   { group: '日期工具', tools: dateTools },
   { group: '系统信息', tools: injectOsTools },
   { group: '剪贴板', tools: injectClipboardTools },
-  { group: '通知', tools: injectNotificationTools },
   { group: '屏幕', tools: injectScreenTools },
+  { group: '媒体工具', tools: [...injectFfmpegTools] },
   { group: '浏览器', tools: [...injectBrowserTools, ...nativeBrowserAutomationTools] },
   { group: '专家管理', tools: agentTools }
 ]
@@ -52,22 +51,10 @@ export const toolOptions: Array<ToolOption> = toolGroups.map((e) => ({
   children: toOptions(e.tools)
 }))
 
-export const tools: Array<ToolFunction> = [
-  ...dateTools,
-  ...injectOsTools,
-  ...injectClipboardTools,
-  ...injectNotificationTools,
-  ...injectScreenTools,
-  ...injectBrowserTools,
-  ...injectFfmpegTools,
-  ...nativeBrowserAutomationTools
-]
-
 export const toolMap: Record<string, ToolFunction> = {
   ...objectify(dateTools, 'name'),
   ...objectify(injectOsTools, 'name'),
   ...objectify(injectClipboardTools, 'name'),
-  ...objectify(injectNotificationTools, 'name'),
   ...objectify(injectScreenTools, 'name'),
   ...objectify(injectBrowserTools, 'name'),
   ...objectify(injectFfmpegTools, 'name'),

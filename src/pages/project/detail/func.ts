@@ -13,7 +13,7 @@ export const useAgentToolLabels = () => {
   })
 
   const agentLabel = (id: string) =>
-    agentStore.state.find((a) => a.id === id)?.name ?? id
+    agentStore.all.find((a) => a.id === id)?.name ?? id
 
   const toolLabel = (name: string) => toolMap[name]?.label ?? name
 

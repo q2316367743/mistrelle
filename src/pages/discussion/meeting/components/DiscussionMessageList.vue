@@ -72,7 +72,7 @@ const listRef = ref<HTMLElement>()
 const aiAgentStore = useAiAgentStore()
 const roleMap = computed(() => {
   const map = new Map<string, AiAgent>()
-  const agents = aiAgentStore.state
+  const agents = aiAgentStore.all
   props.roles.forEach((id) => {
     const agent = agents.find((a) => a.id === id)
     if (agent) map.set(agent.id, agent)

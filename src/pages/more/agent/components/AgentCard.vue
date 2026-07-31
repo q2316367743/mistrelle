@@ -30,6 +30,7 @@
       {{ agent.description || '暂无描述' }}
     </div>
     <div class="agent-card__tags">
+      <t-tag v-if="agent.builtin" size="small" variant="light" theme="primary">内置 </t-tag>
       <t-tag v-if="agent.category" size="small" variant="outline" theme="primary">{{
         AI_AGENT_CATEGORY_MAP[agent.category]
       }}</t-tag>

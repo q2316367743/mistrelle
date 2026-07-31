@@ -29,7 +29,7 @@ const buildTranscript = (
   messages: AiDiscussionMessage[]
 ) => {
   const agentStore = useAiAgentStore()
-  const agents = agentStore.state
+  const agents = agentStore.all
   const roleMap = new Map<string, string>()
   discussion.roles.forEach((id) => {
     const agent = agents.find((a) => a.id === id)

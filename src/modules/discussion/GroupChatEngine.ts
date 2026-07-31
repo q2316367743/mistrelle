@@ -61,7 +61,7 @@ ${othersHint}
 /** 把上下文消息转成带说话人标签的 transcript，供每个成员参考（保留 @ 原文） */
 export const buildTranscript = (discussion: AiDiscussion, messages: AiGroupChatMessage[]) => {
   const agentStore = useAiAgentStore()
-  const agents = agentStore.state
+  const agents = agentStore.all
   const roleMap = new Map<string, string>()
   discussion.roles.forEach((id) => {
     const agent = agents.find((a) => a.id === id)
@@ -179,7 +179,7 @@ export class GroupChatEngine {
       ...buildMemoryTools(this.chat.discussionId)
     ]
     const agentStore = useAiAgentStore()
-    const agents = agentStore.state
+    const agents = agentStore.all
     const allRoles = this.discussion.roles.map((id) => agents.find((a) => a.id === id)).filter(Boolean) as AiAgent[]
     const chat = new ToolChat({
       functions,

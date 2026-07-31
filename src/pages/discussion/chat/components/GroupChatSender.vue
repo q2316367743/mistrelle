@@ -79,7 +79,7 @@ const skills = ref<LocalSkill[]>([])
 const files = ref<ChatFileRef[]>([])
 const aiAgentStore = useAiAgentStore()
 const roleMentions = computed<RoleMention[]>(() => {
-  const agents = aiAgentStore.state
+  const agents = aiAgentStore.all
   return props.roles
     .map((id) => agents.find((r) => r.id === id))
     .filter((r): r is AiAgent => !!r)

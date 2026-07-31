@@ -76,7 +76,7 @@ const messages = computed(() => props.chat?.messages ?? [])
 const aiAgentStore = useAiAgentStore()
 const roleNameMap = computed(() => {
   const map = new Map<string, string>()
-  const agents = aiAgentStore.state
+  const agents = aiAgentStore.all
   props.discussion.roles.forEach((id) => {
     const agent = agents.find((a) => a.id === id)
     if (agent) map.set(agent.id, agent.name)

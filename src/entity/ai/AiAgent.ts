@@ -3,7 +3,6 @@ import { toolMap } from '@/modules/tool'
 import type { CommonSelect } from '@/domain'
 
 export const AI_AGENT_CATEGORIES = [
-  { value: 'built-in', label: ' 内置' },
   { value: 'industry-consulting', label: '行业顾问' },
   { value: 'technology-engineering', label: '技术工程' },
   { value: 'product-design', label: '产品设计' },
@@ -19,7 +18,7 @@ export const AI_AGENT_CATEGORIES = [
   { value: 'legal-security', label: '法务安全' }
 ] as const
 
-export type AiAgentCategory = (typeof AI_AGENT_CATEGORIES)[number]['value']
+export type AiAgentCategory = (typeof AI_AGENT_CATEGORIES)[number]['value'] | 'built-in'
 export const AI_AGENT_CATEGORY_OPTIONS: CommonSelect[] = AI_AGENT_CATEGORIES.map(
   (c) => ({ value: c.value, label: c.label })
 )
