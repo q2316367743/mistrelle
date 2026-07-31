@@ -182,7 +182,7 @@ async function openMarkdownPreview(file: ProductFile) {
       </div>
     ),
     placement: 'center',
-    width: '70vw',
+    width: '80vw',
     footer: () => renderFooter(file.fullPath),
     default: () => (
       <div style={{ width: 'calc(100% - 2px)' }}>
@@ -212,7 +212,7 @@ async function openCodePreview(file: ProductFile) {
   DialogPlugin({
     header: file.fileName,
     placement: 'center',
-    width: '70vw',
+    width: '80vw',
     footer: () => renderFooter(file.fullPath),
     default: () => (
       <div style={{ width: 'calc(100% - 2px)' }}>
@@ -227,7 +227,7 @@ function openImagePreview(file: ProductFile) {
   DialogPlugin({
     header: file.fileName,
     placement: 'center',
-    width: '70vw',
+    width: '80vw',
     footer: () => renderFooter(file.fullPath),
     default: () => (
       <div style={{ textAlign: 'center' }}>
@@ -251,7 +251,7 @@ function openVideoPreview(file: ProductFile) {
   DialogPlugin({
     header: file.fileName,
     placement: 'center',
-    width: '70vw',
+    width: '80vw',
     footer: () => renderFooter(file.fullPath),
     default: () => (
       <div style={{ textAlign: 'center' }}>

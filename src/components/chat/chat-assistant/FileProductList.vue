@@ -25,7 +25,16 @@
 </template>
 <script lang="ts" setup>
 import type { AIMessage, ToolCallContent } from '@/domain'
-import { FileCodeIcon, FileExcelIcon, FileIcon, FileImageIcon, FileMarkdownIcon, FileMusicIcon, FileWordIcon, VideoIcon } from 'tdesign-icons-vue-next'
+import {
+  FileCodeIcon,
+  FileExcelIcon,
+  FileIcon,
+  FileImageIcon,
+  FileMarkdownIcon,
+  FileMusicIcon,
+  FileWordIcon,
+  VideoIcon
+} from 'tdesign-icons-vue-next'
 import { openFilePreview, type ProductFile } from './modals/FilePreviewDialog'
 
 const props = defineProps({
@@ -50,7 +59,7 @@ const products = computed<ProductFile[]>(() => {
       const parsed = JSON.parse(args)
       const fullPath: string = parsed.path ?? ''
       if (!fullPath) continue
-      const fileName = fullPath.split('/').pop() || fullPath.split('\\').pop() || fullPath
+      const fileName = window.preload.path.basename(fullPath)
       result.push({ fileName, fullPath })
     } catch {
       // ignore parse errors
@@ -60,24 +69,67 @@ const products = computed<ProductFile[]>(() => {
 })
 
 const CODE_EXTS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.vue', '.json', '.css', '.less', '.html',
-  '.py', '.rs', '.go', '.java', '.c', '.cpp', '.h', '.hpp', '.yaml', '.yml',
-  '.toml', '.xml', '.sh', '.bat', '.cmd', '.sql', '.rb', '.php',
-  '.swift', '.kt', '.dart', '.scss', '.sass', '.styl', '.pl', '.lua', '.r',
-  '.groovy', '.tex', '.ini', '.cfg', '.conf', '.env', '.gradle', '.tf',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.vue',
+  '.json',
+  '.css',
+  '.less',
+  '.html',
+  '.py',
+  '.rs',
+  '.go',
+  '.java',
+  '.c',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.yaml',
+  '.yml',
+  '.toml',
+  '.xml',
+  '.sh',
+  '.bat',
+  '.cmd',
+  '.sql',
+  '.rb',
+  '.php',
+  '.swift',
+  '.kt',
+  '.dart',
+  '.scss',
+  '.sass',
+  '.styl',
+  '.pl',
+  '.lua',
+  '.r',
+  '.groovy',
+  '.tex',
+  '.ini',
+  '.cfg',
+  '.conf',
+  '.env',
+  '.gradle',
+  '.tf'
 ])
 
 const IMAGE_EXTS = new Set([
-  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp', '.avif',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.webp',
+  '.ico',
+  '.bmp',
+  '.avif'
 ])
 
-const VIDEO_EXTS = new Set([
-  '.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv',
-])
+const VIDEO_EXTS = new Set(['.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv'])
 
-const AUDIO_EXTS = new Set([
-  '.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus',
-])
+const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus'])
 
 function getExt(path: string) {
   const i = path.lastIndexOf('.')

@@ -1,11 +1,11 @@
 <template>
-  <div class="l-chat-tool">
-    <div class="l-chat-tool__content">
+  <t-layout class="l-chat-tool">
+    <t-content class="l-chat-tool__content">
       <r-chat-list
         :messages="messages"
         :clear-history="messages.length > 1 && status !== 'streaming'"
         :status="status"
-        style="flex: 1"
+        style="flex: 1; margin-top: 8px"
         @clear="handleClear"
         @delete="handleDeleteMessage"
         @change="handleMessagesChange"
@@ -21,27 +21,41 @@
         @send="handleSend"
         @stop="handleStop()"
       />
+    </t-content>
+    <t-aside v-if="aside" width="240px" class="l-chat-tool__aside shrink-0">
+      <l-chat-aside :chat="chat" :messages="messages" />
+    </t-aside>
+    <div class="l-chat-tool__header" :class="{ collapsed: collapsed }">
+      <div class="l-chat-tool__title">{{ chat.name }}</div>
+      <t-button theme="default" variant="text" shape="square" @click="toggleAside()">
+        <template #icon>
+          <app-icon />
+        </template>
+      </t-button>
     </div>
-  </div>
+  </t-layout>
 </template>
 <script lang="ts" setup>
 import type { ChatRequestParams } from '@/modules/chat'
 import { ToolChat, aiChatContentGet, aiChatContentSet, getSandboxDir } from '@/modules/chat'
 import type { UserMessage } from '@/domain'
-import type { AiChatContent, AiChatMode } from '@/entity/ai'
+import { AiChatContent, AiChatItem, AiChatMode } from '@/entity/ai'
 import { toolConfirmDialog } from '@/components/chat/modals/ToolConfirmDialog'
 import { toolMap } from '@/modules/tool'
+import { collapsed } from '@/global/BeanFactory'
+import { AppIcon } from 'tdesign-icons-vue-next'
+import { useBoolState } from '@/hooks'
 
 const props = withDefaults(
   defineProps<{
-    chatId: string
+    chat: AiChatItem
     storageKey: string
     /** 外部指定沙盒目录，缺省时按 chatId 自动推导 */
     sandboxDir?: string
     height?: string
   }>(),
   {
-    height: 'calc(100vh - 66px)'
+    height: '100vh'
   }
 )
 
@@ -50,9 +64,10 @@ const modelValue = ref('')
 const initialAgentId = ref('')
 const workspace = ref('')
 const mode = ref<AiChatMode>(0)
+const [aside, toggleAside] = useBoolState(false)
 
 const sandboxDir = computed(() => {
-  return props.sandboxDir || getSandboxDir(props.chatId)
+  return props.sandboxDir || getSandboxDir(props.chat.id)
 })
 
 /** 策略层已裁决为 ask，此处仅负责弹窗询问用户 */
@@ -149,21 +164,48 @@ onUnmounted(() => {
 </script>
 <style scoped lang="less">
 .l-chat-tool {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 0;
   overflow: hidden;
-  padding: 8px;
   height: v-bind(height);
-}
+  padding: 48px 8px 16px;
 
-.l-chat-tool__content {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  width: 100%;
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 0;
+
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+  }
+  &__header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    color: var(--td-text-color-primary);
+    padding: 8px;
+    transition: padding-left 0.1s ease-in-out;
+    border-bottom: 1px solid var(--td-border-level-1-color);
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+
+    &.collapsed {
+      padding-left: 48px;
+    }
+  }
+  &__title {
+    display: flex;
+    align-items: center;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  &__aside {
+    border-left: 1px solid var(--td-border-level-1-color);
+  }
 }
 </style>

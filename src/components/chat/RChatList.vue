@@ -99,6 +99,7 @@ const scrollToMessage = (messageId: string) => {
   min-height: 0;
   overflow: hidden;
   padding-bottom: 8px;
+  width: 100%;
 }
 
 .r-chat-list__content {
