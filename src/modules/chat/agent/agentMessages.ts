@@ -8,11 +8,13 @@ import type {
 } from '@/domain'
 import { nanoid } from 'nanoid'
 import { prettyDurationTime, toDateString } from '@/utils/lang'
+import { AiChatMode } from '@/entity'
 
 export const createPendingAssistantMessage = (params: {
   model: string
   provide: string
   agentId?: string
+  mode: AiChatMode
 }): AIMessage => ({
   role: 'assistant',
   content: [],
@@ -21,7 +23,8 @@ export const createPendingAssistantMessage = (params: {
   id: nanoid(),
   model: params.model,
   provide: params.provide,
-  agentId: params.agentId
+  agentId: params.agentId,
+  mode: params.mode
 })
 
 const getAssistant = (messages: Ref<ChatMessage[]>, messageId: string): AIMessage | undefined => {

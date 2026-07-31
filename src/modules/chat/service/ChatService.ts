@@ -86,7 +86,8 @@ export const aiChatContentGet = async (path: string): Promise<AiChatContent | un
         agentId: '',
         workspace: '',
         updatedTime: data.updatedAt || Date.now(),
-        messages: data.list as ChatMessage[]
+        messages: data.list as ChatMessage[],
+        mode: 0
       }
     }
     return data as AiChatContent

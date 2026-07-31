@@ -1,3 +1,5 @@
+import { AiChatMode } from '@/entity'
+
 export type ChatMessageRole = 'user' | 'assistant' | 'system'
 export type ChatMessageStatus = 'pending' | 'streaming' | 'complete' | 'stop' | 'error'
 export type ChatStatus = 'idle' | ChatMessageStatus
@@ -159,6 +161,8 @@ export interface AIMessage extends ChatBaseMessage {
   provide: string
   // agent ID
   agentId?: string
+  // 聊天模式
+  mode: AiChatMode
   // 内容
   content?: AIMessageContent[]
   // 历史消息

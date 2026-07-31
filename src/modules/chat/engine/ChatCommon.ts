@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import type { ChatCompletionChunk } from 'openai/resources/chat/completions'
 import type { AIMessageContent, UserMessageContent } from '@/domain'
+import { AiChatMode } from '@/entity'
 
 // ==========================================
 //  公共类型定义
@@ -18,6 +19,8 @@ export interface ChatRequestParams {
     provide: string
     reasoning_effort?: 'high' | 'max'
   }
+  // 模式
+  mode: AiChatMode
   agentId?: string
   workspace?: string
 }
@@ -25,6 +28,12 @@ export interface ChatRequestParams {
 export interface ResolvedChatRequestParams extends ChatRequestParams {
   baseURL: string
   apiKey?: string
+}
+
+/** onRequest 可返回的请求覆盖项；刻意不含 fetch 的 `mode` 等会与 chat 字段冲突的项 */
+export type ChatRequestOverride = {
+  body?: Record<string, unknown>
+  headers?: HeadersInit
 }
 
 export interface ChatServiceConfig {
@@ -35,8 +44,8 @@ export interface ChatServiceConfig {
   onRequest?: (
     params: ResolvedChatRequestParams
   ) =>
-    | (ResolvedChatRequestParams & RequestInit)
-    | Promise<ResolvedChatRequestParams & RequestInit>
+    | (Partial<ResolvedChatRequestParams> & ChatRequestOverride)
+    | Promise<Partial<ResolvedChatRequestParams> & ChatRequestOverride>
   onStart?: (chunk: string) => void
   isValidChunk?: (chunk: SSEChunkData) => boolean
   onComplete?: (

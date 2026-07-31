@@ -7,6 +7,7 @@ export const LocalNameEnum = {
   SETTING_AI: '/setting/ai',
   SETTING_ACCOUNT: '/setting/account',
   SETTING_DEFAULT: '/setting/default',
+  SETTING_GLOBAL: '/setting/global',
   SETTING_SECURE: '/setting/secure',
 
   LIST_AI_TOOL: '/list/ai/tool',

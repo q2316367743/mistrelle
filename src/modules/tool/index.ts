@@ -89,6 +89,7 @@ export const getMcpTools = (): ToolFunction[] => useAiToolStore().getMcpTools()
 export {
   resolveToolPolicy,
   registerToolPolicy,
+  isShellExecTool,
   type ToolPolicyContext,
   type ToolPolicy
 } from './toolPolicy'

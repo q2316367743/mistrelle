@@ -73,7 +73,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       draft: params,
       agentId: agentId || '',
       workspace: workspace || '',
-      messages: []
+      messages: [],
+      mode: params.mode
     })
     // 创建沙盒目录
     await aiChatSandbox(id)

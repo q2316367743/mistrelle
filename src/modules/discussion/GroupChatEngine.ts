@@ -115,6 +115,7 @@ const buildRequestParams = async (
   if (!option)
     throw new Error('成员关联的模型不存在或未启用。请在 AI 设置中确认已配置并启用该模型。')
   return {
+    mode: 0,
     message: {
       content: [buildTextContent(content)],
       model: option.identifier,

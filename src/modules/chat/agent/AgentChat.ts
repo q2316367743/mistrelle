@@ -7,12 +7,13 @@ import type {
   ChatMessage,
   ToolContent,
   ToolFunction,
-  UserMessage,
+  UserMessage
 } from '@/domain'
 import { nanoid } from 'nanoid'
 import { buildSkillCatalogPrompt, localSkillList } from '@/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
-import { defaultTools, getMcpTools, toolMap } from '@/modules/tool'
+import type { AiChatMode } from '@/entity'
+import { defaultTools, getMcpTools, isShellExecTool, toolMap } from '@/modules/tool'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
 import type {
   ChatContext,
@@ -42,6 +43,8 @@ export interface UseChatOptions {
   enableSkill?: boolean
   sandboxDir?: string
   workspace?: string
+  /** 聊天模式（0 默认 / 1 计划 / 2 完全访问），用于约束工具执行行为 */
+  mode?: AiChatMode
 }
 
 export class ToolChat {
@@ -54,6 +57,8 @@ export class ToolChat {
   private readonly toolConfirmHandler?: UseChatOptions['toolConfirmHandler']
   private sandboxDir = ''
   private workspace = ''
+  /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
+  private mode: AiChatMode = 0
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
   private workspaceSettingsCache: { path: string; content: string } | null = null
 
@@ -67,6 +72,7 @@ export class ToolChat {
     this.functions = options.functions ?? []
     this.systemPrompt = options.systemPrompt ?? ''
     this.toolConfirmHandler = options.toolConfirmHandler
+    this.mode = options.mode ?? 0
     if (options.sandboxDir) this.sandboxDir = options.sandboxDir
     if (options.workspace) this.workspace = options.workspace
   }
@@ -110,6 +116,18 @@ export class ToolChat {
         parameters: fn.parameters
       }
     }))
+  }
+
+  /**
+   * 按当前聊天模式过滤暴露给模型的工具，作为模型层兜底：
+   * - 1 计划模式：仅暴露只读 / 分析类（safe）与执行类（shell）工具，写入 / 修改类物理隐藏
+   * - 0 默认 / 2 完全访问：原样返回
+   */
+  private filterToolsByMode(functions: ToolFunction[]): ToolFunction[] {
+    if (this.mode === 1) {
+      return functions.filter((fn) => fn.risk === 'safe' || isShellExecTool(fn))
+    }
+    return functions
   }
 
   private buildWorkspacePrompt(): string {
@@ -168,7 +186,9 @@ export class ToolChat {
       .filter((content): content is AttachmentContent => content.type === 'attachment')
       .flatMap((content) => content.data)
     if (attachments.length === 0) return ''
-    const parts = attachments.map((item) => `## File: ${item.name ?? item.url}\n路径：${item.url}\n`)
+    const parts = attachments.map(
+      (item) => `## File: ${item.name ?? item.url}\n路径：${item.url}\n`
+    )
     return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n---\n')}`
   }
 
@@ -183,13 +203,39 @@ export class ToolChat {
     const workspacePrompt = this.buildWorkspacePrompt()
     const workspaceSettingsPrompt = await this.buildWorkspaceSettingsPrompt()
     // system 前缀保持稳定的可缓存内容；skill 正文由 load_skill 工具按需在对话中加载，不进 system
-    const systemPrompt = [this.systemPrompt, agentPrompt, catalogPrompt, workspacePrompt, workspaceSettingsPrompt].filter(Boolean).join('\n\n')
+    const systemPrompt = [
+      this.systemPrompt,
+      agentPrompt,
+      catalogPrompt,
+      workspacePrompt,
+      workspaceSettingsPrompt
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+    const systemMessages: ChatCompletionMessageParam[] = []
+    if (systemPrompt) systemMessages.push({ role: 'system', content: systemPrompt })
+    // 模式指令作为独立 system 消息追加（不污染稳定 system 提示词，保留缓存前缀）
+    const modeInstruction = this.buildModeInstruction()
+    if (modeInstruction) systemMessages.push({ role: 'system', content: modeInstruction })
     const messages = toAgentRequestMessages(
       this.messages.value,
       assistantMessageId,
       this.buildReferenceContext()
     )
-    return systemPrompt ? [{ role: 'system', content: systemPrompt }, ...messages] : messages
+    return [...systemMessages, ...messages]
+  }
+
+  /**
+   * 根据当前聊天模式生成一段"模式指令"，作为独立 system 消息追加到稳定 system 之后。
+   * 不写入稳定 system 提示词，以保留其缓存前缀；参考 opencode 做法，让 AI 自行收敛行为：
+   * - 1 计划模式：可读取 / 分析、可运行 shell（需审批），但严禁写入 / 修改文件，建议先给计划
+   * - 0 默认 / 2 完全访问：无附加指令
+   */
+  private buildModeInstruction(): string {
+    if (this.mode === 1) {
+      return '【计划模式】当前处于计划模式。你可以读取、分析文件，也可以运行 shell 命令（运行前会请求用户批准）。但你没有任何写入 / 修改文件的权限，禁止创建、编辑或删除任何文件。建议先给出清晰的执行计划，涉及写文件的操作请明确说明并交由用户在默认模式下执行。'
+    }
+    return ''
   }
 
   /** 在同一个 assistant 聊天记录中循环请求模型并执行工具。 */
@@ -202,7 +248,7 @@ export class ToolChat {
     this.status.value = 'streaming'
 
     while (seq === this.ctx.requestSeq && !signal.aborted) {
-      const functions = this.getFunctions(params)
+      const functions = this.filterToolsByMode(this.getFunctions(params))
       const resolvedParams = await this.resolveModel(params)
       const result = await streamAgentStep({
         messages: this.messages,
@@ -228,7 +274,7 @@ export class ToolChat {
         assistantMessageId,
         result.toolCalls,
         functions,
-        { sandboxDir: this.sandboxDir, workspace: this.workspace },
+        { sandboxDir: this.sandboxDir, workspace: this.workspace, mode: this.mode },
         this.toolConfirmHandler
       )
       this.toolCalls.value = [...this.toolCalls.value]
@@ -312,6 +358,7 @@ export class ToolChat {
 
   async sendUserMessage(requestParams: ChatRequestParams): Promise<void> {
     if (!this.canStartRequest()) return
+    this.mode = requestParams.mode ?? this.mode
     if (requestParams.workspace && requestParams.workspace !== this.workspace) {
       this.workspace = requestParams.workspace
       this.workspaceSettingsCache = null
@@ -329,7 +376,8 @@ export class ToolChat {
     const assistantMessage = createPendingAssistantMessage({
       model: message.model,
       provide: message.provide,
-      agentId: requestParams.agentId
+      agentId: requestParams.agentId,
+      mode: this.mode
     })
     this.messages.value = [...this.messages.value, userMessage, assistantMessage]
     await this.executeRequest(requestParams, assistantMessage.id)
@@ -358,6 +406,10 @@ export class ToolChat {
 
   setSandboxDir(path: string): void {
     this.sandboxDir = path
+  }
+
+  setMode(mode: AiChatMode): void {
+    this.mode = mode
   }
 
   init(initialMessages?: ChatMessage[]): void {

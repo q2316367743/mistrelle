@@ -110,21 +110,22 @@
 
               <!-- 模式面板 -->
               <template v-else-if="activePanel === 'mode'">
-                <div class="l-chat-attachment__mode-desc">{{ currentModeDesc }}</div>
                 <div
                   v-for="item in modeToggleOptions"
                   :key="item.value"
                   class="l-chat-attachment__mode-row"
                   :title="item.label"
-                  @click="selectMode(item.value)"
                 >
                   <span class="l-chat-attachment__mode-label">{{ item.label }}</span>
                   <span class="l-chat-attachment__mode-en">{{ item.en }}</span>
-                  <span
-                    class="l-chat-attachment__mode-switch"
-                    :class="{ 'is-on': currentMode === item.value }"
+                  <t-switch
+                    class="ml-auto"
+                    :value="mode === item.value"
+                    @change="selectMode(item.value)"
                   />
                 </div>
+                <t-divider />
+                <div class="l-chat-attachment__mode-desc">{{ currentModeDesc }}</div>
               </template>
 
               <!-- 添加文件 -->
@@ -298,7 +299,7 @@ import type { Component } from 'vue'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { toolOptions } from '@/modules/tool'
 import { useAiAgentStore } from '@/store'
-import { AI_AGENT_CATEGORIES } from '@/entity/ai'
+import { AI_AGENT_CATEGORIES, AiChatMode } from '@/entity/ai'
 import type { ToolSuggestionItem } from './mentionSuggestion'
 import { CommonSelect } from '@/domain'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
@@ -315,7 +316,7 @@ interface NavItem {
 
 /** 模式切换项 */
 interface ModeToggleOption {
-  value: string
+  value: AiChatMode
   label: string
   en: string
 }
@@ -324,14 +325,14 @@ interface ModeToggleOption {
 const props = withDefaults(
   defineProps<{
     agent?: string
-    mode?: string
+    mode?: AiChatMode
     sandboxDir?: string
     workspaceDir?: string
     projectFiles?: ChatFileRef[]
   }>(),
   {
     agent: '',
-    mode: '',
+    mode: 0,
     sandboxDir: '',
     workspaceDir: '',
     projectFiles: () => []
@@ -339,7 +340,7 @@ const props = withDefaults(
 )
 const emit = defineEmits<{
   'update:agent': [agentId: string]
-  'update:mode': [mode: string]
+  'update:mode': [mode: AiChatMode]
   addSkill: [skill: LocalSkill]
   addTool: [tool: ToolSuggestionItem]
   addRefFile: [file: ChatFileRef]
@@ -384,7 +385,6 @@ watch(
 // ─── Computed ─────────────────────────────────────────────
 const agents = computed(() => useAiAgentStore().all)
 const selectedAgent = computed(() => agents.value.find((item) => item.id === props.agent))
-const currentMode = computed(() => props.mode || 'craft')
 const projectFiles = computed(() => props.projectFiles)
 const workspaceDir = computed(() => props.workspaceDir)
 const canBackWorkspace = computed(() => {
@@ -431,12 +431,12 @@ const searchPlaceholder = computed(() => {
 
 /** 当前模式描述文字 */
 const currentModeDesc = computed(() => {
-  const map: Record<string, string> = {
-    craft: '当前为默认模式，可高效执行并完成任务。',
-    plan: '当前为规划模式，会先制定方案再执行。',
-    ask: '当前为咨询模式，仅回答问题不执行操作。'
+  const map: Record<AiChatMode, string> = {
+    0: '当前为默认模式，工具按权限审批执行。',
+    1: '当前为计划模式：可读取 / 分析，可运行 shell（需审批），禁止写入 / 修改文件。',
+    2: '当前为完全访问模式：默认直接执行，仅命中安全黑名单时需你批准。'
   }
-  return map[currentMode.value] ?? '当前为默认模式，可高效执行并完成任务。'
+  return map[props.mode] ?? '当前为默认模式，工具按权限审批执行。'
 })
 
 /** 过滤后的技能列表 */
@@ -470,7 +470,6 @@ const groupedAgents = computed(() => {
     list = list.filter((a) => `${a.name} ${a.description}`.toLowerCase().includes(kw))
   }
   const groups: Array<{ category: string; label: string; children: typeof list }> = []
-  const uncategorized: typeof list = []
   for (const cat of AI_AGENT_CATEGORIES) {
     const children = list.filter((a) => a.category === cat.value)
     if (children.length > 0) {
@@ -484,10 +483,10 @@ const groupedAgents = computed(() => {
   return groups
 })
 
-/** 模式切换选项 */
+/** 模式切换选项（0 默认模式为基准，点击已选中的项会切回 0） */
 const modeToggleOptions: ModeToggleOption[] = [
-  { value: 'plan', label: '计划', en: 'Plan' },
-  { value: 'ask', label: '仅问答', en: 'Ask' }
+  { value: 1, label: '计划', en: 'Plan' },
+  { value: 2, label: '完全访问', en: 'Full' }
 ]
 
 // ─── 选择动作 ─────────────────────────────────────────────
@@ -509,10 +508,13 @@ const selectAgent = (agentId: string) => {
   show.value = false
 }
 
-const clearAgent = () => emit('update:agent', '')
-
-const selectMode = (mode: string) => {
-  emit('update:mode', currentMode.value === mode ? 'craft' : mode)
+const selectMode = (res: AiChatMode) => {
+  console.log(res, props.mode)
+  if (props.mode === res) {
+    emit('update:mode', 0)
+  } else {
+    emit('update:mode', res)
+  }
   keyword.value = ''
 }
 

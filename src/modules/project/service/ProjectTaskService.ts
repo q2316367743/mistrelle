@@ -88,7 +88,8 @@ export const projectTaskCreate = async (
     draft: params,
     agentId: params.agentId || '',
     workspace: params.workspace || '',
-    messages: []
+    messages: [],
+    mode: params.mode
   }
   await aiChatContentSet(buildProjectTaskContentPath(projectId, taskId), content)
 

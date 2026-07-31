@@ -15,6 +15,7 @@
         <div class="l-chat-sender__footer-left">
           <l-chat-attachment
             v-model:agent="agentId"
+            v-model:mode="mode"
             :sandbox-dir="sandboxDir"
             :workspace-dir="workspaceRef"
             :project-files="projectAssetFiles"
@@ -23,11 +24,37 @@
             @add-ref-file="insertFile"
           />
           <ai-workspace v-model="workspaceRef" />
+          <t-tag
+            v-if="mode === 1"
+            theme="primary"
+            variant="light"
+            closable
+            size="large"
+            @close="handleClearMode"
+          >
+            <template #icon>
+              <task-icon />
+            </template>
+            计划
+          </t-tag>
+          <t-tag
+            v-else-if="mode === 2"
+            theme="warning"
+            variant="light"
+            closable
+            size="large"
+            @close="handleClearMode"
+          >
+            <template #icon>
+              <lock-off-icon />
+            </template>
+            完全访问
+          </t-tag>
         </div>
         <div class="flex gap-8px items-center">
-          <t-button shape="square" variant="text" theme="default">
+          <t-button v-if="tokenTotal > 0" shape="square" variant="text" theme="default">
             <t-progress
-              :percentage="18"
+              :percentage="tokenTotal"
               theme="circle"
               :size="18"
               :label="false"
@@ -67,6 +94,8 @@ import {
 import { serializeEditorContent } from './chatSenderContent'
 import type { ChatRequestParams } from '@/modules/chat'
 import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
+import { AiChatMode } from '@/entity'
+import { LockOffIcon, TaskIcon } from 'tdesign-icons-vue-next'
 
 const props = withDefaults(
   defineProps<{
@@ -75,16 +104,20 @@ const props = withDefaults(
     loading?: boolean
     placeholder?: string
     sandboxDir?: string
+    tokenTotal?: number
     initialWorkspace?: string
     initialAgentId?: string
+    initialMode?: AiChatMode
   }>(),
   {
     initialInput: '',
     initialModel: '',
     loading: false,
+    tokenTotal: 0,
     placeholder: '描述任务，/ 调用技能，# 使用工具，@ 添加上下文',
     sandboxDir: '',
-    initialWorkspace: ''
+    initialWorkspace: '',
+    initialMode: 0
   }
 )
 const emit = defineEmits<{
@@ -96,6 +129,7 @@ const skills = ref<LocalSkill[]>([])
 const sandboxFiles = ref<ChatFileRef[]>([])
 const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaultAssistantModel)
 const agentId = ref(props.initialAgentId || '')
+const mode = ref<AiChatMode>(props.initialMode)
 const workspaceRef = ref(props.initialWorkspace || '')
 const projectAssetContext = inject(projectAssetContextKey, null)
 const projectAssetFiles = computed(() => projectAssetContext?.files.value ?? [])
@@ -144,6 +178,7 @@ const buildUserMessage = (): ChatRequestParams | null => {
       model,
       provide
     },
+    mode: mode.value,
     agentId: agentId.value,
     workspace: workspaceRef.value
   }
@@ -192,6 +227,15 @@ const ToolMention = Mention.extend({ name: 'toolMention' }).configure({
     `${node.attrs.label}`
   ]
 })
+
+// 直接读取 suggestion 插件内部的 active 状态，作为回车是否让位给选中的权威判断，
+// 避免依赖易失同步的外部标志（曾导致弹层可见时回车误触发发送）。
+const isSuggestionActive = (ed?: Editor | null): boolean => {
+  if (!ed) return false
+  return [skillMentionPluginKey, fileMentionPluginKey, toolMentionPluginKey].some(
+    (key) => key.getState(ed.state)?.active
+  )
+}
 
 const editor = useEditor({
   extensions: [
@@ -354,10 +398,8 @@ const pasteImage = async (item: DataTransferItem) => {
   if (filePath) insertFileByPath(filePath)
 }
 
-const selectWorkspace = () => {
-  const paths = window.preload.inject.dialog.open({ properties: ['openDirectory'] })
-  if (!paths || paths.length === 0) return
-  workspaceRef.value = paths[0]
+const handleClearMode = () => {
+  mode.value = 0
 }
 
 const clear = () => {
@@ -386,6 +428,8 @@ const handleContainerDrop = async (event: DragEvent) => {
   if (filePath) insertFileByPath(filePath)
 }
 
+// =================================== 监听 props 初始值 ===================================
+
 watch(
   () => props.initialInput,
   (value) => {
@@ -402,6 +446,12 @@ watch(
   () => props.initialAgentId,
   (value) => {
     agentId.value = value || ''
+  }
+)
+watch(
+  () => props.initialMode,
+  (value) => {
+    mode.value = value || 0
   }
 )
 watch(
@@ -430,6 +480,8 @@ watch(
   { immediate: true }
 )
 
+// =================================== 生命周期 ===================================
+
 onMounted(async () => {
   setText(props.initialInput)
   skills.value = await localSkillList()
@@ -437,15 +489,6 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => editor.value?.destroy())
-
-// 直接读取 suggestion 插件内部的 active 状态，作为回车是否让位给选中的权威判断，
-// 避免依赖易失同步的外部标志（曾导致弹层可见时回车误触发发送）。
-const isSuggestionActive = (ed?: Editor | null): boolean => {
-  if (!ed) return false
-  return [skillMentionPluginKey, fileMentionPluginKey, toolMentionPluginKey].some(
-    (key) => key.getState(ed.state)?.active
-  )
-}
 </script>
 <style scoped lang="less">
 @import 'LChatSender.less';

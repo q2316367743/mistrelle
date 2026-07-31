@@ -15,6 +15,7 @@
         :initial-model="modelValue"
         :initial-agent-id="initialAgentId"
         :initial-workspace="workspace"
+        :initial-mode="mode"
         :loading="status === 'pending' || status === 'streaming'"
         :sandbox-dir="sandboxDir"
         @send="handleSend"
@@ -27,7 +28,7 @@
 import type { ChatRequestParams } from '@/modules/chat'
 import { ToolChat, aiChatContentGet, aiChatContentSet, getSandboxDir } from '@/modules/chat'
 import type { UserMessage } from '@/domain'
-import type { AiChatContent } from '@/entity/ai'
+import type { AiChatContent, AiChatMode } from '@/entity/ai'
 import { toolConfirmDialog } from '@/components/chat/modals/ToolConfirmDialog'
 import { toolMap } from '@/modules/tool'
 
@@ -48,6 +49,7 @@ const inputValue = ref('')
 const modelValue = ref('')
 const initialAgentId = ref('')
 const workspace = ref('')
+const mode = ref<AiChatMode>(0)
 
 const sandboxDir = computed(() => {
   return props.sandboxDir || getSandboxDir(props.chatId)
@@ -61,7 +63,8 @@ const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<b
 }
 
 const instance = new ToolChat({
-  toolConfirmHandler: confirmTool
+  toolConfirmHandler: confirmTool,
+  mode: mode.value
 })
 
 watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
@@ -100,6 +103,8 @@ onMounted(async () => {
       if (content.workspace) {
         workspace.value = content.workspace
         instance.setWorkspace(content.workspace)
+        mode.value = content.mode
+        instance.setMode(content.mode)
       }
       if (content.agentId) initialAgentId.value = content.agentId
     }
@@ -114,7 +119,8 @@ onMounted(async () => {
           draft: undefined,
           agentId: initialAgentId.value,
           workspace: workspace.value || '',
-          messages: toRaw(val)
+          messages: toRaw(val),
+          mode: mode.value
         })
       },
       { throttle: 1000, deep: true }

@@ -43,19 +43,19 @@ export const appData = window.preload.path.join(
   Constant.id
 )
 
-export const getAppData2Chat = () => {
-  return window.preload.path.join(appData, 'chat')
-}
-
-export const getAppData2Discussion = () => {
-  return window.preload.path.join(appData, 'discussion')
-}
-
 // ~/.mistrelle
 export const dataFolder = window.preload.path.join(
   window.preload.inject.os.getPath('home'),
   `.${Constant.id}`
 )
+
+export const getAppData2Chat = () => {
+  return window.preload.path.join(dataFolder, 'chat')
+}
+
+export const getAppData2Discussion = () => {
+  return window.preload.path.join(dataFolder, 'discussion')
+}
 
 export const getDataForWorkspace = () => {
   return window.preload.path.join(dataFolder, 'workspace')
