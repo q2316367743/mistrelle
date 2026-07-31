@@ -23,7 +23,7 @@
       />
     </t-content>
     <t-aside v-if="aside" width="240px" class="l-chat-tool__aside shrink-0">
-      <l-chat-aside :chat="chat" :messages="messages" />
+      <l-chat-aside :chat="chat" :messages="messages" :workspace="workspace" />
     </t-aside>
     <div class="l-chat-tool__header" :class="{ collapsed: collapsed }">
       <div class="l-chat-tool__title">{{ chat.name }}</div>

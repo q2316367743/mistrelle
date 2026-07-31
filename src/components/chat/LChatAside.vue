@@ -2,7 +2,7 @@
   <div class="l-chat-aside">
     <t-select v-model="active">
       <t-option value="overview" label="概览" />
-      <t-option value="workspace" label="工作空间" />
+      <t-option value="workspace" label="工作空间" :disabled="!workspace" />
     </t-select>
     <div v-if="active === 'overview'" class="l-chat-aside__content">
       <sub-title title="任务进程" />
@@ -11,19 +11,42 @@
         v-for="output in outputs"
         class="product-item"
         :key="output.path"
-        @click="openFilePreview({fileName: output.name, fullPath: output.path})"
+        @click="openFilePreview({ fileName: output.name, fullPath: output.path })"
       >
         <file-icon />
         <span class="ellipsis w-180px">{{ output.name }}</span>
       </div>
+    </div>
+    <div v-else-if="active === 'workspace'" class="l-chat-aside__content">
+      <t-tree
+        :key="workspace"
+        :data="treeData"
+        :load="treeLoad"
+        :icon="treeIcon"
+        v-model:expanded="expanded"
+        hover
+        line
+        transition
+        expand-on-click-node
+        empty="暂无文件"
+        @click="handleTreeClick"
+      />
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { ChatMessage, type ToolCallContent } from '@/domain'
 import { AiChatItem } from '@/entity'
-import { FileIcon } from 'tdesign-icons-vue-next'
+import { FileIcon, FileMarkdownIcon, FolderIcon } from 'tdesign-icons-vue-next'
+import type { TreeOptionData, TreeNodeModel } from 'tdesign-vue-next'
 import { openFilePreview } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
+
+interface WorkspaceTreeNode {
+  label: string
+  value: string
+  isDirectory: boolean
+  children?: boolean | WorkspaceTreeNode[]
+}
 
 const props = defineProps({
   messages: {
@@ -33,6 +56,9 @@ const props = defineProps({
   chat: {
     type: Object as PropType<AiChatItem>,
     required: true
+  },
+  workspace: {
+    type: String
   }
 })
 
@@ -67,6 +93,74 @@ const outputs = computed(() => {
 })
 
 const active = ref('overview')
+
+const NOISE_NAMES = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  '.cache',
+  '.idea',
+  '.vscode',
+  '.DS_Store',
+  'coverage',
+  'build',
+  'target',
+  '__pycache__'
+])
+
+const treeData = computed<WorkspaceTreeNode[]>(() => {
+  const ws = props.workspace
+  if (!ws) return []
+  const label = window.preload.path.basename(ws) || ws
+  return [{ label, value: ws, isDirectory: true, children: true }]
+})
+
+const isWorkspaceNode = (data: TreeOptionData): data is WorkspaceTreeNode => 'isDirectory' in data
+
+const treeLoad = async ({ data }: { data: TreeOptionData }): Promise<WorkspaceTreeNode[]> => {
+  if (!isWorkspaceNode(data)) return []
+  try {
+    const items = await window.preload.fs.readDir(data.value)
+    return items
+      .filter((item) => (item.isDirectory || item.isFile) && !NOISE_NAMES.has(item.name))
+      .map<WorkspaceTreeNode>((item) => ({
+        label: item.name,
+        value: item.path,
+        isDirectory: item.isDirectory,
+        children: item.isDirectory ? true : undefined
+      }))
+      .sort((a, b) => {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
+        return a.label.localeCompare(b.label)
+      })
+  } catch {
+    return []
+  }
+}
+
+const handleTreeClick = ({ node }: { node: TreeNodeModel<TreeOptionData> }) => {
+  const data = node.data
+  if (!isWorkspaceNode(data) || data.isDirectory) return
+  openFilePreview({ fileName: data.label, fullPath: data.value })
+}
+
+const treeIcon = (_h: unknown, node: TreeNodeModel<TreeOptionData>) => {
+  const data = node.data
+  if (!isWorkspaceNode(data)) return h(FileIcon)
+  if (data.isDirectory) return h(FolderIcon)
+  if (data.label.toLowerCase().endsWith('.md')) return h(FileMarkdownIcon)
+  return h(FileIcon)
+}
+
+const expanded = ref<string[]>([])
+
+watch(
+  () => props.workspace,
+  (val) => {
+    expanded.value = val ? [val] : []
+  },
+  { immediate: true }
+)
 </script>
 <style scoped lang="less">
 .l-chat-aside {
