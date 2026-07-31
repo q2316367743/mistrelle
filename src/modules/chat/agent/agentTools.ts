@@ -3,11 +3,29 @@ import type { ChatMessage, ToolFunction } from '@/domain'
 import type { ToolCall } from './agentTypes'
 import { updateToolCallContent } from './agentMessages'
 import { resolveToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
+import { MAX_TOOL_RESULT_BYTES } from '@/global/Constant'
 
 type ConfirmHandler = (toolName: string, args: Record<string, unknown>) => Promise<boolean>
 
-const serializeResult = (value: unknown): string =>
-  typeof value === 'string' ? value : (JSON.stringify(value) ?? '')
+/**
+ * 工具结果按字节截断，且保证不在多字节字符（中文等）中间切断，避免产生非法 UTF-8。
+ * 超出上限时追加说明文本，提示模型该输出已被裁剪。
+ */
+const truncateToolResult = (text: string): string => {
+  const encoder = new TextEncoder()
+  const bytes = encoder.encode(text)
+  if (bytes.length <= MAX_TOOL_RESULT_BYTES) return text
+  // 回退到字符边界：向前找到不超过上限的最后一个完整字符的起始字节
+  let end = MAX_TOOL_RESULT_BYTES
+  while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--
+  const kept = new TextDecoder().decode(bytes.subarray(0, end))
+  return `${kept}\n\n[工具输出已截断：原始 ${bytes.length} 字节，超过上限 ${MAX_TOOL_RESULT_BYTES} 字节，仅保留前 ${encoder.encode(kept).length} 字节]`
+}
+
+const serializeResult = (value: unknown): string => {
+  const text = typeof value === 'string' ? value : (JSON.stringify(value) ?? '')
+  return truncateToolResult(text)
+}
 
 const parseArguments = (raw: string | undefined): Record<string, unknown> => {
   const value: unknown = JSON.parse(raw ?? '{}')

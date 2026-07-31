@@ -33,6 +33,7 @@ import { streamAgentStep } from './agentStream'
 import { executeToolCalls } from './agentTools'
 import type { ToolCall } from './agentTypes'
 import { copyToInputs, isPathUnder } from '@/utils/chatSender'
+import { MAX_AGENT_STEPS } from '@/global/Constant'
 
 export interface UseChatOptions {
   defaultMessages?: ChatMessage[]
@@ -246,7 +247,9 @@ export class ToolChat {
   ): Promise<void> {
     this.status.value = 'streaming'
 
-    while (seq === this.ctx.requestSeq && !signal.aborted) {
+    let step = 0
+    while (seq === this.ctx.requestSeq && !signal.aborted && step < MAX_AGENT_STEPS) {
+      step++
       const functions = this.filterToolsByMode(this.getFunctions(params))
       const resolvedParams = await this.resolveModel(params)
       const result = await streamAgentStep({
@@ -278,6 +281,16 @@ export class ToolChat {
       )
       this.toolCalls.value = [...this.toolCalls.value]
       await nextTick()
+    }
+
+    // 超过单轮工具调用上限：提示用户继续，避免无终止的循环
+    if (seq === this.ctx.requestSeq && !signal.aborted && step >= MAX_AGENT_STEPS) {
+      appendAssistantContent(this.messages, assistantMessageId, {
+        type: 'text',
+        data: '\n\n[已到达本轮连续工具调用上限，若任务尚未完成，请继续发送消息以推进。]',
+        time: Date.now()
+      })
+      this.status.value = 'complete'
     }
   }
 
