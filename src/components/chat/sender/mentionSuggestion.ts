@@ -1,7 +1,8 @@
 import { PluginKey } from '@tiptap/pm/state'
 import type { SuggestionOptions } from '@tiptap/suggestion'
 import type { Ref } from 'vue'
-import type { ChatFileRef } from '@/utils/chatSender'
+import type { ChatFileRef, WorkspaceEntryRef } from '@/utils/chatSender'
+import { listWorkspaceEntries } from '@/utils/chatSender'
 import type { LocalSkill } from '@/modules/skill'
 import { toolOptions } from '@/modules/tool'
 
@@ -212,21 +213,71 @@ export const buildSkillSuggestion = (
 export interface FileSuggestionItem {
   id: string
   label: string
-  data: ChatFileRef
+  data: ChatFileRef & { isDirectory?: boolean }
 }
+
+export interface FileSuggestionOptions extends SuggestionRendererOptions {
+  /** 工作空间根目录，为空时不参与 @ 提名 */
+  workspace: Readonly<Ref<string>>
+}
+
+const toFileSuggestionItem = (f: ChatFileRef): FileSuggestionItem => ({
+  id: f.path,
+  label: f.relativePath,
+  data: f
+})
+
+const toWorkspaceSuggestionItem = (entry: WorkspaceEntryRef): FileSuggestionItem => ({
+  id: entry.path,
+  label: entry.relativePath,
+  data: entry
+})
 
 export const buildFileSuggestion = (
   files: Readonly<Ref<ChatFileRef[]>>,
-  options?: SuggestionRendererOptions
+  options?: Partial<FileSuggestionOptions>
 ): Partial<SuggestionOptions<FileSuggestionItem>> => ({
   char: '@',
   pluginKey: fileMentionPluginKey,
-  items: ({ query }) =>
-    files.value
-      .filter((f) => f.relativePath.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 8)
-      .map<FileSuggestionItem>((f) => ({ id: f.path, label: f.relativePath, data: f })),
+  // 轻微防抖，避免快速输入时反复触发目录读盘
+  debounce: 80,
+  items: async ({ query }) => {
+    const workspace = options?.workspace?.value || ''
+    if (!query) {
+      // 空查询：工作空间根直接子项(目录在前) + 沙盒文件 + 项目文件
+      const list: FileSuggestionItem[] = []
+      if (workspace) {
+        const entries = await listWorkspaceEntries(workspace, '')
+        list.push(...entries.map(toWorkspaceSuggestionItem))
+      }
+      list.push(...files.value.map(toFileSuggestionItem))
+      return list.slice(0, 8)
+    }
+    if (!workspace) {
+      // 未选择工作空间时回退到旧的全量模糊过滤
+      return files.value
+        .filter((f) => f.relativePath.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, 8)
+        .map(toFileSuggestionItem)
+    }
+    // 非空查询：在工作空间内按「一级一层」路径下钻
+    const entries = await listWorkspaceEntries(workspace, query)
+    return entries.map(toWorkspaceSuggestionItem).slice(0, 8)
+  },
   command: ({ editor, range, props }) => {
+    // 目录：把查询文本替换为「目录相对路径 + /」并保留 @ 触发符，
+    // suggestion 插件会在下一次事务中按新 query 重新拉取并续开弹层，实现逐级下钻。
+    if (props.data?.isDirectory) {
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(
+          { from: range.from + 1, to: range.to },
+          { type: 'text', text: `${props.label}/` }
+        )
+        .run()
+      return
+    }
     editor
       .chain()
       .focus()
@@ -239,6 +290,7 @@ export const buildFileSuggestion = (
   render: makeSuggestionRenderer(
     (item) => {
       const f = item as FileSuggestionItem
+      if (f.data.isDirectory) return { title: `${f.label}/`, desc: '目录' }
       return { title: f.label, desc: f.data.path }
     },
     options

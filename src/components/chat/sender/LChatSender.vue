@@ -202,7 +202,7 @@ const SkillMention = Mention.extend({ name: 'skillMention' }).configure({
 const FileMention = Mention.extend({ name: 'fileMention' }).configure({
   // 退格一次即整体删除标签，避免残留触发字符（默认 false 会把节点替换成 "@"）
   deleteTriggerWithBackspace: true,
-  suggestion: buildFileSuggestion(files),
+  suggestion: buildFileSuggestion(files, { workspace: workspaceRef }),
   renderHTML: ({ options, node }) => [
     'span',
     mergeAttributes(options.HTMLAttributes, {
