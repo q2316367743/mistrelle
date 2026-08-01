@@ -74,6 +74,14 @@ export const aiChatRemove = async (id: string) => {
   await window.preload.fs.rm(p)
 }
 
+// 删除该聊天的沙盒目录
+export const aiChatSandboxRemove = async (id: string) => {
+  const folder = getSandboxDir(id)
+  if (window.preload.fs.existsSync(folder)) {
+    await window.preload.fs.rm(folder)
+  }
+}
+
 /**
  * 读取完整聊天内容（含 draft 与 messages），兼容旧格式 { list: ChatMessage[] }
  */

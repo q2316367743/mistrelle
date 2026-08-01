@@ -71,7 +71,8 @@ export const defaultTools: ToolFunction[] = [
   ...skillTools,
   ...fileTools,
   ...fileParseTools,
-  ...nativeHttpTools
+  ...nativeHttpTools,
+  ...browserFetchTools
 ]
 
 /** 获取所有已启用且已连接的 MCP 工具（运行时动态） */

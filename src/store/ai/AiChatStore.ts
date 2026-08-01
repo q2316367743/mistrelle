@@ -8,6 +8,7 @@ import {
   aiChatList,
   aiChatRemove,
   aiChatSandbox,
+  aiChatSandboxRemove,
   buildChatChatPath,
   useChatName
 } from '@/modules/chat'
@@ -95,6 +96,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       await aiChatIndexSave(state.value)
       // 删除聊天记录
       await aiChatRemove(id)
+      // 删除沙盒目录
+      await aiChatSandboxRemove(id)
     }
   }
   const rename = async (id: string, name: string) => {
