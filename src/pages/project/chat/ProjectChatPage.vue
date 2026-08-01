@@ -1,6 +1,7 @@
 <template>
   <l-chat-engine
     v-if="storageKey"
+    :key="storageKey"
     class="project-chat-page"
     :storage-key="storageKey"
     :chat-id="taskId"

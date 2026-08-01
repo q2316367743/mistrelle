@@ -10,6 +10,7 @@ import {
   aiChatSandbox,
   aiChatSandboxRemove,
   buildChatChatPath,
+  destroyChatSession,
   useChatName
 } from '@/modules/chat'
 import { useSnowflake } from '@/hooks'
@@ -94,6 +95,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     if (index >= 0) {
       state.value.splice(index, 1)
       await aiChatIndexSave(state.value)
+      // 销毁内存会话，避免后台请求与常驻持久化残留
+      destroyChatSession(buildChatChatPath(id))
       // 删除聊天记录
       await aiChatRemove(id)
       // 删除沙盒目录

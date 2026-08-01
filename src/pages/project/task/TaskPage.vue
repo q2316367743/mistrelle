@@ -47,7 +47,8 @@
 <script lang="ts" setup>
 import { AddCircleIcon, MoreIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import { ProjectChat } from '@/entity/project'
-import { projectTaskList, projectTaskIndexSave } from '@/modules/project'
+import { projectTaskList, projectTaskIndexSave, buildProjectTaskContentPath } from '@/modules/project'
+import { destroyChatSession } from '@/modules/chat'
 import { prettyDate } from '@/utils/lang/FormatUtil'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 
@@ -92,6 +93,8 @@ const handleRemove = async (item: ProjectChat) => {
     await MessageBoxUtil.confirm(`确定删除任务「${item.name}」？`, '删除任务')
     list.value = list.value.filter((e) => e.id !== item.id)
     await projectTaskIndexSave(props.id, list.value)
+    // 销毁内存会话，避免后台请求与常驻持久化残留
+    destroyChatSession(buildProjectTaskContentPath(props.id, item.id))
     MessageUtil.success('已删除')
   } catch {
     // 用户取消

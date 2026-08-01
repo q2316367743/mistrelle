@@ -14,7 +14,7 @@
       <l-chat-sender
         :initial-input="inputValue"
         :initial-model="modelValue"
-        :initial-agent-id="initialAgentId"
+        :initial-agent-id="agentId"
         :initial-workspace="workspace"
         :initial-mode="mode"
         :loading="status === 'pending' || status === 'streaming'"
@@ -49,9 +49,8 @@
 </template>
 <script lang="ts" setup>
 import type { ChatRequestParams } from '@/modules/chat'
-import { ToolChat, aiChatContentGet, aiChatContentSet, getSandboxDir } from '@/modules/chat'
+import { getChatSession, getSandboxDir } from '@/modules/chat'
 import type { UserMessage } from '@/domain'
-import { AiChatContent, AiChatItem, AiChatMode } from '@/entity/ai'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
 import { collapsed } from '@/global/BeanFactory'
 import { AppIcon } from 'tdesign-icons-vue-next'
@@ -73,18 +72,15 @@ const props = withDefaults(
 
 const inputValue = ref('')
 const modelValue = ref('')
-const initialAgentId = ref('')
-const workspace = ref('')
-const mode = ref<AiChatMode>(0)
 const [aside, toggleAside] = useBoolState(false)
 
 const sandboxDir = computed(() => {
   return props.sandboxDir || getSandboxDir(props.chatId)
 })
 
-const instance = new ToolChat({
-  mode: mode.value
-})
+// 会话由会话管理器持有，跨组件挂载存活：组件只负责绑定数据与转发事件
+const session = getChatSession(props.storageKey, { sandboxDir: sandboxDir.value })
+const instance = session.chat
 
 // 交互桥供 ask/confirm 卡片注入作答；本组件是 UI 消费方，使能后挂起决策才能被作答
 provide(INTERACTIVE_KEY, instance.interactive)
@@ -93,92 +89,49 @@ instance.interactive.setEnabled(true)
 watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 
 const { messages, status } = instance
+const workspace = session.workspace
+const mode = session.mode
+const agentId = session.agentId
 
 const handleSend = (message: ChatRequestParams) => {
-  if (message.workspace) workspace.value = message.workspace
-  instance.sendUserMessage(message)
+  void session.send(message)
 }
 
 const handleStop = () => {
-  instance.abortChat()
+  session.stop()
 }
 
 const handleClear = () => {
-  messages.value = []
-  instance.todos.value = []
+  session.clear()
 }
 
 const handleDeleteMessage = (messageId: string) => {
-  instance.deleteFromUserMessage(messageId)
+  session.removeMessage(messageId)
 }
 
 const handleContinue = (assistantMessageId: string) => {
-  instance.continueAgent(assistantMessageId)
+  session.continue(assistantMessageId)
 }
 
 const handleMessagesChange = () => {
-  messages.value = [...messages.value]
+  session.refreshMessages()
 }
 
-let unWatch: (() => void) | null = null
+onMounted(() => {
+  void session.load()
+})
 
-onMounted(async () => {
-  let content: AiChatContent | undefined
-  if (props.storageKey) {
-    content = await aiChatContentGet(props.storageKey)
-    if (content) {
-      instance.init(content.messages)
-      if (content.todos) instance.setTodos(content.todos)
-      if (content.workspace) {
-        workspace.value = content.workspace
-        instance.setWorkspace(content.workspace)
-      }
-      mode.value = content.mode
-      instance.setMode(content.mode)
-      if (content.agentId) initialAgentId.value = content.agentId
-    }
-  }
-  if (props.storageKey) {
-    unWatch = throttledWatch(
-      messages,
-      async (val) => {
-        await aiChatContentSet(props.storageKey!, {
-          updatedTime: Date.now(),
-          draft: undefined,
-          agentId: initialAgentId.value,
-          workspace: workspace.value || '',
-          messages: toRaw(val),
-          mode: mode.value,
-          todos: toRaw(instance.todos.value)
-        })
-      },
-      { throttle: 1000, deep: true }
-    )
-  }
-  initialAgentId.value = content?.agentId || ''
-
-  const hasUserMessage = messages.value.some((m) => m.role === 'user')
-
-  if (!hasUserMessage && content?.draft) {
-    const { draft } = content
-    instance.sendUserMessage(draft)
-    modelValue.value = `${draft?.message.provide}:${draft?.message.model}`
-  } else if (messages.value.length > 1) {
-    const lastUser = messages.value.findLast((e) => e.role === 'user') as UserMessage | undefined
+// 恢复上次使用的模型：新会话草稿发送时 user 消息一加入即可回填，无需等待整个回答结束
+watch(
+  messages,
+  (val) => {
+    const lastUser = val.findLast((e) => e.role === 'user') as UserMessage | undefined
     if (lastUser) {
       modelValue.value = `${lastUser.provide}:${lastUser.model}`
     }
-  }
-
-  // 恢复上次挂起的 ask / confirm 决策（关闭软件后重新进入继续作答）
-  void instance.resumePendingInteractives()
-})
-
-onUnmounted(() => {
-  unWatch?.()
-  instance.interactive.setEnabled(false)
-  instance.destroy()
-})
+  },
+  { immediate: true }
+)
 </script>
 <style scoped lang="less">
 .l-chat-tool {

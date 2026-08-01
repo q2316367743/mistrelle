@@ -4,8 +4,10 @@ import {
   projectList,
   projectListSave,
   projectRemove,
-  projectCreateSkeleton
+  projectCreateSkeleton,
+  buildProjectDirPath
 } from '@/modules/project'
+import { destroyChatSessionsByPrefix } from '@/modules/chat'
 import { useSnowflake } from '@/hooks'
 import { useLog } from '@/hooks/UseLog'
 
@@ -56,6 +58,8 @@ export const useProjectStore = defineStore('project:list', () => {
   const remove = async (id: string) => {
     state.value = state.value.filter((e) => e.id !== id)
     await projectListSave(state.value)
+    // 销毁该项目下的所有内存会话，避免后台请求与常驻持久化残留
+    destroyChatSessionsByPrefix(buildProjectDirPath(id))
     await projectRemove(id)
   }
 

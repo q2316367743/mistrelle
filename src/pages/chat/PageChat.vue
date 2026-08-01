@@ -1,6 +1,7 @@
 <template>
     <l-chat-engine
       v-if="storageKey && chat"
+      :key="storageKey"
       :chat-id="chat.id"
       :chat-name="chat.name"
       :storage-key="storageKey"
