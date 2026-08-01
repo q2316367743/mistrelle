@@ -14,7 +14,8 @@ import type {
 import { toolMap } from '@/modules/tool'
 import type { AssistantRequestMessage } from './agentTypes'
 
-const SKILL_TOOL_NAMES = new Set(['load_skill', 'read_skill_file'])
+// 不进入历史回传的工具调用：避免旧参数 / 旧结果污染上下文，其状态由每轮独立注入提供
+const SKILL_TOOL_NAMES = new Set(['load_skill', 'read_skill_file', 'update_todo'])
 
 /** 根据 tool 定义的 stripFields 剥离历史 args 中的冗余字段（如写入内容），节省 token */
 const slimToolArgs = (toolName: string, args: string | undefined): string => {

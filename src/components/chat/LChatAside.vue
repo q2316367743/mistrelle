@@ -6,7 +6,16 @@
     </t-select>
     <div v-if="active === 'overview'" class="l-chat-aside__content">
       <sub-title title="任务进程" />
-      <sub-title title="产物" />
+      <todo-list :todos="todos" />
+      <sub-title title="产物">
+        <template #actions>
+          <t-button theme="primary" size="small" variant="text" shape="square" @click="openSandbox">
+            <template #icon>
+              <folder-open-icon />
+            </template>
+          </t-button>
+        </template>
+      </sub-title>
       <div
         v-for="output in outputs"
         class="product-item"
@@ -35,10 +44,11 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ChatMessage, type ToolCallContent } from '@/domain'
-import { FileIcon, FileMarkdownIcon, FolderIcon } from 'tdesign-icons-vue-next'
+import { ChatMessage, type ToolCallContent, type TodoItem } from '@/domain'
+import { FileIcon, FileMarkdownIcon, FolderIcon, FolderOpenIcon } from 'tdesign-icons-vue-next'
 import type { TreeOptionData, TreeNodeModel } from 'tdesign-vue-next'
 import { openFilePreview } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
+import TodoList from '@/components/chat/TodoList.vue'
 
 interface WorkspaceTreeNode {
   label: string
@@ -52,8 +62,15 @@ const props = defineProps({
     type: Array as PropType<Array<ChatMessage>>,
     default: () => []
   },
+  sandbox: {
+    type: String
+  },
   workspace: {
     type: String
+  },
+  todos: {
+    type: Array as PropType<TodoItem[]>,
+    default: () => []
   }
 })
 
@@ -145,6 +162,10 @@ const treeIcon = (_h: unknown, node: TreeNodeModel<TreeOptionData>) => {
   if (data.isDirectory) return h(FolderIcon)
   if (data.label.toLowerCase().endsWith('.md')) return h(FileMarkdownIcon)
   return h(FileIcon)
+}
+
+const openSandbox = () => {
+  window.preload.inject.shell.showItemInFolder(`${props.sandbox}/outputs`)
 }
 
 const expanded = ref<string[]>([])

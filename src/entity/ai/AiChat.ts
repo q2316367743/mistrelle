@@ -1,5 +1,5 @@
 import { BaseEntity } from '@/entity'
-import { ChatMessage } from '@/domain'
+import { ChatMessage, TodoItem } from '@/domain'
 import type { ChatRequestParams } from '@/modules/chat'
 
 /**
@@ -47,6 +47,8 @@ export interface AiChatContent {
   workspace: string
   mode: AiChatMode
   messages: Array<ChatMessage>
+  // 当前对话的待办清单（由 update_todo 工具维护）
+  todos?: TodoItem[]
 }
 
 export interface AiChat extends AiChatItem, AiChatContent {}

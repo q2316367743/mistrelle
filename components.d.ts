@@ -64,6 +64,7 @@ declare module 'vue' {
     TListItem: typeof import('tdesign-vue-next')['ListItem']
     TListItemMeta: typeof import('tdesign-vue-next')['ListItemMeta']
     TLoading: typeof import('tdesign-vue-next')['Loading']
+    TodoList: typeof import('./src/components/chat/TodoList.vue')['default']
     TOption: typeof import('tdesign-vue-next')['Option']
     TPagination: typeof import('tdesign-vue-next')['Pagination']
     TPopconfirm: typeof import('tdesign-vue-next')['Popconfirm']

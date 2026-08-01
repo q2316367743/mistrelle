@@ -22,11 +22,22 @@
         @stop="handleStop()"
       />
     </t-content>
-    <t-aside v-if="aside" width="240px" class="l-chat-tool__aside shrink-0">
-      <l-chat-aside :messages="messages" :workspace="workspace" />
+    <!--    <t-aside v-if="aside" width="240px" class="l-chat-tool__aside shrink-0">-->
+    <t-aside
+      :width="aside ? '240px' : '0'"
+      :class="['l-chat-tool__aside', 'shrink-0', { 'border-left-none': !aside }]"
+    >
+      <l-chat-aside
+        :messages="messages"
+        :workspace="workspace"
+        :sandbox="sandboxDir"
+        :todos="instance.todos.value"
+      />
     </t-aside>
     <div class="l-chat-tool__header" :class="{ collapsed: collapsed }">
-      <div class="l-chat-tool__title">{{ chatName }}</div>
+      <div class="l-chat-tool__title">
+        <span class="ellipsis" :title="chatName">{{ chatName }}</span>
+      </div>
       <t-button theme="default" variant="text" shape="square" @click="toggleAside()">
         <template #icon>
           <app-icon />
@@ -87,7 +98,7 @@ watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 
 const { messages, status } = instance
 
-const handleSend = async (message: ChatRequestParams) => {
+const handleSend = (message: ChatRequestParams) => {
   if (message.workspace) workspace.value = message.workspace
   instance.sendUserMessage(message)
 }
@@ -98,6 +109,7 @@ const handleStop = () => {
 
 const handleClear = () => {
   messages.value = []
+  instance.todos.value = []
 }
 
 const handleDeleteMessage = (messageId: string) => {
@@ -116,6 +128,7 @@ onMounted(async () => {
     content = await aiChatContentGet(props.storageKey)
     if (content) {
       instance.init(content.messages)
+      if (content.todos) instance.setTodos(content.todos)
       if (content.workspace) {
         workspace.value = content.workspace
         instance.setWorkspace(content.workspace)
@@ -136,7 +149,8 @@ onMounted(async () => {
           agentId: initialAgentId.value,
           workspace: workspace.value || '',
           messages: toRaw(val),
-          mode: mode.value
+          mode: mode.value,
+          todos: toRaw(instance.todos.value)
         })
       },
       { throttle: 1000, deep: true }
@@ -203,10 +217,14 @@ onUnmounted(() => {
     align-items: center;
     font-size: 20px;
     font-weight: 600;
+    width: calc(100% - 120px);
   }
 
   &__aside {
     border-left: 1px solid var(--td-border-level-1-color);
+    &.border-left-none {
+      border-left: none;
+    }
   }
 }
 </style>

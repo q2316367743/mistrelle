@@ -152,6 +152,14 @@ export interface UserMessage extends ChatBaseMessage {
   reasoning_effort?: 'high' | 'max'
   content: UserMessageContent[]
 }
+export type TodoStatus = 'pending' | 'in_progress' | 'completed'
+export interface TodoItem {
+  id: string
+  content: string
+  status: TodoStatus
+  createdAt: number
+  updatedAt: number
+}
 export type ChatComment = 'good' | 'bad' | ''
 export interface AIMessage extends ChatBaseMessage {
   role: 'assistant'

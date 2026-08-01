@@ -5,6 +5,7 @@ import type {
 import type {
   AttachmentContent,
   ChatMessage,
+  TodoItem,
   ToolContent,
   ToolFunction,
   UserMessage
@@ -34,6 +35,7 @@ import { executeToolCalls } from './agentTools'
 import type { ToolCall } from './agentTypes'
 import { copyToInputs, isPathUnder } from '@/utils/chatSender'
 import { MAX_AGENT_STEPS } from '@/global/Constant'
+import { createTodoTool, buildTodoPrompt } from './todo'
 
 export interface UseChatOptions {
   defaultMessages?: ChatMessage[]
@@ -52,6 +54,7 @@ export class ToolChat {
   readonly messages = ref<ChatMessage[]>([])
   readonly status = ref<ChatStatus>('idle')
   readonly toolCalls = ref<ToolCall[]>([])
+  readonly todos = ref<TodoItem[]>([])
   private readonly ctx: ChatContext
   private readonly functions: ToolFunction[]
   private readonly systemPrompt: string
@@ -102,7 +105,13 @@ export class ToolChat {
     const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
     const mcpTools = getMcpTools()
     const map = new Map<string, ToolFunction>()
-    for (const fn of [...this.functions, ...selected, ...defaultTools, ...mcpTools]) {
+    for (const fn of [
+      ...this.functions,
+      ...selected,
+      ...defaultTools,
+      ...mcpTools,
+      createTodoTool(this.todos)
+    ]) {
       map.set(fn.name, fn)
     }
     return Array.from(map.values())
@@ -135,7 +144,7 @@ export class ToolChat {
     const parts: string[] = ['## 文件系统']
     if (this.sandboxDir) {
       parts.push(
-        `- 沙盒目录：${this.sandboxDir}/inputs/：你的产出文件（无工作空间时的默认输出位置）`
+        `- 沙盒目录：${this.sandboxDir}/outputs/：你的产出文件（无工作空间时的默认输出位置）`
       )
     }
     if (this.workspace) {
@@ -207,6 +216,7 @@ export class ToolChat {
       this.systemPrompt,
       agentPrompt,
       catalogPrompt,
+      buildTodoPrompt(),
       workspacePrompt,
       workspaceSettingsPrompt
     ]
@@ -217,6 +227,9 @@ export class ToolChat {
     // 模式指令作为独立 system 消息追加（不污染稳定 system 提示词，保留缓存前缀）
     const modeInstruction = this.buildModeInstruction()
     if (modeInstruction) systemMessages.push({ role: 'system', content: modeInstruction })
+    // 当前待办状态同样作为独立 system 消息注入，让模型跨轮次感知进度而不依赖历史工具调用
+    const todoStatePrompt = this.buildTodoStatePrompt()
+    if (todoStatePrompt) systemMessages.push({ role: 'system', content: todoStatePrompt })
     const messages = toAgentRequestMessages(
       this.messages.value,
       assistantMessageId,
@@ -236,6 +249,16 @@ export class ToolChat {
       return '【计划模式】当前处于计划模式。你可以读取、分析文件，也可以运行 shell 命令（运行前会请求用户批准）。但你没有任何写入 / 修改文件的权限，禁止创建、编辑或删除任何文件。建议先给出清晰的执行计划，涉及写文件的操作请明确说明并交由用户在默认模式下执行。'
     }
     return ''
+  }
+
+  /** 将当前待办清单序列化为 system 消息，作为模型每轮请求可见的最新进度快照 */
+  private buildTodoStatePrompt(): string {
+    if (this.todos.value.length === 0) return ''
+    const lines = this.todos.value.map((todo) => {
+      const statusLabel = { pending: '待开始', in_progress: '进行中', completed: '已完成' }[todo.status]
+      return `- [${statusLabel}] ${todo.content}`
+    })
+    return `## 当前待办清单\n\n以下是你当前维护的待办清单，请据此推进任务；需要变更时调用 update_todo 工具全量替换：\n\n${lines.join('\n')}`
   }
 
   /** 在同一个 assistant 聊天记录中循环请求模型并执行工具。 */
@@ -401,6 +424,8 @@ export class ToolChat {
     if (index < 0) throw new Error('消息不存在')
     if (this.messages.value[index].role !== 'user') throw new Error('该消息不是用户消息')
     this.messages.value = this.messages.value.slice(0, index)
+    // 历史被截断，待办清单随之失效，避免与残留进度不一致
+    this.todos.value = []
   }
 
   async abortChat(): Promise<void> {
@@ -434,8 +459,13 @@ export class ToolChat {
     else this.messages.value = [...this.messages.value, ...messages]
   }
 
+  setTodos(todos: TodoItem[]): void {
+    this.todos.value = [...todos]
+  }
+
   clearMessages(): void {
     this.messages.value = []
+    this.todos.value = []
   }
 
   getToolcallByName(name: string): ToolCall | undefined {
@@ -448,5 +478,6 @@ export class ToolChat {
     this.messages.value = []
     this.status.value = 'idle'
     this.toolCalls.value = []
+    this.todos.value = []
   }
 }
