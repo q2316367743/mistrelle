@@ -311,8 +311,10 @@ export class ToolChat {
     if (seq === this.ctx.requestSeq && !signal.aborted && step >= MAX_AGENT_STEPS) {
       appendAssistantContent(this.messages, assistantMessageId, {
         type: 'text',
-        data: '\n\n[已到达本轮连续工具调用上限，若任务尚未完成，请继续发送消息以推进。]',
-        time: Date.now()
+        data: '\n\n[已到达本轮连续工具调用上限，点击「继续推进」可让 AI 接着执行。]',
+        time: Date.now(),
+        // 标记提示文本：UI 渲染为可点击按钮，continueAgent 续跑前会移除
+        ext: { continueHint: true }
       })
       this.status.value = 'complete'
     }
@@ -483,6 +485,31 @@ export class ToolChat {
     // 作答期间若用户已另发起新请求，放弃续跑，避免并发循环
     if (!this.canStartRequest()) return
     await this.executeRequest(params, assistantMessageId)
+  }
+
+  /**
+   * 连续工具调用达到上限后，点击提示按钮继续推进同一轮。
+   * 先移除提示文本（避免残留进模型上下文），再复用同一条 assistant 消息续跑，
+   * 模型拿到历史 tool 结果后继续执行，步数计数重新开始。
+   */
+  async continueAgent(assistantMessageId: string): Promise<void> {
+    if (!this.canStartRequest()) return
+    this.removeContinueHint(assistantMessageId)
+    const params = this.buildResumeRequestParams({ assistantMessageId })
+    await this.executeRequest(params, assistantMessageId)
+  }
+
+  /** 移除 assistant 消息中的「继续推进」提示文本 */
+  private removeContinueHint(assistantMessageId: string): void {
+    const message = this.messages.value.find((m) => m.id === assistantMessageId)
+    if (!message || message.role !== 'assistant' || !message.content) return
+    const before = message.content.length
+    message.content = message.content.filter(
+      (item) => !(item.type === 'text' && item.ext?.continueHint === true)
+    )
+    if (message.content.length !== before) {
+      this.messages.value = [...this.messages.value]
+    }
   }
 
   deleteFromUserMessage(messageId: string): void {

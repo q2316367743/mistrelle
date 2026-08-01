@@ -33,10 +33,13 @@ const askToolName = 'ask'
 const toolCallName = computed(() => props.content.data.toolCallName)
 
 const isAskTool = computed(() => toolCallName.value === askToolName)
-// 仅 pending 态接入 confirm 卡片；决策完成（complete）后回落到各工具自有渲染展示结果
-const isConfirmPending = computed(
-  () => props.content.ext?.interactive === 'confirm' && props.content.status === 'pending'
-)
+// 仅未完成态接入 confirm 卡片；决策完成（complete）后回落到各工具自有渲染展示结果
+const isConfirmPending = computed(() => {
+  const s = props.content.status
+  return (
+    props.content.ext?.interactive === 'confirm' && (s === 'pending' || s === 'streaming')
+  )
+})
 const isFileTool = computed(() => toolCallName.value.startsWith('file_'))
 const isShellTool = computed(() => shellToolNames.has(toolCallName.value))
 const isSkillTool = computed(() => skillToolNames.has(toolCallName.value))

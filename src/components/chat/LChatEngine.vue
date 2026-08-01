@@ -8,6 +8,7 @@
         style="flex: 1; margin-top: 8px"
         @clear="handleClear"
         @delete="handleDeleteMessage"
+        @continue="handleContinue"
         @change="handleMessagesChange"
       />
       <l-chat-sender
@@ -109,6 +110,10 @@ const handleClear = () => {
 
 const handleDeleteMessage = (messageId: string) => {
   instance.deleteFromUserMessage(messageId)
+}
+
+const handleContinue = (assistantMessageId: string) => {
+  instance.continueAgent(assistantMessageId)
 }
 
 const handleMessagesChange = () => {

@@ -4,8 +4,16 @@
       v-for="(contentItem, contentIndex) in message.content"
       :key="contentItem.id || contentIndex"
     >
+      <button
+        v-if="isContinueHint(contentItem)"
+        class="continue-hint"
+        @click="emit('continue', message.id)"
+      >
+        <RefreshIcon class="continue-hint__icon" />
+        <span class="continue-hint__text">已到达本轮连续工具调用上限，点击继续推进</span>
+      </button>
       <ChatContent
-        v-if="contentItem.type === 'text' || contentItem.type === 'markdown'"
+        v-else-if="contentItem.type === 'text' || contentItem.type === 'markdown'"
         :content="contentItem.data"
       />
       <r-chat-think
@@ -40,7 +48,8 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { PropType } from 'vue'
-import { AIMessage, type ChatComment, ChatStatus } from '@/domain'
+import { AIMessage, type AIMessageContent, type ChatComment, ChatStatus } from '@/domain'
+import { RefreshIcon } from 'tdesign-icons-vue-next'
 import RChatTool from '@/components/chat/chat-assistant/RChatTool.vue'
 import FileProductList from '@/components/chat/chat-assistant/FileProductList.vue'
 import { ChatContent } from '@tdesign-vue-next/chat'
@@ -58,7 +67,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['change'])
+const emit = defineEmits(['change', 'continue'])
+
+const isContinueHint = (item: AIMessageContent): boolean =>
+  item.type === 'text' && item.ext?.continueHint === true
 
 const isLoading = computed(
   () =>
@@ -121,6 +133,37 @@ const handleCommentChange = (message: AIMessage, comment: ChatComment) => {
 }
 </script>
 <style scoped lang="less">
+.continue-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--td-comp-margin-s);
+  margin: var(--td-comp-margin-xs) 0;
+  padding: var(--td-comp-paddingTB-xs) var(--td-comp-paddingLR-s);
+  border: 1px dashed var(--td-brand-color);
+  border-radius: var(--td-radius-small);
+  background: var(--td-brand-color-light);
+  color: var(--td-brand-color);
+  font: var(--td-font-body-small);
+  cursor: pointer;
+  transition:
+    background-color 100ms ease-out,
+    border-color 100ms ease-out;
+
+  &:hover {
+    background: var(--td-brand-color-light-hover, var(--td-brand-color-light));
+    border-color: var(--td-brand-color-2, var(--td-brand-color));
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    font-size: var(--td-font-size-body-large);
+  }
+
+  &__text {
+    white-space: nowrap;
+  }
+}
+
 .loading-indicator {
   display: flex;
   align-items: center;

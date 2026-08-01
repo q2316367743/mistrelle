@@ -28,6 +28,7 @@
               v-else-if="message.role === 'assistant'"
               :message="message"
               :status="status"
+              @continue="emit('continue', $event)"
             />
           </template>
         </ChatMessage>
@@ -77,6 +78,7 @@ const emit = defineEmits<{
   clear: []
   delete: [messageId: string]
   change: []
+  continue: [messageId: string]
 }>()
 
 const textLoading = computed(() => props.status === 'pending')

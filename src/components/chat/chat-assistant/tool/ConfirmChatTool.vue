@@ -56,10 +56,13 @@ const toolCallId = computed(() => props.content.data.toolCallId)
 
 const matched = computed(() => bridge?.pending.value?.toolCallId === toolCallId.value)
 const isInteractive = computed(
-  () => props.content.status === 'pending' && !!bridge && matched.value
+  () => (props.content.status === 'pending' || props.content.status === 'streaming') && !!bridge && matched.value
 )
 // 决策通过后、handler 执行期间的状态占位
-const isExecuting = computed(() => props.content.status === 'pending' && !matched.value)
+const isExecuting = computed(() => {
+  const s = props.content.status
+  return (s === 'pending' || s === 'streaming') && !matched.value
+})
 
 const approve = () => {
   bridge?.resolve(toolCallId.value, true)
