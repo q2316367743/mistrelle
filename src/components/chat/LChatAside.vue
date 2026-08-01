@@ -3,6 +3,7 @@
     <t-select v-model="active">
       <t-option value="overview" label="概览" />
       <t-option value="workspace" label="工作空间" :disabled="!workspace" />
+      <t-option value="sandbox" label="沙盒空间" :disabled="!sandbox" />
     </t-select>
     <div v-if="active === 'overview'" class="l-chat-aside__content">
       <sub-title title="任务进程" />
@@ -26,9 +27,18 @@
         <span class="ellipsis w-180px">{{ output.name }}</span>
       </div>
     </div>
-    <div v-else-if="active === 'workspace'" class="l-chat-aside__content">
+    <div v-else-if="active === 'workspace' || active === 'sandbox'" class="l-chat-aside__content">
+      <sub-title :title="active === 'workspace' ? '工作空间' : '沙盒空间'">
+        <template #actions>
+          <t-button theme="primary" size="small" variant="text" shape="square" @click="handleTreeRefresh">
+            <template #icon>
+              <refresh-icon />
+            </template>
+          </t-button>
+        </template>
+      </sub-title>
       <t-tree
-        :key="workspace"
+        :key="treeKey"
         :data="treeData"
         :load="treeLoad"
         :icon="treeIcon"
@@ -45,7 +55,13 @@
 </template>
 <script lang="ts" setup>
 import { ChatMessage, type ToolCallContent, type TodoItem } from '@/domain'
-import { FileIcon, FileMarkdownIcon, FolderIcon, FolderOpenIcon } from 'tdesign-icons-vue-next'
+import {
+  FileIcon,
+  FileMarkdownIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  RefreshIcon
+} from 'tdesign-icons-vue-next'
 import type { TreeOptionData, TreeNodeModel } from 'tdesign-vue-next'
 import { openFilePreview } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
 import TodoList from '@/components/chat/TodoList.vue'
@@ -120,11 +136,17 @@ const NOISE_NAMES = new Set([
   '__pycache__'
 ])
 
+const currentRoot = computed(() => {
+  // 沙盒空间仅展示 outputs 目录
+  if (active.value === 'sandbox') return props.sandbox ? window.preload.path.join(props.sandbox, 'outputs') : ''
+  return props.workspace
+})
+
 const treeData = computed<WorkspaceTreeNode[]>(() => {
-  const ws = props.workspace
-  if (!ws) return []
-  const label = window.preload.path.basename(ws) || ws
-  return [{ label, value: ws, isDirectory: true, children: true }]
+  const root = currentRoot.value
+  if (!root) return []
+  const label = window.preload.path.basename(root) || root
+  return [{ label, value: root, isDirectory: true, children: true }]
 })
 
 const isWorkspaceNode = (data: TreeOptionData): data is WorkspaceTreeNode => 'isDirectory' in data
@@ -170,13 +192,21 @@ const openSandbox = () => {
 
 const expanded = ref<string[]>([])
 
-watch(
-  () => props.workspace,
-  (val) => {
-    expanded.value = val ? [val] : []
-  },
-  { immediate: true }
-)
+const refreshKey = ref(0)
+
+// 空间路径或手动刷新时 key 变化，强制重建 tree 以重载数据
+const treeKey = computed(() => `${currentRoot.value}|${refreshKey.value}`)
+
+const resetExpanded = () => {
+  expanded.value = currentRoot.value ? [currentRoot.value] : []
+}
+
+const handleTreeRefresh = () => {
+  refreshKey.value++
+  resetExpanded()
+}
+
+watch(currentRoot, resetExpanded, { immediate: true })
 </script>
 <style scoped lang="less">
 .l-chat-aside {

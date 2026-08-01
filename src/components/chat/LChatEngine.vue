@@ -132,13 +132,12 @@ onMounted(async () => {
       if (content.workspace) {
         workspace.value = content.workspace
         instance.setWorkspace(content.workspace)
-        mode.value = content.mode
-        instance.setMode(content.mode)
       }
+      mode.value = content.mode
+      instance.setMode(content.mode)
       if (content.agentId) initialAgentId.value = content.agentId
     }
   }
-
   if (props.storageKey) {
     unWatch = throttledWatch(
       messages,
