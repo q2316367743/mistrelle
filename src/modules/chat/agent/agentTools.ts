@@ -1,11 +1,12 @@
 import type { Ref } from 'vue'
 import type { ChatMessage, ToolFunction } from '@/domain'
 import type { ToolCall } from './agentTypes'
-import { updateToolCallContent } from './agentMessages'
+import { markToolInteractive, updateToolCallContent } from './agentMessages'
 import { resolveToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
 import { MAX_TOOL_RESULT_BYTES } from '@/global/Constant'
+import type { InteractiveBridge } from './interactive'
 
-type ConfirmHandler = (toolName: string, args: Record<string, unknown>) => Promise<boolean>
+const ASK_TOOL_NAME = 'ask'
 
 /**
  * 工具结果按字节截断，且保证不在多字节字符（中文等）中间切断，避免产生非法 UTF-8。
@@ -27,12 +28,71 @@ const serializeResult = (value: unknown): string => {
   return truncateToolResult(text)
 }
 
-const parseArguments = (raw: string | undefined): Record<string, unknown> => {
+export const parseArguments = (raw: string | undefined): Record<string, unknown> => {
   const value: unknown = JSON.parse(raw ?? '{}')
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('工具参数必须是 JSON 对象')
   }
   return Object.fromEntries(Object.entries(value))
+}
+
+const applyResult = (
+  messages: Ref<ChatMessage[]>,
+  assistantMessageId: string,
+  call: ToolCall,
+  result: string
+): void => {
+  call.result = result
+  updateToolCallContent(messages, assistantMessageId, call.toolCallId, result)
+}
+
+/**
+ * 执行单个工具：
+ * - ask：直接挂起等用户选择，选择结果作为工具结果返回（不进 policy）
+ * - 其余：按 policy 裁决，'ask' 时挂起等用户批准 / 拒绝，通过后执行 handler
+ * 正常循环与 resume 复用同一路径。
+ */
+export const runSingleTool = async (
+  messages: Ref<ChatMessage[]>,
+  assistantMessageId: string,
+  call: ToolCall,
+  fn: ToolFunction,
+  args: Record<string, unknown>,
+  policyContext: ToolPolicyContext,
+  interactive: InteractiveBridge
+): Promise<void> => {
+  if (fn.name === ASK_TOOL_NAME) {
+    markToolInteractive(messages, assistantMessageId, call.toolCallId, 'ask')
+    const answer = await interactive.awaitDecision('ask', call.toolCallId, args)
+    const text = typeof answer === 'string' && answer.trim() ? answer.trim() : ''
+    applyResult(
+      messages,
+      assistantMessageId,
+      call,
+      text ? `用户选择：${text}` : '用户未回答，请自行判断或继续推进任务'
+    )
+    return
+  }
+
+  const verdict = resolveToolPolicy(fn, args, policyContext)
+  if (verdict === 'deny') {
+    applyResult(messages, assistantMessageId, call, '该操作被安全策略拦截')
+    return
+  }
+  if (verdict === 'ask') {
+    markToolInteractive(messages, assistantMessageId, call.toolCallId, 'confirm')
+    const approved = await interactive.awaitDecision('confirm', call.toolCallId, args)
+    if (!approved) {
+      applyResult(messages, assistantMessageId, call, '用户拒绝了该工具调用')
+      return
+    }
+  }
+
+  try {
+    applyResult(messages, assistantMessageId, call, serializeResult(await fn.handler(args)))
+  } catch (error: unknown) {
+    applyResult(messages, assistantMessageId, call, `错误: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 export const executeToolCalls = async (
@@ -41,14 +101,12 @@ export const executeToolCalls = async (
   calls: ToolCall[],
   functions: ToolFunction[],
   policyContext: ToolPolicyContext,
-  confirmHandler?: ConfirmHandler
+  interactive: InteractiveBridge
 ): Promise<void> => {
   for (const call of calls) {
     const fn = functions.find((item) => item.name === call.toolCallName)
     if (!fn) {
-      const result = `错误: 未找到工具 "${call.toolCallName}"`
-      call.result = result
-      updateToolCallContent(messages, assistantMessageId, call.toolCallId, result)
+      applyResult(messages, assistantMessageId, call, `错误: 未找到工具 "${call.toolCallName}"`)
       continue
     }
 
@@ -56,32 +114,15 @@ export const executeToolCalls = async (
     try {
       args = parseArguments(call.args)
     } catch (error: unknown) {
-      const result = `错误: ${error instanceof Error ? error.message : String(error)}`
-      call.result = result
-      updateToolCallContent(messages, assistantMessageId, call.toolCallId, result)
+      applyResult(
+        messages,
+        assistantMessageId,
+        call,
+        `错误: ${error instanceof Error ? error.message : String(error)}`
+      )
       continue
     }
 
-    const verdict = resolveToolPolicy(fn, args, policyContext)
-    if (verdict === 'deny') {
-      call.result = '该操作被安全策略拦截'
-      updateToolCallContent(messages, assistantMessageId, call.toolCallId, call.result)
-      continue
-    }
-    if (verdict === 'ask' && confirmHandler) {
-      const approved = await confirmHandler(fn.label || fn.name, args)
-      if (!approved) {
-        call.result = '用户拒绝了该工具调用'
-        updateToolCallContent(messages, assistantMessageId, call.toolCallId, call.result)
-        continue
-      }
-    }
-
-    try {
-      call.result = serializeResult(await fn.handler(args))
-    } catch (error: unknown) {
-      call.result = `错误: ${error instanceof Error ? error.message : String(error)}`
-    }
-    updateToolCallContent(messages, assistantMessageId, call.toolCallId, call.result)
+    await runSingleTool(messages, assistantMessageId, call, fn, args, policyContext, interactive)
   }
 }

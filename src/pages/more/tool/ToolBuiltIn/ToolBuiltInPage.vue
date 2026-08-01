@@ -11,7 +11,16 @@
           class="tool-card"
           @click="handleClick(tool.value)"
         >
-          <div class="tool-card__name">{{ tool.label }}</div>
+          <div class="tool-card__name flex items-center gap-8px">
+            <span>{{ tool.label }}</span>
+            <t-tag
+              v-if="tool.risk && tool.risk !== 'safe'"
+              :theme="tool.risk === 'dangerous' ? 'danger' : 'warning'"
+              variant="light-outline"
+              size="small"
+              >{{ tool.risk === 'dangerous' ? '高危' : '需审批' }}</t-tag
+            >
+          </div>
           <div class="tool-card__desc">{{ toolMap[tool.value]?.description || '暂无描述' }}</div>
         </t-card>
       </div>

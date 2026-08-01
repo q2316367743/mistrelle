@@ -1,4 +1,4 @@
-import { CommonSelect, ToolFunction } from '@/domain'
+import { CommonSelect, ToolFunction, ToolRiskLevel } from '@/domain'
 import { useAiToolStore } from '@/store'
 import { dateTools } from '@/modules/tool/components/date'
 import {
@@ -13,13 +13,15 @@ import { fileTools } from './components/native/file'
 import { fileParseTools } from './components/native/fileParse'
 import { nativeHttpTools } from './components/native/http'
 import { nativeBrowserAutomationTools } from './components/native/browserAutomation'
+import { browserFetchTools } from './components/native/browserFetch'
 import { skillTools } from './components/skill'
 import { agentTools } from './components/agent'
+import { askTool } from './components/ask'
 import { objectify } from '@/utils/lang'
 
 interface ToolOption {
   group: string
-  children: Array<CommonSelect>
+  children: Array<CommonSelect & { risk?: ToolRiskLevel }>
 }
 
 export interface ToolGroup {
@@ -27,7 +29,8 @@ export interface ToolGroup {
   tools: ToolFunction[]
 }
 
-const toOptions = (tools: ToolFunction[]) => tools.map((e) => ({ label: e.label, value: e.name }))
+const toOptions = (tools: ToolFunction[]) =>
+  tools.map((e) => ({ label: e.label, value: e.name, risk: e.risk }))
 
 /**
  * 可选工具的分组单一数据源：
@@ -63,6 +66,7 @@ export const toolMap: Record<string, ToolFunction> = {
 }
 
 export const defaultTools: ToolFunction[] = [
+  askTool,
   ...shellTools,
   ...skillTools,
   ...fileTools,

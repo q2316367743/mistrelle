@@ -28,11 +28,13 @@ import { toAgentRequestMessages } from './agentContext'
 import {
   appendAssistantContent,
   createPendingAssistantMessage,
-  setAssistantStatus
+  setAssistantStatus,
+  updateToolCallContent
 } from './agentMessages'
 import { streamAgentStep } from './agentStream'
-import { executeToolCalls } from './agentTools'
+import { executeToolCalls, parseArguments, runSingleTool } from './agentTools'
 import type { ToolCall } from './agentTypes'
+import { InteractiveBridge, findPendingInteractiveToolcall } from './interactive'
 import { copyToInputs, isPathUnder } from '@/utils/chatSender'
 import { MAX_AGENT_STEPS } from '@/global/Constant'
 import { createTodoTool, buildTodoPrompt } from './todo'
@@ -42,7 +44,6 @@ export interface UseChatOptions {
   chatServiceConfig?: ChatServiceConfig
   functions?: ToolFunction[]
   systemPrompt?: string
-  toolConfirmHandler?: (toolName: string, args: Record<string, unknown>) => Promise<boolean>
   enableSkill?: boolean
   sandboxDir?: string
   workspace?: string
@@ -55,10 +56,11 @@ export class ToolChat {
   readonly status = ref<ChatStatus>('idle')
   readonly toolCalls = ref<ToolCall[]>([])
   readonly todos = ref<TodoItem[]>([])
+  /** ask / confirm 交互桥：供 UI 卡片注入并作答 */
+  readonly interactive = new InteractiveBridge()
   private readonly ctx: ChatContext
   private readonly functions: ToolFunction[]
   private readonly systemPrompt: string
-  private readonly toolConfirmHandler?: UseChatOptions['toolConfirmHandler']
   private sandboxDir = ''
   private workspace = ''
   /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
@@ -75,7 +77,6 @@ export class ToolChat {
     }
     this.functions = options.functions ?? []
     this.systemPrompt = options.systemPrompt ?? ''
-    this.toolConfirmHandler = options.toolConfirmHandler
     this.mode = options.mode ?? 0
     if (options.sandboxDir) this.sandboxDir = options.sandboxDir
     if (options.workspace) this.workspace = options.workspace
@@ -300,7 +301,7 @@ export class ToolChat {
         result.toolCalls,
         functions,
         { sandboxDir: this.sandboxDir, workspace: this.workspace, mode: this.mode },
-        this.toolConfirmHandler
+        this.interactive
       )
       this.toolCalls.value = [...this.toolCalls.value]
       await nextTick()
@@ -325,6 +326,8 @@ export class ToolChat {
     this.ctx.requestSeq += 1
     this.ctx.abortController = new AbortController()
     this.toolCalls.value = []
+    // 新请求抢占：解除此前挂起的 ask/confirm 决策，避免双循环或 Promise 泄漏
+    this.interactive.clear()
     this.status.value = 'pending'
     return {
       seq: this.ctx.requestSeq,
@@ -418,6 +421,70 @@ export class ToolChat {
     await this.executeRequest(requestParams, assistantMessage.id)
   }
 
+  /**
+   * 根据存储的 assistant 消息重建恢复请求参数：模型信息来自 assistant 消息，
+   * 用户内容取它前一条 user 消息，供 resume 续跑同一轮使用。
+   */
+  private buildResumeRequestParams(target: { assistantMessageId: string }): ChatRequestParams {
+    const index = this.messages.value.findIndex((m) => m.id === target.assistantMessageId)
+    const assistant = this.messages.value[index]
+    const prev = index > 0 ? this.messages.value[index - 1] : undefined
+    const userMessage = prev?.role === 'user' ? prev : undefined
+    return {
+      message: {
+        content: userMessage?.content ?? [],
+        model: assistant?.role === 'assistant' ? assistant.model : '',
+        provide: assistant?.role === 'assistant' ? assistant.provide : '',
+        reasoning_effort: userMessage?.reasoning_effort
+      },
+      mode: assistant?.role === 'assistant' ? assistant.mode : this.mode,
+      agentId: assistant?.role === 'assistant' ? assistant.agentId : undefined,
+      workspace: this.workspace
+    }
+  }
+
+  /**
+   * 应用重启后恢复上次挂起的 ask / confirm 决策。
+   * 挂起状态隐式落在持久化消息中（pending toolcall + ext.interactive），
+   * 这里重新挂起等用户作答，作答后复用同一条 assistant 消息续跑同一轮。
+   */
+  async resumePendingInteractives(): Promise<void> {
+    if (!this.canStartRequest()) return
+    const target = findPendingInteractiveToolcall(this.messages.value)
+    if (!target) return
+    const { assistantMessageId, call } = target
+    const params = this.buildResumeRequestParams(target)
+    const functions = this.filterToolsByMode(this.getFunctions(params))
+    const fn = functions.find((item) => item.name === call.toolCallName)
+    if (fn) {
+      let args: Record<string, unknown>
+      try {
+        args = parseArguments(call.args)
+      } catch {
+        args = {}
+      }
+      await runSingleTool(
+        this.messages,
+        assistantMessageId,
+        call,
+        fn,
+        args,
+        { sandboxDir: this.sandboxDir, workspace: this.workspace, mode: this.mode },
+        this.interactive
+      )
+    } else {
+      updateToolCallContent(
+        this.messages,
+        assistantMessageId,
+        call.toolCallId,
+        `错误: 未找到工具 "${call.toolCallName}"`
+      )
+    }
+    // 作答期间若用户已另发起新请求，放弃续跑，避免并发循环
+    if (!this.canStartRequest()) return
+    await this.executeRequest(params, assistantMessageId)
+  }
+
   deleteFromUserMessage(messageId: string): void {
     if (!this.canStartRequest()) return
     const index = this.messages.value.findIndex((message) => message.id === messageId)
@@ -431,6 +498,8 @@ export class ToolChat {
   async abortChat(): Promise<void> {
     this.ctx.abortController?.abort()
     this.ctx.abortController = null
+    // 解除挂起的 ask/confirm 决策，让挂起的工具调用以「未回答」结束，避免卡死
+    this.interactive.clear()
     this.status.value = 'stop'
     await this.ctx.config.onAbort?.()
   }
@@ -479,5 +548,6 @@ export class ToolChat {
     this.status.value = 'idle'
     this.toolCalls.value = []
     this.todos.value = []
+    this.interactive.clear()
   }
 }

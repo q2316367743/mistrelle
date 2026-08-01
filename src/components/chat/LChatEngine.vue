@@ -51,8 +51,7 @@ import type { ChatRequestParams } from '@/modules/chat'
 import { ToolChat, aiChatContentGet, aiChatContentSet, getSandboxDir } from '@/modules/chat'
 import type { UserMessage } from '@/domain'
 import { AiChatContent, AiChatItem, AiChatMode } from '@/entity/ai'
-import { toolConfirmDialog } from '@/components/chat/modals/ToolConfirmDialog'
-import { toolMap } from '@/modules/tool'
+import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
 import { collapsed } from '@/global/BeanFactory'
 import { AppIcon } from 'tdesign-icons-vue-next'
 import { useBoolState } from '@/hooks'
@@ -82,17 +81,13 @@ const sandboxDir = computed(() => {
   return props.sandboxDir || getSandboxDir(props.chatId)
 })
 
-/** 策略层已裁决为 ask，此处仅负责弹窗询问用户 */
-const confirmTool = (toolName: string, args: Record<string, unknown>): Promise<boolean> => {
-  const tool = toolMap[toolName]
-  const label = tool?.label || toolName
-  return toolConfirmDialog(label, toolName, JSON.stringify(args, null, 2))
-}
-
 const instance = new ToolChat({
-  toolConfirmHandler: confirmTool,
   mode: mode.value
 })
+
+// 交互桥供 ask/confirm 卡片注入作答；本组件是 UI 消费方，使能后挂起决策才能被作答
+provide(INTERACTIVE_KEY, instance.interactive)
+instance.interactive.setEnabled(true)
 
 watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 
@@ -170,10 +165,14 @@ onMounted(async () => {
       modelValue.value = `${lastUser.provide}:${lastUser.model}`
     }
   }
+
+  // 恢复上次挂起的 ask / confirm 决策（关闭软件后重新进入继续作答）
+  void instance.resumePendingInteractives()
 })
 
 onUnmounted(() => {
   unWatch?.()
+  instance.interactive.setEnabled(false)
   instance.destroy()
 })
 </script>

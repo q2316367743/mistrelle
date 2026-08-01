@@ -9,6 +9,7 @@ import type {
 import { nanoid } from 'nanoid'
 import { prettyDurationTime, toDateString } from '@/utils/lang'
 import { AiChatMode } from '@/entity'
+import type { InteractiveKind } from './interactive'
 
 export const createPendingAssistantMessage = (params: {
   model: string
@@ -84,6 +85,25 @@ export const updateToolCallContent = (
   if (!content) return
   content.status = 'complete'
   content.data.result = result
+}
+
+/**
+ * 标记工具调用为「等待用户决策」的交互类型（ask / confirm）。
+ * 该标记随消息持久化，应用重启后据此恢复挂起的交互。
+ */
+export const markToolInteractive = (
+  messages: Ref<ChatMessage[]>,
+  messageId: string,
+  toolCallId: string,
+  kind: InteractiveKind
+): void => {
+  const assistant = getAssistant(messages, messageId)
+  const content = assistant?.content?.findLast(
+    (item): item is ToolCallContent =>
+      item.type === 'toolcall' && item.data.toolCallId === toolCallId
+  )
+  if (!content) return
+  content.ext = { ...(content.ext ?? {}), interactive: kind }
 }
 
 export const setAssistantStatus = (
