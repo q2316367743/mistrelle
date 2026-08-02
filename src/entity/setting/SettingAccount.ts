@@ -1,5 +1,9 @@
 export interface SettingAccount {
   /**
+   *
+   */
+  avatar: string
+  /**
    * 用户名
    */
   nickname: string
@@ -12,6 +16,7 @@ export interface SettingAccount {
 
 export function buildSettingAccount(): SettingAccount {
   return {
+    avatar: '',
     nickname: '用户',
     skillhub: ''
   }

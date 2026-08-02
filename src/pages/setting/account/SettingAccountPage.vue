@@ -4,14 +4,14 @@
       <t-list-item>
         <t-list-item-meta title="用户名" />
         <template #action>
-          <t-input v-model="state.nickname" style="width: 200px" allow-clear />
+          <div class="flex gap-8px">
+            <t-input v-model="state.nickname" style="width: 200px" allow-clear />
+            <t-button v-if="isUtools" @click="resetNickname">重置</t-button>
+          </div>
         </template>
       </t-list-item>
       <t-list-item>
-        <t-list-item-meta
-          title="SkillHub API Key"
-          description="用于访问 SkillHub 服务"
-        />
+        <t-list-item-meta title="SkillHub API Key" description="用于访问 SkillHub 服务" />
         <template #action>
           <div class="flex items-center gap-8px">
             <t-input
@@ -32,6 +32,17 @@
 import { useSettingAccountStore } from '@/store'
 
 const { state } = toRefs(useSettingAccountStore())
+const isUtools = window.preload.inject.getPlatform() === 'utools'
+
+const resetNickname = () => {
+  if (window.preload.inject.getPlatform() === 'utools') {
+    const user = window.preload.inject.os.getUser()
+    if (user) {
+      state.value.avatar = user.avatar
+      state.value.nickname = user.nickname
+    }
+  }
+}
 </script>
 <style scoped lang="less">
 .setting-list {

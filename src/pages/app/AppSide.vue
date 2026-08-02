@@ -21,6 +21,7 @@
           class="menu-item"
           :class="{ active: isStartActive('/project/') }"
           type="button"
+          disabled
           @click="goTo('/project/list')"
         >
           <AbilityOpenIcon class="menu-icon" />
@@ -102,7 +103,7 @@
           min-column-width="188px"
         >
           <button class="menu-item" type="button">
-            <t-avatar image="./logo.png" size="24px" shape="circle" />
+            <t-avatar :image="avatar" size="24px" shape="circle" />
             <span>{{ nickname }}</span>
           </button>
           <t-dropdown-menu>
@@ -174,6 +175,7 @@ const moreIconStyle = computed(() => ({
   transform: more.value ? 'rotate(90deg)' : '',
   transition: 'all 200ms ease-in-out'
 }))
+const avatar = computed(() => useSettingAccountStore().state.avatar)
 const nickname = computed(() => useSettingAccountStore().state.nickname)
 
 const isActive = (path: string) => route.path === path
@@ -278,6 +280,19 @@ onMounted(() => {
     background: transparent;
     border-radius: var(--td-radius-round);
     transition: background var(--fluent-transition-fast);
+  }
+
+  &:disabled {
+    color: var(--td-text-color-disabled);
+    cursor: not-allowed;
+
+    &:hover {
+      background: transparent;
+    }
+
+    &::before {
+      background: transparent;
+    }
   }
 
   &.active {
