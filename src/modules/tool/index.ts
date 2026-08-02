@@ -1,5 +1,4 @@
 import { CommonSelect, ToolFunction, ToolRiskLevel } from '@/domain'
-import { useAiToolStore } from '@/store'
 import { dateTools } from '@/modules/tool/components/date'
 import {
   injectOsTools,
@@ -74,9 +73,6 @@ export const defaultTools: ToolFunction[] = [
   ...nativeHttpTools,
   ...browserFetchTools
 ]
-
-/** 获取所有已启用且已连接的 MCP 工具（运行时动态） */
-export const getMcpTools = (): ToolFunction[] => useAiToolStore().getMcpTools()
 
 export {
   resolveToolPolicy,

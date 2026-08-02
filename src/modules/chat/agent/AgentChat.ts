@@ -14,7 +14,7 @@ import { nanoid } from 'nanoid'
 import { buildSkillCatalogPrompt, localSkillList } from '@/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
 import type { AiChatMode } from '@/entity'
-import { defaultTools, getMcpTools, isShellExecTool, toolMap } from '@/modules/tool'
+import { defaultTools, isShellExecTool, toolMap } from '@/modules/tool'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
 import type {
   ChatContext,
@@ -104,13 +104,11 @@ export class ToolChat {
     const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
     const names = [...(agent?.tools ?? []), ...this.getUserToolNames(params)]
     const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
-    const mcpTools = getMcpTools()
     const map = new Map<string, ToolFunction>()
     for (const fn of [
       ...this.functions,
       ...selected,
       ...defaultTools,
-      ...mcpTools,
       createTodoTool(this.todos)
     ]) {
       map.set(fn.name, fn)

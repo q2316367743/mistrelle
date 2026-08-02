@@ -6,7 +6,6 @@ const iconv = require('./src/IconvAPI')
 const crypto = require('./src/CryptoApi')
 const zip = require('./src/zip')
 const shellExec = require('./src/shellExec')
-const mcp = require('./src/mcp')
 const axios = require('axios')
 
 window.preload = {
@@ -18,7 +17,6 @@ window.preload = {
   crypto,
   zip,
   shellExec,
-  mcp,
   axios: axios.create({
     adapter: 'http'
   })

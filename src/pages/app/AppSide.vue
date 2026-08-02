@@ -83,7 +83,7 @@
 
         <t-radio-group v-model="active" variant="primary-filled">
           <t-radio-button value="agent" class="w-100px flex justify-center"> 任务 </t-radio-button>
-          <t-radio-button value="discussion" class="w-100px flex justify-center">
+          <t-radio-button value="discussion" class="w-100px flex justify-center" disabled>
             讨论组
           </t-radio-button>
         </t-radio-group>
