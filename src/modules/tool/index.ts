@@ -16,6 +16,7 @@ import { browserFetchTools } from './components/native/browserFetch'
 import { skillTools } from './components/skill'
 import { agentTools } from './components/agent'
 import { askTool } from './components/ask'
+import { spawnAgentTool } from './components/spawnAgent'
 import { objectify } from '@/utils/lang'
 
 interface ToolOption {
@@ -66,6 +67,7 @@ export const toolMap: Record<string, ToolFunction> = {
 
 export const defaultTools: ToolFunction[] = [
   askTool,
+  spawnAgentTool,
   ...shellTools,
   ...skillTools,
   ...fileTools,

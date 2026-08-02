@@ -11,7 +11,7 @@ import {
   type ResolvedChatRequestParams,
   type ChatServiceConfig,
   type SSEChunkData
-} from '../engine/ChatCommon'
+} from '@/modules/chat'
 import { nanoid } from 'nanoid'
 import { appendAssistantContent, setAssistantStatus } from './agentMessages'
 import type { AgentStreamingBody, StreamStepResult, ToolCall } from './agentTypes'

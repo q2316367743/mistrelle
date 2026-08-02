@@ -1,12 +1,13 @@
 import type { Ref } from 'vue'
 import type { ChatMessage, ToolFunction } from '@/domain'
 import type { ToolCall } from './agentTypes'
-import { markToolInteractive, updateToolCallContent } from './agentMessages'
+import { appendSubAgentId, markToolInteractive, updateToolCallContent } from './agentMessages'
 import { resolveToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
 import { MAX_TOOL_RESULT_BYTES } from '@/global/Constant'
 import type { InteractiveBridge } from './interactive'
 
 const ASK_TOOL_NAME = 'ask'
+const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
 
 /**
  * 工具结果按字节截断，且保证不在多字节字符（中文等）中间切断，避免产生非法 UTF-8。
@@ -47,8 +48,23 @@ const applyResult = (
 }
 
 /**
+ * 从消息列表末尾向前查找最后一条 user 消息，提取模型信息。
+ * 子 Agent 继承主 Agent 当前使用的模型。
+ */
+const findLastUserModel = (messages: Ref<ChatMessage[]>): { model: string; provide: string; reasoning_effort?: 'high' | 'max' } => {
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const msg = messages.value[i]
+    if (msg.role === 'user') {
+      return { model: msg.model, provide: msg.provide, reasoning_effort: msg.reasoning_effort }
+    }
+  }
+  return { model: '', provide: '' }
+}
+
+/**
  * 执行单个工具：
  * - ask：直接挂起等用户选择，选择结果作为工具结果返回（不进 policy）
+ * - spawn_agent：委托子 Agent 执行只读调研任务，返回最终摘要（不进 policy）
  * - 其余：按 policy 裁决，'ask' 时挂起等用户批准 / 拒绝，通过后执行 handler
  * 正常循环与 resume 复用同一路径。
  */
@@ -71,6 +87,41 @@ export const runSingleTool = async (
       call,
       text ? `用户选择：${text}` : '用户未回答，请自行判断或继续推进任务'
     )
+    return
+  }
+
+  // spawn_agent：委托子 Agent 执行只读调研任务
+  if (fn.name === SPAWN_AGENT_TOOL_NAME) {
+    const task = typeof args.task === 'string' ? args.task : ''
+    if (!task) {
+      applyResult(messages, assistantMessageId, call, '错误：spawn_agent 缺少 task 参数')
+      return
+    }
+    if (!policyContext.chatId || !policyContext.sandboxDir) {
+      applyResult(messages, assistantMessageId, call, '错误：无法启动子 Agent，缺少聊天上下文')
+      return
+    }
+    const { model, provide, reasoning_effort } = findLastUserModel(messages)
+    if (!model || !provide) {
+      applyResult(messages, assistantMessageId, call, '错误：无法确定子 Agent 使用的模型')
+      return
+    }
+    // 动态导入避免循环依赖（SubAgentRunner → ToolChat → agentTools → SubAgentRunner）
+    const { runSubAgent } = await import('./SubAgentRunner')
+    const result = await runSubAgent({
+      chatId: policyContext.chatId,
+      task,
+      sandboxDir: policyContext.sandboxDir,
+      workspace: policyContext.workspace,
+      model,
+      provide,
+      reasoningEffort: reasoning_effort,
+      // 主 Agent 终止时级联终止子 Agent
+      parentSignal: policyContext.abortSignal
+    })
+    // 记录子 Agent ID 到本条 assistant 消息 + toolcall，供 UI 渲染子 Agent 切换卡片
+    appendSubAgentId(messages, assistantMessageId, result.subId, call.toolCallId)
+    applyResult(messages, assistantMessageId, call, result.summary)
     return
   }
 

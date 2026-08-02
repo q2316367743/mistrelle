@@ -8,6 +8,8 @@ import { ToolChat } from './AgentChat'
 export interface ChatSessionOptions {
   storageKey: string
   sandboxDir?: string
+  /** 聊天 ID（用于子 Agent 文件路径构建） */
+  chatId?: string
 }
 
 /**
@@ -31,7 +33,7 @@ export class ChatSession {
 
   constructor(options: ChatSessionOptions) {
     this.storageKey = options.storageKey
-    this.chat = new ToolChat({ sandboxDir: options.sandboxDir })
+    this.chat = new ToolChat({ sandboxDir: options.sandboxDir, chatId: options.chatId })
   }
 
   get messages() {

@@ -11,7 +11,7 @@
 <script lang="ts" setup>
 import { AiChatItem, AiAgent } from '@/entity/ai'
 import { useAiAgentStore, useAiChatStore } from '@/store'
-import { aiChatGet, buildChatChatPath } from '@/modules/chat'
+import { aiChatGet, buildChatMainPath } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { useSafeBack } from '@/hooks'
 
@@ -29,7 +29,7 @@ watch(
       storageKey.value = ''
       nextTick(() => {
         chat.value = res
-        storageKey.value = buildChatChatPath(res.id)
+        storageKey.value = buildChatMainPath(res.id)
       })
     }
   },

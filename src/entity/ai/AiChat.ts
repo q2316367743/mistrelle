@@ -49,6 +49,36 @@ export interface AiChatContent {
   messages: Array<ChatMessage>
   // 当前对话的待办清单（由 update_todo 工具维护）
   todos?: TodoItem[]
+  // 子 Agent 元数据列表（消息体存储在 message/sub_{subId}.json，此处仅保留索引）
+  subAgents?: SubAgentMeta[]
+}
+
+/**
+ * 子 Agent 的轻量元数据（存储在主 Agent 的 AiChatContent.subAgents 中）
+ * 完整消息体以独立的 SubAgentContent 存储在 message/sub_{subId}.json
+ */
+export interface SubAgentMeta {
+  // 子 Agent ID（snowflake）
+  id: string
+  // 任务描述
+  task: string
+  startedAt: number
+  finishedAt?: number
+  status: 'running' | 'completed' | 'error'
+}
+
+/**
+ * 子 Agent 完整内容（独立存储在 message/sub_{subId}.json）
+ */
+export interface SubAgentContent {
+  id: string
+  task: string
+  messages: Array<ChatMessage>
+  startedAt: number
+  finishedAt?: number
+  status: 'running' | 'completed' | 'error'
+  // 最终返回给主 Agent 的摘要文本
+  summary?: string
 }
 
 export interface AiChat extends AiChatItem, AiChatContent {}

@@ -9,7 +9,7 @@ import {
   aiChatRemove,
   aiChatSandbox,
   aiChatSandboxRemove,
-  buildChatChatPath,
+  buildChatMainPath,
   destroyChatSession,
   useChatName
 } from '@/modules/chat'
@@ -69,8 +69,10 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     state.value.push(item)
     // 保存索引
     await aiChatIndexSave(state.value)
+    // 先创建沙盒目录（含 message/ 子目录），再写聊天内容——新路径 {id}/message/main.json 的父目录需先存在
+    await aiChatSandbox(id)
     // 保存聊天内容（含草稿）
-    await aiChatContentSet(buildChatChatPath(id), {
+    await aiChatContentSet(buildChatMainPath(id), {
       updatedTime: now,
       draft: params,
       agentId: agentId || '',
@@ -78,8 +80,6 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       messages: [],
       mode: params.mode
     })
-    // 创建沙盒目录
-    await aiChatSandbox(id)
 
     // 生成聊天消息
     logger.debug('AI 聊天消息生成')
@@ -96,7 +96,7 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       state.value.splice(index, 1)
       await aiChatIndexSave(state.value)
       // 销毁内存会话，避免后台请求与常驻持久化残留
-      destroyChatSession(buildChatChatPath(id))
+      destroyChatSession(buildChatMainPath(id))
       // 删除聊天记录
       await aiChatRemove(id)
       // 删除沙盒目录

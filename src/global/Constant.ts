@@ -49,9 +49,18 @@ export const dataFolder = window.preload.path.join(
   `.${Constant.id}`
 )
 
-export const getAppData2Chat = () => {
-  return window.preload.path.join(dataFolder, 'chat')
-}
+/**
+ * 聊天索引文件路径：~/.mistrelle/workspace/index.json
+ * 索引与各聊天内容统一收口在 workspace/ 目录下，废弃旧的 chat/ 目录
+ */
+export const getChatIndexPath = () => window.preload.path.join(getDataForWorkspace(), 'index.json')
+
+/**
+ * 单个聊天的 message 目录：~/.mistrelle/workspace/{chatId}/message/
+ * 主 Agent 消息存为 main.json，子 Agent 消息存为 sub_{subId}.json
+ */
+export const getChatMessageDir = (chatId: string) =>
+  window.preload.path.join(getDataForWorkspace(), chatId, 'message')
 
 export const getAppData2Discussion = () => {
   return window.preload.path.join(dataFolder, 'discussion')

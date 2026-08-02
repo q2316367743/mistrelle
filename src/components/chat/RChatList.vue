@@ -29,6 +29,7 @@
               :message="message"
               :status="status"
               @continue="emit('continue', $event)"
+              @view-sub-agent="emit('view-sub-agent', $event)"
             />
           </template>
         </ChatMessage>
@@ -79,6 +80,7 @@ const emit = defineEmits<{
   delete: [messageId: string]
   change: []
   continue: [messageId: string]
+  'view-sub-agent': [subAgentId: string]
 }>()
 
 const textLoading = computed(() => props.status === 'pending')

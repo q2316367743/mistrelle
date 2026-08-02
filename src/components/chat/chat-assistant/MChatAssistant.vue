@@ -1,7 +1,20 @@
 <template>
   <div class="chat-assistant">
+    <!-- 消息完成后默认折叠过程：仅显示折叠条 + 最终回复，节省空间并减少渲染节点。
+         无最终回复时（如整轮只有 toolcall / 被中止）不折叠也不显示按钮 -->
+    <button
+      v-if="canCollapse"
+      class="process-collapse"
+      @click="processExpanded = !processExpanded"
+    >
+      <ChevronDownIcon v-if="!processExpanded" class="process-collapse__icon" />
+      <ChevronRightIcon v-else class="process-collapse__icon" />
+      <span class="process-collapse__text">
+        {{ processExpanded ? '收起执行过程' : `已折叠执行过程（${processCount} 步），点击展开` }}
+      </span>
+    </button>
     <template
-      v-for="(contentItem, contentIndex) in message.content"
+      v-for="(contentItem, contentIndex) in visibleContents"
       :key="contentItem.id || contentIndex"
     >
       <button
@@ -21,7 +34,11 @@
         :content="contentItem"
         :index="contentIndex"
       />
-      <r-chat-tool v-else-if="contentItem.type === 'toolcall'" :content="contentItem" />
+      <r-chat-tool
+        v-else-if="contentItem.type === 'toolcall'"
+        :content="contentItem"
+        @view-sub-agent="handleViewSubAgent"
+      />
     </template>
     <FileProductList :message="message" />
 
@@ -49,7 +66,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { PropType } from 'vue'
 import { AIMessage, type AIMessageContent, type ChatComment, ChatStatus } from '@/domain'
-import { RefreshIcon } from 'tdesign-icons-vue-next'
+import { ChevronDownIcon, ChevronRightIcon, RefreshIcon } from 'tdesign-icons-vue-next'
 import RChatTool from '@/components/chat/chat-assistant/RChatTool.vue'
 import FileProductList from '@/components/chat/chat-assistant/FileProductList.vue'
 import { ChatContent } from '@tdesign-vue-next/chat'
@@ -67,7 +84,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['change', 'continue'])
+const emit = defineEmits(['change', 'continue', 'view-sub-agent'])
 
 const isContinueHint = (item: AIMessageContent): boolean =>
   item.type === 'text' && item.ext?.continueHint === true
@@ -81,6 +98,54 @@ const isLoading = computed(
 const isCompleted = computed(
   () => props.message.status === 'complete' || props.message.status === 'stop'
 )
+
+// ─── 完成后过程折叠 ────────────────────────────────────────────────
+
+/** 最终回复：content 中最后一条非 continueHint 的 text/markdown（agent 循环最后一步的输出） */
+const finalContent = computed<AIMessageContent | undefined>(() => {
+  const contents = props.message.content ?? []
+  for (let i = contents.length - 1; i >= 0; i--) {
+    const item = contents[i]
+    if ((item.type === 'text' || item.type === 'markdown') && !isContinueHint(item)) {
+      return item
+    }
+  }
+  return undefined
+})
+
+/** 是否存在可折叠的过程内容（thinking / toolcall / 中间文本等，排除最终回复） */
+const hasProcess = computed(() => {
+  const contents = props.message.content ?? []
+  return contents.some((item) => item !== finalContent.value)
+})
+
+/** 是否可折叠：完成 + 有最终回复（折叠后的展示目标）+ 有过程，三者缺一不可。
+ *  无最终回复时（整轮只有 toolcall / 被中止）不折叠也不显示按钮，避免"声称已折叠实际全量"的误导 */
+const canCollapse = computed(() => isCompleted.value && !!finalContent.value && hasProcess.value)
+
+/** 过程步数：thinking + toolcall 数量（不含最终回复文本） */
+const processCount = computed(() => {
+  const contents = props.message.content ?? []
+  return contents.filter(
+    (item) => item !== finalContent.value && (item.type === 'thinking' || item.type === 'toolcall')
+  ).length
+})
+
+/** 过程是否展开（默认折叠） */
+const processExpanded = ref(false)
+
+/**
+ * 实际渲染的内容列表：
+ * - 进行中（streaming/pending）：全量平铺，实时展示过程
+ * - 完成且折叠：仅保留最终回复（渲染节点最少）
+ * - 完成且展开 / 无过程可折叠：全量
+ */
+const visibleContents = computed(() => {
+  const contents = props.message.content ?? []
+  if (!isCompleted.value) return contents
+  if (processExpanded.value) return contents
+  return finalContent.value ? [finalContent.value] : contents
+})
 
 const durationText = computed(() => {
   if (!props.message.finishedAt || !props.message.datetime) return ''
@@ -131,6 +196,10 @@ const handleCommentChange = (message: AIMessage, comment: ChatComment) => {
   message.comment = comment
   emit('change')
 }
+
+const handleViewSubAgent = (subAgentId: string) => {
+  emit('view-sub-agent', subAgentId)
+}
 </script>
 <style scoped lang="less">
 .continue-hint {
@@ -157,6 +226,40 @@ const handleCommentChange = (message: AIMessage, comment: ChatComment) => {
   &__icon {
     flex-shrink: 0;
     font-size: var(--td-font-size-body-large);
+  }
+
+  &__text {
+    white-space: nowrap;
+  }
+}
+
+.process-collapse {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--td-comp-margin-xs);
+  margin: var(--td-comp-margin-xs) 0;
+  padding: var(--td-comp-paddingTB-xxs) var(--td-comp-paddingLR-s);
+  border: 1px solid var(--td-component-border);
+  border-radius: var(--td-radius-medium);
+  background: var(--td-bg-color-component);
+  color: var(--td-text-color-secondary);
+  font: var(--td-font-body-small);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out;
+
+  &:hover {
+    border-color: var(--td-brand-color);
+    color: var(--td-brand-color);
+    background: var(--td-brand-color-light);
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    font-size: var(--td-font-size-body-medium);
   }
 
   &__text {

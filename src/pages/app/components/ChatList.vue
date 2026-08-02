@@ -24,7 +24,7 @@ import { VList } from 'virtua/vue'
 import { FolderIcon } from 'tdesign-icons-vue-next'
 import type { AiChatItem } from '@/entity/ai'
 import { useAiChatStore } from '@/store'
-import { buildChatChatPath, getChatSessionStatus } from '@/modules/chat'
+import { buildChatMainPath, getChatSessionStatus } from '@/modules/chat'
 import { openChatContextmenu } from '@/pages/app/chat-func'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -45,7 +45,7 @@ const handleHome = () => goTo('/')
 
 /** 会话是否正在作答（读取会话管理器中的实时状态，保持响应式） */
 const isStreaming = (item: AiChatItem): boolean => {
-  const status = getChatSessionStatus(buildChatChatPath(item.id))
+  const status = getChatSessionStatus(buildChatMainPath(item.id))
   return status === 'pending' || status === 'streaming'
 }
 

@@ -179,6 +179,8 @@ export interface AIMessage extends ChatBaseMessage {
   comment?: ChatComment
   /** 完成时间戳（ms） */
   finishedAt?: number
+  /** 本条回复过程中 spawn 的子 Agent ID 列表（用于 UI 展示子 Agent 切换卡片） */
+  subAgentIds?: string[]
 }
 export interface SystemMessage extends ChatBaseMessage {
   role: 'system'

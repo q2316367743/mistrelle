@@ -120,3 +120,26 @@ export const setAssistantStatus = (
     assistant.finishedAt = Date.now()
   }
 }
+
+/**
+ * 记录本条 assistant 回复过程中 spawn 的子 Agent ID。
+ * 同步把 subAgentId 标记到对应 toolcall 的 ext 字段，供 UI 建立「工具卡片 ↔ 子 Agent」映射。
+ */
+export const appendSubAgentId = (
+  messages: Ref<ChatMessage[]>,
+  messageId: string,
+  subAgentId: string,
+  toolCallId?: string
+): void => {
+  const assistant = getAssistant(messages, messageId)
+  if (!assistant) return
+  const ids = assistant.subAgentIds ?? (assistant.subAgentIds = [])
+  if (!ids.includes(subAgentId)) ids.push(subAgentId)
+  if (toolCallId) {
+    const content = assistant.content?.findLast(
+      (item): item is ToolCallContent =>
+        item.type === 'toolcall' && item.data.toolCallId === toolCallId
+    )
+    if (content) content.ext = { ...(content.ext ?? {}), subAgentId }
+  }
+}

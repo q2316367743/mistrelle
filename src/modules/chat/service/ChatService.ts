@@ -1,18 +1,26 @@
 import { AiChatContent, AiChatItem } from '@/entity/ai'
-import { getAppData2Chat, getDataForWorkspace } from '@/global/Constant'
+import { getChatIndexPath, getChatMessageDir, getDataForWorkspace } from '@/global/Constant'
 import { ChatMessage } from '@/domain'
 
 let chatIndexPath: string | undefined = undefined
 
-const buildChatIndexPath = (folder?: string) => {
+const buildChatIndexPath = () => {
   if (chatIndexPath) return chatIndexPath
-  const c = window.preload.path.join(folder || getAppData2Chat(), 'index.json')
-  chatIndexPath = c
-  return c
+  chatIndexPath = getChatIndexPath()
+  return chatIndexPath
 }
 
-export const buildChatChatPath = (id: string, folder?: string) =>
-  window.preload.path.join(folder || getAppData2Chat(), id + '.json')
+/**
+ * 主 Agent 消息文件路径：~/.mistrelle/workspace/{chatId}/message/main.json
+ */
+export const buildChatMainPath = (chatId: string) =>
+  window.preload.path.join(getChatMessageDir(chatId), 'main.json')
+
+/**
+ * 子 Agent 消息文件路径：~/.mistrelle/workspace/{chatId}/message/sub_{subId}.json
+ */
+export const buildChatSubPath = (chatId: string, subId: string) =>
+  window.preload.path.join(getChatMessageDir(chatId), `sub_${subId}.json`)
 
 /**
  * 保存聊天列表
@@ -29,14 +37,20 @@ export const aiChatContentSet = async (path: string, content: AiChatContent) => 
   await window.preload.fs.writeTextFile(path, JSON.stringify(content))
 }
 
-// 创建此次聊天的沙盒目录
+// 创建此次聊天的沙盒目录（含 message/ 子目录）
 export const aiChatSandbox = async (id: string) => {
   const folder = window.preload.path.join(getDataForWorkspace(), id)
   await window.preload.fs.mkdir(folder, true)
   const outputs = window.preload.path.join(folder, 'outputs')
   const inputs = window.preload.path.join(folder, 'inputs')
   const tmp = window.preload.path.join(folder, 'tmp')
-  await Promise.all([window.preload.fs.mkdir(outputs), window.preload.fs.mkdir(inputs), window.preload.fs.mkdir(tmp)])
+  const message = window.preload.path.join(folder, 'message')
+  await Promise.all([
+    window.preload.fs.mkdir(outputs),
+    window.preload.fs.mkdir(inputs),
+    window.preload.fs.mkdir(tmp),
+    window.preload.fs.mkdir(message)
+  ])
 }
 
 export const getSandboxDir = (id: string) => window.preload.path.join(getDataForWorkspace(), id)
@@ -45,17 +59,14 @@ export const getSandboxDir = (id: string) => window.preload.path.join(getDataFor
  * 获取聊天列表
  */
 export const aiChatList = async (): Promise<Array<AiChatItem>> => {
-  const folder = getAppData2Chat()
-  const indexPath = buildChatIndexPath(folder)
+  const folder = getDataForWorkspace()
+  const indexPath = buildChatIndexPath()
   if (!window.preload.fs.existsSync(folder)) {
-    // 创建目录
     await window.preload.fs.mkdir(folder)
-    // 创建默认索引文件
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }
   if (!window.preload.fs.existsSync(indexPath)) {
-    // 写入默认数组
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }
@@ -69,12 +80,12 @@ export const aiChatGet = async (id: string): Promise<AiChatItem | undefined> => 
 }
 
 export const aiChatRemove = async (id: string) => {
-  const p = buildChatChatPath(id)
-  // 删除聊天记录
+  const p = buildChatMainPath(id)
+  // 删除主 Agent 聊天记录文件
   await window.preload.fs.rm(p)
 }
 
-// 删除该聊天的沙盒目录
+// 删除该聊天的沙盒目录（含 message/ 子目录及全部子 Agent 文件）
 export const aiChatSandboxRemove = async (id: string) => {
   const folder = getSandboxDir(id)
   if (window.preload.fs.existsSync(folder)) {

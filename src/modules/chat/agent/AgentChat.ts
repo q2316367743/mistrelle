@@ -39,6 +39,9 @@ import { copyToInputs, isPathUnder } from '@/utils/chatSender'
 import { MAX_AGENT_STEPS } from '@/global/Constant'
 import { createTodoTool, buildTodoPrompt } from './todo'
 
+/** spawn_agent 工具名：子 Agent 不暴露此工具，防止嵌套派发 */
+const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
+
 export interface UseChatOptions {
   defaultMessages?: ChatMessage[]
   chatServiceConfig?: ChatServiceConfig
@@ -49,6 +52,10 @@ export interface UseChatOptions {
   workspace?: string
   /** 聊天模式（0 默认 / 1 计划 / 2 完全访问），用于约束工具执行行为 */
   mode?: AiChatMode
+  /** 聊天 ID（用于子 Agent 文件路径构建，主 Agent 必传） */
+  chatId?: string
+  /** 是否为子 Agent：禁用 spawn_agent 工具（防止嵌套派发导致路径错乱），且不注入子 Agent 使用指导 */
+  isSubAgent?: boolean
 }
 
 export class ToolChat {
@@ -65,6 +72,10 @@ export class ToolChat {
   private workspace = ''
   /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
   private mode: AiChatMode = 0
+  /** 聊天 ID（用于子 Agent 文件路径构建） */
+  private chatId = ''
+  /** 是否为子 Agent（禁用 spawn_agent 工具，防止嵌套派发） */
+  private isSubAgent = false
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
   private workspaceSettingsCache: { path: string; content: string } | null = null
 
@@ -80,6 +91,8 @@ export class ToolChat {
     this.mode = options.mode ?? 0
     if (options.sandboxDir) this.sandboxDir = options.sandboxDir
     if (options.workspace) this.workspace = options.workspace
+    if (options.chatId) this.chatId = options.chatId
+    this.isSubAgent = options.isSubAgent ?? false
   }
 
   private async resolveModel(params: ChatRequestParams): Promise<ResolvedChatRequestParams> {
@@ -111,6 +124,8 @@ export class ToolChat {
       ...defaultTools,
       createTodoTool(this.todos)
     ]) {
+      // 子 Agent 不暴露 spawn_agent：防止嵌套派发（子 Agent 的 chatId 是自身 id，再派发路径会错乱）
+      if (this.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) continue
       map.set(fn.name, fn)
     }
     return Array.from(map.values())
@@ -200,6 +215,32 @@ export class ToolChat {
     return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n---\n')}`
   }
 
+  /**
+   * 子 Agent 使用指导：告知主 Agent 何时应派发子 Agent，避免其惯性自己读大量文件撑爆上下文。
+   * 仅主 Agent 注入（子 Agent 不注入，且其 spawn_agent 工具已被过滤）。
+   * 内容稳定，写入稳定 system 前缀不影响缓存命中。
+   */
+  private buildSubAgentGuidancePrompt(): string {
+    return [
+      '## 子 Agent 使用指导',
+      '你可以通过 spawn_agent 工具将复杂调研任务派发给子 Agent。子 Agent 拥有独立的上下文窗口和步数预算，',
+      '执行完毕后只返回最终摘要，中间过程不占用你的上下文，能显著节省你的 token 与步数。',
+      '',
+      '适合派发：',
+      '- 需要读取 3 个以上文件或大规模代码搜索的任务',
+      '- 独立子问题的调研（可与你的其他工作推进解耦）',
+      '- 会产生大量中间结果但最终只需要结论的任务',
+      '',
+      '不适合派发：',
+      '- 单文件快速查看、单步工具调用',
+      '- 需要用户交互确认的任务（子 Agent 无法向用户提问）',
+      '- 需要写入 / 修改文件的任务（子 Agent 仅只读，写入会被安全策略拦截）',
+      '',
+      '派发时 task 必须自包含（含文件路径、搜索关键词、明确目标），让子 Agent 能独立完成；',
+      '收到摘要后基于摘要继续推进，无需重复读取子 Agent 已读过的文件。'
+    ].join('\n')
+  }
+
   private async buildRequestMessages(
     params: ChatRequestParams,
     assistantMessageId: string
@@ -217,7 +258,9 @@ export class ToolChat {
       catalogPrompt,
       buildTodoPrompt(),
       workspacePrompt,
-      workspaceSettingsPrompt
+      workspaceSettingsPrompt,
+      // 子 Agent 使用指导仅主 Agent 注入（子 Agent 的 spawn_agent 已被过滤，指导无意义且会诱导嵌套）
+      this.isSubAgent ? '' : this.buildSubAgentGuidancePrompt()
     ]
       .filter(Boolean)
       .join('\n\n')
@@ -298,7 +341,13 @@ export class ToolChat {
         assistantMessageId,
         result.toolCalls,
         functions,
-        { sandboxDir: this.sandboxDir, workspace: this.workspace, mode: this.mode },
+        {
+          chatId: this.chatId,
+          sandboxDir: this.sandboxDir,
+          workspace: this.workspace,
+          mode: this.mode,
+          abortSignal: signal
+        },
         this.interactive
       )
       this.toolCalls.value = [...this.toolCalls.value]
@@ -469,7 +518,13 @@ export class ToolChat {
         call,
         fn,
         args,
-        { sandboxDir: this.sandboxDir, workspace: this.workspace, mode: this.mode },
+        {
+          chatId: this.chatId,
+          sandboxDir: this.sandboxDir,
+          workspace: this.workspace,
+          mode: this.mode,
+          abortSignal: this.ctx.abortController?.signal
+        },
         this.interactive
       )
     } else {
@@ -537,6 +592,10 @@ export class ToolChat {
 
   setSandboxDir(path: string): void {
     this.sandboxDir = path
+  }
+
+  setChatId(id: string): void {
+    this.chatId = id
   }
 
   setMode(mode: AiChatMode): void {

@@ -5,6 +5,7 @@
     <file-chat-tool v-else-if="isFileTool" :content="content" />
     <shell-chat-tool v-else-if="isShellTool" :content="content" />
     <skill-chat-tool v-else-if="isSkillTool" :content="content" />
+    <sub-agent-chat-tool v-else-if="isSpawnAgentTool" :content="content" @view="handleViewSubAgent" />
     <default-chat-tool v-else-if="!isTodoTool" :content="content" />
   </div>
 </template>
@@ -17,6 +18,7 @@ import DefaultChatTool from '@/components/chat/chat-assistant/tool/DefaultChatTo
 import FileChatTool from '@/components/chat/chat-assistant/tool/FileChatTool.vue'
 import ShellChatTool from '@/components/chat/chat-assistant/tool/ShellChatTool.vue'
 import SkillChatTool from '@/components/chat/chat-assistant/tool/SkillChatTool.vue'
+import SubAgentChatTool from '@/components/chat/chat-assistant/tool/SubAgentChatTool.vue'
 
 const props = defineProps({
   content: {
@@ -25,10 +27,15 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits<{
+  (e: 'view-sub-agent', subAgentId: string): void
+}>()
+
 const shellToolNames = new Set(['cli_run', 'js_run', 'python_run', 'node_run', 'git_exec'])
 const skillToolNames = new Set(['load_skill', 'read_skill_file'])
 const todoToolName = 'update_todo'
 const askToolName = 'ask'
+const spawnAgentToolName = 'spawn_agent'
 
 const toolCallName = computed(() => props.content.data.toolCallName)
 
@@ -43,8 +50,13 @@ const isConfirmPending = computed(() => {
 const isFileTool = computed(() => toolCallName.value.startsWith('file_'))
 const isShellTool = computed(() => shellToolNames.has(toolCallName.value))
 const isSkillTool = computed(() => skillToolNames.has(toolCallName.value))
+const isSpawnAgentTool = computed(() => toolCallName.value === spawnAgentToolName)
 // 待办工具调用不占用消息流（状态由侧栏 TodoList 呈现），整体隐藏
 const isTodoTool = computed(() => toolCallName.value === todoToolName)
+
+const handleViewSubAgent = (subAgentId: string) => {
+  emit('view-sub-agent', subAgentId)
+}
 </script>
 <style scoped lang="less">
 .chat-tool-wrapper {
