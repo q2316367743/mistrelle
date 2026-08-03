@@ -169,6 +169,20 @@ const buildSkillMd = (name: string, description: string, body: string) => {
   return `---\nname: ${name}\n${descLine}---\n\n${body}`
 }
 
+/**
+ * 读取 skillhub 下载包自带的 _meta.json 中的版本号，不存在或解析失败返回 undefined
+ */
+const readSkillMetaVersion = async (dirPath: string): Promise<string | undefined> => {
+  const metaPath = window.preload.path.join(dirPath, '_meta.json')
+  if (!window.preload.fs.existsSync(metaPath)) return undefined
+  try {
+    const meta = JSON.parse(await window.preload.fs.readTextFile(metaPath))
+    return typeof meta?.version === 'string' ? meta.version : undefined
+  } catch {
+    return undefined
+  }
+}
+
 const listAgentSkills = async (agent: SkillAgent): Promise<Array<LocalSkill>> => {
   if (!window.preload.fs.existsSync(agent.path)) return []
   const items = await window.preload.fs.readDir(agent.path)
@@ -190,7 +204,8 @@ const listAgentSkills = async (agent: SkillAgent): Promise<Array<LocalSkill>> =>
       path: buildSkillDirPath(agent, item.name),
       agentKey: agent.key,
       agentName: agent.name,
-      updatedAt: item.mtime
+      updatedAt: item.mtime,
+      version: await readSkillMetaVersion(buildSkillDirPath(agent, item.name))
     })
   }
   return list

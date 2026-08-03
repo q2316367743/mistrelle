@@ -13,7 +13,14 @@
         <t-tag v-if="skill.verified" size="small" theme="success" variant="light">已认证</t-tag>
       </t-space>
       <t-space size="small">
-        <t-button theme="primary" size="small" @click="handleDownload">下载安装</t-button>
+        <skill-install-actions
+          :skill="skill"
+          :locals="locals"
+          size="small"
+          @install="handleInstall"
+          @upgrade="handleUpgrade"
+          @uninstall="handleUninstall"
+        />
         <t-button v-if="skill.homepage" variant="outline" size="small" @click="handleHomepage"
           >主页</t-button
         >
@@ -52,27 +59,7 @@
       </t-tab-panel>
       <t-tab-panel value="versions" label="版本" :destroy-on-hide="false">
         <div class="skill-hub-detail__panel">
-          <t-list v-if="versions.length > 0" split>
-            <t-list-item v-for="item in versions" :key="item.versionId">
-              <t-list-item-meta
-                :title="`v${item.version}`"
-                :description="item.changelog || '无更新说明'"
-              />
-              <template #action>
-                <div class="skill-hub-detail__vmeta">
-                  <span>{{ prettyDate(item.createdAt) }}</span>
-                  <t-tag
-                    v-if="item.securityReports?.keen?.statusText"
-                    size="small"
-                    variant="light"
-                    :theme="securityTheme(item.securityReports.keen.status)"
-                    >{{ item.securityReports.keen.statusText }}</t-tag
-                  >
-                </div>
-              </template>
-            </t-list-item>
-          </t-list>
-          <div v-else class="skill-hub-detail__empty">暂无版本信息</div>
+          <skill-hub-versions-panel :versions="versions" />
         </div>
       </t-tab-panel>
     </t-tabs>
@@ -83,7 +70,12 @@ import { h, onMounted, ref, computed } from 'vue'
 import { FolderIcon, FileMarkdownIcon, FileIcon } from 'tdesign-icons-vue-next'
 import { ChatContent } from '@tdesign-vue-next/chat'
 import { MessageUtil } from '@/utils/modal'
-import { prettyDataUnit, prettyDate } from '@/utils/lang/FormatUtil'
+import { prettyDataUnit } from '@/utils/lang/FormatUtil'
+import {
+  localSkillCacheClear,
+  localSkillList,
+  type LocalSkill
+} from '@/modules/skill'
 import {
   skillHubApiV1SkillsInfo,
   skillHubApiV1SkillsFile,
@@ -94,7 +86,9 @@ import {
   type ApiV1SkillVersionItem
 } from '@/modules/skillhub'
 import { buildFileTree, openSkillHubFileView, type FileTreeNode } from './SkillHubDetailShared'
-import { openSkillHubDownload } from '../modals/skillhub-func'
+import { openSkillHubDownload, openSkillHubUninstall } from '../modals/skillhub-func'
+import SkillInstallActions from './SkillInstallActions.vue'
+import SkillHubVersionsPanel from './SkillHubVersionsPanel.vue'
 
 const props = defineProps<{
   skill: ApiSkill
@@ -106,8 +100,19 @@ const skillMd = ref('')
 const fileTree = ref<FileTreeNode[]>([])
 const versions = ref<ApiV1SkillVersionItem[]>([])
 const activeTab = ref('overview')
+const locals = ref<Array<LocalSkill>>([])
+
+const refreshLocals = async () => {
+  localSkillCacheClear()
+  try {
+    locals.value = await localSkillList()
+  } catch (e) {
+    MessageUtil.error('加载本地 Skill 失败', e)
+  }
+}
 
 onMounted(async () => {
+  refreshLocals()
   try {
     const [info, md, fileRes, versionRes] = await Promise.all([
       skillHubApiV1SkillsInfo(props.skill.slug),
@@ -151,13 +156,10 @@ const prettyCount = (n: number) => {
   return String(n)
 }
 
-const securityTheme = (status: string) => {
-  if (status === 'benign') return 'success'
-  if (status === 'suspicious') return 'warning'
-  return 'default'
-}
-
-const handleDownload = () => openSkillHubDownload(props.skill)
+const handleInstall = () => openSkillHubDownload(props.skill, refreshLocals)
+const handleUpgrade = () => openSkillHubDownload(props.skill, refreshLocals, { overwrite: true })
+const handleUninstall = (copies: Array<LocalSkill>) =>
+  openSkillHubUninstall(props.skill, copies, refreshLocals)
 const handleHomepage = () => window.preload.inject.shell.openExternal(props.skill.homepage)
 
 const handleTreeClick = (ctx: unknown) => {
@@ -247,15 +249,6 @@ const treeOperations: any = (_h: unknown, node: { data: FileTreeNode }) => {
     text-align: center;
     color: var(--td-text-color-placeholder);
     font: var(--td-font-body-small);
-  }
-
-  &__vmeta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    font: var(--td-font-body-small);
-    color: var(--td-text-color-placeholder);
   }
 
   &__fsize {

@@ -1,7 +1,13 @@
 import { defineComponent, ref } from 'vue'
-import { DialogPlugin, Form, FormItem, Select, Switch, Progress } from 'tdesign-vue-next'
+import { CheckboxGroup, DialogPlugin, Form, FormItem, Select, Switch, Progress } from 'tdesign-vue-next'
 import { MessageUtil } from '@/utils/modal'
-import { localSkillCacheClear, skillAgentList, type SkillAgent } from '@/modules/skill'
+import {
+  localSkillCacheClear,
+  localSkillRemove,
+  skillAgentList,
+  type LocalSkill,
+  type SkillAgent
+} from '@/modules/skill'
 import { skillHubInstall, type ApiSkill } from '@/modules/skillhub'
 
 interface DownloadState {
@@ -67,8 +73,13 @@ const DownloadForm = defineComponent({
 
 /**
  * 选择 Agent 目录并下载安装 Skill
+ * options.overwrite 用于预置「覆盖已有」开关（升级场景传 true）
  */
-export const openSkillHubDownload = (skill: ApiSkill, onSuccess?: () => void) => {
+export const openSkillHubDownload = (
+  skill: ApiSkill,
+  onSuccess?: () => void,
+  options?: { overwrite?: boolean }
+) => {
   const agents = skillAgentList()
   if (agents.length === 0) {
     MessageUtil.warning('暂无可用 Agent 目录，请先在本地 Skill 中配置')
@@ -77,7 +88,7 @@ export const openSkillHubDownload = (skill: ApiSkill, onSuccess?: () => void) =>
 
   const state = ref<DownloadState>({
     agentKey: agents[0].key,
-    overwrite: false,
+    overwrite: options?.overwrite ?? false,
     downloading: false,
     progress: 0
   })
@@ -121,5 +132,64 @@ export const openSkillHubDownload = (skill: ApiSkill, onSuccess?: () => void) =>
       return false
     },
     default: () => <DownloadForm skill={skill} agents={agents} state={state.value} />
+  })
+}
+
+/**
+ * 卸载 Skill 的指定副本（可勾选多个 Agent 目录）
+ */
+export const openSkillHubUninstall = (
+  skill: ApiSkill,
+  copies: Array<LocalSkill>,
+  onSuccess?: () => void
+) => {
+  if (copies.length === 0) {
+    MessageUtil.warning('未找到已安装的副本')
+    return
+  }
+
+  const checked = ref<Array<string>>(copies.map((e) => e.path))
+  const options = copies.map((e) => ({
+    label: `${e.agentName}（${e.path}）`,
+    value: e.path
+  }))
+
+  const dp = DialogPlugin({
+    header: `卸载「${skill.name}」`,
+    placement: 'center',
+    width: '520px',
+    confirmBtn: '卸载',
+    closeOnOverlayClick: false,
+    onConfirm: async () => {
+      const selected = copies.filter((e) => checked.value.includes(e.path))
+      if (selected.length === 0) {
+        MessageUtil.warning('请选择要卸载的副本')
+        return false
+      }
+      try {
+        await Promise.all(selected.map((e) => localSkillRemove(e)))
+        MessageUtil.success(`已卸载 ${selected.length} 个副本`)
+        localSkillCacheClear()
+        dp.destroy()
+        onSuccess?.()
+      } catch (e) {
+        MessageUtil.error('卸载失败', e)
+      }
+      return false
+    },
+    default: () => (
+      <div>
+        <div
+          style={{
+            marginBottom: '8px',
+            font: 'var(--td-font-body-small)',
+            color: 'var(--td-text-color-secondary)'
+          }}
+        >
+          共发现 {copies.length} 个副本，请选择要卸载的：
+        </div>
+        <CheckboxGroup v-model={checked.value} options={options} />
+      </div>
+    )
   })
 }

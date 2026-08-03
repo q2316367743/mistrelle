@@ -22,6 +22,7 @@
         {{ prettyCount(skill.stars) }}
       </span>
       <span v-if="skill.version">v{{ skill.version }}</span>
+      <span v-if="state.installed && state.localVersion">已装 v{{ state.localVersion }}</span>
     </div>
     <div class="skill-hub-card__footer">
       <div class="skill-hub-card__tags">
@@ -35,29 +36,38 @@
           {{ sub.name }}
         </t-tag>
       </div>
-      <t-button
+      <skill-install-actions
+        :skill="skill"
+        :locals="locals"
         size="small"
-        theme="primary"
-        variant="outline"
-        @click.stop="emit('download')"
-      >
-        下载
-      </t-button>
+        outline
+        @install="emit('install')"
+        @upgrade="emit('upgrade')"
+        @uninstall="emit('uninstall', $event)"
+      />
     </div>
   </t-card>
 </template>
 <script lang="ts" setup>
 import { DownloadIcon, StarIcon } from 'tdesign-icons-vue-next'
+import type { LocalSkill } from '@/modules/skill'
 import type { ApiSkill } from '@/modules/skillhub'
+import { buildInstallState } from '../install-state'
+import SkillInstallActions from './SkillInstallActions.vue'
 
 const props = defineProps<{
   skill: ApiSkill
+  locals: Array<LocalSkill>
 }>()
 
 const emit = defineEmits<{
-  download: []
+  install: []
+  upgrade: []
+  uninstall: [copies: LocalSkill[]]
   detail: []
 }>()
+
+const state = computed(() => buildInstallState(props.skill, props.locals))
 
 const desc = computed(() => props.skill.description_zh || props.skill.description)
 

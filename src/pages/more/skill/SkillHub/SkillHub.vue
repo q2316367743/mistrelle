@@ -36,7 +36,10 @@
             v-for="item in list"
             :key="item.slug"
             :skill="item"
-            @download="openSkillHubDownload(item)"
+            :locals="locals"
+            @install="handleInstall(item)"
+            @upgrade="handleUpgrade(item)"
+            @uninstall="(copies) => handleUninstall(item, copies)"
             @detail="openSkillHubDetail(item)"
           />
         </div>
@@ -61,9 +64,10 @@
 import { RefreshIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import EmptyResult from '@/components/Result/EmptyResult.vue'
 import { MessageUtil } from '@/utils/modal'
+import { localSkillCacheClear, localSkillList, type LocalSkill } from '@/modules/skill'
 import { skillHubApiSkills, type ApiSkill } from '@/modules/skillhub'
 import SkillHubCard from './components/SkillHubCard.vue'
-import { openSkillHubDownload } from './modals/skillhub-func'
+import { openSkillHubDownload, openSkillHubUninstall } from './modals/skillhub-func'
 import { openSkillHubDetail } from './components/SkillHubDetail'
 
 const loading = ref(false)
@@ -73,6 +77,7 @@ const page = ref(1)
 const pageSize = ref(24)
 const keyword = ref('')
 const sortBy = ref('downloads')
+const locals = ref<Array<LocalSkill>>([])
 
 const sortOptions = [
   { label: '下载量', value: 'downloads' },
@@ -109,6 +114,22 @@ const handlePageSizeChange = () => {
   load()
 }
 
+const refreshLocal = async () => {
+  localSkillCacheClear()
+  try {
+    locals.value = await localSkillList()
+  } catch (e) {
+    MessageUtil.error('加载本地 Skill 失败', e)
+  }
+}
+
+const handleInstall = (item: ApiSkill) => openSkillHubDownload(item, refreshLocal)
+
+const handleUpgrade = (item: ApiSkill) => openSkillHubDownload(item, refreshLocal, { overwrite: true })
+
+const handleUninstall = (item: ApiSkill, copies: Array<LocalSkill>) =>
+  openSkillHubUninstall(item, copies, refreshLocal)
+
 watchDebounced(
   keyword,
   () => {
@@ -117,7 +138,10 @@ watchDebounced(
   { debounce: 400 }
 )
 
-onMounted(load)
+onMounted(() => {
+  load()
+  refreshLocal()
+})
 </script>
 <style scoped lang="less">
 .skill-hub {

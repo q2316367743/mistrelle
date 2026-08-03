@@ -29,6 +29,8 @@ export interface LocalSkill {
   agentName: string
   // 最后修改时间
   updatedAt: number
+  // 版本号（来自 skillhub 的 _meta.json，本地手工创建无此字段）
+  version?: string
 }
 
 export interface LocalSkillForm {
