@@ -36,6 +36,7 @@ const toOptions = (tools: ToolFunction[]) =>
  * 可选工具的分组单一数据源：
  * - UI 选择器（toolOptions）由此派生
  * - list_tools 工具据此向模型描述可选工具（含 description/risk）
+ * internal 标记的内部工具会被过滤：不对外展示、不可分配，但仍注册在 toolMap 供声明它的 agent 调用
  * 新增分组只需改这里
  */
 export const toolGroups: Array<ToolGroup> = [
@@ -47,6 +48,8 @@ export const toolGroups: Array<ToolGroup> = [
   { group: '浏览器', tools: [...injectBrowserTools, ...nativeBrowserAutomationTools] },
   { group: '专家管理', tools: agentTools }
 ]
+  .map((g) => ({ ...g, tools: g.tools.filter((t) => !t.internal) }))
+  .filter((g) => g.tools.length > 0)
 
 // 此处都是附加能力
 export const toolOptions: Array<ToolOption> = toolGroups.map((e) => ({

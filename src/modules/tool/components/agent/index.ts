@@ -1,5 +1,6 @@
 // ==========================================
 //  专家（Agent）管理工具：供内置「专家创建助手」通过 tool call 增 / 改 / 查专家
+//  全部标记 internal：仅注册供该 agent 调用，不对外展示、不可分配给其他 agent
 // ==========================================
 
 import { ToolFunction, ToolProperty } from '@/domain'
@@ -72,6 +73,7 @@ export const agentTools: ToolFunction[] = [
       '列出系统中全部可分配给专家的工具（按分组，含工具名、用途说明、风险级别），以及每次对话默认常驻、无需在 tools 中声明的基础工具。为专家挑选 tools 字段前必须先调用此工具，只能从返回的工具名中选择。',
     parameters: { type: 'object', properties: {} },
     risk: 'safe',
+    internal: true,
     handler: async () => {
       return {
         // 可分配工具：专家 tools 字段的合法取值来源
@@ -97,6 +99,7 @@ export const agentTools: ToolFunction[] = [
       '列出系统中全部 AI 专家（Agent）的概要信息（id、名称、描述、工具、是否内置）。创建新专家前可先查询，避免重复；修改专家前用于定位目标 id。',
     parameters: { type: 'object', properties: {} },
     risk: 'safe',
+    internal: true,
     handler: async () => {
       return { agents: useAiAgentStore().all.map(toSummary) }
     }
@@ -114,6 +117,7 @@ export const agentTools: ToolFunction[] = [
       required: ['id']
     },
     risk: 'safe',
+    internal: true,
     handler: async (...params: unknown[]) => {
       const { id } = params[0] as { id: string }
       const agent = useAiAgentStore().getById(id)
@@ -132,6 +136,7 @@ export const agentTools: ToolFunction[] = [
       required: ['name']
     },
     risk: 'sensitive',
+    internal: true,
     handler: async (...params: unknown[]) => {
       const args = params[0] as AgentFormArgs
       const name = args.name?.trim()
@@ -157,6 +162,7 @@ export const agentTools: ToolFunction[] = [
       required: ['id']
     },
     risk: 'sensitive',
+    internal: true,
     handler: async (...params: unknown[]) => {
       const { id, ...rest } = params[0] as { id: string } & AgentFormArgs
       const store = useAiAgentStore()

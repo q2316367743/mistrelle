@@ -31,6 +31,8 @@ export interface ToolFunction {
   handler: (...params: unknown[]) => Promise<unknown>
   /** 基础风险等级，未指定时默认 sensitive */
   risk?: ToolRiskLevel
+  /** 内部工具：仅注册供声明了它的 agent 调用，不对外展示（toolOptions）、不可分配给其他 agent（list_tools） */
+  internal?: boolean
   /** 序列化历史消息时从 args 中剥离的字段，节省 token（如写入类 tool 的 content） */
   stripFields?: string[]
 }
