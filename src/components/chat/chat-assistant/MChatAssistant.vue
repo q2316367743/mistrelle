@@ -113,10 +113,10 @@ const finalContent = computed<AIMessageContent | undefined>(() => {
   return undefined
 })
 
-/** 是否存在可折叠的过程内容（thinking / toolcall / 中间文本等，排除最终回复） */
+/** 是否存在可折叠的过程内容（thinking / toolcall / 中间文本等，排除最终回复与 continueHint 操作按钮） */
 const hasProcess = computed(() => {
   const contents = props.message.content ?? []
-  return contents.some((item) => item !== finalContent.value)
+  return contents.some((item) => item !== finalContent.value && !isContinueHint(item))
 })
 
 /** 是否可折叠：完成 + 有最终回复（折叠后的展示目标）+ 有过程，三者缺一不可。
@@ -137,14 +137,16 @@ const processExpanded = ref(false)
 /**
  * 实际渲染的内容列表：
  * - 进行中（streaming/pending）：全量平铺，实时展示过程
- * - 完成且折叠：仅保留最终回复（渲染节点最少）
+ * - 完成且折叠：保留最终回复 + 全部 continueHint（继续按钮是操作入口，必须始终可见，不能被折叠）
  * - 完成且展开 / 无过程可折叠：全量
  */
 const visibleContents = computed(() => {
   const contents = props.message.content ?? []
   if (!isCompleted.value) return contents
   if (processExpanded.value) return contents
-  return finalContent.value ? [finalContent.value] : contents
+  if (!finalContent.value) return contents
+  // 折叠：仅保留最终回复与继续按钮（continueHint），其余过程（thinking/toolcall/中间文本）隐藏
+  return contents.filter((item) => item === finalContent.value || isContinueHint(item))
 })
 
 const durationText = computed(() => {
