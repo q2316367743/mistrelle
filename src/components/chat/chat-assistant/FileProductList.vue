@@ -1,7 +1,7 @@
 <template>
   <div v-if="products.length" class="file-products">
     <div class="products-label">产物</div>
-    <div class="products-list">
+    <div ref="listRef" class="products-list" :style="{ maxHeight }">
       <div
         v-for="file in products"
         :key="file.fullPath"
@@ -21,11 +21,24 @@
         <span class="product-name">{{ file.fileName }}</span>
       </div>
     </div>
+    <div v-if="isCollapsible" class="products-toggle">
+      <t-button variant="text" theme="primary" size="small" @click="toggleProducts">
+        <template #icon>
+          <ChevronDownIcon v-if="collapsed" />
+          <ChevronUpIcon v-else />
+        </template>
+        <span class="products-toggle__text">
+          {{ collapsed ? `展开全部 ${products.length} 个` : '收起' }}
+        </span>
+      </t-button>
+    </div>
   </div>
 </template>
 <script lang="ts" setup>
 import type { AIMessage, ToolCallContent } from '@/domain'
 import {
+  ChevronDownIcon,
+  ChevronUpIcon,
   FileCodeIcon,
   FileExcelIcon,
   FileIcon,
@@ -35,6 +48,7 @@ import {
   FileWordIcon,
   VideoIcon
 } from 'tdesign-icons-vue-next'
+import { useProductListCollapse } from '@/hooks'
 import { openFilePreview, type ProductFile } from './modals/FilePreviewDialog'
 
 const props = defineProps({
@@ -67,6 +81,8 @@ const products = computed<ProductFile[]>(() => {
   }
   return result
 })
+
+const { listRef, collapsed, isCollapsible, maxHeight, toggleProducts } = useProductListCollapse(products)
 
 const CODE_EXTS = new Set([
   '.ts',
@@ -172,6 +188,21 @@ function isAudioFile(path: string) {
   display: flex;
   flex-wrap: wrap;
   gap: var(--td-comp-margin-s);
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+  padding-top: 4px;
+}
+
+.products-toggle {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--td-comp-margin-xs);
+  border-top: 1px solid var(--td-component-border);
+  margin-top: var(--td-comp-margin-s);
+}
+
+.products-toggle__text {
+  font: var(--td-font-body-small);
 }
 
 .product-card {

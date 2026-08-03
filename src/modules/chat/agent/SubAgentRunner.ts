@@ -1,10 +1,12 @@
 import type { AiChatContent } from '@/entity/ai'
 import type { ChatMessage, TextContent } from '@/domain'
-import { useSnowflake } from '@/hooks'
 import { ToolChat } from './AgentChat'
 import { aiChatContentGet, aiChatContentSet, buildChatMainPath, buildChatSubPath } from '@/modules/chat/service/ChatService'
+import { MAX_SUB_AGENT_STEPS } from '@/global/Constant'
 
 export interface SubAgentOptions {
+  /** 子 Agent ID（由调用方预生成并先行标记到主 Agent 消息，UI 运行中即可切换） */
+  subId: string
   /** 主 Agent 的聊天 ID（用于构建子 Agent 文件路径） */
   chatId: string
   /** 任务描述 */
@@ -82,8 +84,12 @@ const buildSubAgentSystemPrompt = (workspace: string): string => {
 
 /**
  * 从消息列表末尾向前查找最后一条 assistant 消息的文本内容作为摘要。
+ * 子 Agent 触顶（hitMaxSteps）未正常收尾时，返回明确的未完成标记，而不是把过程叙述当摘要返回给主 Agent。
  */
-const extractFinalSummary = (messages: ChatMessage[]): string => {
+const extractFinalSummary = (messages: ChatMessage[], hitMaxSteps: boolean): string => {
+  if (hitMaxSteps) {
+    return `[子 Agent 已连续执行 ${MAX_SUB_AGENT_STEPS} 步仍未完成调研，未输出最终摘要。主 Agent 可基于其中间结果自行收尾，或缩小任务范围后重新派发。]`
+  }
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i]
     if (msg.role !== 'assistant' || !msg.content) continue
@@ -137,15 +143,14 @@ const persistSubAgent = async (storageKey: string, messages: ChatMessage[]): Pro
  * - 安全中心黑名单命中的操作同样自动拒绝
  *
  * 流程：
- * 1. 生成 subId，创建独立 ToolChat 实例
+ * 1. 使用调用方预生成的 subId，创建独立 ToolChat 实例
  * 2. 建立 throttledWatch 持久化子 Agent 消息到 message/sub_{subId}.json
  * 3. 发送任务消息，等待循环结束
  * 4. 提取最终摘要，持久化最终状态
  * 5. 销毁子 Agent，返回摘要
  */
 export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentResult> => {
-  const { chatId, task, sandboxDir, workspace, model, provide, reasoningEffort, parentSignal } = options
-  const subId = useSnowflake().nextId()
+  const { subId, chatId, task, sandboxDir, workspace, model, provide, reasoningEffort, parentSignal } = options
   const storageKey = buildChatSubPath(chatId, subId)
 
   // 父 Agent 已终止：直接返回，不启动子 Agent
@@ -161,7 +166,8 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
     enableSkill: true,
     systemPrompt: buildSubAgentSystemPrompt(workspace),
     chatId, // 子 Agent 自身的 chatId（虽然子 Agent 不会再 spawn 子 Agent，但保持字段一致）
-    isSubAgent: true // 禁用 spawn_agent 工具 + 不注入子 Agent 使用指导，防止嵌套派发
+    isSubAgent: true, // 禁用 spawn_agent 工具 + 不注入子 Agent 使用指导，防止嵌套派发
+    maxSteps: MAX_SUB_AGENT_STEPS // 子 Agent 独立步数预算：复杂调研比主 Agent 需要更多步数才能收尾
   })
 
   // 禁用交互桥：需审批的操作自动拒绝，不向用户提问
@@ -177,10 +183,14 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
   parentSignal?.addEventListener('abort', onParentAbort)
 
   // 建立持久化 watcher：子 Agent 消息变化时节流写入 sub_{subId}.json
+  // finished 标志 + 回调快照双保险：throttle 的 trailing 定时器在 unWatch 后仍会触发，
+  // 而 destroy() 会把 messages 清空——若不拦截，残留写入会用空数组覆盖 finally 中的最终持久化
+  let finished = false
   const unWatch = throttledWatch(
     subChat.messages,
-    () => {
-      void persistSubAgent(storageKey, subChat.messages.value)
+    (messages) => {
+      if (finished) return
+      void persistSubAgent(storageKey, messages)
     },
     { throttle: 1000, deep: true }
   )
@@ -203,18 +213,20 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
   try {
     await subChat.sendUserMessage(params)
     status = await waitForCompletion(subChat)
-    summary = extractFinalSummary(subChat.messages.value)
+    summary = extractFinalSummary(subChat.messages.value, subChat.hitMaxSteps.value)
   } catch (err) {
     summary = `子 Agent 执行异常：${err instanceof Error ? err.message : String(err)}`
     status = 'error'
   } finally {
     // 移除父 Agent abort 监听，避免残留
     parentSignal?.removeEventListener('abort', onParentAbort)
-    // 注销注册表（UI 从此回落到磁盘快照）
-    unregisterRunningSubAgent(subId)
+    // 先置 finished 再 unWatch + destroy：阻止残留 trailing 写入用空数组覆盖最终持久化
+    finished = true
     // 最终持久化（确保最后一帧消息写入磁盘）
     unWatch()
     await persistSubAgent(storageKey, subChat.messages.value)
+    // 磁盘就绪后再注销注册表，UI 回落快照时能读到最终状态，避免展示到中途的旧快照
+    unregisterRunningSubAgent(subId)
     subChat.destroy()
   }
 

@@ -42,7 +42,7 @@ export const serializeEditorContent = (editor: Editor): UserMessageContent[] => 
       data: [
         toAttachmentItem({
           path: String(node.attrs.id ?? ''),
-          name: label.split('/').pop() || label,
+          name: label,
           relativePath: label
         })
       ],

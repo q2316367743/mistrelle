@@ -142,10 +142,16 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
       time: Date.now()
     })
   }
-  setAssistantStatus(
-    options.messages,
-    options.assistantMessageId,
-    finishReasonToStatus(finishReason)
-  )
+  // 存在待执行的工具调用时保持「执行中」：部分厂商在带 tool_calls 的返回里 finish_reason 仍是
+  // stop，若按 finishReason 置为 complete，会让整条 assistant 消息在工具真正执行前就显示已完成
+  if (toolCalls.length > 0) {
+    setAssistantStatus(options.messages, options.assistantMessageId, 'streaming')
+  } else {
+    setAssistantStatus(
+      options.messages,
+      options.assistantMessageId,
+      finishReasonToStatus(finishReason)
+    )
+  }
   return { cancelled: false, finishReason, toolCalls }
 }

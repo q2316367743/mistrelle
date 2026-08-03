@@ -32,7 +32,7 @@
       <r-chat-think
         v-else-if="contentItem.type === 'thinking'"
         :content="contentItem"
-        :index="contentIndex"
+        :active="contentIndex === activeThinkingIndex"
       />
       <r-chat-tool
         v-else-if="contentItem.type === 'toolcall'"
@@ -147,6 +147,20 @@ const visibleContents = computed(() => {
   if (!finalContent.value) return contents
   // 折叠：仅保留最终回复与继续按钮（continueHint），其余过程（thinking/toolcall/中间文本）隐藏
   return contents.filter((item) => item === finalContent.value || isContinueHint(item))
+})
+
+/**
+ * 正在思考中的 thinking 块索引（content 数组中最后一个 status 未完成的 thinking）。
+ * 仅该块默认展开（RChatThink 通过 active prop 决定初始折叠态），思考完成后其 status
+ * 置为 complete，active 自然失效并由子组件自动折叠。
+ */
+const activeThinkingIndex = computed(() => {
+  const contents = props.message.content ?? []
+  for (let i = contents.length - 1; i >= 0; i--) {
+    const item = contents[i]
+    if (item.type === 'thinking' && item.status !== 'complete') return i
+  }
+  return -1
 })
 
 const durationText = computed(() => {

@@ -99,6 +99,24 @@ function defaultToolPolicy(
 // ─── 策略解析 ──────────────────────────────────────────────
 
 /**
+ * 只读 shell 命令集合：子 Agent（isSubAgent，只读 · 无交互桥）下自动放行，无需用户审批。
+ * 只包含纯读取类命令（cli_run 直接执行二进制、无 shell 重定向，参数无法写入文件）；
+ * sed（-i 可写）、git（commit/push/checkout 等可写）、tee/touch/mkdir/rm 等写入类不在此列。
+ */
+const READONLY_SHELL_COMMANDS = new Set([
+  'grep', 'rg', 'find', 'cat', 'head', 'tail', 'wc', 'ls', 'less', 'more',
+  'sort', 'uniq', 'cut', 'diff', 'cmp', 'file', 'pwd', 'which', 'stat',
+  'du', 'df', 'strings', 'xxd', 'hexdump', 'od', 'tr', 'awk', 'echo',
+  'basename', 'dirname', 'readlink'
+])
+
+/** 判断本次 shell 工具调用是否为只读命令 */
+function isReadonlyShellCommand(args: Record<string, unknown>): boolean {
+  const cmdName = extractCommandName(args)
+  return !!cmdName && READONLY_SHELL_COMMANDS.has(cmdName)
+}
+
+/**
  * 根据聊天模式、工具风险等级、运行时参数和安全设置，裁决本次工具调用的执行权限。
  *
  * 模式语义：
@@ -117,6 +135,12 @@ export function resolveToolPolicy(
 ): ToolPolicyVerdict {
   // safe（只读 / 无副作用）在所有模式下均直接放行；仍受末尾黑名单覆盖层约束
   if (tool.risk === 'safe') {
+    return applyBlacklistOverride('allow', args)
+  }
+
+  // 子 Agent（只读 · 无交互桥）：只读 shell 命令自动放行，其余维持默认裁决——
+  // 需审批的操作会被禁用交互桥自动拒绝（返回"用户拒绝了"），写入类被拦截，保证只读约束
+  if (ctx.isSubAgent && isShellExecTool(tool) && isReadonlyShellCommand(args)) {
     return applyBlacklistOverride('allow', args)
   }
 

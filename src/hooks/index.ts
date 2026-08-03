@@ -9,5 +9,6 @@ export * from './Snowflake'
 
 export * from './UseContextMenu'
 export * from './UseState'
+export * from './useProductListCollapse'
 export * from './UseSafeBack'
 export * from './useChatSender'

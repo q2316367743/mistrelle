@@ -1,5 +1,5 @@
 <template>
-  <t-dropdown trigger="click" min-column-width="180px" @click="handleClick">
+  <t-dropdown trigger="click" min-column-width="180px" placement="top" @click="handleClick">
     <t-button theme="default" variant="text" class="ai-workspace">
       <template #icon>
         <div :class="['ai-workspace__icon', { active: active }]">

@@ -80,3 +80,6 @@ export const MAX_TOOL_RESULT_BYTES = 32 * 1024
 
 // 单轮对话内 agent loop 允许的最大工具迭代次数，避免模型持续调用工具造成死循环
 export const MAX_AGENT_STEPS = 25
+
+// 子 Agent 独立步数预算：其上下文与主 Agent 隔离，复杂调研需要更多步数才能收尾
+export const MAX_SUB_AGENT_STEPS = 50

@@ -14,9 +14,14 @@ const props = defineProps({
     type: Object as PropType<ThinkingContent>,
     default: () => ({})
   },
-  index: Number
+  /** 是否为当前正在思考的块：初始展开显示思考过程，思考完成（status 变 complete）后自动折叠 */
+  active: {
+    type: Boolean,
+    default: false
+  }
 })
-const [collapsed, toggleCollapsed] = useBoolState(props.index !== 0)
+// 初始折叠状态：仅当前正在思考的块展开，其余（已完成）的块默认折叠
+const [collapsed, toggleCollapsed] = useBoolState(!props.active)
 watch(
   () => props.content.status,
   (val) => {

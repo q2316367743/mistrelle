@@ -9,6 +9,8 @@ export interface ToolPolicyContext {
   workspace: string
   /** 当前聊天模式，用于按模式约束工具执行（0 默认 / 1 计划：无写入·shell 需审批 / 2 完全访问） */
   mode?: AiChatMode
+  /** 是否为子 Agent（只读 · 无交互桥）：只读 shell 命令自动放行，需审批的操作会被禁用交互桥自动拒绝 */
+  isSubAgent?: boolean
   /** 当前请求的 AbortSignal（主 Agent 终止时级联到子 Agent） */
   abortSignal?: AbortSignal
 }

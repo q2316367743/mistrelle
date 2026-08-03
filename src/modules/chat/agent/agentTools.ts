@@ -5,6 +5,7 @@ import { appendSubAgentId, markToolInteractive, updateToolCallContent } from './
 import { resolveToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
 import { MAX_TOOL_RESULT_BYTES } from '@/global/Constant'
 import type { InteractiveBridge } from './interactive'
+import { useSnowflake } from '@/hooks'
 
 const ASK_TOOL_NAME = 'ask'
 const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
@@ -108,8 +109,12 @@ export const runSingleTool = async (
     }
     // 动态导入避免循环依赖（SubAgentRunner → ToolChat → agentTools → SubAgentRunner）
     const { runSubAgent } = await import('./SubAgentRunner')
+    // 预生成 subId 并立即标记到消息：使 UI 在子 Agent 运行期间即可显示标签并支持切换到其实时视图
+    const subId = useSnowflake().nextId()
+    appendSubAgentId(messages, assistantMessageId, subId, call.toolCallId)
     const result = await runSubAgent({
       chatId: policyContext.chatId,
+      subId,
       task,
       sandboxDir: policyContext.sandboxDir,
       workspace: policyContext.workspace,
@@ -119,8 +124,6 @@ export const runSingleTool = async (
       // 主 Agent 终止时级联终止子 Agent
       parentSignal: policyContext.abortSignal
     })
-    // 记录子 Agent ID 到本条 assistant 消息 + toolcall，供 UI 渲染子 Agent 切换卡片
-    appendSubAgentId(messages, assistantMessageId, result.subId, call.toolCallId)
     applyResult(messages, assistantMessageId, call, result.summary)
     return
   }

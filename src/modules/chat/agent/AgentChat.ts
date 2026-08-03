@@ -56,6 +56,8 @@ export interface UseChatOptions {
   chatId?: string
   /** 是否为子 Agent：禁用 spawn_agent 工具（防止嵌套派发导致路径错乱），且不注入子 Agent 使用指导 */
   isSubAgent?: boolean
+  /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS；子 Agent 传入更大预算以完成复杂调研 */
+  maxSteps?: number
 }
 
 export class ToolChat {
@@ -65,6 +67,8 @@ export class ToolChat {
   readonly todos = ref<TodoItem[]>([])
   /** ask / confirm 交互桥：供 UI 卡片注入并作答 */
   readonly interactive = new InteractiveBridge()
+  /** 最近一轮是否因达到工具调用步数上限而结束（子 Agent 摘要提取据此区分是否正常收尾） */
+  readonly hitMaxSteps = ref(false)
   private readonly ctx: ChatContext
   private readonly functions: ToolFunction[]
   private readonly systemPrompt: string
@@ -78,6 +82,8 @@ export class ToolChat {
   private isSubAgent = false
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
   private workspaceSettingsCache: { path: string; content: string } | null = null
+  /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS */
+  private maxSteps?: number
 
   constructor(options: UseChatOptions = {}) {
     this.messages.value = [...(options.defaultMessages ?? [])]
@@ -93,6 +99,7 @@ export class ToolChat {
     if (options.workspace) this.workspace = options.workspace
     if (options.chatId) this.chatId = options.chatId
     this.isSubAgent = options.isSubAgent ?? false
+    if (options.maxSteps) this.maxSteps = options.maxSteps
   }
 
   private async resolveModel(params: ChatRequestParams): Promise<ResolvedChatRequestParams> {
@@ -313,7 +320,10 @@ export class ToolChat {
     this.status.value = 'streaming'
 
     let step = 0
-    while (seq === this.ctx.requestSeq && !signal.aborted && step < MAX_AGENT_STEPS) {
+    // 完全访问模式（mode=2）下不限制连续工具调用步数，循环只能由用户手动中断
+    const maxSteps = this.mode === 2 ? Infinity : (this.maxSteps ?? MAX_AGENT_STEPS)
+    this.hitMaxSteps.value = false
+    while (seq === this.ctx.requestSeq && !signal.aborted && step < maxSteps) {
       step++
       const functions = this.filterToolsByMode(this.getFunctions(params))
       const resolvedParams = await this.resolveModel(params)
@@ -346,6 +356,7 @@ export class ToolChat {
           sandboxDir: this.sandboxDir,
           workspace: this.workspace,
           mode: this.mode,
+          isSubAgent: this.isSubAgent,
           abortSignal: signal
         },
         this.interactive
@@ -354,15 +365,18 @@ export class ToolChat {
       await nextTick()
     }
 
-    // 超过单轮工具调用上限：提示用户继续，避免无终止的循环
-    if (seq === this.ctx.requestSeq && !signal.aborted && step >= MAX_AGENT_STEPS) {
-      appendAssistantContent(this.messages, assistantMessageId, {
-        type: 'text',
-        data: '\n\n[已到达本轮连续工具调用上限，点击「继续推进」可让 AI 接着执行。]',
-        time: Date.now(),
-        // 标记提示文本：UI 渲染为可点击按钮，continueAgent 续跑前会移除
-        ext: { continueHint: true }
-      })
+    // 超过单轮工具调用上限：主 Agent 追加提示按钮供续跑；子 Agent 不追加（无继续 UI，避免污染摘要与文件）
+    if (seq === this.ctx.requestSeq && !signal.aborted && step >= maxSteps) {
+      this.hitMaxSteps.value = true
+      if (!this.isSubAgent) {
+        appendAssistantContent(this.messages, assistantMessageId, {
+          type: 'text',
+          data: '\n\n[已到达本轮连续工具调用上限，点击「继续推进」可让 AI 接着执行。]',
+          time: Date.now(),
+          // 标记提示文本：UI 渲染为可点击按钮，continueAgent 续跑前会移除
+          ext: { continueHint: true }
+        })
+      }
       this.status.value = 'complete'
     }
   }
@@ -523,6 +537,7 @@ export class ToolChat {
           sandboxDir: this.sandboxDir,
           workspace: this.workspace,
           mode: this.mode,
+          isSubAgent: this.isSubAgent,
           abortSignal: this.ctx.abortController?.signal
         },
         this.interactive
