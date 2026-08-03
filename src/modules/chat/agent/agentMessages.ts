@@ -121,6 +121,58 @@ export const setAssistantStatus = (
   }
 }
 
+/** 单个子 Agent 的汇总信息（供 UI tab 栏与侧边栏「Agent 记录」复用） */
+export interface SubAgentInfo {
+  subId: string
+  /** 任务摘要（由 spawn_agent args 解析，可能为空） */
+  task: string
+  status: 'running' | 'completed' | 'error'
+  /** 所属 assistant 消息在所有 assistant 消息中的下标（用于判定「当前轮」） */
+  messageIndex: number
+}
+
+/**
+ * 从全部消息中收集所有 spawn_agent 工具调用，生成子 Agent 汇总列表。
+ * subId 取自 toolcall.ext（与 appendSubAgentId 写入的映射一致），用于 UI 建立「工具卡片 ↔ 子 Agent」关系。
+ */
+export const collectSubAgents = (messages: ChatMessage[]): SubAgentInfo[] => {
+  const result: SubAgentInfo[] = []
+  let assistantIndex = -1
+  for (const msg of messages) {
+    if (msg.role !== 'assistant' || !msg.content) continue
+    assistantIndex++
+    for (const content of msg.content) {
+      if (content.type !== 'toolcall' || content.data.toolCallName !== 'spawn_agent') continue
+      const subId = content.ext?.subAgentId
+      if (!subId || typeof subId !== 'string') continue
+      let task = ''
+      try {
+        const parsed = JSON.parse(content.data.args ?? '{}') as { task?: string }
+        task = parsed.task ?? ''
+      } catch {
+        // args 解析失败则忽略任务摘要
+      }
+      const s = content.status
+      const status = s === 'error' ? 'error' : s === 'pending' || s === 'streaming' ? 'running' : 'completed'
+      result.push({ subId, task, status, messageIndex: assistantIndex })
+    }
+  }
+  return result
+}
+
+/** 最后一条 assistant 消息在所有 assistant 消息中的下标；无 assistant 消息返回 -1 */
+export const lastAssistantIndexOf = (messages: ChatMessage[]): number => {
+  let count = 0
+  for (const m of messages) if (m.role === 'assistant') count++
+  return count - 1
+}
+
+/** 最后一条 assistant 消息 id（无则空串），用于检测新一轮回复开始 */
+export const lastAssistantIdOf = (messages: ChatMessage[]): string => {
+  const last = messages.findLast((m) => m.role === 'assistant')
+  return last?.id ?? ''
+}
+
 /**
  * 记录本条 assistant 回复过程中 spawn 的子 Agent ID。
  * 同步把 subAgentId 标记到对应 toolcall 的 ext 字段，供 UI 建立「工具卡片 ↔ 子 Agent」映射。

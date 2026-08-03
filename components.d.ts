@@ -7,6 +7,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AgentHistoryList: typeof import('./src/components/chat/AgentHistoryList.vue')['default']
     AiModelSelect: typeof import('./src/components/chat/AiModelSelect.vue')['default']
     AiWorkspace: typeof import('./src/components/chat/AiWorkspace.vue')['default']
     AskChatTool: typeof import('./src/components/chat/chat-assistant/tool/AskChatTool.vue')['default']

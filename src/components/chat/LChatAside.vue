@@ -4,6 +4,7 @@
       <t-option value="overview" label="概览" />
       <t-option value="workspace" label="工作空间" :disabled="!workspace" />
       <t-option value="sandbox" label="沙盒空间" :disabled="!sandbox" />
+      <t-option value="agents" label="Agent 面板" />
     </t-select>
     <div v-if="active === 'overview'" class="l-chat-aside__content">
       <sub-title title="任务进程" />
@@ -26,6 +27,14 @@
         <file-icon />
         <span class="ellipsis w-180px">{{ output.name }}</span>
       </div>
+    </div>
+    <div v-else-if="active === 'agents'" class="l-chat-aside__content">
+      <sub-title title="Agent 面板" />
+      <agent-history-list
+        :items="agentHistory"
+        :active-id="activeAgentId"
+        @view-agent="$emit('view-agent', $event)"
+      />
     </div>
     <div v-else-if="active === 'workspace' || active === 'sandbox'" class="l-chat-aside__content">
       <sub-title :title="active === 'workspace' ? '工作空间' : '沙盒空间'">
@@ -65,6 +74,7 @@ import {
 import type { TreeOptionData, TreeNodeModel } from 'tdesign-vue-next'
 import { openFilePreview } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
 import TodoList from '@/components/chat/TodoList.vue'
+import AgentHistoryList, { type AgentHistoryItem } from '@/components/chat/AgentHistoryList.vue'
 
 interface WorkspaceTreeNode {
   label: string
@@ -87,8 +97,22 @@ const props = defineProps({
   todos: {
     type: Array as PropType<TodoItem[]>,
     default: () => []
+  },
+  /** 全部子 Agent 汇总（含是否当前轮标记），供「Agent 记录」视图展示 */
+  agentHistory: {
+    type: Array as PropType<AgentHistoryItem[]>,
+    default: () => []
+  },
+  /** 当前正在查看的 Agent ID（'main' 或子 Agent ID），用于高亮 */
+  activeAgentId: {
+    type: String,
+    default: 'main'
   }
 })
+
+defineEmits<{
+  (e: 'view-agent', subAgentId: string): void
+}>()
 
 const toolCallNames = ['file_write_xlsx', 'file_write']
 

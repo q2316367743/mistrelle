@@ -13,7 +13,7 @@
         @view-sub-agent="handleViewSubAgent"
       />
       <sub-agent-tabs
-        v-if="subAgentTabs.length > 1"
+        v-if="subAgentTabs.length > 1 || activeAgentId !== 'main'"
         :tabs="subAgentTabs"
         :active-id="activeAgentId"
         @switch="handleSwitchAgent"
@@ -40,6 +40,9 @@
         :workspace="workspace"
         :sandbox="sandboxDir"
         :todos="instance.todos.value"
+        :agent-history="agentHistory"
+        :active-agent-id="activeAgentId"
+        @view-agent="handleViewSubAgent"
       />
     </t-aside>
     <div class="l-chat-tool__header" :class="{ collapsed: collapsed }">
@@ -60,6 +63,7 @@ import { getChatSession, getSandboxDir } from '@/modules/chat'
 import type { ChatMessage, UserMessage } from '@/domain'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
 import { readSubAgentContent, getRunningSubAgentMessages } from '@/modules/chat/agent/SubAgentRunner'
+import { collectSubAgents, lastAssistantIdOf, lastAssistantIndexOf } from '@/modules/chat/agent/agentMessages'
 import SubAgentTabs, { type AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
 import { collapsed } from '@/global/BeanFactory'
 import { AppIcon } from 'tdesign-icons-vue-next'
@@ -149,38 +153,28 @@ const activeAgentId = ref<string>('main')
 /** 子 Agent 消息快照（切换 tab 时从 sub_{subId}.json 加载） */
 const subAgentMessages = ref<ChatMessage[] | null>(null)
 
+/** 子 Agent 汇总（全部消息），tab 栏只取最后一条 AI 消息，侧边栏展示全部 */
+const allSubAgents = computed(() => collectSubAgents(messages.value))
+
 /**
- * 从主 Agent 消息中收集全部 spawn_agent 工具调用，构建 Agent 切换卡片数据。
- * 工具调用的 ext.subAgentId 与 AIMessage.subAgentIds 对应。
+ * 构建 Agent 切换卡片数据：仅展示最后一条 AI 消息 spawn 的子 Agent。
+ * 历史子 Agent 对当前任务无意义，收敛到侧边栏「Agent 记录」查看。
  */
 const subAgentTabs = computed<AgentTabItem[]>(() => {
   const tabs: AgentTabItem[] = [{ id: 'main', label: '主 Agent' }]
-  const subAgentMap = new Map<string, { task: string; status: 'running' | 'completed' | 'error' }>()
-
-  for (const msg of messages.value) {
-    if (msg.role !== 'assistant' || !msg.content) continue
-    for (const content of msg.content) {
-      if (content.type !== 'toolcall' || content.data.toolCallName !== 'spawn_agent') continue
-      const subId = content.ext?.subAgentId
-      if (!subId || typeof subId !== 'string') continue
-      let task = ''
-      try {
-        const parsed = JSON.parse(content.data.args ?? '{}') as { task?: string }
-        task = parsed.task ?? ''
-      } catch {
-        // args 解析失败则忽略任务摘要
-      }
-      const s = content.status
-      const status = s === 'error' ? 'error' : s === 'pending' || s === 'streaming' ? 'running' : 'completed'
-      subAgentMap.set(subId, { task, status })
-    }
-  }
-
-  let index = 1
-  subAgentMap.forEach((info, subId) => {
-    tabs.push({ id: subId, label: `子 Agent ${index++}`, task: info.task, status: info.status })
-  })
+  const lastIdx = lastAssistantIndexOf(messages.value)
+  allSubAgents.value
+    .filter((a) => a.messageIndex === lastIdx)
+    .forEach((info, index) => {
+      tabs.push({ id: info.subId, label: `子 Agent ${index + 1}`, task: info.task, status: info.status })
+    })
   return tabs
+})
+
+/** 侧边栏「Agent 记录」数据：全部子 Agent，最后一条消息的标记为当前轮 */
+const agentHistory = computed(() => {
+  const lastIdx = lastAssistantIndexOf(messages.value)
+  return allSubAgents.value.map((a) => ({ ...a, current: a.messageIndex === lastIdx }))
 })
 
 /** 当前展示的消息列表：主 Agent 显示会话消息；子 Agent 运行中实时绑定消息流，已完成显示磁盘快照 */
@@ -237,6 +231,16 @@ const handleSwitchAgent = (agentId: string) => {
 const handleViewSubAgent = (subAgentId: string) => {
   activeAgentId.value = subAgentId
 }
+
+// 新一轮回复开始时，若仍停留在历史子 Agent（已不在当前轮 tab 中），自动回到主 Agent
+watch(
+  () => lastAssistantIdOf(messages.value),
+  () => {
+    if (activeAgentId.value === 'main') return
+    const currentSubIds = new Set(subAgentTabs.value.map((t) => t.id).filter((id) => id !== 'main'))
+    if (!currentSubIds.has(activeAgentId.value)) activeAgentId.value = 'main'
+  }
+)
 </script>
 <style scoped lang="less">
 .l-chat-tool {
