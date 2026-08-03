@@ -146,6 +146,13 @@ export const runSingleTool = async (
   }
 }
 
+/**
+ * 并发执行一批工具调用：
+ * - 同步阶段完成「查找函数 + 解析参数」，失败即时回填该工具的错误结果、不参与执行
+ * - 全部工具并发执行（Promise.allSettled 等所有工具产出结果后再继续）
+ * - 单个工具意外 reject 只回填它自身的错误结果，不拖垮整批、不中断循环
+ * - ask/confirm 类交互决策经 InteractiveBridge 内部排队逐个等待用户作答
+ */
 export const executeToolCalls = async (
   messages: Ref<ChatMessage[]>,
   assistantMessageId: string,
@@ -154,26 +161,40 @@ export const executeToolCalls = async (
   policyContext: ToolPolicyContext,
   interactive: InteractiveBridge
 ): Promise<void> => {
-  for (const call of calls) {
-    const fn = functions.find((item) => item.name === call.toolCallName)
-    if (!fn) {
-      applyResult(messages, assistantMessageId, call, `错误: 未找到工具 "${call.toolCallName}"`)
-      continue
+  const prepared = calls.flatMap(
+    (call): { call: ToolCall; fn: ToolFunction; args: Record<string, unknown> }[] => {
+      const fn = functions.find((item) => item.name === call.toolCallName)
+      if (!fn) {
+        applyResult(messages, assistantMessageId, call, `错误: 未找到工具 "${call.toolCallName}"`)
+        return []
+      }
+      try {
+        return [{ call, fn, args: parseArguments(call.args) }]
+      } catch (error: unknown) {
+        applyResult(
+          messages,
+          assistantMessageId,
+          call,
+          `错误: ${error instanceof Error ? error.message : String(error)}`
+        )
+        return []
+      }
     }
+  )
 
-    let args: Record<string, unknown>
-    try {
-      args = parseArguments(call.args)
-    } catch (error: unknown) {
+  const settled = await Promise.allSettled(
+    prepared.map(({ call, fn, args }) =>
+      runSingleTool(messages, assistantMessageId, call, fn, args, policyContext, interactive)
+    )
+  )
+  settled.forEach((result, index) => {
+    if (result.status === 'rejected') {
       applyResult(
         messages,
         assistantMessageId,
-        call,
-        `错误: ${error instanceof Error ? error.message : String(error)}`
+        prepared[index].call,
+        `错误: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`
       )
-      continue
     }
-
-    await runSingleTool(messages, assistantMessageId, call, fn, args, policyContext, interactive)
-  }
+  })
 }
