@@ -6,6 +6,11 @@ import { resolveToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPo
 import { MAX_TOOL_RESULT_BYTES } from '@/global/Constant'
 import type { InteractiveBridge } from './interactive'
 import { useSnowflake } from '@/hooks'
+import {
+  formatAskResult,
+  normalizeAskArgs,
+  type AskAnswerItem
+} from '@/modules/tool/components/ask'
 
 const ASK_TOOL_NAME = 'ask'
 const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
@@ -42,10 +47,11 @@ const applyResult = (
   messages: Ref<ChatMessage[]>,
   assistantMessageId: string,
   call: ToolCall,
-  result: string
+  result: string,
+  ext?: Record<string, unknown>
 ): void => {
   call.result = result
-  updateToolCallContent(messages, assistantMessageId, call.toolCallId, result)
+  updateToolCallContent(messages, assistantMessageId, call.toolCallId, result, ext)
 }
 
 /**
@@ -80,13 +86,28 @@ export const runSingleTool = async (
 ): Promise<void> => {
   if (fn.name === ASK_TOOL_NAME) {
     markToolInteractive(messages, assistantMessageId, call.toolCallId, 'ask')
+    const questions = normalizeAskArgs(args)
+    // 参数非法（无有效问题）时直接报错，不进入问答界面
+    if (questions.length === 0) {
+      applyResult(messages, assistantMessageId, call, '错误：ask 工具缺少有效的问题参数（question 或 questions）')
+      return
+    }
     const answer = await interactive.awaitDecision('ask', call.toolCallId, args)
-    const text = typeof answer === 'string' && answer.trim() ? answer.trim() : ''
+    // 多问题返回答案数组；单问题或取消返回单个字符串 / null，统一按索引与问题配对
+    const answers = Array.isArray(answer)
+      ? answer
+      : [typeof answer === 'string' ? answer : '']
+    const items: AskAnswerItem[] = questions.map((q, index) => ({
+      question: q.question,
+      answer: (answers[index] ?? '').trim()
+    }))
     applyResult(
       messages,
       assistantMessageId,
       call,
-      text ? `用户选择：${text}` : '用户未回答，请自行判断或继续推进任务'
+      formatAskResult(items),
+      // 结构化问答对写入 ext，供 UI 结果卡片渲染「问题 → 答案」；不进模型上下文
+      { askItems: items }
     )
     return
   }

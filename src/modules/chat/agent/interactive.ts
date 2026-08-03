@@ -5,7 +5,7 @@ import type { ToolCall } from './agentTypes'
 
 /**
  * 交互决策类型：
- * - ask：用户从选项中选择 / 输入答案，决策值为答案字符串
+ * - ask：用户从选项中选择 / 输入答案，决策值为答案字符串（单个问题）或答案字符串数组（多个问题）
  * - confirm：用户批准 / 拒绝工具执行，决策值为布尔
  */
 export type InteractiveKind = 'ask' | 'confirm'
@@ -23,7 +23,7 @@ interface QueuedInteractive extends PendingInteractive {
   resolve: (decision: InteractiveDecision) => void
 }
 
-export type InteractiveDecision = string | boolean | null
+export type InteractiveDecision = string | boolean | string[] | null
 
 /**
  * 工具执行与 UI 之间的「挂起决策」桥。每个 ToolChat 实例持有自己的 bridge，

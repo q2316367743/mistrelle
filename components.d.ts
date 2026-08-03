@@ -10,6 +10,7 @@ declare module 'vue' {
     AgentHistoryList: typeof import('./src/components/chat/AgentHistoryList.vue')['default']
     AiModelSelect: typeof import('./src/components/chat/AiModelSelect.vue')['default']
     AiWorkspace: typeof import('./src/components/chat/AiWorkspace.vue')['default']
+    AskChatQuestion: typeof import('./src/components/chat/chat-assistant/tool/AskChatQuestion.vue')['default']
     AskChatTool: typeof import('./src/components/chat/chat-assistant/tool/AskChatTool.vue')['default']
     BgResult: typeof import('./src/components/Result/BgResult.vue')['default']
     ConfirmChatTool: typeof import('./src/components/chat/chat-assistant/tool/ConfirmChatTool.vue')['default']

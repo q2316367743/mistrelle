@@ -75,7 +75,8 @@ export const updateToolCallContent = (
   messages: Ref<ChatMessage[]>,
   messageId: string,
   toolCallId: string,
-  result: string
+  result: string,
+  ext?: Record<string, unknown>
 ): void => {
   const assistant = getAssistant(messages, messageId)
   const content = assistant?.content?.findLast(
@@ -85,6 +86,8 @@ export const updateToolCallContent = (
   if (!content) return
   content.status = 'complete'
   content.data.result = result
+  // 结构化附加数据（如 ask 的问答对）写入 ext，供 UI 结果卡片渲染，不进模型上下文
+  if (ext) content.ext = { ...(content.ext ?? {}), ...ext }
 }
 
 /**
