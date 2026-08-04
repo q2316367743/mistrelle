@@ -19,7 +19,7 @@ export const DESIGN_CANVAS_PROMPT = [
   '- 对应 canvas_update_* 工具用于按 id 修改图形，canvas_move_shape 用相对位移（dx/dy）调整位置',
   '- canvas_remove_shape 删除不再需要的图形',
   '- 每个图形必须携带 x/y（画布左上角为原点，x 向右，y 向下）及必要参数：矩形/椭圆/多边形/星形需 width/height，多边形需 sides、星形需 corners，路径需 path（SVG 路径字符串）',
-  '- 颜色支持 #RRGGBB、#RRGGBBAA、rgba()、颜色名',
+  '- 颜色支持 #RRGGBB、#RRGGBBAA、rgba()、颜色名，fill/stroke 也支持渐变对象（见「质感提升」）',
   '- 修改前先 canvas_get_shapes 确认 id，避免误改其他图形',
   '',
   '### 图片 / SVG',
@@ -33,5 +33,13 @@ export const DESIGN_CANVAS_PROMPT = [
   '- 合理使用层级：填充图形先画、文字和图片最后画，保证不被遮挡',
   '- 配色克制：主色 + 辅助色 + 中性色，保持对比度与可读性',
   '- 文字明确设置 fontSize 与 textColor，确保清晰',
-  '- 图形间避免无意义重叠，如需遮罩请使用半透明 fill（如 rgba）'
+  '- 图形间避免无意义重叠，如需遮罩请使用半透明 fill（如 rgba）',
+  '',
+  '### 质感提升（重要，避免画面廉价）',
+  '- 纯平面色块会显得廉价：矩形 / 椭圆 / 卡片等闭合图形优先用线性 / 径向渐变填充，fill 传渐变对象，如 {"type":"linear","from":"top-left","to":"bottom-right","stops":["#667eea","#764ba2"]}，stops 使用主色与邻近色系',
+  '- radial 渐变（{"type":"radial","stops":[...]}）适合做光晕 / 按钮高光；angular 渐变适合多彩色环（至少 4 个色标且首尾同色）',
+  '- 卡片类图形加圆角 cornerRadius（8~24）与柔和外阴影 shadow（如 {"x":0,"y":4,"blur":12,"color":"rgba(0,0,0,0.12)"}），营造层次与立体感',
+  '- 强调层级可用 blendMode（如 overlay）或 blur 柔化 / 景深，但保持克制，避免画面浑浊',
+  '- 分隔线 / 装饰线可用渐变描边（stroke 传渐变对象）或虚线 dashPattern，比纯黑细线更有质感',
+  '- 文字也支持渐变颜色（textColor 传渐变对象）'
 ].join('\n')

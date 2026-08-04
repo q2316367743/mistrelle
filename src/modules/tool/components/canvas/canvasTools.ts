@@ -44,9 +44,41 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
     width: { type: 'number', description: '图形宽度' },
     height: { type: 'number', description: '图形高度' },
     rotation: { type: 'number', description: '旋转角度（度，顺时针）' },
-    fill: { type: 'string', description: '填充颜色，支持 #RRGGBB / #RRGGBBAA / rgba() / 颜色名' },
-    stroke: { type: 'string', description: '描边颜色' },
+    fill: {
+      type: 'string',
+      description:
+        '填充：纯色（#RRGGBB / #RRGGBBAA / rgba() / 颜色名）或渐变对象。渐变示例 {"type":"linear","from":"top-left","to":"bottom-right","stops":["#FF4B4B","#FEB027"]}；type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环），stops 为色标数组，可为纯色字符串自动均分，或 {"offset":0,"color":"#FEB027"} 显式定位'
+    },
+    stroke: {
+      type: 'string',
+      description:
+        '描边颜色或渐变对象（结构同 fill，配合 strokeWidth 使用，可让边框更有层次）'
+    },
     strokeWidth: { type: 'number', description: '描边宽度' },
+    strokeCap: { type: 'string', description: '描边端点形状：none / round / square' },
+    dashPattern: {
+      type: 'array',
+      items: { type: 'number', description: '长度数值' },
+      description: '虚线描边：[线段长度, 间隙]，如 [6, 4]'
+    },
+    cornerRadius: {
+      type: 'number',
+      description: '圆角半径（闭合图形），让矩形 / 卡片更柔和，如 16'
+    },
+    shadow: {
+      type: 'object',
+      description:
+        '外阴影：{"x":0,"y":4,"blur":8,"color":"rgba(0,0,0,0.15)"}（x/y 偏移、blur 模糊半径、color 支持 rgba），可传数组叠加多层阴影，营造立体感'
+    },
+    innerShadow: {
+      type: 'object',
+      description: '内阴影：{"x":0,"y":2,"blur":4,"color":"rgba(0,0,0,0.2)"}，实现内凹 / 雕刻感'
+    },
+    blendMode: {
+      type: 'string',
+      description: '混合模式：normal / multiply / screen / overlay 等，用于半透明色层叠加调色'
+    },
+    blur: { type: 'number', description: '高斯模糊半径，柔化图形或模拟景深' },
     opacity: { type: 'number', description: '不透明度 0-1' }
   }
 
@@ -56,7 +88,10 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
     fontSize: { type: 'number', description: '字号' },
     fontWeight: { type: 'number', description: '字重（400 常规 / 700 粗体）' },
     fontFamily: { type: 'string', description: '字体族' },
-    textColor: { type: 'string', description: '文字颜色' }
+    textColor: {
+      type: 'string',
+      description: '文字颜色，支持纯色或渐变对象（结构同 fill），如 {"type":"linear","stops":["#FF4B4B","#FEB027"]}'
+    }
   }
 
   const polygonProps: Record<string, ToolProperty> = {
@@ -80,7 +115,13 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
     path: { type: 'string', description: 'SVG 路径数据，如 M10 20 L60 20 L60 60 Z' },
     fill: shapeProps.fill,
     stroke: shapeProps.stroke,
-    strokeWidth: shapeProps.strokeWidth
+    strokeWidth: shapeProps.strokeWidth,
+    strokeCap: shapeProps.strokeCap,
+    dashPattern: shapeProps.dashPattern,
+    shadow: shapeProps.shadow,
+    innerShadow: shapeProps.innerShadow,
+    blendMode: shapeProps.blendMode,
+    blur: shapeProps.blur
   }
 
   const assetProps: Record<string, ToolProperty> = {

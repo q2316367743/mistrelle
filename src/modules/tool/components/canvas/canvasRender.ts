@@ -10,9 +10,67 @@ import {
   Platform,
   Image as LeaferImage
 } from 'leafer-editor'
-import type { CanvasDoc, CanvasShape } from './canvasTypes'
+import type {
+  CanvasDoc,
+  CanvasShadow,
+  CanvasShape,
+  CanvasStrokeAlign,
+  CanvasStrokeCap,
+  CanvasStrokeJoin
+} from './canvasTypes'
 
 export type CanvasRenderNode = Rect | Ellipse | Text | Line | LeaferImage | Polygon | Star | Path
+
+/** 质感效果字段集合（供等比缩放透传） */
+type CanvasShapeEffects = {
+  cornerRadius?: number | number[]
+  shadow?: CanvasShadow | CanvasShadow[]
+  innerShadow?: CanvasShadow | CanvasShadow[]
+  blendMode?: string
+  blur?: number
+  backgroundBlur?: number
+  strokeCap?: CanvasStrokeCap
+  strokeJoin?: CanvasStrokeJoin
+  strokeAlign?: CanvasStrokeAlign
+  dashPattern?: number[]
+}
+
+/**
+ * 按缩放比例等比换算图形的质感效果字段。
+ * 预览层是等比缩放坐标渲染的，阴影偏移 / 模糊半径 / 圆角 / 虚线若不随 scale 缩放，
+ * 会与导出（scale=1）不一致，故对数值字段统一乘 scale。
+ */
+const scaleEffects = (shape: CanvasShape, scale: number): CanvasShapeEffects => {
+  const scaleShadow = (s: CanvasShadow): CanvasShadow => ({
+    ...s,
+    x: s.x * scale,
+    y: s.y * scale,
+    blur: s.blur * scale,
+    ...(s.spread != null ? { spread: s.spread * scale } : {})
+  })
+  const shadow = shape.shadow
+    ? Array.isArray(shape.shadow)
+      ? shape.shadow.map(scaleShadow)
+      : scaleShadow(shape.shadow)
+    : undefined
+  const innerShadow = shape.innerShadow
+    ? Array.isArray(shape.innerShadow)
+      ? shape.innerShadow.map(scaleShadow)
+      : scaleShadow(shape.innerShadow)
+    : undefined
+  return {
+    cornerRadius: shape.cornerRadius,
+    shadow,
+    innerShadow,
+    blendMode: shape.blendMode,
+    blur: shape.blur != null ? shape.blur * scale : undefined,
+    backgroundBlur: shape.backgroundBlur != null ? shape.backgroundBlur * scale : undefined,
+    strokeCap: shape.strokeCap,
+    strokeJoin: shape.strokeJoin,
+    strokeAlign: shape.strokeAlign,
+    dashPattern: shape.dashPattern?.map((n) => n * scale)
+  }
+}
 
 /** 手动等比缩放每个图形坐标，将 doc 空间映射到指定缩放比例并平移到容器内；id/editable 为 editor 选中预留映射 */
 export const scaleShape = (
@@ -27,7 +85,8 @@ export const scaleShape = (
     x: shape.x * scale + offsetX,
     y: shape.y * scale + offsetY,
     rotation: shape.rotation,
-    opacity: shape.opacity
+    opacity: shape.opacity,
+    ...scaleEffects(shape, scale)
   }
   const strokeStyle = {
     stroke: shape.stroke,
@@ -101,6 +160,8 @@ export const scaleShape = (
         opacity: shape.opacity,
         scaleX: scale,
         scaleY: scale,
+        // 路径用节点整体缩放，效果字段（阴影/模糊/圆角）由 scaleX/Y 自动等比，这里原样透传
+        ...scaleEffects(shape, 1),
         path: shape.path ?? '',
         fill: shape.fill ?? '#e6e6e6',
         stroke: shape.stroke,
