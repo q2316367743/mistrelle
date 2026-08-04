@@ -1,5 +1,6 @@
 import { ToolFunction } from '@/domain'
 import { useSettingSecureStore } from '@/store/setting/SettingSecureStore'
+import { cliRun, jsRun } from '@/plugin/shell'
 
 export const shellTools: ToolFunction[] = [
   {
@@ -27,7 +28,7 @@ export const shellTools: ToolFunction[] = [
         args?: string[]
         cwd?: string
       }
-      return window.preload.shellExec.cliRun(command, args, { cwd })
+      return cliRun(command, args, { cwd })
     }
   },
   {
@@ -52,7 +53,7 @@ export const shellTools: ToolFunction[] = [
         script: string
         args?: Record<string, unknown>
       }
-      return window.preload.shellExec.jsRun(script, args)
+      return jsRun(script, args)
     }
   },
   {
@@ -83,10 +84,10 @@ export const shellTools: ToolFunction[] = [
       }
       const { pythonPath } = useSettingSecureStore()
       if (code) {
-        return window.preload.shellExec.cliRun(pythonPath, ['-c', code, ...args], { cwd })
+        return cliRun(pythonPath, ['-c', code, ...args], { cwd })
       }
       if (file) {
-        return window.preload.shellExec.cliRun(pythonPath, [file, ...args], { cwd })
+        return cliRun(pythonPath, [file, ...args], { cwd })
       }
       return { error: '请提供 code 或 file 参数' }
     }
@@ -119,10 +120,10 @@ export const shellTools: ToolFunction[] = [
       }
       const { nodePath } = useSettingSecureStore()
       if (code) {
-        return window.preload.shellExec.cliRun(nodePath, ['-e', code, ...args], { cwd })
+        return cliRun(nodePath, ['-e', code, ...args], { cwd })
       }
       if (file) {
-        return window.preload.shellExec.cliRun(nodePath, [file, ...args], { cwd })
+        return cliRun(nodePath, [file, ...args], { cwd })
       }
       return { error: '请提供 code 或 file 参数' }
     }
@@ -148,7 +149,7 @@ export const shellTools: ToolFunction[] = [
     handler: async (...params: unknown[]) => {
       const { args, cwd } = params[0] as { args: string[]; cwd?: string }
       const { gitPath } = useSettingSecureStore()
-      return window.preload.shellExec.cliRun(gitPath, args, { cwd })
+      return cliRun(gitPath, args, { cwd })
     }
   }
 ]
