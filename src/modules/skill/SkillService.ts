@@ -247,6 +247,7 @@ export const localSkillCreate = async (agent: SkillAgent, form: LocalSkillForm) 
     buildSkillFilePath(agent, form.dirName),
     buildSkillMd(form.name, form.description, `# ${form.name}\n\n在此编写 Skill 的具体指令。\n`)
   )
+  localSkillCacheClear()
 }
 
 /**
@@ -259,6 +260,7 @@ export const localSkillUpdate = async (skill: LocalSkill, form: LocalSkillForm) 
     body = parseSkillMd(await window.preload.fs.readTextFile(filePath)).body
   }
   await window.preload.fs.writeTextFile(filePath, buildSkillMd(form.name, form.description, body))
+  localSkillCacheClear()
 }
 
 /**
@@ -266,6 +268,7 @@ export const localSkillUpdate = async (skill: LocalSkill, form: LocalSkillForm) 
  */
 export const localSkillRemove = async (skill: LocalSkill) => {
   await window.preload.fs.rm(skill.path)
+  localSkillCacheClear()
 }
 
 /**
