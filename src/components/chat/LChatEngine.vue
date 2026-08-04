@@ -151,7 +151,7 @@ const instance = session.chat
 watch(
   () => session.type.value,
   (type) => {
-    if (type === 'design') aside.value = true
+    if (type === 'design' || type === 'coding') aside.value = true
   },
   { immediate: true }
 )

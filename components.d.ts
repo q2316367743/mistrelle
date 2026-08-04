@@ -38,6 +38,7 @@ declare module 'vue' {
     RChatTool: typeof import('./src/components/chat/chat-assistant/RChatTool.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SegmentedControl: typeof import('./src/components/ui/SegmentedControl.vue')['default']
     ShellChatTool: typeof import('./src/components/chat/chat-assistant/tool/ShellChatTool.vue')['default']
     SkillChatTool: typeof import('./src/components/chat/chat-assistant/tool/SkillChatTool.vue')['default']
     SubAgentChatTool: typeof import('./src/components/chat/chat-assistant/tool/SubAgentChatTool.vue')['default']

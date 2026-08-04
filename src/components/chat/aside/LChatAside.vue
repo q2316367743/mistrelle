@@ -1,6 +1,6 @@
 <template>
   <office-aside
-    v-if="type === 'office'"
+    v-if="type === 'office' || type === 'coding'"
     :messages="messages"
     :workspace="workspace"
     :sandbox="sandbox"

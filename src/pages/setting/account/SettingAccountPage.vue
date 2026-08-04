@@ -25,6 +25,24 @@
           </div>
         </template>
       </t-list-item>
+      <t-list-item>
+        <t-list-item-meta
+          title="Context7 API Key"
+          description="代码开发类型下获取第三方类库最新文档；留空则使用免 key 的匿名额度"
+        />
+        <template #action>
+          <div class="flex items-center gap-8px">
+            <t-input
+              v-model="state.context7"
+              style="width: 400px"
+              placeholder="请输入 Context7 API Key（可选）"
+              type="password"
+              allow-clear
+            />
+            <m-link href="https://context7.com"> 获取 </m-link>
+          </div>
+        </template>
+      </t-list-item>
     </t-list>
   </page-layout>
 </template>

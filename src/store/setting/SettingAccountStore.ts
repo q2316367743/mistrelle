@@ -48,8 +48,17 @@ export const useSettingAccountStore = defineStore('setting:account', () => {
     }
   })
 
+  // 配置了 Context7 key 则在请求头携带 Authorization，否则返回空配置（走免 key 匿名额度）
+  const context7Config = computed<Partial<HttpRequest>>(() => {
+    if (!state.value.context7) return {}
+    return {
+      headers: { Authorization: `Bearer ${state.value.context7}` }
+    }
+  })
+
   return {
     state,
-    skillhubConfig
+    skillhubConfig,
+    context7Config
   }
 })

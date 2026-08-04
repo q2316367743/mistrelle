@@ -40,7 +40,6 @@ import { InteractiveBridge, findPendingInteractiveToolcall } from './interactive
 import { copyToInputs, isPathUnder } from '@/utils/chatSender'
 import { MAX_AGENT_STEPS } from '@/global/Constant'
 import { createTodoTool, buildTodoPrompt } from './todo'
-import { createCanvasTools } from '@/modules/tool/components/canvas/canvasTools'
 
 /** spawn_agent 工具名：子 Agent 不暴露此工具，防止嵌套派发 */
 const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
@@ -145,19 +144,13 @@ export class ToolChat {
   }
 
   /**
-   * 按聊天类型注入场景级工具（design → canvas_*）。
-   * 画布工具按当前 sandboxDir 实时绑定（闭包读取），支持 setSandboxDir 后仍生效；
-   * 仅主 Agent 注入，子 Agent 只读调研不需要画布能力。
+   * 按聊天类型注入场景级工具（design → canvas_*，coding → context7_*）。
+   * 工具列表由 CHAT_TYPE_CONFIG[type].tools 工厂提供，所有类型在此一处维护，
+   * 新增类型无需改动本方法；仅主 Agent 注入，子 Agent 不暴露场景工具。
    */
   private getTypeTools(): ToolFunction[] {
     if (this.isSubAgent) return []
-    const tools = CHAT_TYPE_CONFIG[this.chatType].tools
-    if (tools.length === 0) return []
-    // 设计类型的画布工具为按 chat 绑定的工厂产物
-    if (this.chatType === 'design') {
-      return createCanvasTools({ getSandboxDir: () => this.sandboxDir })
-    }
-    return []
+    return CHAT_TYPE_CONFIG[this.chatType].tools({ getSandboxDir: () => this.sandboxDir })
   }
 
   private buildTools(functions: ToolFunction[]): ChatCompletionTool[] {
