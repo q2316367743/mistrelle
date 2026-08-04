@@ -9,6 +9,30 @@ const ctxError = (): never => {
 
 const storeOf = (ctx: CanvasToolContext) => getCanvasStore(ctx.getSandboxDir() || ctxError())
 
+/**
+ * 解析图片 / SVG 源为可渲染 url：
+ * - http(s) / data / blob / file URL 原样返回
+ * - 沙盒内文件路径（绝对或相对）转为稳定 file:// URL（pathToHref）
+ * AI 从网络下载的图片通常已保存到沙盒目录，传路径即可，无需手动转换。
+ */
+const resolveImageSource = (ctx: CanvasToolContext, src: string): string => {
+  if (/^(https?|file|data|blob):/i.test(src)) return src
+  const sandboxDir = ctx.getSandboxDir()
+  const isAbsolute = /^([a-zA-Z]:[\\/]|\/)/.test(src)
+  const abs = !isAbsolute && sandboxDir ? window.preload.path.join(sandboxDir, src) : src
+  return window.preload.net.pathToHref(abs)
+}
+
+/** 资产类图形入参归一化：把工具侧的 src 解析为 imageUrl 落盘，避免多余字段写入画布文件 */
+const toAssetInput =
+  (ctx: CanvasToolContext) =>
+  (patch: Record<string, unknown>): CanvasShapeInput => {
+    const { src, ...rest } = patch
+    return typeof src === 'string' && src
+      ? ({ ...rest, imageUrl: resolveImageSource(ctx, src) } as unknown as CanvasShapeInput)
+      : (rest as unknown as CanvasShapeInput)
+  }
+
 /** 返回画布工具实例（按 chat sandboxDir 绑定），供 ChatTypeConfig 场景级注入 */
 export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
   const store = () => storeOf(ctx)
@@ -34,6 +58,53 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
     textColor: { type: 'string', description: '文字颜色' }
   }
 
+  const polygonProps: Record<string, ToolProperty> = {
+    ...shapeProps,
+    sides: { type: 'number', description: '边数（≥3）：3 三角形、4 四边形、5 五边形' },
+    startAngle: { type: 'number', description: '起始角度偏移（度，-180~180），控制图形朝向' }
+  }
+
+  const starProps: Record<string, ToolProperty> = {
+    ...shapeProps,
+    corners: { type: 'number', description: '角数（≥3）：5 五角星' },
+    innerRadius: { type: 'number', description: '内半径比例（0~1，默认 0.382），控制凹陷程度' },
+    startAngle: { type: 'number', description: '起始角度偏移（度，-180~180）' }
+  }
+
+  const pathProps: Record<string, ToolProperty> = {
+    x: shapeProps.x,
+    y: shapeProps.y,
+    rotation: shapeProps.rotation,
+    opacity: shapeProps.opacity,
+    path: { type: 'string', description: 'SVG 路径数据，如 M10 20 L60 20 L60 60 Z' },
+    fill: shapeProps.fill,
+    stroke: shapeProps.stroke,
+    strokeWidth: shapeProps.strokeWidth
+  }
+
+  const assetProps: Record<string, ToolProperty> = {
+    x: shapeProps.x,
+    y: shapeProps.y,
+    width: { type: 'number', description: '宽，缺省按资源原始尺寸' },
+    height: { type: 'number', description: '高，缺省按资源原始尺寸' },
+    rotation: shapeProps.rotation,
+    opacity: shapeProps.opacity
+  }
+
+  const imageProps: Record<string, ToolProperty> = {
+    ...assetProps,
+    src: {
+      type: 'string',
+      description: '图片源：沙盒内文件路径（自动转 file:// URL）或 http(s)/data URL'
+    }
+  }
+
+  const svgProps: Record<string, ToolProperty> = {
+    ...assetProps,
+    src: { type: 'string', description: 'SVG 文件路径或 http(s) URL（与 svg 二选一）' },
+    svg: { type: 'string', description: '内联 SVG 字符串（与 src 二选一）' }
+  }
+
   const idProp: Record<string, ToolProperty> = {
     id: { type: 'string', description: '目标图形的 id（用 canvas_get_shapes 获取）' }
   }
@@ -43,7 +114,8 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
     label: string,
     shapeType: CanvasShapeType,
     props: Record<string, ToolProperty>,
-    required: string[]
+    required: string[],
+    transform?: (input: Record<string, unknown>) => CanvasShapeInput
   ): ToolFunction => ({
     name,
     label,
@@ -52,7 +124,8 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
     internal: true,
     risk: 'sensitive',
     handler: async (...params: unknown[]) => {
-      const input = params[0] as CanvasShapeInput
+      const raw = params[0] as Record<string, unknown>
+      const input = transform ? transform(raw) : (raw as unknown as CanvasShapeInput)
       return store().addShape(shapeType, input)
     }
   })
@@ -60,7 +133,8 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
   const buildUpdateTool = (
     name: string,
     label: string,
-    props: Record<string, ToolProperty>
+    props: Record<string, ToolProperty>,
+    transform?: (patch: Record<string, unknown>) => CanvasShapeInput
   ): ToolFunction => ({
     name,
     label,
@@ -73,8 +147,11 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
     internal: true,
     risk: 'sensitive',
     handler: async (...params: unknown[]) => {
-      const { id, ...patch } = params[0] as { id: string } & CanvasShapeInput
-      const updated = await store().updateShape(id, patch)
+      const { id, ...patch } = params[0] as { id: string } & Record<string, unknown>
+      const normalized = (
+        transform ? transform(patch) : (patch as Partial<CanvasShapeInput>)
+      ) as Partial<CanvasShapeInput>
+      const updated = await store().updateShape(id, normalized)
       if (!updated) return { error: `未找到 id 为 ${id} 的图形` }
       return updated
     }
@@ -234,6 +311,28 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       opacity: { type: 'number', description: '不透明度 0-1' },
       rotation: { type: 'number', description: '旋转角度（度）' }
     }),
+    buildShapeTool('canvas_add_polygon', '新增多边形', 'polygon', polygonProps, [
+      'x',
+      'y',
+      'width',
+      'height',
+      'sides'
+    ]),
+    buildUpdateTool('canvas_update_polygon', '更新多边形', polygonProps),
+    buildShapeTool('canvas_add_star', '新增星形', 'star', starProps, [
+      'x',
+      'y',
+      'width',
+      'height',
+      'corners'
+    ]),
+    buildUpdateTool('canvas_update_star', '更新星形', starProps),
+    buildShapeTool('canvas_add_path', '新增路径', 'path', pathProps, ['x', 'y', 'path']),
+    buildUpdateTool('canvas_update_path', '更新路径', pathProps),
+    buildShapeTool('canvas_add_image', '新增图片', 'image', imageProps, ['x', 'y', 'src'], toAssetInput(ctx)),
+    buildUpdateTool('canvas_update_image', '更新图片', imageProps, toAssetInput(ctx)),
+    buildShapeTool('canvas_add_svg', '新增 SVG', 'svg', svgProps, ['x', 'y'], toAssetInput(ctx)),
+    buildUpdateTool('canvas_update_svg', '更新 SVG', svgProps, toAssetInput(ctx)),
     {
       name: 'canvas_move_shape',
       label: '移动图形',
@@ -294,6 +393,16 @@ export const CANVAS_TOOL_NAMES = [
   'canvas_update_ellipse',
   'canvas_add_line',
   'canvas_update_line',
+  'canvas_add_polygon',
+  'canvas_update_polygon',
+  'canvas_add_star',
+  'canvas_update_star',
+  'canvas_add_path',
+  'canvas_update_path',
+  'canvas_add_image',
+  'canvas_update_image',
+  'canvas_add_svg',
+  'canvas_update_svg',
   'canvas_move_shape',
   'canvas_remove_shape'
 ] as const

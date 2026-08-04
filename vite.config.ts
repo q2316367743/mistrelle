@@ -48,7 +48,7 @@ export default defineConfig({
         monacoEditorPlugin.default({}),
     visualizer({
       // 配置项（可选，下面是常用配置）
-      open: true, // 打包后自动打开浏览器展示图表
+      open: false, // 打包后自动打开浏览器展示图表
       filename: 'stats.html', // 生成分析图表的文件名
       gzipSize: true, // 显示 Gzip 压缩后的大小
       brotliSize: true, // 显示 Brotli 压缩后的大小

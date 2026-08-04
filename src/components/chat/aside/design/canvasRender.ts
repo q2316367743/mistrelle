@@ -1,5 +1,18 @@
-import { Leafer, Rect, Ellipse, Text, Line, Image as LeaferImage } from 'leafer-editor'
+import {
+  Leafer,
+  Rect,
+  Ellipse,
+  Text,
+  Line,
+  Path,
+  Polygon,
+  Star,
+  Platform,
+  Image as LeaferImage
+} from 'leafer-editor'
 import type { CanvasDoc, CanvasShape } from '@/modules/tool/components/canvas/canvasTypes'
+
+export type CanvasRenderNode = Rect | Ellipse | Text | Line | LeaferImage | Polygon | Star | Path
 
 /** 手动等比缩放每个图形坐标，将 doc 空间映射到指定缩放比例并平移到容器内；id/editable 为 editor 选中预留映射 */
 export const scaleShape = (
@@ -7,7 +20,7 @@ export const scaleShape = (
   scale: number,
   offsetX = 0,
   offsetY = 0
-): Rect | Ellipse | Text | Line | LeaferImage => {
+): CanvasRenderNode => {
   const base = {
     id: shape.id,
     editable: true,
@@ -37,6 +50,27 @@ export const scaleShape = (
         fill: shape.fill ?? '#e6e6e6',
         ...strokeStyle
       })
+    case 'polygon':
+      return new Polygon({
+        ...base,
+        width: (shape.width ?? 0) * scale,
+        height: (shape.height ?? 0) * scale,
+        sides: shape.sides ?? 3,
+        startAngle: shape.startAngle,
+        fill: shape.fill ?? '#e6e6e6',
+        ...strokeStyle
+      })
+    case 'star':
+      return new Star({
+        ...base,
+        width: (shape.width ?? 0) * scale,
+        height: (shape.height ?? 0) * scale,
+        corners: shape.corners ?? 5,
+        innerRadius: shape.innerRadius,
+        startAngle: shape.startAngle,
+        fill: shape.fill ?? '#e6e6e6',
+        ...strokeStyle
+      })
     case 'text':
       return new Text({
         ...base,
@@ -56,13 +90,40 @@ export const scaleShape = (
         strokeWidth: (shape.strokeWidth ?? 1) * scale,
         opacity: shape.opacity
       })
+    case 'path':
+      // 路径字符串坐标无法手动等比，改用元素 scaleX/Y 整体缩放；x/y 不再预乘 scale，避免二次缩放
+      return new Path({
+        id: shape.id,
+        editable: true,
+        x: shape.x + offsetX,
+        y: shape.y + offsetY,
+        rotation: shape.rotation,
+        opacity: shape.opacity,
+        scaleX: scale,
+        scaleY: scale,
+        path: shape.path ?? '',
+        fill: shape.fill ?? '#e6e6e6',
+        stroke: shape.stroke,
+        strokeWidth: shape.strokeWidth
+      })
     case 'image':
+      // 宽高缺省时按图片原始尺寸显示
       return new LeaferImage({
         ...base,
-        width: (shape.width ?? 0) * scale,
-        height: (shape.height ?? 0) * scale,
-        src: shape.imageUrl
+        ...(shape.width != null ? { width: shape.width * scale } : {}),
+        ...(shape.height != null ? { height: shape.height * scale } : {}),
+        url: shape.imageUrl
       })
+    case 'svg': {
+      // 内联 SVG 字符串转 blob url 渲染，否则按 svg 文件 / url 渲染
+      const url = shape.svg ? Platform.toURL(shape.svg, 'svg') : shape.imageUrl
+      return new LeaferImage({
+        ...base,
+        ...(shape.width != null ? { width: shape.width * scale } : {}),
+        ...(shape.height != null ? { height: shape.height * scale } : {}),
+        url
+      })
+    }
   }
 }
 

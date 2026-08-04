@@ -3,7 +3,16 @@
  * 采用 leafer 兼容的字段命名，便于渲染层直接映射。
  */
 
-export type CanvasShapeType = 'rect' | 'ellipse' | 'text' | 'line' | 'image'
+export type CanvasShapeType =
+  | 'rect'
+  | 'ellipse'
+  | 'line'
+  | 'text'
+  | 'polygon'
+  | 'star'
+  | 'path'
+  | 'image'
+  | 'svg'
 
 /** 画布中的单个图形（含通用几何与样式字段） */
 export interface CanvasShape {
@@ -29,8 +38,23 @@ export interface CanvasShape {
   textColor?: string
   // ── 线条 ──
   points?: Array<number>
-  // ── 图片 ──
+  // ── 多边形 / 星形 ──
+  /** 正多边形边数（≥3） */
+  sides?: number
+  /** 星形角数（≥3） */
+  corners?: number
+  /** 星形内半径比例（0~1，默认 0.382） */
+  innerRadius?: number
+  /** 起始角度偏移（度，-180~180） */
+  startAngle?: number
+  // ── 路径 ──
+  /** SVG 路径数据，如 M10 20 L60 20 ... */
+  path?: string
+  // ── 图片 / SVG ──
+  /** 图片或 svg 文件地址（file:// / http(s) / data URL） */
   imageUrl?: string
+  /** 内联 SVG 字符串（与 imageUrl 二选一） */
+  svg?: string
 }
 
 /** 画布文档：一个 .canvas 文件对应一个 CanvasDoc */
@@ -79,5 +103,11 @@ export interface CanvasShapeInput {
   fontFamily?: string
   textColor?: string
   points?: Array<number>
+  sides?: number
+  corners?: number
+  innerRadius?: number
+  startAngle?: number
+  path?: string
   imageUrl?: string
+  svg?: string
 }

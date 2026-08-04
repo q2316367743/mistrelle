@@ -1,10 +1,6 @@
-function normalizePath(path: string): string {
-  return path.replace(/^~/, window.preload.inject.os.getPath('home'))
-}
-
 function isSubPath(target: string, parent: string): boolean {
-  const t = normalizePath(target).replace(/\/$/, '')
-  const p = normalizePath(parent).replace(/\/$/, '')
+  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
+  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
   return t === p || t.startsWith(p + '/')
 }
 

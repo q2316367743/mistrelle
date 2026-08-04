@@ -2,20 +2,17 @@ import type { ToolFunction, ToolPolicyVerdict } from '@/domain'
 import { useSettingSecureStore } from '@/store/setting/SettingSecureStore'
 import { isPathBlacklisted } from '@/utils/sandbox'
 import { browserActionsPolicy } from './policies/browserActionsPolicy'
+import { httpDownloadPolicy } from './policies/httpDownloadPolicy'
 import type { ToolPolicy, ToolPolicyContext } from './toolPolicyTypes'
 
 export type { ToolPolicyContext, ToolPolicy } from './toolPolicyTypes'
 
 // ─── 路径工具 ──────────────────────────────────────────────
 
-function normalizePath(path: string): string {
-  return path.replace(/^~/, window.preload.inject.os.getPath('home'))
-}
-
 function isPathUnder(target: string, parent: string): boolean {
   if (!target || !parent) return false
-  const t = normalizePath(target).replace(/\/$/, '')
-  const p = normalizePath(parent).replace(/\/$/, '')
+  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
+  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
   return t === p || t.startsWith(p + '/')
 }
 
@@ -209,8 +206,8 @@ export function isShellExecTool(tool: ToolFunction): boolean {
 
 /** 将路径归一化（展开 ~）用于黑名单子串匹配 */
 function argContainsBlacklistPath(value: string, blackList: string[]): boolean {
-  const normalizedValue = normalizePath(value)
-  return blackList.some((pattern) => normalizedValue.includes(normalizePath(pattern)))
+  const normalizedValue = window.preload.path.normalizePath(value)
+  return blackList.some((pattern) => normalizedValue.includes(window.preload.path.normalizePath(pattern)))
 }
 
 /**
@@ -265,3 +262,4 @@ function planModePolicy(tool: ToolFunction): ToolPolicyVerdict {
 
 // 注册工具专属策略
 registerToolPolicy(browserActionsPolicy)
+registerToolPolicy(httpDownloadPolicy)
