@@ -59,7 +59,7 @@ import { blobToBase64 } from '@/utils/file/CovertUtil'
 import { AddIcon, CopyIcon, DownloadIcon, MoreIcon, RefreshIcon } from 'tdesign-icons-vue-next'
 import type { DropdownProps } from 'tdesign-vue-next'
 import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
-import { exportCanvasPng } from './canvasRender'
+import { exportCanvasPng } from '@/modules/tool/components/canvas/canvasRender'
 import CanvasRenderer from './CanvasRenderer.vue'
 
 const props = defineProps<{

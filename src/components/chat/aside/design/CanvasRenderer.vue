@@ -11,7 +11,7 @@
 <script lang="ts" setup>
 import { App, Rect } from 'leafer-editor'
 import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
-import { scaleShape } from './canvasRender'
+import { scaleShape } from '@/modules/tool/components/canvas/canvasRender'
 import type { CanvasDoc } from '@/modules/tool/components/canvas/canvasTypes'
 
 const props = defineProps<{

@@ -1,7 +1,8 @@
 import type { ToolFunction, ToolProperty } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
-import { getCanvasStore, parseCanvasVersion } from './CanvasStore'
-import type { CanvasShapeInput, CanvasShapeType, CanvasToolContext } from './canvasTypes'
+import { buildCanvasOutputsDir, getCanvasStore, parseCanvasVersion } from './CanvasStore'
+import type { CanvasDoc, CanvasShapeInput, CanvasShapeType, CanvasToolContext } from './canvasTypes'
+import { exportCanvasPng } from './canvasRender'
 
 const ctxError = (): never => {
   throw new Error('画布工具缺少沙盒目录上下文')
@@ -257,6 +258,45 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       handler: async () => store().save()
     },
     {
+      name: 'canvas_export',
+      label: '导出画布图片',
+      description:
+        '将当前画布（或指定版本）渲染为 PNG 图片并保存到本地，返回保存路径。支持读图的模型可引用返回的 path 查看设计效果',
+      parameters: {
+        type: 'object',
+        properties: {
+          version: { type: 'number', description: '画布版本号（缺省导出当前画布）' },
+          path: {
+            type: 'string',
+            description: 'PNG 保存路径（缺省保存到沙盒 outputs/canvas-{version}.png；父目录不存在会自动创建）'
+          }
+        }
+      },
+      internal: true,
+      risk: 'sensitive',
+      handler: async (...params: unknown[]) => {
+        const { version, path } = params[0] as { version?: number; path?: string }
+        const sandboxDir = ctx.getSandboxDir() || ctxError()
+        let doc: CanvasDoc | null
+        if (version != null) {
+          const content = await store().read(version)
+          if (content === null) return { error: `未找到画布 canvas-${version}` }
+          doc = JSON.parse(content) as CanvasDoc
+        } else {
+          doc = store().current.value
+        }
+        if (!doc) {
+          return { error: '当前没有打开的画布，请先 canvas_create 或 canvas_open，或指定 version' }
+        }
+        const target =
+          path || window.preload.path.join(buildCanvasOutputsDir(sandboxDir), `canvas-${doc.version}.png`)
+        const blob = await exportCanvasPng(doc)
+        await window.preload.fs.mkdir(window.preload.path.dirname(target), true)
+        await window.preload.fs.writeBinaryFile(target, await blob.arrayBuffer())
+        return { success: true, path: target, width: doc.width, height: doc.height }
+      }
+    },
+    {
       name: 'canvas_get_shapes',
       label: '获取当前画布图形',
       description: '返回当前画布全部图形（含每个图形的 id），供更新 / 移动 / 删除前查看',
@@ -384,6 +424,7 @@ export const CANVAS_TOOL_NAMES = [
   'canvas_open',
   'canvas_delete',
   'canvas_save',
+  'canvas_export',
   'canvas_get_shapes',
   'canvas_add_rect',
   'canvas_update_rect',
@@ -420,9 +461,33 @@ export { parseCanvasVersion }
  * 必须为每个画布工具名单独注册，不能用通配名。
  */
 for (const name of CANVAS_TOOL_NAMES) {
+  // canvas_export 接收外部保存路径，不能无条件放行，改走下方路径感知策略
+  if (name === 'canvas_export') continue
   registerToolPolicy({
     name,
     // 画布工具不接收外部路径，只作用于沙盒 outputs/；沙盒目录缺失时由 handler 兜底报错
     resolve: () => 'allow'
   })
 }
+
+/** 判断路径是否处于可信区域（沙盒或工作空间），供 canvas_export 策略使用 */
+const isPathUnder = (target: string, parent: string): boolean => {
+  if (!target || !parent) return false
+  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
+  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
+  return t === p || t.startsWith(p + '/')
+}
+
+/**
+ * canvas_export 写入策略（写 PNG 文件，涉及外部路径）：
+ * - 未传 path（缺省写入沙盒 outputs/）或 path 位于沙盒 / 工作空间（可信区）→ 自动放行
+ * - 其余路径 → 需用户审批（与 http_download 行为一致）
+ */
+registerToolPolicy({
+  name: 'canvas_export',
+  resolve(_tool, args, ctx) {
+    const path = args.path
+    if (typeof path !== 'string' || !path) return 'allow'
+    return isPathUnder(path, ctx.sandboxDir) || isPathUnder(path, ctx.workspace) ? 'allow' : 'ask'
+  }
+})

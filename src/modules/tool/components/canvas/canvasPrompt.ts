@@ -12,6 +12,7 @@ export const DESIGN_CANVAS_PROMPT = [
   '3. 用 canvas_get_shapes 查看当前画布已有图形（含每个图形的 id）',
   '4. 通过细粒度工具逐个添加 / 更新图形，而不是整体替换画布 JSON',
   '5. 设计完成后用 canvas_save 确保已落盘',
+  '6. 需要预览 / 检查效果时，用 canvas_export 把画布导出为 PNG 图片保存到沙盒 outputs/ 目录，返回的 path 可被支持读图的模型引用查看',
   '',
   '### 工具使用原则',
   '- canvas_add_rect / canvas_add_text / canvas_add_ellipse / canvas_add_line / canvas_add_polygon / canvas_add_star / canvas_add_path 用于新增图形',

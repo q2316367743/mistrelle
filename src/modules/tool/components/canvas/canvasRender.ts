@@ -10,7 +10,7 @@ import {
   Platform,
   Image as LeaferImage
 } from 'leafer-editor'
-import type { CanvasDoc, CanvasShape } from '@/modules/tool/components/canvas/canvasTypes'
+import type { CanvasDoc, CanvasShape } from './canvasTypes'
 
 export type CanvasRenderNode = Rect | Ellipse | Text | Line | LeaferImage | Polygon | Star | Path
 
