@@ -27,13 +27,39 @@
           <refresh-icon />
         </template>
       </t-button>
+      <t-dropdown trigger="click" :disabled="!store.current.value || busy" @click="handleAction">
+        <t-button theme="primary" variant="text" shape="square" title="更多操作">
+          <template #icon>
+            <more-icon />
+          </template>
+        </t-button>
+        <t-dropdown-menu>
+          <t-dropdown-item value="copy">
+            <template #prefix-icon>
+              <copy-icon />
+            </template>
+            复制图片
+          </t-dropdown-item>
+          <t-dropdown-item value="download">
+            <template #prefix-icon>
+              <download-icon />
+            </template>
+            下载图片
+          </t-dropdown-item>
+        </t-dropdown-menu>
+      </t-dropdown>
     </div>
     <canvas-renderer :sandbox="sandbox" class="design-aside__canvas" />
   </div>
 </template>
 <script lang="ts" setup>
+import dayjs from 'dayjs'
+import { MessageUtil } from '@/utils/modal'
+import { blobToBase64 } from '@/utils/file/CovertUtil'
+import { AddIcon, CopyIcon, DownloadIcon, MoreIcon, RefreshIcon } from 'tdesign-icons-vue-next'
+import type { DropdownProps } from 'tdesign-vue-next'
 import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
-import { AddIcon, RefreshIcon } from 'tdesign-icons-vue-next'
+import { exportCanvasPng } from './canvasRender'
 import CanvasRenderer from './CanvasRenderer.vue'
 
 const props = defineProps<{
@@ -44,6 +70,7 @@ const store = computed(() => getCanvasStore(props.sandbox ?? ''))
 
 const selected = ref<number | undefined>(undefined)
 const creating = ref(false)
+const busy = ref(false)
 
 const canvasOptions = computed(() =>
   store.value.files.value.map((file) => ({
@@ -61,6 +88,11 @@ const syncSelected = () => {
 
 onMounted(async () => {
   await store.value.refreshFiles()
+  const files = store.value.files.value
+  // 默认打开最新（最后一个）版本的设计图
+  if (files.length && !store.value.current.value) {
+    await store.value.open(files[files.length - 1].version)
+  }
   syncSelected()
 })
 
@@ -102,6 +134,54 @@ const handleCreate = async () => {
 
 const handleRefresh = () => {
   void store.value.refreshFiles()
+}
+
+/** 复制当前画布为图片到剪贴板 */
+const handleCopy = async () => {
+  const doc = store.value.current.value
+  if (!doc) return
+  busy.value = true
+  try {
+    const blob = await exportCanvasPng(doc)
+    const dataUrl = await blobToBase64(blob)
+    if (window.preload.inject.clipboard.copyImage(dataUrl)) {
+      MessageUtil.success('已复制到剪贴板')
+    } else {
+      MessageUtil.error('复制失败')
+    }
+  } catch (e) {
+    MessageUtil.error('复制失败', e)
+  } finally {
+    busy.value = false
+  }
+}
+
+/** 下载当前画布为图片（选择保存路径，文件名 title+时间戳） */
+const handleDownload = async () => {
+  const doc = store.value.current.value
+  if (!doc) return
+  busy.value = true
+  try {
+    const blob = await exportCanvasPng(doc)
+    const name = `${doc.title || doc.name || 'canvas'}-${dayjs().format('YYYYMMDDHHmmss')}.png`
+    const path = window.preload.inject.dialog.save({
+      title: '保存画布图片',
+      defaultPath: name,
+      filters: [{ name: 'PNG 图片', extensions: ['png'] }]
+    })
+    if (!path) return
+    await window.preload.fs.writeBinaryFile(path, await blob.arrayBuffer())
+    MessageUtil.success('已保存画布图片')
+  } catch (e) {
+    MessageUtil.error('保存失败', e)
+  } finally {
+    busy.value = false
+  }
+}
+
+const handleAction: DropdownProps['onClick'] = (data) => {
+  if (data.value === 'copy') void handleCopy()
+  else if (data.value === 'download') void handleDownload()
 }
 </script>
 <style scoped lang="less">

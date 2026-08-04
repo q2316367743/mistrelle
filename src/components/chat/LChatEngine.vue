@@ -147,6 +147,14 @@ const session = getChatSession(props.storageKey, {
   chatId: props.chatId
 })
 const instance = session.chat
+// 设计类型对话默认展开侧边栏：type 需异步水合，故用 watch 而非直接判断
+watch(
+  () => session.type.value,
+  (type) => {
+    if (type === 'design') aside.value = true
+  },
+  { immediate: true }
+)
 
 // 交互桥供 ask/confirm 卡片注入作答；本组件是 UI 消费方，使能后挂起决策才能被作答
 provide(INTERACTIVE_KEY, instance.interactive)

@@ -25,6 +25,7 @@
     "axios": "1.15.2",
     "dayjs": "^1.11.14",
     "es-toolkit": "^1.39.10",
+    "leafer-editor": "^2.2.9",
     "leafer-ui": "^2.2.9",
     "less": "^4.4.1",
     "lunar-javascript": "^1.7.7",
