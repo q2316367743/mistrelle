@@ -11,7 +11,7 @@
   "logo": "public/logo.png",
   "platform": ["win32", "darwin", "linux"],
   "development": {
-    "main": "http://localhost:5173/"
+    "main": "http://localhost:7743/"
   },
   "pluginSetting": {
     "single": true,

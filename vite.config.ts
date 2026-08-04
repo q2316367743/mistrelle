@@ -58,5 +58,8 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'src-utools/dist'
+  },
+  server: {
+    port: 7743
   }
 })
