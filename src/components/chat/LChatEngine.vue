@@ -24,6 +24,7 @@
         :initial-agent-id="agentId"
         :initial-workspace="workspace"
         :initial-mode="mode"
+        :initial-type="chatType"
         :loading="status === 'pending' || status === 'streaming'"
         :sandbox-dir="sandboxDir"
         @send="handleSend"
@@ -42,6 +43,7 @@
         :todos="instance.todos.value"
         :agent-history="agentHistory"
         :active-agent-id="activeAgentId"
+        :type="chatType"
         @view-agent="handleViewSubAgent"
       />
     </t-aside>
@@ -105,6 +107,7 @@ const { messages, status } = instance
 const workspace = session.workspace
 const mode = session.mode
 const agentId = session.agentId
+const chatType = session.type
 
 const handleSend = (message: ChatRequestParams) => {
   void session.send(message)

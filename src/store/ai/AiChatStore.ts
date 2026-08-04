@@ -10,10 +10,12 @@ import {
   aiChatSandbox,
   aiChatSandboxRemove,
   buildChatMainPath,
+  getSandboxDir,
   destroyChatSession,
   useChatName
 } from '@/modules/chat'
 import { useSnowflake } from '@/hooks'
+import { destroyCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
 import { TextContent, UserMessageContent } from '@/domain'
 
 /**
@@ -78,7 +80,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       agentId: agentId || '',
       workspace: workspace || '',
       messages: [],
-      mode: params.mode
+      mode: params.mode,
+      type: params.type
     })
 
     // 生成聊天消息
@@ -101,6 +104,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       await aiChatRemove(id)
       // 删除沙盒目录
       await aiChatSandboxRemove(id)
+      // 释放画布 store（沙盒目录已删除，避免残留内存与失效状态）
+      destroyCanvasStore(getSandboxDir(id))
     }
   }
   const rename = async (id: string, name: string) => {

@@ -25,6 +25,10 @@ const props = defineProps({
   wordWrap: {
     type: Boolean,
     default: true
+  },
+  readonly: {
+    type: Boolean,
+    default: true
   }
 })
 const emit = defineEmits(['change', 'editor-mounted'])
@@ -48,11 +52,15 @@ const init = () => {
     value: props.value,
     language: props.language,
     theme: isDark.value ? 'vs-dark' : 'vs',
-    readOnly: true,
+    readOnly: props.readonly,
     minimap: {
       enabled: props.minimap
     },
     wordWrap: props.wordWrap ? 'on' : 'off'
+  })
+
+  editor.onDidChangeModelContent(() => {
+    emit('change', editor?.getValue())
   })
 
   // v-model 外部变更 → 同步到编辑器（值比较防循环）
@@ -63,6 +71,14 @@ const init = () => {
       if (editor.getValue() !== newVal) {
         editor.setValue(newVal || '')
       }
+    }
+  )
+
+  watch(
+    () => props.readonly,
+    (value) => {
+      if (!editor) return
+      editor.updateOptions({ readOnly: value })
     }
   )
 

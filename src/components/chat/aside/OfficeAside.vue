@@ -1,12 +1,12 @@
 <template>
-  <div class="l-chat-aside">
+  <div class="office-aside">
     <t-select v-model="active">
       <t-option value="overview" label="概览" />
       <t-option value="workspace" label="工作空间" :disabled="!workspace" />
       <t-option value="sandbox" label="沙盒空间" :disabled="!sandbox" />
       <t-option value="agents" label="Agent 面板" />
     </t-select>
-    <div v-if="active === 'overview'" class="l-chat-aside__content">
+    <div v-if="active === 'overview'" class="office-aside__content">
       <sub-title title="任务进程" />
       <todo-list :todos="todos" />
       <sub-title title="产物">
@@ -20,7 +20,7 @@
       </sub-title>
       <div
         v-for="output in outputs"
-        class="product-item"
+        class="office-aside__product"
         :key="output.path"
         @click="openFilePreview({ fileName: output.name, fullPath: output.path })"
       >
@@ -28,7 +28,7 @@
         <span class="ellipsis w-180px">{{ output.name }}</span>
       </div>
     </div>
-    <div v-else-if="active === 'agents'" class="l-chat-aside__content">
+    <div v-else-if="active === 'agents'" class="office-aside__content">
       <sub-title title="Agent 面板" />
       <agent-history-list
         :items="agentHistory"
@@ -36,7 +36,7 @@
         @view-agent="$emit('view-agent', $event)"
       />
     </div>
-    <div v-else-if="active === 'workspace' || active === 'sandbox'" class="l-chat-aside__content">
+    <div v-else-if="active === 'workspace' || active === 'sandbox'" class="office-aside__content">
       <sub-title :title="active === 'workspace' ? '工作空间' : '沙盒空间'">
         <template #actions>
           <t-button theme="primary" size="small" variant="text" shape="square" @click="handleTreeRefresh">
@@ -233,7 +233,7 @@ const handleTreeRefresh = () => {
 watch(currentRoot, resetExpanded, { immediate: true })
 </script>
 <style scoped lang="less">
-.l-chat-aside {
+.office-aside {
   height: 100%;
   padding: 8px 0 8px 8px;
 
@@ -242,7 +242,7 @@ watch(currentRoot, resetExpanded, { immediate: true })
     height: calc(100vh - 104px);
     overflow: auto;
   }
-  .product-item {
+  &__product {
     padding: 4px;
     cursor: pointer;
     transition: background-color 0.3s ease-in-out;

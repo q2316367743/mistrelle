@@ -14,6 +14,8 @@ import { nanoid } from 'nanoid'
 import { buildSkillCatalogPrompt, localSkillList } from '@/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
 import type { AiChatMode } from '@/entity'
+import type { ChatType } from '@/modules/chat/chatType'
+import { CHAT_TYPE_CONFIG } from '@/modules/chat/chatType'
 import { defaultTools, isShellExecTool, toolMap } from '@/modules/tool'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
 import type {
@@ -38,6 +40,7 @@ import { InteractiveBridge, findPendingInteractiveToolcall } from './interactive
 import { copyToInputs, isPathUnder } from '@/utils/chatSender'
 import { MAX_AGENT_STEPS } from '@/global/Constant'
 import { createTodoTool, buildTodoPrompt } from './todo'
+import { createCanvasTools } from '@/modules/tool/components/canvas/canvasTools'
 
 /** spawn_agent 工具名：子 Agent 不暴露此工具，防止嵌套派发 */
 const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
@@ -76,6 +79,8 @@ export class ToolChat {
   private workspace = ''
   /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
   private mode: AiChatMode = 0
+  /** 聊天类型（新建对话时选定，创建后锁定；缺省回退 office） */
+  private chatType: ChatType = 'office'
   /** 聊天 ID（用于子 Agent 文件路径构建） */
   private chatId = ''
   /** 是否为子 Agent（禁用 spawn_agent 工具，防止嵌套派发） */
@@ -127,6 +132,7 @@ export class ToolChat {
     const map = new Map<string, ToolFunction>()
     for (const fn of [
       ...this.functions,
+      ...this.getTypeTools(),
       ...selected,
       ...defaultTools,
       createTodoTool(this.todos)
@@ -136,6 +142,22 @@ export class ToolChat {
       map.set(fn.name, fn)
     }
     return Array.from(map.values())
+  }
+
+  /**
+   * 按聊天类型注入场景级工具（design → canvas_*）。
+   * 画布工具按当前 sandboxDir 实时绑定（闭包读取），支持 setSandboxDir 后仍生效；
+   * 仅主 Agent 注入，子 Agent 只读调研不需要画布能力。
+   */
+  private getTypeTools(): ToolFunction[] {
+    if (this.isSubAgent) return []
+    const tools = CHAT_TYPE_CONFIG[this.chatType].tools
+    if (tools.length === 0) return []
+    // 设计类型的画布工具为按 chat 绑定的工厂产物
+    if (this.chatType === 'design') {
+      return createCanvasTools({ getSandboxDir: () => this.sandboxDir })
+    }
+    return []
   }
 
   private buildTools(functions: ToolFunction[]): ChatCompletionTool[] {
@@ -266,6 +288,8 @@ export class ToolChat {
       buildTodoPrompt(),
       workspacePrompt,
       workspaceSettingsPrompt,
+      // 聊天类型固定提示词（类型创建后不变 → 前缀稳定可缓存；子 Agent 只读，无需类型指导）
+      this.isSubAgent ? '' : CHAT_TYPE_CONFIG[this.chatType].prompt,
       // 子 Agent 使用指导仅主 Agent 注入（子 Agent 的 spawn_agent 已被过滤，指导无意义且会诱导嵌套）
       this.isSubAgent ? '' : this.buildSubAgentGuidancePrompt()
     ]
@@ -615,6 +639,16 @@ export class ToolChat {
 
   setMode(mode: AiChatMode): void {
     this.mode = mode
+  }
+
+  /** 设置聊天类型（新建对话时选定，创建后锁定） */
+  setType(type: ChatType): void {
+    this.chatType = type
+  }
+
+  /** 获取当前聊天类型 */
+  getType(): ChatType {
+    return this.chatType
   }
 
   init(initialMessages?: ChatMessage[]): void {

@@ -92,7 +92,7 @@ import {
   type ToolSuggestionItem
 } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
-import type { ChatRequestParams } from '@/modules/chat'
+import type { ChatRequestParams, ChatType } from '@/modules/chat'
 import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
 import { AiChatMode } from '@/entity'
 import { LockOffIcon, TaskIcon } from 'tdesign-icons-vue-next'
@@ -108,6 +108,7 @@ const props = withDefaults(
     initialWorkspace?: string
     initialAgentId?: string
     initialMode?: AiChatMode
+    initialType?: ChatType
   }>(),
   {
     initialInput: '',
@@ -117,7 +118,8 @@ const props = withDefaults(
     placeholder: '描述任务，/ 调用技能，# 使用工具，@ 添加上下文',
     sandboxDir: '',
     initialWorkspace: '',
-    initialMode: 0
+    initialMode: 0,
+    initialType: 'office'
   }
 )
 const emit = defineEmits<{
@@ -130,7 +132,16 @@ const sandboxFiles = ref<ChatFileRef[]>([])
 const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaultAssistantModel)
 const agentId = ref(props.initialAgentId || '')
 const mode = ref<AiChatMode>(props.initialMode)
+const type = ref<ChatType>(props.initialType)
 const workspaceRef = ref(props.initialWorkspace || '')
+// 新建对话页类型选择在 sender 挂载后才确定，需跟随 prop 变化（类型创建后锁定，运行期不变化）
+watch(
+  () => props.initialType,
+  (val) => {
+    type.value = val ?? 'office'
+  },
+  { immediate: true }
+)
 const projectAssetContext = inject(projectAssetContextKey, null)
 const projectAssetFiles = computed(() => projectAssetContext?.files.value ?? [])
 const files = computed(() => [...sandboxFiles.value, ...projectAssetFiles.value])
@@ -180,7 +191,8 @@ const buildUserMessage = (): ChatRequestParams | null => {
     },
     mode: mode.value,
     agentId: agentId.value,
-    workspace: workspaceRef.value
+    workspace: workspaceRef.value,
+    type: type.value
   }
 }
 

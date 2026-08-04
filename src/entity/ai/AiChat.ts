@@ -1,6 +1,6 @@
 import { BaseEntity } from '@/entity'
 import { ChatMessage, TodoItem } from '@/domain'
-import type { ChatRequestParams } from '@/modules/chat'
+import type { ChatRequestParams, ChatType } from '@/modules/chat'
 
 /**
  * 聊天索引中的轻量元信息（index.json）
@@ -46,6 +46,8 @@ export interface AiChatContent {
   // 工作空间，用户可以指定
   workspace: string
   mode: AiChatMode
+  // 聊天类型（office/writing/design），新建对话时选定，创建后锁定；旧数据缺省回退 office
+  type?: ChatType
   messages: Array<ChatMessage>
   // 当前对话的待办清单（由 update_todo 工具维护）
   todos?: TodoItem[]

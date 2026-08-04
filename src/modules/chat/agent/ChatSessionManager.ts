@@ -1,6 +1,6 @@
 import { ref, toRaw } from 'vue'
 import { throttledWatch } from '@vueuse/core'
-import type { ChatRequestParams, ChatStatus } from '@/modules/chat'
+import type { ChatRequestParams, ChatStatus, ChatType } from '@/modules/chat'
 import type { AiChatMode } from '@/entity/ai'
 import { aiChatContentGet, aiChatContentSet } from '@/modules/chat/service/ChatService'
 import { ToolChat } from './AgentChat'
@@ -24,6 +24,8 @@ export class ChatSession {
   readonly workspace = ref('')
   /** 跨挂载存活：聊天模式（0 默认 / 1 计划 / 2 完全访问） */
   readonly mode = ref<AiChatMode>(0)
+  /** 跨挂载存活：聊天类型（新建对话时选定，创建后锁定） */
+  readonly type = ref<ChatType>('office')
   /** 跨挂载存活：当前选中的 agent */
   readonly agentId = ref('')
 
@@ -65,6 +67,9 @@ export class ChatSession {
       this.mode.value = content.mode
       this.chat.setMode(content.mode)
       if (content.agentId) this.agentId.value = content.agentId
+      // 旧数据无 type 字段时回退 office
+      this.type.value = content.type ?? 'office'
+      this.chat.setType(this.type.value)
     }
     // 常驻持久化：watcher 在水合之后建立，避免 immediate 用空消息覆盖含 draft 的存储文件
     this.unWatch = throttledWatch(this.chat.messages, () => this.persist(), {
@@ -84,6 +89,10 @@ export class ChatSession {
     if (params.workspace) this.workspace.value = params.workspace
     this.mode.value = params.mode
     if (params.agentId) this.agentId.value = params.agentId
+    if (params.type) {
+      this.type.value = params.type
+      this.chat.setType(params.type)
+    }
     await this.chat.sendUserMessage(params)
   }
 
@@ -122,6 +131,7 @@ export class ChatSession {
       workspace: this.workspace.value || '',
       messages: toRaw(this.chat.messages.value),
       mode: this.mode.value,
+      type: this.type.value,
       todos: toRaw(this.chat.todos.value)
     })
   }

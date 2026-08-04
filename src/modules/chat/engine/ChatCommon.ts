@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import type { ChatCompletionChunk } from 'openai/resources/chat/completions'
 import type { AIMessageContent, UserMessageContent } from '@/domain'
 import { AiChatMode } from '@/entity'
+import type { ChatType } from '@/modules/chat/chatType'
 
 // ==========================================
 //  公共类型定义
@@ -23,6 +24,8 @@ export interface ChatRequestParams {
   mode: AiChatMode
   agentId?: string
   workspace?: string
+  // 聊天类型（新建对话时选定，创建后锁定；缺省回退 office）
+  type?: ChatType
 }
 
 export interface ResolvedChatRequestParams extends ChatRequestParams {
