@@ -85,11 +85,13 @@ const buildSubAgentSystemPrompt = (workspace: string): string => {
 /**
  * 从消息列表末尾向前查找最后一条 assistant 消息的文本内容作为摘要。
  * 子 Agent 触顶（hitMaxSteps）未正常收尾时，返回明确的未完成标记，而不是把过程叙述当摘要返回给主 Agent。
+ * 触顶但收尾成功（reachedMaxSteps 为 true）时，在摘要末尾追加触顶备注，提示结论可能未完全覆盖。
  */
-const extractFinalSummary = (messages: ChatMessage[], hitMaxSteps: boolean): string => {
+const extractFinalSummary = (messages: ChatMessage[], hitMaxSteps: boolean, reachedMaxSteps: boolean): string => {
   if (hitMaxSteps) {
     return `[子 Agent 已连续执行 ${MAX_SUB_AGENT_STEPS} 步仍未完成调研，未输出最终摘要。主 Agent 可基于其中间结果自行收尾，或缩小任务范围后重新派发。]`
   }
+  let summary = '(子 Agent 未产生有效文本输出)'
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i]
     if (msg.role !== 'assistant' || !msg.content) continue
@@ -97,9 +99,15 @@ const extractFinalSummary = (messages: ChatMessage[], hitMaxSteps: boolean): str
       .filter((c): c is TextContent => c.type === 'text' || c.type === 'markdown')
       .map((c) => c.data)
       .join('')
-    if (texts.trim()) return texts.trim()
+    if (texts.trim()) {
+      summary = texts.trim()
+      break
+    }
   }
-  return '(子 Agent 未产生有效文本输出)'
+  if (summary === '(子 Agent 未产生有效文本输出)') return summary
+  return reachedMaxSteps
+    ? `${summary}\n\n> 注：本次调研已达到步数上限，结论由子 Agent 即时总结，可能未完全覆盖。`
+    : summary
 }
 
 /**
@@ -167,7 +175,8 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
     systemPrompt: buildSubAgentSystemPrompt(workspace),
     chatId, // 子 Agent 自身的 chatId（虽然子 Agent 不会再 spawn 子 Agent，但保持字段一致）
     isSubAgent: true, // 禁用 spawn_agent 工具 + 不注入子 Agent 使用指导，防止嵌套派发
-    maxSteps: MAX_SUB_AGENT_STEPS // 子 Agent 独立步数预算：复杂调研比主 Agent 需要更多步数才能收尾
+    maxSteps: MAX_SUB_AGENT_STEPS, // 子 Agent 独立步数预算：复杂调研比主 Agent 需要更多步数才能收尾
+    finalizeOnMaxSteps: true // 触顶时执行最后一次无工具收尾调用，强制立即总结，而不是只返回截断提示
   })
 
   // 禁用交互桥：需审批的操作自动拒绝，不向用户提问
@@ -213,7 +222,7 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
   try {
     await subChat.sendUserMessage(params)
     status = await waitForCompletion(subChat)
-    summary = extractFinalSummary(subChat.messages.value, subChat.hitMaxSteps.value)
+    summary = extractFinalSummary(subChat.messages.value, subChat.hitMaxSteps.value, subChat.reachedMaxSteps.value)
   } catch (err) {
     summary = `子 Agent 执行异常：${err instanceof Error ? err.message : String(err)}`
     status = 'error'

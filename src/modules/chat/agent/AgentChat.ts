@@ -44,6 +44,10 @@ import { createTodoTool, buildTodoPrompt } from './todo'
 /** spawn_agent 工具名：子 Agent 不暴露此工具，防止嵌套派发 */
 const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
 
+/** 触顶收尾指令：子 Agent 步数耗尽时以独立 system 消息注入，强制其基于中间结果立即输出最终总结 */
+const FINALIZE_PROMPT =
+  '已到达最大迭代次数，请立即基于当前已收集的所有信息输出最终总结，直接给出结论，不要再调用任何工具。'
+
 export interface UseChatOptions {
   defaultMessages?: ChatMessage[]
   chatServiceConfig?: ChatServiceConfig
@@ -60,6 +64,8 @@ export interface UseChatOptions {
   isSubAgent?: boolean
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS；子 Agent 传入更大预算以完成复杂调研 */
   maxSteps?: number
+  /** 触顶步数后是否执行最后一次无工具调用强制输出最终总结（子 Agent 使用，避免触顶时只返回截断提示） */
+  finalizeOnMaxSteps?: boolean
 }
 
 export class ToolChat {
@@ -71,6 +77,8 @@ export class ToolChat {
   readonly interactive = new InteractiveBridge()
   /** 最近一轮是否因达到工具调用步数上限而结束（子 Agent 摘要提取据此区分是否正常收尾） */
   readonly hitMaxSteps = ref(false)
+  /** 本轮是否触达过工具调用步数上限（finalizeOnMaxSteps 成功收尾时 hitMaxSteps 保持 false，但触顶事实需透出给调用方追加备注） */
+  readonly reachedMaxSteps = ref(false)
   private readonly ctx: ChatContext
   private readonly functions: ToolFunction[]
   private readonly systemPrompt: string
@@ -88,6 +96,8 @@ export class ToolChat {
   private workspaceSettingsCache: { path: string; content: string } | null = null
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS */
   private maxSteps?: number
+  /** 触顶步数后是否执行最后一次无工具收尾调用，强制模型立即输出总结（子 Agent 使用） */
+  private finalizeOnMaxSteps = false
 
   constructor(options: UseChatOptions = {}) {
     this.messages.value = [...(options.defaultMessages ?? [])]
@@ -104,6 +114,7 @@ export class ToolChat {
     if (options.chatId) this.chatId = options.chatId
     this.isSubAgent = options.isSubAgent ?? false
     if (options.maxSteps) this.maxSteps = options.maxSteps
+    if (options.finalizeOnMaxSteps) this.finalizeOnMaxSteps = true
   }
 
   private async resolveModel(params: ChatRequestParams): Promise<ResolvedChatRequestParams> {
@@ -340,6 +351,7 @@ export class ToolChat {
     // 完全访问模式（mode=2）下不限制连续工具调用步数，循环只能由用户手动中断
     const maxSteps = this.mode === 2 ? Infinity : (this.maxSteps ?? MAX_AGENT_STEPS)
     this.hitMaxSteps.value = false
+    this.reachedMaxSteps.value = false
     while (seq === this.ctx.requestSeq && !signal.aborted && step < maxSteps) {
       step++
       const functions = this.filterToolsByMode(this.getFunctions(params))
@@ -382,20 +394,64 @@ export class ToolChat {
       await nextTick()
     }
 
-    // 超过单轮工具调用上限：主 Agent 追加提示按钮供续跑；子 Agent 不追加（无继续 UI，避免污染摘要与文件）
+    // 超过单轮工具调用上限：
+    // - finalizeOnMaxSteps（子 Agent）：执行最后一次无工具收尾调用强制输出最终总结，成功则不标记触顶
+    // - 其余：主 Agent 追加提示按钮供续跑；未开启收尾的子 Agent 不追加（无继续 UI，避免污染摘要与文件）
     if (seq === this.ctx.requestSeq && !signal.aborted && step >= maxSteps) {
-      this.hitMaxSteps.value = true
-      if (!this.isSubAgent) {
-        appendAssistantContent(this.messages, assistantMessageId, {
-          type: 'text',
-          data: '\n\n[已到达本轮连续工具调用上限，点击「继续推进」可让 AI 接着执行。]',
-          time: Date.now(),
-          // 标记提示文本：UI 渲染为可点击按钮，continueAgent 续跑前会移除
-          ext: { continueHint: true }
-        })
+      this.reachedMaxSteps.value = true
+      if (this.finalizeOnMaxSteps) {
+        const finalized = await this.runFinalizeStep(params, assistantMessageId, signal, seq)
+        if (!finalized) this.hitMaxSteps.value = true
+      } else {
+        this.hitMaxSteps.value = true
+        if (!this.isSubAgent) {
+          appendAssistantContent(this.messages, assistantMessageId, {
+            type: 'text',
+            data: '\n\n[已到达本轮连续工具调用上限，点击「继续推进」可让 AI 接着执行。]',
+            time: Date.now(),
+            // 标记提示文本：UI 渲染为可点击按钮，continueAgent 续跑前会移除
+            ext: { continueHint: true }
+          })
+        }
       }
       this.status.value = 'complete'
     }
+  }
+
+  /**
+   * 触顶收尾调用：步数耗尽时执行最后一次无工具调用，注入收尾指令强制模型立即输出最终总结。
+   * 指令以独立 system 消息注入（不进消息历史、不落盘），tools 置空防止模型再次调用工具。
+   * 成功产出总结文本返回 true；AbortError 向上抛（走既有停止路径），其余失败返回 false 交由上层降级。
+   */
+  private async runFinalizeStep(
+    params: ChatRequestParams,
+    assistantMessageId: string,
+    signal: AbortSignal,
+    seq: number
+  ): Promise<boolean> {
+    const resolvedParams = await this.resolveModel(params)
+    const apiMessages = await this.buildRequestMessages(params, assistantMessageId)
+    apiMessages.push({ role: 'system', content: FINALIZE_PROMPT })
+    const before = this.messages.value.find((m) => m.id === assistantMessageId)?.content?.length ?? 0
+    try {
+      const result = await streamAgentStep({
+        messages: this.messages,
+        assistantMessageId,
+        requestParams: resolvedParams,
+        apiMessages,
+        tools: [],
+        config: this.ctx.config,
+        signal,
+        seq,
+        currentSeq: () => this.ctx.requestSeq
+      })
+      if (result.cancelled) return false
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') throw error
+      return false
+    }
+    const content = this.messages.value.find((m) => m.id === assistantMessageId)?.content ?? []
+    return content.slice(before).some((c) => c.type === 'text' || c.type === 'markdown')
   }
 
   private canStartRequest(): boolean {
