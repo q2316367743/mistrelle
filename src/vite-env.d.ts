@@ -32,21 +32,21 @@ declare global {
           command: string,
           args?: string[],
           options?: { cwd?: string; timeout?: number }
-        ): {
+        ): Promise<{
           stdout?: string
           stderr?: string
-          exitCode?: number
+          exitCode?: number | null
           signal?: string
           error?: string
-        }
+        }>
         jsRun(
           script: string,
           args?: Record<string, unknown>
-        ): {
+        ): Promise<{
           result?: unknown
           stdout?: string
           error?: string
-        }
+        }>
       }
       axios: AxiosInstance
     }
