@@ -3,6 +3,10 @@ export const LocalNameEnum = {
   KEY_AI_COMMON_MODEL: '/key/ai/common/model',
   KEY_AI_WORKSPACE: '/key/ai/workspace',
 
+  KEY_AI_ASIDE_COLLAPSED: '/key/ai/aside/collapsed',
+  KEY_AI_ASIDE_WIDTH: '/key/ai/aside/width',
+
+
   SETTING_NETWORK: '/setting/network',
   SETTING_AI: '/setting/ai',
   SETTING_ACCOUNT: '/setting/account',

@@ -33,9 +33,10 @@
     </t-content>
     <!--    <t-aside v-if="aside" width="240px" class="l-chat-tool__aside shrink-0">-->
     <t-aside
-      :width="aside ? '240px' : '0'"
+      :width="aside ? `${width}px` : '0'"
       :class="['l-chat-tool__aside', 'shrink-0', { 'border-left-none': !aside }]"
     >
+      <div v-if="aside" class="l-chat-tool__resizer" @mousedown="startResize" />
       <l-chat-aside
         :messages="messages"
         :workspace="workspace"
@@ -64,12 +65,20 @@ import type { ChatRequestParams } from '@/modules/chat'
 import { getChatSession, getSandboxDir } from '@/modules/chat'
 import type { ChatMessage, UserMessage } from '@/domain'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
-import { readSubAgentContent, getRunningSubAgentMessages } from '@/modules/chat/agent/SubAgentRunner'
-import { collectSubAgents, lastAssistantIdOf, lastAssistantIndexOf } from '@/modules/chat/agent/agentMessages'
+import {
+  readSubAgentContent,
+  getRunningSubAgentMessages
+} from '@/modules/chat/agent/SubAgentRunner'
+import {
+  collectSubAgents,
+  lastAssistantIdOf,
+  lastAssistantIndexOf
+} from '@/modules/chat/agent/agentMessages'
 import SubAgentTabs, { type AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
 import { collapsed } from '@/global/BeanFactory'
 import { AppIcon } from 'tdesign-icons-vue-next'
-import { useBoolState } from '@/hooks'
+import { useBoolState, useUtoolsKvStorage } from '@/hooks'
+import { LocalNameEnum } from '@/global/LocalNameEnum'
 
 const props = withDefaults(
   defineProps<{
@@ -87,14 +96,56 @@ const props = withDefaults(
 
 const inputValue = ref('')
 const modelValue = ref('')
+// 侧边栏是否展示
 const [aside, toggleAside] = useBoolState(false)
+// 侧边栏宽度
+const width = useUtoolsKvStorage<number>(LocalNameEnum.KEY_AI_ASIDE_WIDTH, 232)
+
+// 侧边栏宽度边界：硬性上下限；内容区至少保底 CONTENT_MIN_WIDTH，窗口缩小时按此收敛
+const MIN_WIDTH = 180
+const MAX_WIDTH = 640
+const CONTENT_MIN_WIDTH = 320
+/** 当前窗口允许的侧边栏最大宽度 */
+const maxWidthByWindow = () => Math.min(MAX_WIDTH, window.innerWidth - CONTENT_MIN_WIDTH)
+/** 把宽度收敛到 [MIN_WIDTH, 窗口上限] 区间 */
+const clampWidth = (value: number) => Math.min(maxWidthByWindow(), Math.max(MIN_WIDTH, value))
+
+/**
+ * 拖动侧边栏左边缘调整宽度：记录拖动起点后挂全局监听，实时收敛宽度；松开时清理监听并还原光标。
+ * 侧边栏位于右侧，鼠标向左移动（clientX 减小）即宽度增加。
+ */
+const startResize = (e: MouseEvent) => {
+  const startX = e.clientX
+  const startWidth = width.value
+  const onMove = (ev: MouseEvent) => {
+    width.value = clampWidth(startWidth + (startX - ev.clientX))
+  }
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    document.body.style.userSelect = ''
+    document.body.style.cursor = ''
+  }
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'col-resize'
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
+/** 窗口尺寸变化时按当前可用空间重新收敛宽度，避免侧边栏超出窗口 */
+const handleWindowResize = () => {
+  width.value = clampWidth(width.value)
+}
 
 const sandboxDir = computed(() => {
   return props.sandboxDir || getSandboxDir(props.chatId)
 })
 
 // 会话由会话管理器持有，跨组件挂载存活：组件只负责绑定数据与转发事件
-const session = getChatSession(props.storageKey, { sandboxDir: sandboxDir.value, chatId: props.chatId })
+const session = getChatSession(props.storageKey, {
+  sandboxDir: sandboxDir.value,
+  chatId: props.chatId
+})
 const instance = session.chat
 
 // 交互桥供 ask/confirm 卡片注入作答；本组件是 UI 消费方，使能后挂起决策才能被作答
@@ -135,6 +186,11 @@ const handleMessagesChange = () => {
 
 onMounted(() => {
   void session.load()
+  window.addEventListener('resize', handleWindowResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleWindowResize)
 })
 
 // 恢复上次使用的模型：新会话草稿发送时 user 消息一加入即可回填，无需等待整个回答结束
@@ -169,7 +225,12 @@ const subAgentTabs = computed<AgentTabItem[]>(() => {
   allSubAgents.value
     .filter((a) => a.messageIndex === lastIdx)
     .forEach((info, index) => {
-      tabs.push({ id: info.subId, label: `子 Agent ${index + 1}`, task: info.task, status: info.status })
+      tabs.push({
+        id: info.subId,
+        label: `子 Agent ${index + 1}`,
+        task: info.task,
+        status: info.status
+      })
     })
   return tabs
 })
@@ -289,10 +350,20 @@ watch(
   }
 
   &__aside {
+    position: relative;
     border-left: 1px solid var(--td-border-level-1-color);
     &.border-left-none {
       border-left: none;
     }
+  }
+  &__resizer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -3px;
+    width: 6px;
+    cursor: col-resize;
+    z-index: 10;
   }
 }
 </style>
