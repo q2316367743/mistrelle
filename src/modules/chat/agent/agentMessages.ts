@@ -17,6 +17,8 @@ export const createPendingAssistantMessage = (params: {
   provide: string
   agentId?: string
   mode: AiChatMode
+  thinking?: boolean
+  reasoningEffort?: 'low' | 'high' | 'max'
 }): AIMessage => ({
   role: 'assistant',
   content: [],
@@ -26,7 +28,9 @@ export const createPendingAssistantMessage = (params: {
   model: params.model,
   provide: params.provide,
   agentId: params.agentId,
-  mode: params.mode
+  mode: params.mode,
+  thinking: params.thinking,
+  reasoning_effort: params.reasoningEffort
 })
 
 const getAssistant = (messages: Ref<ChatMessage[]>, messageId: string): AIMessage | undefined => {

@@ -35,8 +35,10 @@ export interface SubAgentOptions {
   model: string
   /** 模型提供商 */
   provide: string
+  /** 是否启用思考模式 */
+  thinking?: boolean
   /** 推理强度 */
-  reasoningEffort?: 'high' | 'max'
+  reasoningEffort?: 'low' | 'high' | 'max'
   /** 子 Agent 能力类型（缺省 research） */
   subAgentType?: SubAgentType
   /** 主 Agent 的 AbortSignal：主 Agent 终止时级联终止子 Agent */

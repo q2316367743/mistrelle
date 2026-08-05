@@ -61,7 +61,7 @@
               :stroke-width="2"
             />
           </t-button>
-          <ai-model-select v-model="modelKey" />
+          <ai-model-select v-model="modelKey" v-model:thinking="thinking" v-model:effort="effort" />
           <t-button v-if="loading" theme="danger" variant="outline" @click="handleStop">
             停止
           </t-button>
@@ -132,6 +132,8 @@ const emit = defineEmits<{
 const skills = ref<LocalSkill[]>([])
 const sandboxFiles = ref<ChatFileRef[]>([])
 const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaultAssistantModel)
+const thinking = ref(true)
+const effort = ref<'low' | 'high' | 'max'>('high')
 const agentId = ref(props.initialAgentId || '')
 const mode = ref<AiChatMode>(props.initialMode)
 const type = ref<ChatType>(props.initialType)
@@ -198,7 +200,9 @@ const buildUserMessage = (): ChatRequestParams | null => {
     message: {
       content: getContents(),
       model,
-      provide
+      provide,
+      thinking: thinking.value,
+      reasoning_effort: effort.value
     },
     mode: mode.value,
     agentId: agentId.value,

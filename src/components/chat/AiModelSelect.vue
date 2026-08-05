@@ -5,13 +5,8 @@
       <chevron-down-icon :style="chevronIconStyle" />
     </div>
     <template #content>
-      <t-input v-model="keyword" clearable class="w-200px mt-4px">
-        <template #prefix-icon>
-          <search-icon />
-        </template>
-      </t-input>
       <div class="ai-select-options">
-        <div v-for="provide in filteredItems" :key="provide.group" class="ai-provide">
+        <div v-for="provide in items" :key="provide.group" class="ai-provide">
           <div class="provide-name">{{ provide.group }}</div>
           <div
             v-for="model in provide.children"
@@ -21,6 +16,16 @@
           >
             <div>{{ model.label }}</div>
           </div>
+        </div>
+      </div>
+      <div class="ai-thinking-setting">
+        <div class="ai-thinking-row">
+          <span class="ai-thinking-label">思考模式</span>
+          <t-switch v-model="thinking" size="small" />
+        </div>
+        <div v-if="thinking" class="ai-thinking-row">
+          <span class="ai-thinking-label">思考强度</span>
+          <t-radio-group v-model="effort" theme="button" size="small" :options="effortOptions" />
         </div>
       </div>
       <div class="ai-provide-setting flex mb-4px" @click="handleModelSetting()">
@@ -33,6 +38,7 @@
 </template>
 <script lang="ts" setup>
 import { useSettingAiStore } from '@/store'
+import type { ThinkingEffort } from '@/domain'
 import { ChevronDownIcon, ChevronRightIcon, SearchIcon, Setting1Icon } from 'tdesign-icons-vue-next'
 
 const modelValue = defineModel({
@@ -40,25 +46,22 @@ const modelValue = defineModel({
   default: ''
 })
 
+// 是否启用思考模式
+const thinking = defineModel<boolean>('thinking', { default: true })
+// 思考强度
+const effort = defineModel<ThinkingEffort>('effort', { default: 'high' })
+
+const effortOptions = [
+  { label: '低', value: 'low' },
+  { label: '高', value: 'high' },
+  { label: '最高', value: 'max' }
+]
+
 const router = useRouter()
 
 const visible = ref(false)
 
-const keyword = ref('')
-
 const items = computed(() => useSettingAiStore().options)
-const filteredItems = computed(() => {
-  const kw = keyword.value.trim().toLowerCase()
-  if (!kw) return items.value
-  return items.value
-    .map((group) => ({
-      ...group,
-      children: group.children.filter(
-        (m) => m.label?.toLowerCase().includes(kw) || String(m.value).toLowerCase().includes(kw)
-      )
-    }))
-    .filter((group) => group.children.length > 0)
-})
 const select = computed(() => {
   if (!modelValue.value) return '请选择模型'
   return modelValue.value.split(':').pop() || '请选择模型'
@@ -141,6 +144,24 @@ const handleModelSetting = () => router.push('/setting/ai')
     }
   }
   border-bottom: 1px solid var(--td-border-level-1-color);
+}
+.ai-thinking-setting {
+  padding: 4px 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--td-border-level-1-color);
+  margin-bottom: 4px;
+
+  .ai-thinking-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ai-thinking-label {
+    font: var(--td-font-body-medium);
+    color: var(--td-text-color-primary);
+  }
 }
 .ai-provide-setting {
   padding: 4px;

@@ -143,13 +143,18 @@ type AIContentTypeMap = {
 export type AIContentType = keyof AIContentTypeMap
 export type AIMessageContent = AIContentTypeMap[AIContentType]
 export type UserMessageContent = TextContent | AttachmentContent | SkillContent | ToolContent
+/** 思考强度（DeepSeek 思考模式）：low / high / max，默认 high */
+export type ThinkingEffort = 'low' | 'high' | 'max'
 export interface UserMessage extends ChatBaseMessage {
   role: 'user'
   // 使用的模型
   model: string
   // 提供商
   provide: string
-  reasoning_effort?: 'high' | 'max'
+  // 是否启用思考模式
+  thinking?: boolean
+  // 思考强度
+  reasoning_effort?: ThinkingEffort
   content: UserMessageContent[]
 }
 export type TodoStatus = 'pending' | 'in_progress' | 'completed'
@@ -171,6 +176,10 @@ export interface AIMessage extends ChatBaseMessage {
   agentId?: string
   // 聊天模式
   mode: AiChatMode
+  // 是否启用思考模式
+  thinking?: boolean
+  // 思考强度
+  reasoning_effort?: ThinkingEffort
   // 内容
   content?: AIMessageContent[]
   // 历史消息

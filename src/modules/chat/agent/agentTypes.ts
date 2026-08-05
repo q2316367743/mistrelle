@@ -18,6 +18,8 @@ export type AssistantRequestMessage = ChatCompletionAssistantMessageParam & {
 }
 
 export type AgentStreamingBody = ChatCompletionCreateParamsStreaming & {
+  // DeepSeek 思考模式开关（enabled/disabled），需随 body 直接透传
+  thinking?: { type: 'enabled' | 'disabled' }
 }
 
 export type StreamStepResult = {

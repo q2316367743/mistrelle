@@ -583,13 +583,16 @@ export class ToolChat {
       content: message.content,
       model: message.model,
       provide: message.provide,
+      thinking: message.thinking,
       reasoning_effort: message.reasoning_effort
     }
     const assistantMessage = createPendingAssistantMessage({
       model: message.model,
       provide: message.provide,
       agentId: requestParams.agentId,
-      mode: this.mode
+      mode: this.mode,
+      thinking: message.thinking,
+      reasoningEffort: message.reasoning_effort
     })
     this.messages.value = [...this.messages.value, userMessage, assistantMessage]
     await this.executeRequest(requestParams, assistantMessage.id)
@@ -609,6 +612,7 @@ export class ToolChat {
         content: userMessage?.content ?? [],
         model: assistant?.role === 'assistant' ? assistant.model : '',
         provide: assistant?.role === 'assistant' ? assistant.provide : '',
+        thinking: userMessage?.thinking,
         reasoning_effort: userMessage?.reasoning_effort
       },
       mode: assistant?.role === 'assistant' ? assistant.mode : this.mode,

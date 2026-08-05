@@ -59,11 +59,21 @@ const applyResult = (
  * 从消息列表末尾向前查找最后一条 user 消息，提取模型信息。
  * 子 Agent 继承主 Agent 当前使用的模型。
  */
-const findLastUserModel = (messages: Ref<ChatMessage[]>): { model: string; provide: string; reasoning_effort?: 'high' | 'max' } => {
+const findLastUserModel = (messages: Ref<ChatMessage[]>): {
+  model: string
+  provide: string
+  thinking?: boolean
+  reasoning_effort?: 'low' | 'high' | 'max'
+} => {
   for (let i = messages.value.length - 1; i >= 0; i--) {
     const msg = messages.value[i]
     if (msg.role === 'user') {
-      return { model: msg.model, provide: msg.provide, reasoning_effort: msg.reasoning_effort }
+      return {
+        model: msg.model,
+        provide: msg.provide,
+        thinking: msg.thinking,
+        reasoning_effort: msg.reasoning_effort
+      }
     }
   }
   return { model: '', provide: '' }
@@ -130,7 +140,7 @@ export const runSingleTool = async (
       applyResult(messages, assistantMessageId, call, `错误：spawn_agent ${resolved.message}`)
       return
     }
-    const { model, provide, reasoning_effort } = findLastUserModel(messages)
+    const { model, provide, thinking, reasoning_effort } = findLastUserModel(messages)
     if (!model || !provide) {
       applyResult(messages, assistantMessageId, call, '错误：无法确定子 Agent 使用的模型')
       return
@@ -148,6 +158,7 @@ export const runSingleTool = async (
       workspace: policyContext.workspace,
       model,
       provide,
+      thinking,
       reasoningEffort: reasoning_effort,
       subAgentType: resolved.type,
       // 主 Agent 终止时级联终止子 Agent

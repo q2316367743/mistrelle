@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import type { ChatCompletionChunk } from 'openai/resources/chat/completions'
-import type { AIMessageContent, UserMessageContent } from '@/domain'
+import type { AIMessageContent, ThinkingEffort, UserMessageContent } from '@/domain'
 import { AiChatMode } from '@/entity'
 import type { ChatType, WritingScene } from '@/modules/chat'
 
@@ -18,7 +18,10 @@ export interface ChatRequestParams {
     content: UserMessageContent[]
     model: string
     provide: string
-    reasoning_effort?: 'high' | 'max'
+    // 是否启用思考模式
+    thinking?: boolean
+    // 思考强度
+    reasoning_effort?: ThinkingEffort
   }
   // 模式
   mode: AiChatMode

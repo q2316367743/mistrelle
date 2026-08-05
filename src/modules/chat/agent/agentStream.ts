@@ -59,6 +59,9 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
     stream: true,
     tools: options.tools
   }
+  if (typeof options.requestParams.message.thinking === 'boolean') {
+    body.thinking = { type: options.requestParams.message.thinking ? 'enabled' : 'disabled' }
+  }
   if (options.requestParams.message.reasoning_effort) {
     body.reasoning_effort = options.requestParams.message.reasoning_effort
   }

@@ -50,6 +50,7 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
     workspace,
     model,
     provide,
+    thinking,
     reasoningEffort,
     parentSignal,
     subAgentType
@@ -107,6 +108,7 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
       content: [{ type: 'text' as const, data: task, time: Date.now() }],
       model,
       provide,
+      thinking,
       reasoning_effort: reasoningEffort
     },
     mode: 0 as const,
