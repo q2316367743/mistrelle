@@ -56,11 +56,14 @@ type WritingScene = 'free' | 'article'
 PageNew.vue（选 writing → 二级选场景）
   → LChatSender（initialWritingScene prop → ChatRequestParams.writingScene）
   → AiChatStore.add（aiChatSandbox 建目录 + AiChatContent.writingScene 持久化）
-  → ChatSessionManager.load（恢复 writingScene 并 set 到 ToolChat）/ send（透传）
-  → AgentChat（setWritingScene → buildTypePrompt / getTypeTools 注入）
+  → ChatSessionManager.load（恢复 writingScene 并 set 到 ToolChat；首条 draft 由此发送）
+  → AgentChat（buildTypePrompt / getTypeTools 注入）
 ```
 
 持久化字段：`AiChatContent.writingScene`；旧数据缺省回退 `free`。
+
+> **锁定约束**：`type` 与 `writingScene` 为「创建后锁定」属性，仅由 `load()` 从持久化内容恢复，
+> `ChatSession.send()` 不得修改（运行期发送消息不透传类型变更）。
 
 ## 关键文件
 

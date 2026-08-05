@@ -94,14 +94,8 @@ export class ChatSession {
     if (params.workspace) this.workspace.value = params.workspace
     this.mode.value = params.mode
     if (params.agentId) this.agentId.value = params.agentId
-    if (params.type) {
-      this.type.value = params.type
-      this.chat.setType(params.type)
-    }
-    if (params.writingScene) {
-      this.writingScene.value = params.writingScene
-      this.chat.setWritingScene(params.writingScene)
-    }
+    // 注意：聊天类型（type）与写作子场景（writingScene）为「创建后锁定」属性，
+    // 由 load() 从持久化的 AiChatContent 恢复，此处不得随消息修改。
     await this.chat.sendUserMessage(params)
   }
 
