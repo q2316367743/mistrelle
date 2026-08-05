@@ -38,7 +38,6 @@ const typeOptions: TypeOption[] = [
   { value: 'office', label: '日常办公', description: '文档、表格、任务管理，全能助手', icon: WorkIcon },
   { value: 'writing', label: '写作', description: '文档创作，侧边栏实时编辑与预览', icon: EditIcon },
   { value: 'design', label: '设计创意', description: 'Leafer 画布，AI 直接绘制设计稿', icon: PaletteIcon },
-  { value: 'coding', label: '代码开发', description: '接入 Context7，随时查阅各类库最新文档', icon: CodeIcon }
 ]
 
 const currentOption = computed(() => typeOptions.find((option) => option.value === type.value))
