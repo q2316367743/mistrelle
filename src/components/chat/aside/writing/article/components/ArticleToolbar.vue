@@ -10,6 +10,18 @@
           <file-add-icon />
         </template>
       </t-button>
+      <t-button
+        theme="primary"
+        variant="text"
+        shape="square"
+        title="导出文章（含图片）"
+        :disabled="!canExport || exporting"
+        @click="$emit('export')"
+      >
+        <template #icon>
+          <download-icon />
+        </template>
+      </t-button>
       <t-button theme="primary" variant="text" shape="square" title="刷新" @click="$emit('refresh')">
         <template #icon>
           <refresh-icon />
@@ -19,22 +31,29 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { FileAddIcon, RefreshIcon } from 'tdesign-icons-vue-next'
+import { DownloadIcon, FileAddIcon, RefreshIcon } from 'tdesign-icons-vue-next'
 
 withDefaults(
   defineProps<{
     projectTitle?: string
     rootLabel?: string
+    /** 是否有选中文章可导出 */
+    canExport?: boolean
+    /** 导出中（按钮 loading） */
+    exporting?: boolean
   }>(),
   {
     projectTitle: '',
-    rootLabel: ''
+    rootLabel: '',
+    canExport: false,
+    exporting: false
   }
 )
 
 defineEmits<{
   (e: 'create'): void
   (e: 'refresh'): void
+  (e: 'export'): void
 }>()
 </script>
 <style scoped lang="less">

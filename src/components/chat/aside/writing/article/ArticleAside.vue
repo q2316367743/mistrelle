@@ -3,8 +3,11 @@
     <article-toolbar
       :project-title="projectTitle"
       :root-label="rootLabel"
+      :can-export="!!activeArticle"
+      :exporting="exporting"
       @create="handleCreate"
       @refresh="handleRefresh"
+      @export="handleExport"
     />
     <div class="article-aside__body">
       <div class="article-aside__list">
@@ -14,6 +17,7 @@
         <article-editor
           :content="content"
           :article-title="activeArticle.title"
+          :base-dir="activeMdDir"
           @change="handleContentChange"
         />
       </template>
@@ -28,6 +32,8 @@ import {
   destroyArticleStore,
   getArticleStore
 } from '@/modules/tool/components/article/articleStore'
+import { exportArticle } from '@/modules/tool/components/article/imageRef'
+import { MessageUtil } from '@/utils/modal'
 import ArticleToolbar from './components/ArticleToolbar.vue'
 import ArticleList from './components/ArticleList.vue'
 import ArticleEditor from './components/ArticleEditor.vue'
@@ -52,6 +58,12 @@ const rootLabel = computed(() => {
 const activeId = ref('')
 const activeArticle = computed(() => articles.value.find((a) => a.id === activeId.value))
 const content = ref('')
+const exporting = ref(false)
+
+/** 当前文章 md 所在目录（预览图片解析基准） */
+const activeMdDir = computed(() =>
+  activeArticle.value ? window.preload.path.dirname(window.preload.path.join(root.value, activeArticle.value.file)) : ''
+)
 
 /** 刷新项目索引；若当前选中文章已被删除则复位选中 */
 const reload = async () => {
@@ -116,6 +128,27 @@ const handleCreate = () => {
 
 const handleRefresh = () => {
   void reload()
+}
+
+/** 导出当前文章（含引用的本地图片）到用户选择的目标目录，保持相对结构 */
+const handleExport = async () => {
+  if (!activeArticle.value || exporting.value) return
+  const dirs = window.preload.inject.dialog.open({ properties: ['openDirectory'] })
+  const targetDir = dirs?.[0]
+  if (!targetDir) return
+  exporting.value = true
+  try {
+    const result = await exportArticle({
+      root: root.value,
+      articleFile: activeArticle.value.file,
+      targetDir
+    })
+    MessageUtil.success(`已导出 ${result.mdPath}${result.assets.length ? `（含 ${result.assets.length} 张图片）` : ''}`)
+  } catch (e) {
+    MessageUtil.error('导出失败', e)
+  } finally {
+    exporting.value = false
+  }
 }
 </script>
 <style scoped lang="less">

@@ -20,17 +20,20 @@
         @change="handleChange"
       />
       <div v-show="mode === 'preview'" class="article-editor__preview">
-        <chat-content :content="content" />
+        <chat-content :content="previewContent" />
       </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { ChatContent } from '@tdesign-vue-next/chat'
+import { resolveArticleMarkdown } from '@/modules/tool/components/article/imageRef'
 
 const props = defineProps<{
   content: string
   articleTitle: string
+  /** 文章 md 所在目录（用于预览时把相对路径图片解析为本地链接） */
+  baseDir?: string
 }>()
 
 const emit = defineEmits<{
@@ -38,6 +41,11 @@ const emit = defineEmits<{
 }>()
 
 const mode = ref<'edit' | 'preview'>('edit')
+
+/** 预览内容：预处理相对路径图片为 file:// 链接（不改源文件） */
+const previewContent = computed(() =>
+  props.baseDir ? resolveArticleMarkdown(props.content, props.baseDir) : props.content
+)
 
 const handleChange = (value?: string) => {
   emit('change', value ?? '')
