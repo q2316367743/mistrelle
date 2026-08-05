@@ -45,6 +45,7 @@
         :agent-history="agentHistory"
         :active-agent-id="activeAgentId"
         :type="chatType"
+        :writing-scene="writingScene"
         @view-agent="handleViewSubAgent"
       />
     </t-aside>
@@ -167,6 +168,7 @@ const workspace = session.workspace
 const mode = session.mode
 const agentId = session.agentId
 const chatType = session.type
+const writingScene = session.writingScene
 
 const handleSend = (message: ChatRequestParams) => {
   void session.send(message)
