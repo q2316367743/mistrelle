@@ -71,7 +71,11 @@ import {
   RefreshIcon
 } from 'tdesign-icons-vue-next'
 import type { DropdownProps } from 'tdesign-vue-next'
-import { buildCanvasOutputsDir, getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
+import {
+  buildCanvasFileName,
+  buildCanvasOutputsDir,
+  getCanvasStore
+} from '@/modules/tool/components/canvas/CanvasStore'
 import { exportCanvasPng } from '@/modules/tool/components/canvas/canvasRender'
 import CanvasRenderer from './CanvasRenderer.vue'
 
@@ -196,7 +200,16 @@ const handleAction: DropdownProps['onClick'] = (data) => {
   if (data.value === 'copy') void handleCopy()
   else if (data.value === 'download') void handleDownload()
   else if (data.value === 'folder') {
-    window.preload.inject.shell.openPath(buildCanvasOutputsDir(props.sandbox ?? ''))
+    if (selected.value) {
+      window.preload.inject.shell.showItemInFolder(
+        window.preload.path.join(
+          buildCanvasOutputsDir(props.sandbox ?? ''),
+          buildCanvasFileName(selected.value)
+        )
+      )
+    } else {
+      window.preload.inject.shell.openPath(buildCanvasOutputsDir(props.sandbox ?? ''))
+    }
   }
 }
 </script>
