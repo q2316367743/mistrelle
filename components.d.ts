@@ -22,7 +22,6 @@ declare module 'vue' {
     EmptyResult: typeof import('./src/components/Result/EmptyResult.vue')['default']
     FileChatTool: typeof import('./src/components/chat/chat-assistant/tool/FileChatTool.vue')['default']
     FileProductList: typeof import('./src/components/chat/chat-assistant/FileProductList.vue')['default']
-    FreeWritingAside: typeof import('./src/components/chat/aside/writing/free/FreeWritingAside.vue')['default']
     InfoResult: typeof import('./src/components/Result/InfoResult.vue')['default']
     LChatAside: typeof import('./src/components/chat/aside/LChatAside.vue')['default']
     LChatAttachment: typeof import('./src/components/chat/sender/LChatAttachment.vue')['default']

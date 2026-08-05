@@ -38,7 +38,7 @@ withDefaults(
   }>(),
   {
     type: 'office',
-    writingScene: 'free',
+    writingScene: 'article',
     messages: () => [],
     workspace: '',
     sandbox: '',

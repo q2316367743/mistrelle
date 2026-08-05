@@ -27,40 +27,17 @@
 <script lang="ts" setup>
 import { useAiChatStore, useSettingDefaultStore } from '@/store'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
+import { CHAT_TYPE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
-import type { Component } from 'vue'
-import { WorkIcon, EditIcon, PaletteIcon, CodeIcon, FileMarkdownIcon } from 'tdesign-icons-vue-next'
 
 const router = useRouter()
 
 const model = ref('')
 const type = ref<ChatType>('office')
-const scene = ref<WritingScene>('free')
+const scene = ref<WritingScene>('article')
 
-interface TypeOption {
-  value: ChatType
-  label: string
-  description: string
-  icon: Component
-}
-
-interface SceneOption {
-  value: WritingScene
-  label: string
-  description: string
-  icon: Component
-}
-
-const typeOptions: TypeOption[] = [
-  { value: 'office', label: '日常办公', description: '文档、表格、任务管理，全能助手', icon: WorkIcon },
-  { value: 'writing', label: '写作', description: '文档创作，侧边栏实时编辑与预览', icon: EditIcon },
-  { value: 'design', label: '设计创意', description: 'Leafer 画布，AI 直接绘制设计稿', icon: PaletteIcon },
-]
-
-const sceneOptions: SceneOption[] = [
-  { value: 'free', label: '自由写作', description: '随笔 / 文档 / 长文创作，文档树 + 编辑器', icon: EditIcon },
-  { value: 'article', label: '文章创作', description: '自媒体文章项目管理，含配图（设计子 Agent）', icon: FileMarkdownIcon },
-]
+const typeOptions = CHAT_TYPE_OPTIONS
+const sceneOptions = WRITING_SCENE_OPTIONS
 
 const currentOption = computed(() => typeOptions.find((option) => option.value === type.value))
 const currentScene = computed(() => sceneOptions.find((option) => option.value === scene.value))

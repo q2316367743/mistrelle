@@ -1,14 +1,12 @@
 # 03 文章侧边栏（侧边栏按大小类型拆分）
 
-> writing 侧边栏按「大类型（chatType）→ 小类型（writingScene）」两层拆分组件。free 场景迁移为独立组件，article 场景新增项目管理侧边栏。
+> writing 侧边栏按「大类型（chatType）→ 小类型（writingScene）」两层拆分组件。当前唯一子场景为 article（文章创作），`WritingAside` 直接渲染文章项目管理侧边栏。
 
 ## 组件结构
 
 ```
 src/components/chat/aside/writing/
-├── WritingAside.vue                 # writingScene 分发壳（free / article）
-├── free/
-│   └── FreeWritingAside.vue         # 自由写作：文件树 + Monaco 编辑 + md 预览（原 WritingAside 逻辑迁移）
+├── WritingAside.vue                 # writingScene 分发壳（当前仅 article，保留 prop 供未来扩展）
 └── article/
     ├── ArticleAside.vue             # 文章项目管理主容器
     └── components/
@@ -31,7 +29,7 @@ src/components/chat/aside/writing/
   `getArticleStore(root)` 获取共享 store（与 article_* 工具同一响应式实例）。
 - 文章选择：header 下拉 `select`（`:value` + `@change` 手动加载，清空复位），自定义 option 展示平台 / 状态 / 字数；
   `<article-editor :key="activeId">` 切换文章时重挂载编辑器。
-- 编辑落盘：`ArticleEditor` 变更（`editor.getMarkdown()`）→ `ArticleAside` 防抖 800ms 写回 `{root}/{file}`（与自由写作一致）。
+- 编辑落盘：`ArticleEditor` 变更（`editor.getMarkdown()`）→ `ArticleAside` 防抖 800ms 写回 `{root}/{file}`。
 - 图片落盘：粘贴 / 拖入图片 → 写入 `assetsDir`（`{root}/assets`）→ 插入相对路径节点（`../assets/xxx.png`）。
 - 文章创建：由 AI 通过 `article_create` 工具完成，侧边栏「刷新」后在下拉中可见。
 - 工作空间切换：watch root → `destroyArticleStore(旧)` + 重载新项目（释放内存、避免失效状态）。

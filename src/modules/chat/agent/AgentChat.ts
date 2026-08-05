@@ -97,8 +97,8 @@ export class ToolChat {
   private isSubAgent = false
   /** 子 Agent 能力场景（design 型子 Agent 为 'design'，用于注入画布工具）；research 型子 Agent / 主 Agent 缺省 */
   private sceneType?: ChatType
-  /** 写作子场景（writing 类型内部分层，新建对话时选定，创建后锁定；缺省 free） */
-  private writingScene: WritingScene = 'free'
+  /** 写作子场景（writing 类型内部分层，新建对话时选定，创建后锁定；缺省 article） */
+  private writingScene: WritingScene = 'article'
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
   private workspaceSettingsCache: { path: string; content: string } | null = null
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS */

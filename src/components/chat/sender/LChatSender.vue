@@ -121,7 +121,7 @@ const props = withDefaults(
     initialWorkspace: '',
     initialMode: 0,
     initialType: 'office',
-    initialWritingScene: 'free'
+    initialWritingScene: 'article'
   }
 )
 const emit = defineEmits<{
@@ -149,7 +149,7 @@ watch(
 watch(
   () => props.initialWritingScene,
   (val) => {
-    writingScene.value = val ?? 'free'
+    writingScene.value = val ?? 'article'
   },
   { immediate: true }
 )

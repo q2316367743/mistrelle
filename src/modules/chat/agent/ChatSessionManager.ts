@@ -26,8 +26,8 @@ export class ChatSession {
   readonly mode = ref<AiChatMode>(0)
   /** 跨挂载存活：聊天类型（新建对话时选定，创建后锁定） */
   readonly type = ref<ChatType>('office')
-  /** 跨挂载存活：写作子场景（writing 类型内部分层，创建后锁定；缺省 free） */
-  readonly writingScene = ref<WritingScene>('free')
+  /** 跨挂载存活：写作子场景（writing 类型内部分层，创建后锁定；缺省 article） */
+  readonly writingScene = ref<WritingScene>('article')
   /** 跨挂载存活：当前选中的 agent */
   readonly agentId = ref('')
 
@@ -72,8 +72,8 @@ export class ChatSession {
       // 旧数据无 type 字段时回退 office
       this.type.value = content.type ?? 'office'
       this.chat.setType(this.type.value)
-      // 旧数据无 writingScene 字段时回退 free
-      this.writingScene.value = content.writingScene ?? 'free'
+      // 旧数据无 writingScene 字段时回退 article（历史 free 数据一并并入文章创作）
+      this.writingScene.value = content.writingScene ?? 'article'
       this.chat.setWritingScene(this.writingScene.value)
     }
     // 常驻持久化：watcher 在水合之后建立，避免 immediate 用空消息覆盖含 draft 的存储文件

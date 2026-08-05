@@ -1,26 +1,21 @@
 <template>
-  <free-writing-aside
-    v-if="writingScene === 'free'"
-    :sandbox="sandbox"
-    :workspace="workspace"
-  />
-  <article-aside v-else :sandbox="sandbox" :workspace="workspace" />
+  <article-aside :sandbox="sandbox" :workspace="workspace" />
 </template>
 <script lang="ts" setup>
 import type { WritingScene } from '@/modules/chat'
-import FreeWritingAside from './free/FreeWritingAside.vue'
 import ArticleAside from './article/ArticleAside.vue'
 
 withDefaults(
   defineProps<{
     sandbox?: string
     workspace?: string
+    /** 写作子场景（仅 article；保留 prop 供未来 novel 等场景扩展） */
     writingScene?: WritingScene
   }>(),
   {
     sandbox: '',
     workspace: '',
-    writingScene: 'free'
+    writingScene: 'article'
   }
 )
 </script>

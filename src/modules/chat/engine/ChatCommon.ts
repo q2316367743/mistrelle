@@ -26,7 +26,7 @@ export interface ChatRequestParams {
   workspace?: string
   // 聊天类型（新建对话时选定，创建后锁定；缺省回退 office）
   type?: ChatType
-  // 写作子场景（free/article），仅 writing 类型使用，新建对话时选定，创建后锁定；缺省回退 free
+  // 写作子场景（仅 article，writing 类型默认场景），新建对话时选定，创建后锁定；缺省回退 article
   writingScene?: WritingScene
 }
 
