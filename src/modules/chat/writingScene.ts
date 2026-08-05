@@ -1,5 +1,7 @@
 import type { ToolFunction } from '@/domain'
 import type { ChatTypeToolContext } from '@/modules/chat/chatType'
+import { createArticleTools } from '@/modules/tool/components/article/articleTools'
+import { ARTICLE_SCENE_PROMPT } from '@/modules/tool/components/article/articlePrompt'
 
 /**
  * 写作子场景（writing 聊天类型内部分层，新建对话时选定，创建后锁定）：
@@ -36,21 +38,7 @@ export const WRITING_SCENE_CONFIG: Record<WritingScene, WritingSceneConfig> = {
   },
   article: {
     label: '文章创作',
-    prompt: [
-      '## 文章创作模式',
-      '你是专业自媒体内容创作助手，面向公众号 / 知乎 / 小红书等平台的文章写作。',
-      '',
-      '### 创作工作流',
-      '1. 明确选题、目标平台与读者定位，产出文章提纲（标题 / 结构 / 核心要点）',
-      '2. 撰写正文，保存为项目 articles/drafts/ 目录下的 .md 文件',
-      '3. 文章需要配图时，调用 spawn_agent(type="design") 委托设计型子 Agent 创作，图片保存到项目 articles/assets/ 目录',
-      '4. 完成后告知文章完整路径与配图清单',
-      '',
-      '### 文件约定',
-      '- 正文统一写入 articles/drafts/ 下的 .md',
-      '- 配图统一保存到 articles/assets/',
-      '- 正文中引用配图必须用相对路径（如 ../assets/xxx.png），禁止写入绝对路径，保证文章可导出、可移植'
-    ].join('\n'),
-    tools: () => []
+    prompt: ARTICLE_SCENE_PROMPT,
+    tools: (ctx) => createArticleTools(ctx)
   }
 }

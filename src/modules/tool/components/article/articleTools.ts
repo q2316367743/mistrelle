@@ -135,7 +135,8 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
         if (str(summary)) patch.summary = summary
         if (str(outline)) patch.outline = outline
         if (str(cover)) patch.cover = cover
-        if (strArray(images)) patch.images = images
+        const imgs = strArray(images)
+        if (imgs) patch.images = imgs
         if (Object.keys(patch).length === 0) return { error: '没有可更新的字段' }
         const item = await store().updateArticle(id, patch)
         return { id: item.id, updated: patch }

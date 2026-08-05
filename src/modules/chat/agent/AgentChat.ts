@@ -14,7 +14,7 @@ import { nanoid } from 'nanoid'
 import { buildSkillCatalogPrompt, localSkillList } from '@/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
 import type { AiChatMode } from '@/entity'
-import type { ChatType } from '@/modules/chat/chatType'
+import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG } from '@/modules/chat/chatType'
 import type { WritingScene } from '@/modules/chat/writingScene'
 import { WRITING_SCENE_CONFIG } from '@/modules/chat/writingScene'
@@ -173,16 +173,20 @@ export class ToolChat {
    * - 主 Agent：按 chatType 注入
    * - 子 Agent：仅当显式指定能力场景（design 型 → 画布工具）时注入；research 型子 Agent 无场景工具
    */
+  /** 场景工具注入上下文（统一构造，避免各工具 ctx 遗漏字段） */
+  private typeToolsContext(): ChatTypeToolContext {
+    return {
+      getSandboxDir: () => this.sandboxDir,
+      getWorkspace: () => this.workspace,
+      writingScene: this.writingScene
+    }
+  }
+
   private getTypeTools(): ToolFunction[] {
     if (this.isSubAgent) {
-      return this.sceneType
-        ? CHAT_TYPE_CONFIG[this.sceneType].tools({ getSandboxDir: () => this.sandboxDir })
-        : []
+      return this.sceneType ? CHAT_TYPE_CONFIG[this.sceneType].tools(this.typeToolsContext()) : []
     }
-    return CHAT_TYPE_CONFIG[this.chatType].tools({
-      getSandboxDir: () => this.sandboxDir,
-      writingScene: this.writingScene
-    })
+    return CHAT_TYPE_CONFIG[this.chatType].tools(this.typeToolsContext())
   }
 
   private buildTools(functions: ToolFunction[]): ChatCompletionTool[] {

@@ -9,6 +9,8 @@ import { WRITING_SCENE_CONFIG, type WritingScene } from '@/modules/chat/writingS
  */
 export interface ChatTypeToolContext {
   getSandboxDir: () => string
+  /** 用户工作空间（可能为空字符串）；文章项目等产物优先落此处 */
+  getWorkspace: () => string
   /** writing 类型下的子场景（free / article），仅 writing 场景工具使用 */
   writingScene?: WritingScene
 }
