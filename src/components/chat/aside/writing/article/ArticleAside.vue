@@ -49,7 +49,7 @@
         theme="primary"
         variant="text"
         shape="square"
-        title="导出文章（含图片）"
+        title="导出为 ZIP（含图片）"
         :disabled="!activeArticle || exporting"
         @click="handleExport"
       >
@@ -61,9 +61,11 @@
     <div class="article-aside__body">
       <article-editor
         v-if="activeArticle"
+        :key="activeId"
         :content="content"
         :mode="mode"
         :base-dir="activeMdDir"
+        :assets-dir="assetsDir"
         @change="handleContentChange"
       />
       <div v-else class="article-aside__empty">从上方选择文章，或让 AI 生成文章后在此选择</div>
@@ -78,7 +80,7 @@ import {
   destroyArticleStore,
   getArticleStore
 } from '@/modules/tool/components/article/articleStore'
-import { exportArticle } from '@/modules/tool/components/article/imageRef'
+import { exportArticleZip } from '@/modules/tool/components/article/imageRef'
 import type {
   ArticlePlatform,
   ArticleStatus
@@ -107,6 +109,9 @@ const exporting = ref(false)
 const activeMdDir = computed(() =>
   activeArticle.value ? window.preload.path.dirname(window.preload.path.join(root.value, activeArticle.value.file)) : ''
 )
+
+/** 配图目录（粘贴 / 拖入图片落盘于此） */
+const assetsDir = computed(() => window.preload.path.join(root.value, 'assets'))
 
 const PLATFORM_THEME: Record<ArticlePlatform, 'primary' | 'warning' | 'danger' | 'default'> = {
   公众号: 'primary',
@@ -205,20 +210,25 @@ const handleRefresh = () => {
   void reload()
 }
 
-/** 导出当前文章（含引用的本地图片）到用户选择的目标目录，保持相对结构 */
+/** 导出当前文章（含引用的本地图片）为 zip 压缩包 */
 const handleExport = async () => {
   if (!activeArticle.value || exporting.value) return
-  const dirs = window.preload.inject.dialog.open({ properties: ['openDirectory'] })
-  const targetDir = dirs?.[0]
-  if (!targetDir) return
+  const article = activeArticle.value
+  let zipPath = window.preload.inject.dialog.save({
+    defaultPath: `${article.title || article.id}.zip`,
+    filters: [{ name: 'ZIP 压缩包', extensions: ['zip'] }]
+  })
+  if (!zipPath) return
+  if (!zipPath.toLowerCase().endsWith('.zip')) zipPath = `${zipPath}.zip`
   exporting.value = true
   try {
-    const result = await exportArticle({
+    const result = await exportArticleZip({
       root: root.value,
-      articleFile: activeArticle.value.file,
-      targetDir
+      articleFile: article.file,
+      targetZip: zipPath,
+      name: article.title || article.id
     })
-    MessageUtil.success(`已导出 ${result.mdPath}${result.assets.length ? `（含 ${result.assets.length} 张图片）` : ''}`)
+    MessageUtil.success(`已导出 ${zipPath}${result.assets ? `（含 ${result.assets} 张图片）` : ''}`)
   } catch (e) {
     MessageUtil.error('导出失败', e)
   } finally {
