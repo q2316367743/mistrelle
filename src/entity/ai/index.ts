@@ -4,7 +4,7 @@ export * from './AiDiscussion'
 export * from './AiGroupChat'
 
 export * from './AiAgent'
-
+export * from './AiWorkspace'
 
 /*
 ## AI 聊天记录

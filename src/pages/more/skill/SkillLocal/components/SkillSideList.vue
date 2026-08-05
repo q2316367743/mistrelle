@@ -25,11 +25,19 @@
         </template>
       </t-button>
     </div>
-    <t-input v-model="keyword" placeholder="搜索 Skill" clearable size="small" class="skill-side__search">
-      <template #prefix-icon>
-        <search-icon />
-      </template>
-    </t-input>
+    <div style="width: calc(100% - 16px)">
+      <t-input
+        v-model="keyword"
+        placeholder="搜索 Skill"
+        clearable
+        size="small"
+        class="skill-side__search"
+      >
+        <template #prefix-icon>
+          <search-icon />
+        </template>
+      </t-input>
+    </div>
     <div class="skill-side__list">
       <t-loading :loading="loading" size="small">
         <div v-if="filteredList.length === 0" class="skill-side__empty">暂无 Skill</div>

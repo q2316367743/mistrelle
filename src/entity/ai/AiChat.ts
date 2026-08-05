@@ -9,10 +9,8 @@ export interface AiChatItem extends BaseEntity {
   name: string
   // 是否置顶
   top: boolean
-  // 首条消息纯文本预览，供列表展示
-  preview?: string
-  // 模型 key（${provideId}:${identifier}），供列表展示
-  previewModel?: string
+  // 工作空间，供列表按 workspace 分组
+  workspace: string
   // 所属项目
   projectId?: string
   // 所属任务

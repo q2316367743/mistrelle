@@ -1,6 +1,6 @@
 <template>
   <office-aside
-    v-if="type === 'office' || type === 'coding'"
+    v-if="type === 'office'"
     :messages="messages"
     :workspace="workspace"
     :sandbox="sandbox"
@@ -9,11 +9,7 @@
     :active-agent-id="activeAgentId"
     @view-agent="$emit('view-agent', $event)"
   />
-  <writing-aside
-    v-else-if="type === 'writing'"
-    :sandbox="sandbox"
-    :workspace="workspace"
-  />
+  <writing-aside v-else-if="type === 'writing'" :sandbox="sandbox" :workspace="workspace" />
   <design-aside v-else-if="type === 'design'" :sandbox="sandbox" />
 </template>
 <script lang="ts" setup>

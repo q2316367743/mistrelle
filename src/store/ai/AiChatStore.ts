@@ -65,8 +65,7 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       updatedAt: now,
       name: preview.slice(0, 10),
       top: false,
-      preview,
-      previewModel: `${message.provide}:${message.model}`
+      workspace: workspace || ''
     }
     state.value.push(item)
     // 保存索引
@@ -86,7 +85,7 @@ export const useAiChatStore = defineStore('ai-chat', () => {
 
     // 生成聊天消息
     logger.debug('AI 聊天消息生成')
-    useChatName(item.preview || '')
+    useChatName(preview)
       .then((newName) => update(id, { name: newName }))
       .catch((e) => logger.error('AI 聊天消息生成失败', e))
       .finally(() => logger.debug('AI 聊天消息生成完成'))

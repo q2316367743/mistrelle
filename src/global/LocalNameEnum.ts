@@ -18,6 +18,7 @@ export const LocalNameEnum = {
   LIST_AI_DISCUSSION: '/list/ai/discussion',
   LIST_AI_PROMPT: '/list/ai/prompt',
   LIST_NOTE_TRACE: '/list/note/trace',
+  LIST_AI_WORKSPACE: '/list/ai/workspace',
 
   ITEM_AI_DISCUSSION: (id: string) => `/item/ai/discussion/${id}`,
   ITEM_AI_PROMPT: (id: string) => `/item/ai/prompt/${id}`,
