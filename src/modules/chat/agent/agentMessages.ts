@@ -9,6 +9,7 @@ import type {
 import { nanoid } from 'nanoid'
 import { prettyDurationTime, toDateString } from '@/utils/lang'
 import { AiChatMode } from '@/entity'
+import type { SubAgentType } from '@/modules/subagent/types'
 import type { InteractiveKind } from './interactive'
 
 export const createPendingAssistantMessage = (params: {
@@ -129,6 +130,8 @@ export interface SubAgentInfo {
   subId: string
   /** 任务摘要（由 spawn_agent args 解析，可能为空） */
   task: string
+  /** 子 Agent 能力类型（由 spawn_agent args 解析，缺省 research；用于侧边栏按类型联动） */
+  type: SubAgentType
   status: 'running' | 'completed' | 'error'
   /** 所属 assistant 消息在所有 assistant 消息中的下标（用于判定「当前轮」） */
   messageIndex: number
@@ -149,15 +152,17 @@ export const collectSubAgents = (messages: ChatMessage[]): SubAgentInfo[] => {
       const subId = content.ext?.subAgentId
       if (!subId || typeof subId !== 'string') continue
       let task = ''
+      let type: SubAgentType = 'research'
       try {
-        const parsed = JSON.parse(content.data.args ?? '{}') as { task?: string }
+        const parsed = JSON.parse(content.data.args ?? '{}') as { task?: string; type?: unknown }
         task = parsed.task ?? ''
+        if (parsed.type === 'research' || parsed.type === 'design') type = parsed.type
       } catch {
-        // args 解析失败则忽略任务摘要
+        // args 解析失败则忽略任务摘要与类型
       }
       const s = content.status
       const status = s === 'error' ? 'error' : s === 'pending' || s === 'streaming' ? 'running' : 'completed'
-      result.push({ subId, task, status, messageIndex: assistantIndex })
+      result.push({ subId, task, type, status, messageIndex: assistantIndex })
     }
   }
   return result

@@ -77,6 +77,19 @@ src/modules/subagent/
 
 `resolveSubAgentType(raw, chatType)`：非法返回错误消息字符串，拦截处直接回填工具结果，不让模型重试无意义的能力。
 
+## 侧边栏联动（LChatAside）
+
+侧边栏面板类型默认等于会话类型（`ChatType`），但会**跟随活动子 Agent 的能力类型联动**（`LChatEngine.vue` 的 `asideType` computed）：
+
+- 切到 **design 型子 Agent**（如写作对话里的绘图子 Agent）→ 侧边栏切为画布面板（`DesignAside`），并自动展开，实时展示子 Agent 生成的画布 / 导出的图；
+- 主 Agent 或 **research 型子 Agent** → 回落到会话类型面板（office / writing / design）。
+
+要点：
+
+- 子 Agent 类型从主 Agent 消息里 `spawn_agent` 工具调用的 `args.type` 解析（缺省 `research`），见 `agentMessages.collectSubAgents` 的 `SubAgentInfo.type`。
+- design 子 Agent 与主 Agent 共用同一 `sandboxDir`，画布产物落盘 `{sandbox}/outputs/canvas-*.canvas`，`DesignAside` 按 sandboxDir 键控渲染，因此无需额外数据传递即可看到子 Agent 的画布。
+- 侧边栏「Agent 记录」里的历史子 Agent 同样带 `type`，切换到它们时也会触发联动。
+
 ## 注意事项
 
 - **循环依赖**：`subagent/runner → AgentChat → agentTools → subagent/runner` 存在环，

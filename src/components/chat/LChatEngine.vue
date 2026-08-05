@@ -44,7 +44,7 @@
         :todos="instance.todos.value"
         :agent-history="agentHistory"
         :active-agent-id="activeAgentId"
-        :type="chatType"
+        :type="asideType"
         :writing-scene="writingScene"
         @view-agent="handleViewSubAgent"
       />
@@ -62,7 +62,7 @@
   </t-layout>
 </template>
 <script lang="ts" setup>
-import type { ChatRequestParams } from '@/modules/chat'
+import type { ChatRequestParams, ChatType } from '@/modules/chat'
 import { getChatSession, getSandboxDir } from '@/modules/chat'
 import type { ChatMessage, UserMessage } from '@/domain'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
@@ -148,14 +148,6 @@ const session = getChatSession(props.storageKey, {
   chatId: props.chatId
 })
 const instance = session.chat
-// 设计类型对话默认展开侧边栏：type 需异步水合，故用 watch 而非直接判断
-watch(
-  () => session.type.value,
-  (type) => {
-    if (type === 'design') aside.value = true
-  },
-  { immediate: true }
-)
 
 // 交互桥供 ask/confirm 卡片注入作答；本组件是 UI 消费方，使能后挂起决策才能被作答
 provide(INTERACTIVE_KEY, instance.interactive)
@@ -224,6 +216,28 @@ const subAgentMessages = ref<ChatMessage[] | null>(null)
 
 /** 子 Agent 汇总（全部消息），tab 栏只取最后一条 AI 消息，侧边栏展示全部 */
 const allSubAgents = computed(() => collectSubAgents(messages.value))
+
+/**
+ * 侧边栏面板类型：优先跟随活动子 Agent 的能力类型。
+ * 切到 design 型子 Agent（如写作对话里的绘图子 Agent）时切为画布面板，便于查看其生成的图；
+ * 其余（主 Agent / research 子 Agent）回落到会话类型。
+ */
+const asideType = computed<ChatType>(() => {
+  if (activeAgentId.value !== 'main') {
+    const sub = allSubAgents.value.find((a) => a.subId === activeAgentId.value)
+    if (sub?.type === 'design') return 'design'
+  }
+  return chatType.value
+})
+
+// 画布面板（design 会话或 design 型子 Agent）默认展开侧边栏：type 需异步水合，故用 watch 而非直接判断
+watch(
+  asideType,
+  (type) => {
+    if (type === 'design') aside.value = true
+  },
+  { immediate: true }
+)
 
 /**
  * 构建 Agent 切换卡片数据：仅展示最后一条 AI 消息 spawn 的子 Agent。
