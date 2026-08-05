@@ -1,43 +1,90 @@
 <template>
   <div class="article-aside">
-    <article-toolbar
-      :project-title="projectTitle"
-      :root-label="rootLabel"
-      :can-export="!!activeArticle"
-      :exporting="exporting"
-      @create="handleCreate"
-      @refresh="handleRefresh"
-      @export="handleExport"
-    />
+    <div class="article-aside__header">
+      <t-select
+        class="article-aside__select"
+        :value="activeId"
+        placeholder="选择文章"
+        :empty="'暂无文章，可让 AI 生成'"
+        :popup-props="{ overlayClassName: 'article-select-overlay' }"
+        clearable
+        @change="handleSelectChange"
+      >
+        <t-option v-for="a in articles" :key="a.id" :value="a.id" :label="a.title">
+          <div class="article-aside__option">
+            <span class="article-aside__option-title">{{ a.title }}</span>
+            <div class="article-aside__option-meta">
+              <t-tag size="small" variant="light" :theme="platformTheme(a.platform)">
+                {{ a.platform }}
+              </t-tag>
+              <t-tag size="small" variant="outline" :theme="statusTheme(a.status)">
+                {{ statusLabel(a.status) }}
+              </t-tag>
+              <span v-if="a.words" class="article-aside__option-words">{{ a.words }} 字</span>
+            </div>
+          </div>
+        </t-option>
+      </t-select>
+      <t-radio-group v-model="mode" size="small" theme="button" variant="default-filled">
+        <t-radio-button value="edit">编辑</t-radio-button>
+        <t-radio-button value="preview">预览</t-radio-button>
+      </t-radio-group>
+      <t-button
+        theme="primary"
+        variant="text"
+        shape="square"
+        title="在文件夹中显示"
+        @click="handleReveal"
+      >
+        <template #icon>
+          <folder-open-icon />
+        </template>
+      </t-button>
+      <t-button theme="primary" variant="text" shape="square" title="刷新" @click="handleRefresh">
+        <template #icon>
+          <refresh-icon />
+        </template>
+      </t-button>
+      <t-button
+        theme="primary"
+        variant="text"
+        shape="square"
+        title="导出文章（含图片）"
+        :disabled="!activeArticle || exporting"
+        @click="handleExport"
+      >
+        <template #icon>
+          <download-icon />
+        </template>
+      </t-button>
+    </div>
     <div class="article-aside__body">
-      <div class="article-aside__list">
-        <article-list :articles="articles" :active-id="activeId" @select="handleSelect" />
-      </div>
-      <template v-if="activeArticle">
-        <article-editor
-          :content="content"
-          :article-title="activeArticle.title"
-          :base-dir="activeMdDir"
-          @change="handleContentChange"
-        />
-      </template>
-      <div v-else class="article-aside__empty">从左侧选择文章，或点击 + 新建</div>
+      <article-editor
+        v-if="activeArticle"
+        :content="content"
+        :mode="mode"
+        :base-dir="activeMdDir"
+        @change="handleContentChange"
+      />
+      <div v-else class="article-aside__empty">从上方选择文章，或让 AI 生成文章后在此选择</div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { debounce } from 'es-toolkit'
+import { DownloadIcon, FolderOpenIcon, RefreshIcon } from 'tdesign-icons-vue-next'
 import {
   buildArticleRoot,
   destroyArticleStore,
   getArticleStore
 } from '@/modules/tool/components/article/articleStore'
 import { exportArticle } from '@/modules/tool/components/article/imageRef'
+import type {
+  ArticlePlatform,
+  ArticleStatus
+} from '@/modules/tool/components/article/articleTypes'
 import { MessageUtil } from '@/utils/modal'
-import ArticleToolbar from './components/ArticleToolbar.vue'
-import ArticleList from './components/ArticleList.vue'
 import ArticleEditor from './components/ArticleEditor.vue'
-import { openArticleModal } from './modals/ArticleModal'
 
 const props = defineProps<{
   sandbox?: string
@@ -49,11 +96,7 @@ const root = computed(() => buildArticleRoot(props.workspace ?? '', props.sandbo
 const store = computed(() => getArticleStore(root.value))
 
 const articles = computed(() => store.value.project.value?.articles ?? [])
-const projectTitle = computed(() => store.value.project.value?.title ?? '')
-const rootLabel = computed(() => {
-  const ws = props.workspace
-  return ws ? window.preload.path.basename(ws) || ws : '沙盒'
-})
+const mode = ref<'edit' | 'preview'>('preview')
 
 const activeId = ref('')
 const activeArticle = computed(() => articles.value.find((a) => a.id === activeId.value))
@@ -64,6 +107,39 @@ const exporting = ref(false)
 const activeMdDir = computed(() =>
   activeArticle.value ? window.preload.path.dirname(window.preload.path.join(root.value, activeArticle.value.file)) : ''
 )
+
+const PLATFORM_THEME: Record<ArticlePlatform, 'primary' | 'warning' | 'danger' | 'default'> = {
+  公众号: 'primary',
+  知乎: 'warning',
+  小红书: 'danger',
+  其他: 'default'
+}
+
+const STATUS_THEME: Record<ArticleStatus, 'default' | 'warning' | 'success'> = {
+  draft: 'default',
+  writing: 'warning',
+  done: 'success'
+}
+
+const STATUS_LABEL: Record<ArticleStatus, string> = {
+  draft: '草稿',
+  writing: '写作中',
+  done: '已完稿'
+}
+
+const platformTheme = (p: ArticlePlatform) => PLATFORM_THEME[p] ?? 'default'
+const statusTheme = (s: ArticleStatus) => STATUS_THEME[s] ?? 'default'
+const statusLabel = (s: ArticleStatus) => STATUS_LABEL[s] ?? s
+
+/** 下拉选择：清空则复位选中，否则加载文章内容 */
+const handleSelectChange = (id: unknown) => {
+  if (typeof id !== 'string' || !id) {
+    activeId.value = ''
+    content.value = ''
+    return
+  }
+  void handleSelect(id)
+}
 
 /** 刷新项目索引；若当前选中文章已被删除则复位选中 */
 const reload = async () => {
@@ -114,16 +190,15 @@ const handleContentChange = (value: string) => {
   void saveDoc()
 }
 
-const handleCreate = () => {
-  openArticleModal({
-    workspace: props.workspace,
-    sandbox: props.sandbox,
-    onCreated: async (item) => {
-      await reload()
-      content.value = await store.value.readArticle(item.id)
-      activeId.value = item.id
-    }
-  })
+/** 在文件管理器中显示：选中文章定位到文件，否则打开项目根目录 */
+const handleReveal = () => {
+  if (activeArticle.value) {
+    window.preload.inject.shell.showItemInFolder(
+      window.preload.path.join(root.value, activeArticle.value.file)
+    )
+  } else {
+    window.preload.inject.shell.openPath(root.value)
+  }
 }
 
 const handleRefresh = () => {
@@ -158,21 +233,25 @@ const handleExport = async () => {
   flex-direction: column;
   padding: 8px 0 8px 8px;
 
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__select {
+    flex: 1;
+    min-width: 0;
+  }
+
   &__body {
     margin-top: 8px;
     flex: 1;
     min-height: 0;
     display: flex;
-    gap: 8px;
-  }
-
-  &__list {
-    width: 180px;
-    flex-shrink: 0;
-    overflow: hidden;
     border-radius: var(--td-radius-medium);
     border: 1px solid var(--td-border-level-1-color);
-    padding: 4px;
+    overflow: hidden;
   }
 
   &__empty {
@@ -182,6 +261,39 @@ const handleExport = async () => {
     justify-content: center;
     color: var(--td-text-color-placeholder);
     font-size: var(--td-font-size-body-small);
+  }
+
+  &__option {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__option-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__option-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__option-words {
+    font-size: var(--td-font-size-body-small);
+    color: var(--td-text-color-placeholder);
+  }
+}
+</style>
+<style lang="less">
+/* 自定义 select 下拉选项面板（teleport 到 body，需全局样式；类名见 popup-props.overlayClassName） */
+.article-select-overlay {
+  .t-select-option {
+    height: 100%;
+    padding: 8px;
   }
 }
 </style>
