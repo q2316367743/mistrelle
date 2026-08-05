@@ -17,6 +17,8 @@ import type { AiChatMode } from '@/entity'
 import type { ChatType } from '@/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG } from '@/modules/chat/chatType'
 import { defaultTools, isShellExecTool, toolMap } from '@/modules/tool'
+import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
+import { SUB_AGENT_ALLOW } from '@/modules/subagent/types'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
 import type {
   ChatContext,
@@ -41,9 +43,6 @@ import { copyToInputs, isPathUnder } from '@/utils/chatSender'
 import { MAX_AGENT_STEPS } from '@/global/Constant'
 import { createTodoTool, buildTodoPrompt } from './todo'
 
-/** spawn_agent 工具名：子 Agent 不暴露此工具，防止嵌套派发 */
-const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
-
 /** 触顶收尾指令：子 Agent 步数耗尽时以独立 system 消息注入，强制其基于中间结果立即输出最终总结 */
 const FINALIZE_PROMPT =
   '已到达最大迭代次数，请立即基于当前已收集的所有信息输出最终总结，直接给出结论，不要再调用任何工具。'
@@ -62,6 +61,8 @@ export interface UseChatOptions {
   chatId?: string
   /** 是否为子 Agent：禁用 spawn_agent 工具（防止嵌套派发导致路径错乱），且不注入子 Agent 使用指导 */
   isSubAgent?: boolean
+  /** 子 Agent 能力场景（design 型子 Agent 使用，注入画布工具）；主 Agent / research 型子 Agent 不使用 */
+  sceneType?: ChatType
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS；子 Agent 传入更大预算以完成复杂调研 */
   maxSteps?: number
   /** 触顶步数后是否执行最后一次无工具调用强制输出最终总结（子 Agent 使用，避免触顶时只返回截断提示） */
@@ -92,6 +93,8 @@ export class ToolChat {
   private chatId = ''
   /** 是否为子 Agent（禁用 spawn_agent 工具，防止嵌套派发） */
   private isSubAgent = false
+  /** 子 Agent 能力场景（design 型子 Agent 为 'design'，用于注入画布工具）；research 型子 Agent / 主 Agent 缺省 */
+  private sceneType?: ChatType
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
   private workspaceSettingsCache: { path: string; content: string } | null = null
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS */
@@ -113,6 +116,7 @@ export class ToolChat {
     if (options.workspace) this.workspace = options.workspace
     if (options.chatId) this.chatId = options.chatId
     this.isSubAgent = options.isSubAgent ?? false
+    this.sceneType = options.sceneType
     if (options.maxSteps) this.maxSteps = options.maxSteps
     if (options.finalizeOnMaxSteps) this.finalizeOnMaxSteps = true
   }
@@ -149,18 +153,28 @@ export class ToolChat {
     ]) {
       // 子 Agent 不暴露 spawn_agent：防止嵌套派发（子 Agent 的 chatId 是自身 id，再派发路径会错乱）
       if (this.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) continue
+      // 主 Agent：按聊天类型裁剪 spawn_agent 的可用子 Agent 类型（SUB_AGENT_ALLOW 能力矩阵），减少模型试错
+      if (!this.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) {
+        map.set(fn.name, createSpawnAgentTool(SUB_AGENT_ALLOW[this.chatType]))
+        continue
+      }
       map.set(fn.name, fn)
     }
     return Array.from(map.values())
   }
 
   /**
-   * 按聊天类型注入场景级工具（design → canvas_*，coding → context7_*）。
-   * 工具列表由 CHAT_TYPE_CONFIG[type].tools 工厂提供，所有类型在此一处维护，
-   * 新增类型无需改动本方法；仅主 Agent 注入，子 Agent 不暴露场景工具。
+   * 按聊天类型 / 子 Agent 能力场景注入场景级工具（design → canvas_*）。
+   * 工具列表由 CHAT_TYPE_CONFIG 工厂提供，所有类型在此一处维护，新增类型无需改动本方法。
+   * - 主 Agent：按 chatType 注入
+   * - 子 Agent：仅当显式指定能力场景（design 型 → 画布工具）时注入；research 型子 Agent 无场景工具
    */
   private getTypeTools(): ToolFunction[] {
-    if (this.isSubAgent) return []
+    if (this.isSubAgent) {
+      return this.sceneType
+        ? CHAT_TYPE_CONFIG[this.sceneType].tools({ getSandboxDir: () => this.sandboxDir })
+        : []
+    }
     return CHAT_TYPE_CONFIG[this.chatType].tools({ getSandboxDir: () => this.sandboxDir })
   }
 
@@ -386,6 +400,7 @@ export class ToolChat {
           workspace: this.workspace,
           mode: this.mode,
           isSubAgent: this.isSubAgent,
+          chatType: this.chatType,
           abortSignal: signal
         },
         this.interactive
@@ -611,6 +626,7 @@ export class ToolChat {
           workspace: this.workspace,
           mode: this.mode,
           isSubAgent: this.isSubAgent,
+          chatType: this.chatType,
           abortSignal: this.ctx.abortController?.signal
         },
         this.interactive

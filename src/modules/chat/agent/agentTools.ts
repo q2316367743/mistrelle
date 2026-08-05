@@ -11,9 +11,10 @@ import {
   normalizeAskArgs,
   type AskAnswerItem
 } from '@/modules/tool/components/ask'
+import { SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
+import { resolveSubAgentType } from '@/modules/subagent/types'
 
 const ASK_TOOL_NAME = 'ask'
-const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
 
 /**
  * 工具结果按字节截断，且保证不在多字节字符（中文等）中间切断，避免产生非法 UTF-8。
@@ -112,7 +113,7 @@ export const runSingleTool = async (
     return
   }
 
-  // spawn_agent：委托子 Agent 执行只读调研任务
+  // spawn_agent：委托子 Agent 执行独立任务（调研 / 设计），返回最终摘要（不进 policy）
   if (fn.name === SPAWN_AGENT_TOOL_NAME) {
     const task = typeof args.task === 'string' ? args.task : ''
     if (!task) {
@@ -123,13 +124,19 @@ export const runSingleTool = async (
       applyResult(messages, assistantMessageId, call, '错误：无法启动子 Agent，缺少聊天上下文')
       return
     }
+    // 解析并校验子 Agent 类型（按当前聊天类型能力矩阵 SUB_AGENT_ALLOW，缺省 research）
+    const resolved = resolveSubAgentType(args.type, policyContext.chatType ?? 'office')
+    if (typeof resolved === 'string') {
+      applyResult(messages, assistantMessageId, call, `错误：spawn_agent ${resolved}`)
+      return
+    }
     const { model, provide, reasoning_effort } = findLastUserModel(messages)
     if (!model || !provide) {
       applyResult(messages, assistantMessageId, call, '错误：无法确定子 Agent 使用的模型')
       return
     }
-    // 动态导入避免循环依赖（SubAgentRunner → ToolChat → agentTools → SubAgentRunner）
-    const { runSubAgent } = await import('./SubAgentRunner')
+    // 动态导入避免循环依赖（subagent/runner → AgentChat → agentTools → subagent/runner）
+    const { runSubAgent } = await import('@/modules/subagent')
     // 预生成 subId 并立即标记到消息：使 UI 在子 Agent 运行期间即可显示标签并支持切换到其实时视图
     const subId = useSnowflake().nextId()
     appendSubAgentId(messages, assistantMessageId, subId, call.toolCallId)
@@ -142,6 +149,7 @@ export const runSingleTool = async (
       model,
       provide,
       reasoningEffort: reasoning_effort,
+      subAgentType: resolved,
       // 主 Agent 终止时级联终止子 Agent
       parentSignal: policyContext.abortSignal
     })

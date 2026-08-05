@@ -68,7 +68,7 @@ import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
 import {
   readSubAgentContent,
   getRunningSubAgentMessages
-} from '@/modules/chat/agent/SubAgentRunner'
+} from '@/modules/subagent'
 import {
   collectSubAgents,
   lastAssistantIdOf,

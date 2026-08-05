@@ -1,5 +1,6 @@
 import type { ToolFunction, ToolPolicyVerdict } from '@/domain'
 import type { AiChatMode } from '@/entity'
+import type { ChatType } from '@/modules/chat/chatType'
 
 /** 策略解析所需的运行时上下文 */
 export interface ToolPolicyContext {
@@ -11,6 +12,8 @@ export interface ToolPolicyContext {
   mode?: AiChatMode
   /** 是否为子 Agent（只读 · 无交互桥）：只读 shell 命令自动放行，需审批的操作会被禁用交互桥自动拒绝 */
   isSubAgent?: boolean
+  /** 当前聊天类型（用于 spawn_agent 按能力矩阵校验子 Agent 类型） */
+  chatType?: ChatType
   /** 当前请求的 AbortSignal（主 Agent 终止时级联到子 Agent） */
   abortSignal?: AbortSignal
 }
