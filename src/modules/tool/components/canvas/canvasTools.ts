@@ -1,8 +1,15 @@
-import type { ToolFunction, ToolProperty } from '@/domain'
+import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
 import { buildCanvasOutputsDir, getCanvasStore, parseCanvasVersion } from './CanvasStore'
-import type { CanvasDoc, CanvasShapeInput, CanvasShapeType, CanvasToolContext } from './canvasTypes'
-import { exportCanvasPng } from './canvasRender'
+import type { CanvasBatchOp, CanvasDoc, CanvasNode, CanvasToolContext } from './canvasTypes'
+import {
+  computeNodeBounds,
+  exportCanvasPng,
+  normalizeRegion,
+  type CanvasExportRegion
+} from './canvasRender'
+import { batchOpSchema } from './canvasSchemas'
+import { CANVAS_GUIDELINES, CANVAS_GUIDELINE_TOPICS } from './guidelines'
 
 const ctxError = (): never => {
   throw new Error('画布工具缺少沙盒目录上下文')
@@ -10,194 +17,9 @@ const ctxError = (): never => {
 
 const storeOf = (ctx: CanvasToolContext) => getCanvasStore(ctx.getSandboxDir() || ctxError())
 
-/**
- * 解析图片 / SVG 源为可渲染 url：
- * - http(s) / data / blob / file URL 原样返回
- * - 沙盒内文件路径（绝对或相对）转为稳定 file:// URL（pathToHref）
- * AI 从网络下载的图片通常已保存到沙盒目录，传路径即可，无需手动转换。
- */
-const resolveImageSource = (ctx: CanvasToolContext, src: string): string => {
-  if (/^(https?|file|data|blob):/i.test(src)) return src
-  const sandboxDir = ctx.getSandboxDir()
-  const isAbsolute = /^([a-zA-Z]:[\\/]|\/)/.test(src)
-  const abs = !isAbsolute && sandboxDir ? window.preload.path.join(sandboxDir, src) : src
-  return window.preload.net.pathToHref(abs)
-}
-
-/** 资产类图形入参归一化：把工具侧的 src 解析为 imageUrl 落盘，避免多余字段写入画布文件 */
-const toAssetInput =
-  (ctx: CanvasToolContext) =>
-  (patch: Record<string, unknown>): CanvasShapeInput => {
-    const { src, ...rest } = patch
-    return typeof src === 'string' && src
-      ? ({ ...rest, imageUrl: resolveImageSource(ctx, src) } as unknown as CanvasShapeInput)
-      : (rest as unknown as CanvasShapeInput)
-  }
-
 /** 返回画布工具实例（按 chat sandboxDir 绑定），供 ChatTypeConfig 场景级注入 */
 export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
   const store = () => storeOf(ctx)
-
-  const shapeProps: Record<string, ToolProperty> = {
-    x: { type: 'number', description: '图形左上角 x 坐标（画布原点在左上角，向右为正）' },
-    y: { type: 'number', description: '图形左上角 y 坐标（画布原点在左上角，向下为正）' },
-    width: { type: 'number', description: '图形宽度' },
-    height: { type: 'number', description: '图形高度' },
-    rotation: { type: 'number', description: '旋转角度（度，顺时针）' },
-    fill: {
-      type: 'string',
-      description:
-        '填充：纯色（#RRGGBB / #RRGGBBAA / rgba() / 颜色名）或渐变对象。渐变示例 {"type":"linear","from":"top-left","to":"bottom-right","stops":["#FF4B4B","#FEB027"]}；type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环），stops 为色标数组，可为纯色字符串自动均分，或 {"offset":0,"color":"#FEB027"} 显式定位'
-    },
-    stroke: {
-      type: 'string',
-      description:
-        '描边颜色或渐变对象（结构同 fill，配合 strokeWidth 使用，可让边框更有层次）'
-    },
-    strokeWidth: { type: 'number', description: '描边宽度' },
-    strokeCap: { type: 'string', description: '描边端点形状：none / round / square' },
-    dashPattern: {
-      type: 'array',
-      items: { type: 'number', description: '长度数值' },
-      description: '虚线描边：[线段长度, 间隙]，如 [6, 4]'
-    },
-    cornerRadius: {
-      type: 'number',
-      description: '圆角半径（闭合图形），让矩形 / 卡片更柔和，如 16'
-    },
-    shadow: {
-      type: 'object',
-      description:
-        '外阴影：{"x":0,"y":4,"blur":8,"color":"rgba(0,0,0,0.15)"}（x/y 偏移、blur 模糊半径、color 支持 rgba），可传数组叠加多层阴影，营造立体感'
-    },
-    innerShadow: {
-      type: 'object',
-      description: '内阴影：{"x":0,"y":2,"blur":4,"color":"rgba(0,0,0,0.2)"}，实现内凹 / 雕刻感'
-    },
-    blendMode: {
-      type: 'string',
-      description: '混合模式：normal / multiply / screen / overlay 等，用于半透明色层叠加调色'
-    },
-    blur: { type: 'number', description: '高斯模糊半径，柔化图形或模拟景深' },
-    opacity: { type: 'number', description: '不透明度 0-1' }
-  }
-
-  const textProps: Record<string, ToolProperty> = {
-    ...shapeProps,
-    text: { type: 'string', description: '文本内容' },
-    fontSize: { type: 'number', description: '字号' },
-    fontWeight: { type: 'number', description: '字重（400 常规 / 700 粗体）' },
-    fontFamily: { type: 'string', description: '字体族' },
-    textColor: {
-      type: 'string',
-      description: '文字颜色，支持纯色或渐变对象（结构同 fill），如 {"type":"linear","stops":["#FF4B4B","#FEB027"]}'
-    }
-  }
-
-  const polygonProps: Record<string, ToolProperty> = {
-    ...shapeProps,
-    sides: { type: 'number', description: '边数（≥3）：3 三角形、4 四边形、5 五边形' },
-    startAngle: { type: 'number', description: '起始角度偏移（度，-180~180），控制图形朝向' }
-  }
-
-  const starProps: Record<string, ToolProperty> = {
-    ...shapeProps,
-    corners: { type: 'number', description: '角数（≥3）：5 五角星' },
-    innerRadius: { type: 'number', description: '内半径比例（0~1，默认 0.382），控制凹陷程度' },
-    startAngle: { type: 'number', description: '起始角度偏移（度，-180~180）' }
-  }
-
-  const pathProps: Record<string, ToolProperty> = {
-    x: shapeProps.x,
-    y: shapeProps.y,
-    rotation: shapeProps.rotation,
-    opacity: shapeProps.opacity,
-    path: { type: 'string', description: 'SVG 路径数据，如 M10 20 L60 20 L60 60 Z' },
-    fill: shapeProps.fill,
-    stroke: shapeProps.stroke,
-    strokeWidth: shapeProps.strokeWidth,
-    strokeCap: shapeProps.strokeCap,
-    dashPattern: shapeProps.dashPattern,
-    shadow: shapeProps.shadow,
-    innerShadow: shapeProps.innerShadow,
-    blendMode: shapeProps.blendMode,
-    blur: shapeProps.blur
-  }
-
-  const assetProps: Record<string, ToolProperty> = {
-    x: shapeProps.x,
-    y: shapeProps.y,
-    width: { type: 'number', description: '宽，缺省按资源原始尺寸' },
-    height: { type: 'number', description: '高，缺省按资源原始尺寸' },
-    rotation: shapeProps.rotation,
-    opacity: shapeProps.opacity
-  }
-
-  const imageProps: Record<string, ToolProperty> = {
-    ...assetProps,
-    src: {
-      type: 'string',
-      description: '图片源：沙盒内文件路径（自动转 file:// URL）或 http(s)/data URL'
-    }
-  }
-
-  const svgProps: Record<string, ToolProperty> = {
-    ...assetProps,
-    src: { type: 'string', description: 'SVG 文件路径或 http(s) URL（与 svg 二选一）' },
-    svg: { type: 'string', description: '内联 SVG 字符串（与 src 二选一）' }
-  }
-
-  const idProp: Record<string, ToolProperty> = {
-    id: { type: 'string', description: '目标图形的 id（用 canvas_get_shapes 获取）' }
-  }
-
-  const buildShapeTool = (
-    name: string,
-    label: string,
-    shapeType: CanvasShapeType,
-    props: Record<string, ToolProperty>,
-    required: string[],
-    transform?: (input: Record<string, unknown>) => CanvasShapeInput
-  ): ToolFunction => ({
-    name,
-    label,
-    description: `${label}：向当前画布新增一个 ${shapeType} 图形，返回新图形（含 id）`,
-    parameters: { type: 'object', properties: props, required },
-    internal: true,
-    risk: 'sensitive',
-    handler: async (...params: unknown[]) => {
-      const raw = params[0] as Record<string, unknown>
-      const input = transform ? transform(raw) : (raw as unknown as CanvasShapeInput)
-      return store().addShape(shapeType, input)
-    }
-  })
-
-  const buildUpdateTool = (
-    name: string,
-    label: string,
-    props: Record<string, ToolProperty>,
-    transform?: (patch: Record<string, unknown>) => CanvasShapeInput
-  ): ToolFunction => ({
-    name,
-    label,
-    description: `${label}：按 id 更新当前画布中的指定图形，返回更新后的图形`,
-    parameters: {
-      type: 'object',
-      properties: { ...idProp, ...props },
-      required: ['id']
-    },
-    internal: true,
-    risk: 'sensitive',
-    handler: async (...params: unknown[]) => {
-      const { id, ...patch } = params[0] as { id: string } & Record<string, unknown>
-      const normalized = (
-        transform ? transform(patch) : (patch as Partial<CanvasShapeInput>)
-      ) as Partial<CanvasShapeInput>
-      const updated = await store().updateShape(id, normalized)
-      if (!updated) return { error: `未找到 id 为 ${id} 的图形` }
-      return updated
-    }
-  })
 
   return [
     {
@@ -216,7 +38,7 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       description: '读取指定版本画布文件的完整 JSON 内容，供分析设计，不改变当前画布',
       parameters: {
         type: 'object',
-        properties: { version: { type: 'number', description: '画布版本号（canvas-list 获取）' } },
+        properties: { version: { type: 'number', description: '画布版本号（canvas_list 获取）' } },
         required: ['version']
       },
       internal: true,
@@ -224,43 +46,49 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       handler: async (...params: unknown[]) => {
         const { version } = params[0] as { version: number }
         const content = await store().read(version)
-        if (content === null) return { error: `未找到画布 canvas-${version}` }
+        if (content === null) return { error: `未找到画布 canvas-${version}（可能不是 schema 2 模型）` }
         return { content }
       }
     },
     {
       name: 'canvas_create',
       label: '创建画布',
-      description: '创建新画布（自动分配 canvas-{下一个版本号}）并设为当前画布，返回画布文档',
+      description:
+        '创建新画布（自动分配 canvas-{下一个版本号}）并设为当前画布，返回画布文档。常用比例：海报 3:4 1080×1440、电影海报 2:3、专辑封面 1:1 1000×1000、公众号封面 2.35:1 900×383、小红书 3:4 1242×1660、知识卡片 4:3',
       parameters: {
         type: 'object',
         properties: {
           title: { type: 'string', description: '画布标题（可选，用于侧边栏辨识）' },
           width: { type: 'number', description: '画布宽度' },
           height: { type: 'number', description: '画布高度' },
-          background: { type: 'string', description: '背景颜色，默认 #ffffff' }
+          background: { type: 'string', description: '背景颜色，默认 #ffffff；深色作品建议直接给深色背景' },
+          palette: {
+            type: 'object',
+            description: '可选：初始调色板，token名 → 颜色，如 {"主色":"#E63946","中性色":"#1D3557"}'
+          }
         },
         required: ['width', 'height']
       },
       internal: true,
       risk: 'safe',
       handler: async (...params: unknown[]) => {
-        const { title, width, height, background } = params[0] as {
+        const { title, width, height, background, palette } = params[0] as {
           title?: string
           width: number
           height: number
           background?: string
+          palette?: Record<string, string>
         }
-        return store().create({ title, width, height, background })
+        return store().create({ title, width, height, background, palette })
       }
     },
     {
       name: 'canvas_open',
       label: '打开画布',
-      description: '打开指定版本画布为当前画布，后续 add/update 等操作都作用于它',
+      description: '打开指定版本画布为当前画布，后续 batch_edit 等操作都作用于它',
       parameters: {
         type: 'object',
-        properties: { version: { type: 'number', description: '画布版本号（canvas-list 获取）' } },
+        properties: { version: { type: 'number', description: '画布版本号（canvas_list 获取）' } },
         required: ['version']
       },
       internal: true,
@@ -268,7 +96,7 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       handler: async (...params: unknown[]) => {
         const { version } = params[0] as { version: number }
         const doc = await store().open(version)
-        if (!doc) return { error: `未找到画布 canvas-${version}` }
+        if (!doc) return { error: `未找到画布 canvas-${version}（可能不是 schema 2 模型）` }
         return doc
       }
     },
@@ -278,7 +106,7 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       description: '删除指定版本画布文件',
       parameters: {
         type: 'object',
-        properties: { version: { type: 'number', description: '画布版本号（canvas-list 获取）' } },
+        properties: { version: { type: 'number', description: '画布版本号（canvas_list 获取）' } },
         required: ['version']
       },
       internal: true,
@@ -302,7 +130,7 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       name: 'canvas_export',
       label: '导出画布图片',
       description:
-        '将当前画布（或指定版本）渲染为 PNG 图片并保存到本地，返回保存路径。支持读图的模型可引用返回的 path 查看设计效果',
+        '将当前画布（或指定版本）渲染为 PNG 图片并保存到本地，返回保存路径。缺省导出整张画布（尺寸 = 画布 doc 宽高，越界元素自动裁剪）；若设计内容在画布内的某个容器 / 卡片中，用 node 或 region 指定导出区域，保证导出尺寸与设计尺寸一致。设计过程中用此工具查看效果并迭代',
       parameters: {
         type: 'object',
         properties: {
@@ -310,13 +138,32 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
           path: {
             type: 'string',
             description: 'PNG 保存路径（缺省保存到沙盒 outputs/canvas-{version}.png；父目录不存在会自动创建）'
+          },
+          node: {
+            type: 'string',
+            description: '导出指定节点的包围盒（含全部子树），用于「设计在画布内某容器 / 卡片」时按设计区域导出，尺寸 = 该节点包围盒'
+          },
+          region: {
+            type: 'object',
+            description: '导出指定矩形区域（画布绝对坐标），用于精确控制导出范围；与 node 二选一',
+            properties: {
+              x: { type: 'number', description: '区域左上角 x（画布绝对坐标）' },
+              y: { type: 'number', description: '区域左上角 y（画布绝对坐标）' },
+              width: { type: 'number', description: '区域宽度' },
+              height: { type: 'number', description: '区域高度' }
+            }
           }
         }
       },
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const { version, path } = params[0] as { version?: number; path?: string }
+        const { version, path, node, region } = params[0] as {
+          version?: number
+          path?: string
+          node?: string
+          region?: CanvasExportRegion
+        }
         const sandboxDir = ctx.getSandboxDir() || ctxError()
         let doc: CanvasDoc | null
         if (version != null) {
@@ -329,129 +176,138 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
         if (!doc) {
           return { error: '当前没有打开的画布，请先 canvas_create 或 canvas_open，或指定 version' }
         }
+        // 解析导出区域：node → region → 整张画布；node/region 均缺省时严格按画布尺寸导出（裁剪越界）
+        const defaultRegion = (): CanvasExportRegion => ({ x: 0, y: 0, width: doc.width, height: doc.height })
+        const nodeBounds = node != null ? computeNodeBounds(doc, node) : null
+        if (node != null && !nodeBounds) {
+          return { error: `未找到节点 ${node}，请用 canvas_get_nodes 获取节点 id` }
+        }
+        const exportRegion: CanvasExportRegion =
+          nodeBounds ?? (region != null ? normalizeRegion(region) : defaultRegion())
+        const note =
+          nodeBounds != null
+            ? `已按节点「${node}」包围盒导出`
+            : region != null
+              ? '已按指定区域导出'
+              : '导出尺寸 = 画布尺寸（越界元素已裁剪）'
         const target =
           path || window.preload.path.join(buildCanvasOutputsDir(sandboxDir), `canvas-${doc.version}.png`)
-        const blob = await exportCanvasPng(doc)
+        const blob = await exportCanvasPng(doc, exportRegion)
         await window.preload.fs.mkdir(window.preload.path.dirname(target), true)
         await window.preload.fs.writeBinaryFile(target, await blob.arrayBuffer())
-        return { success: true, path: target, width: doc.width, height: doc.height }
+        return {
+          success: true,
+          path: target,
+          width: exportRegion.width,
+          height: exportRegion.height,
+          note
+        }
       }
     },
     {
-      name: 'canvas_get_shapes',
-      label: '获取当前画布图形',
-      description: '返回当前画布全部图形（含每个图形的 id），供更新 / 移动 / 删除前查看',
-      parameters: { type: 'object', properties: {} },
+      name: 'canvas_batch_edit',
+      label: '批量编辑画布',
+      description:
+        '核心编辑工具：一次批量执行多个图层操作（insert / copy / update / move / delete / image），≤25 个/批，任一步失败整体回滚。构建顺序建议 背景→主视觉→装饰→文字。详见 canvas_guidelines("operations")',
+      parameters: {
+        type: 'object',
+        properties: {
+          operations: {
+            type: 'array',
+            items: batchOpSchema,
+            description: '按顺序执行的操作列表（同批内可用 as 绑定名引用刚创建的节点）'
+          }
+        },
+        required: ['operations']
+      },
+      internal: true,
+      risk: 'sensitive',
+      handler: async (...params: unknown[]) => {
+        const { operations } = params[0] as { operations?: CanvasBatchOp[] }
+        if (!operations?.length) return { error: 'operations 不能为空' }
+        return store().batchEdit(operations)
+      }
+    },
+    {
+      name: 'canvas_get_nodes',
+      label: '获取图层树',
+      description:
+        '返回当前画布完整图层树（含每个节点 id、类型、名称、位置、尺寸、填充与调色板），供分析 / 更新 / 移动 / 删除前查看',
+      parameters: {
+        type: 'object',
+        properties: {
+          ids: {
+            type: 'array',
+            items: { type: 'string', description: '节点 id' },
+            description: '可选：只返回指定 id 的节点（缺省返回全部）'
+          }
+        }
+      },
       internal: true,
       risk: 'safe',
-      handler: async () => {
-        const shapes = store().getShapes()
-        if (shapes.length === 0) return { shapes: [], note: '当前画布暂无图形' }
-        return { shapes }
+      handler: async (...params: unknown[]) => {
+        const { ids } = params[0] as { ids?: string[] }
+        const doc = store().current.value
+        if (!doc) return { error: '当前没有打开的画布，请先 canvas_create 或 canvas_open' }
+        let nodes: CanvasNode[] = doc.nodes
+        if (ids?.length) {
+          const set = new Set(ids)
+          const pick = (list: CanvasNode[]): CanvasNode[] =>
+            list
+              .filter((n) => set.has(n.id))
+              .map((n) => ({ ...n, children: n.children ? pick(n.children) : undefined }))
+          nodes = pick(doc.nodes)
+        }
+        if (nodes.length === 0) return { nodes: [], palette: doc.palette ?? {}, note: '当前画布暂无图层' }
+        return { nodes, palette: doc.palette ?? {} }
       }
     },
-    buildShapeTool('canvas_add_rect', '新增矩形', 'rect', shapeProps, [
-      'x',
-      'y',
-      'width',
-      'height'
-    ]),
-    buildUpdateTool('canvas_update_rect', '更新矩形', shapeProps),
-    buildShapeTool('canvas_add_text', '新增文本', 'text', textProps, ['x', 'y', 'text']),
-    buildUpdateTool('canvas_update_text', '更新文本', textProps),
-    buildShapeTool('canvas_add_ellipse', '新增椭圆', 'ellipse', shapeProps, [
-      'x',
-      'y',
-      'width',
-      'height'
-    ]),
-    buildUpdateTool('canvas_update_ellipse', '更新椭圆', shapeProps),
     {
-      name: 'canvas_add_line',
-      label: '新增线条',
-      description: '向当前画布新增一条折线（points 为 [x1,y1,x2,y2,...] 扁平坐标数组）',
+      name: 'canvas_set_palette',
+      label: '设置调色板',
+      description:
+        '定义当前画布的调色板（3-5 个颜色 token），如 {"主色":"#E63946","辅色":"#F1FAEE","中性色":"#1D3557","强调色":"#A8DADC"}。之后所有 fill/stroke 用 $token名 引用，保证全页色彩和谐；同名 token 会覆盖',
       parameters: {
         type: 'object',
         properties: {
-          ...shapeProps,
-          points: { type: 'array', description: '折线顶点扁平坐标数组 [x1,y1,x2,y2,...]' }
+          palette: {
+            type: 'object',
+            description: 'token名 → 颜色（#RRGGBB / rgba() / 颜色名）'
+          }
         },
-        required: ['points']
+        required: ['palette']
       },
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const input = params[0] as CanvasShapeInput
-        return store().addShape('line', input)
+        const { palette } = params[0] as { palette: Record<string, string> }
+        return store().setPalette(palette)
       }
     },
-    buildUpdateTool('canvas_update_line', '更新线条', {
-      points: { type: 'array', description: '折线顶点扁平坐标数组 [x1,y1,x2,y2,...]' },
-      stroke: { type: 'string', description: '线条颜色' },
-      strokeWidth: { type: 'number', description: '线条宽度' },
-      opacity: { type: 'number', description: '不透明度 0-1' },
-      rotation: { type: 'number', description: '旋转角度（度）' }
-    }),
-    buildShapeTool('canvas_add_polygon', '新增多边形', 'polygon', polygonProps, [
-      'x',
-      'y',
-      'width',
-      'height',
-      'sides'
-    ]),
-    buildUpdateTool('canvas_update_polygon', '更新多边形', polygonProps),
-    buildShapeTool('canvas_add_star', '新增星形', 'star', starProps, [
-      'x',
-      'y',
-      'width',
-      'height',
-      'corners'
-    ]),
-    buildUpdateTool('canvas_update_star', '更新星形', starProps),
-    buildShapeTool('canvas_add_path', '新增路径', 'path', pathProps, ['x', 'y', 'path']),
-    buildUpdateTool('canvas_update_path', '更新路径', pathProps),
-    buildShapeTool('canvas_add_image', '新增图片', 'image', imageProps, ['x', 'y', 'src'], toAssetInput(ctx)),
-    buildUpdateTool('canvas_update_image', '更新图片', imageProps, toAssetInput(ctx)),
-    buildShapeTool('canvas_add_svg', '新增 SVG', 'svg', svgProps, ['x', 'y'], toAssetInput(ctx)),
-    buildUpdateTool('canvas_update_svg', '更新 SVG', svgProps, toAssetInput(ctx)),
     {
-      name: 'canvas_move_shape',
-      label: '移动图形',
-      description: '按 id 相对移动当前画布中的指定图形（dx/dy 为相对位移量）',
+      name: 'canvas_guidelines',
+      label: '获取设计参考',
+      description:
+        '获取内置设计参考（按需加载，避免全部塞进提示词）。通用：style-guide 反 AI 俗套 / composition 构图 / typography 字体排版 / operations 批量编辑与节点速查 / workflow 端到端工作流；场景：poster 海报 / book-cover 书籍封面 / album-cover 专辑封面 / social-media 公众号封面与小红书配图 / knowledge-card 读书笔记与知识卡片。做某类作品前先读对应场景指南',
       parameters: {
         type: 'object',
         properties: {
-          ...idProp,
-          dx: { type: 'number', description: 'x 方向位移（正数向右）' },
-          dy: { type: 'number', description: 'y 方向位移（正数向下）' }
+          topic: {
+            type: 'string',
+            description: `style-guide / composition / typography / operations / workflow / poster / book-cover / album-cover / social-media / knowledge-card（${CANVAS_GUIDELINE_TOPICS.join(' / ')}）`
+          }
         },
-        required: ['id', 'dx', 'dy']
+        required: ['topic']
       },
       internal: true,
-      risk: 'sensitive',
+      risk: 'safe',
       handler: async (...params: unknown[]) => {
-        const { id, dx, dy } = params[0] as { id: string; dx: number; dy: number }
-        const moved = await store().moveShape(id, { dx, dy })
-        if (!moved) return { error: `未找到 id 为 ${id} 的图形` }
-        return moved
-      }
-    },
-    {
-      name: 'canvas_remove_shape',
-      label: '删除图形',
-      description: '按 id 从当前画布删除指定图形',
-      parameters: {
-        type: 'object',
-        properties: idProp,
-        required: ['id']
-      },
-      internal: true,
-      risk: 'sensitive',
-      handler: async (...params: unknown[]) => {
-        const { id } = params[0] as { id: string }
-        const removed = await store().removeShape(id)
-        if (!removed) return { error: `未找到 id 为 ${id} 的图形` }
-        return { success: true }
+        const { topic } = params[0] as { topic: string }
+        const content = CANVAS_GUIDELINES[topic as keyof typeof CANVAS_GUIDELINES]
+        if (!content) {
+          return { error: `未知 topic：${topic}，可用：${CANVAS_GUIDELINE_TOPICS.join(' / ')}` }
+        }
+        return { topic, content }
       }
     }
   ]
@@ -466,27 +322,10 @@ export const CANVAS_TOOL_NAMES = [
   'canvas_delete',
   'canvas_save',
   'canvas_export',
-  'canvas_get_shapes',
-  'canvas_add_rect',
-  'canvas_update_rect',
-  'canvas_add_text',
-  'canvas_update_text',
-  'canvas_add_ellipse',
-  'canvas_update_ellipse',
-  'canvas_add_line',
-  'canvas_update_line',
-  'canvas_add_polygon',
-  'canvas_update_polygon',
-  'canvas_add_star',
-  'canvas_update_star',
-  'canvas_add_path',
-  'canvas_update_path',
-  'canvas_add_image',
-  'canvas_update_image',
-  'canvas_add_svg',
-  'canvas_update_svg',
-  'canvas_move_shape',
-  'canvas_remove_shape'
+  'canvas_batch_edit',
+  'canvas_get_nodes',
+  'canvas_set_palette',
+  'canvas_guidelines'
 ] as const
 
 /** 从画布文件名解析版本号（供测试 / 校验复用） */
@@ -494,7 +333,7 @@ export { parseCanvasVersion }
 
 /**
  * 画布工具安全策略：canvas_* 仅读写当前聊天自己的 outputs/ 目录（可信区），
- * 默认模式（mode=0）下直接放行，避免每次画一个图形都挂起等待审批（曾导致卡死）。
+ * 默认模式（mode=0）下直接放行，避免每次编辑都挂起等待审批（曾导致卡死）。
  * 计划模式（mode=1）仍按模式策略 deny（画布操作属写入类），行为保持一致。
  * 注册在 canvasTools 模块内，保证工具被引用即完成注册（不依赖 index 副作用）。
  *

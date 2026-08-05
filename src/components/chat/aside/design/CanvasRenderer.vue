@@ -9,9 +9,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { App, Rect } from 'leafer-editor'
+import { App } from 'leafer-editor'
 import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
-import { scaleShape } from '@/modules/tool/components/canvas/canvasRender'
+import { buildDocElements } from '@/modules/tool/components/canvas/canvasRender'
 import type { CanvasDoc } from '@/modules/tool/components/canvas/canvasTypes'
 
 const props = defineProps<{
@@ -92,19 +92,9 @@ const render = () => {
   const scale = fitScale(doc)
   const offsetX = (width - doc.width * scale) / 2
   const offsetY = (height - doc.height * scale) / 2
-  // 背景层：铺满画布的矩形，保证浅色画布与预览底色一致
-  app.tree.add(
-    new Rect({
-      x: offsetX,
-      y: offsetY,
-      width: doc.width * scale,
-      height: doc.height * scale,
-      fill: doc.background || '#ffffff'
-    })
-  )
-  for (const shape of doc.shapes) {
-    app.tree.add(scaleShape(shape, scale, offsetX, offsetY))
-  }
+  // 背景 + 全部根图层统一包在可缩放根 Group 中（buildDocElements 返回 [rootGroup]）
+  const [root] = buildDocElements(doc, scale, offsetX, offsetY)
+  if (root) app.tree.add(root)
   if (needReset) resetView()
 }
 

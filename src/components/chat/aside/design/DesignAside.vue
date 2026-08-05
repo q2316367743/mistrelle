@@ -34,6 +34,12 @@
           </template>
         </t-button>
         <t-dropdown-menu>
+          <t-dropdown-item value="folder">
+            <template #prefix-icon>
+              <folder-open-icon />
+            </template>
+            文件夹
+          </t-dropdown-item>
           <t-dropdown-item value="copy">
             <template #prefix-icon>
               <copy-icon />
@@ -56,7 +62,14 @@
 import dayjs from 'dayjs'
 import { MessageUtil } from '@/utils/modal'
 import { blobToBase64 } from '@/utils/file/CovertUtil'
-import { AddIcon, CopyIcon, DownloadIcon, MoreIcon, RefreshIcon } from 'tdesign-icons-vue-next'
+import {
+  AddIcon,
+  CopyIcon,
+  DownloadIcon,
+  FolderOpenIcon,
+  MoreIcon,
+  RefreshIcon
+} from 'tdesign-icons-vue-next'
 import type { DropdownProps } from 'tdesign-vue-next'
 import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
 import { exportCanvasPng } from '@/modules/tool/components/canvas/canvasRender'
@@ -182,6 +195,9 @@ const handleDownload = async () => {
 const handleAction: DropdownProps['onClick'] = (data) => {
   if (data.value === 'copy') void handleCopy()
   else if (data.value === 'download') void handleDownload()
+  else if (data.value === 'folder') {
+    window.preload.inject.shell.showItemInFolder(props.sandbox!)
+  }
 }
 </script>
 <style scoped lang="less">

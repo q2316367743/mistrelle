@@ -1,4 +1,7 @@
 export * from './canvasTypes'
 export * from './CanvasStore'
+export * from './canvasLayout'
+export * from './canvasRender'
 export * from './canvasTools'
 export * from './canvasPrompt'
+export * from './guidelines'
