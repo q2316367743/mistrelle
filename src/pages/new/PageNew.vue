@@ -8,27 +8,44 @@
       <div class="page-new__types">
         <segmented-control v-model="type" :options="typeOptions" />
         <div class="page-new__type-desc">{{ currentOption?.description }}</div>
+        <template v-if="type === 'writing'">
+          <segmented-control v-model="scene" :options="sceneOptions" class="page-new__scene" />
+          <div class="page-new__type-desc">{{ currentScene?.description }}</div>
+        </template>
       </div>
       <div class="page-new__sender">
-        <l-chat-sender :initial-model="model" :initial-type="type" @send="handleSend" />
+        <l-chat-sender
+          :initial-model="model"
+          :initial-type="type"
+          :initial-writing-scene="scene"
+          @send="handleSend"
+        />
       </div>
     </div>
   </page-layout>
 </template>
 <script lang="ts" setup>
 import { useAiChatStore, useSettingDefaultStore } from '@/store'
-import type { ChatRequestParams, ChatType } from '@/modules/chat'
+import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import type { Component } from 'vue'
-import { WorkIcon, EditIcon, PaletteIcon, CodeIcon } from 'tdesign-icons-vue-next'
+import { WorkIcon, EditIcon, PaletteIcon, CodeIcon, FileMarkdownIcon } from 'tdesign-icons-vue-next'
 
 const router = useRouter()
 
 const model = ref('')
 const type = ref<ChatType>('office')
+const scene = ref<WritingScene>('free')
 
 interface TypeOption {
   value: ChatType
+  label: string
+  description: string
+  icon: Component
+}
+
+interface SceneOption {
+  value: WritingScene
   label: string
   description: string
   icon: Component
@@ -40,7 +57,13 @@ const typeOptions: TypeOption[] = [
   { value: 'design', label: '设计创意', description: 'Leafer 画布，AI 直接绘制设计稿', icon: PaletteIcon },
 ]
 
+const sceneOptions: SceneOption[] = [
+  { value: 'free', label: '自由写作', description: '随笔 / 文档 / 长文创作，文档树 + 编辑器', icon: EditIcon },
+  { value: 'article', label: '文章创作', description: '自媒体文章项目管理，含配图（设计子 Agent）', icon: FileMarkdownIcon },
+]
+
 const currentOption = computed(() => typeOptions.find((option) => option.value === type.value))
+const currentScene = computed(() => sceneOptions.find((option) => option.value === scene.value))
 
 const handleSend = async (message: ChatRequestParams) => {
   if (!message.message.model) {

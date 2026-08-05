@@ -126,8 +126,8 @@ export const runSingleTool = async (
     }
     // 解析并校验子 Agent 类型（按当前聊天类型能力矩阵 SUB_AGENT_ALLOW，缺省 research）
     const resolved = resolveSubAgentType(args.type, policyContext.chatType ?? 'office')
-    if (typeof resolved === 'string') {
-      applyResult(messages, assistantMessageId, call, `错误：spawn_agent ${resolved}`)
+    if (!resolved.ok) {
+      applyResult(messages, assistantMessageId, call, `错误：spawn_agent ${resolved.message}`)
       return
     }
     const { model, provide, reasoning_effort } = findLastUserModel(messages)
@@ -149,7 +149,7 @@ export const runSingleTool = async (
       model,
       provide,
       reasoningEffort: reasoning_effort,
-      subAgentType: resolved,
+      subAgentType: resolved.type,
       // 主 Agent 终止时级联终止子 Agent
       parentSignal: policyContext.abortSignal
     })

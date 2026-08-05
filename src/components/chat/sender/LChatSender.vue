@@ -92,7 +92,7 @@ import {
   type ToolSuggestionItem
 } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
-import type { ChatRequestParams, ChatType } from '@/modules/chat'
+import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
 import { AiChatMode } from '@/entity'
 import { LockOffIcon, TaskIcon } from 'tdesign-icons-vue-next'
@@ -109,6 +109,7 @@ const props = withDefaults(
     initialAgentId?: string
     initialMode?: AiChatMode
     initialType?: ChatType
+    initialWritingScene?: WritingScene
   }>(),
   {
     initialInput: '',
@@ -119,7 +120,8 @@ const props = withDefaults(
     sandboxDir: '',
     initialWorkspace: '',
     initialMode: 0,
-    initialType: 'office'
+    initialType: 'office',
+    initialWritingScene: 'free'
   }
 )
 const emit = defineEmits<{
@@ -133,12 +135,21 @@ const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaul
 const agentId = ref(props.initialAgentId || '')
 const mode = ref<AiChatMode>(props.initialMode)
 const type = ref<ChatType>(props.initialType)
+const writingScene = ref<WritingScene>(props.initialWritingScene)
 const workspaceRef = ref(props.initialWorkspace || '')
 // 新建对话页类型选择在 sender 挂载后才确定，需跟随 prop 变化（类型创建后锁定，运行期不变化）
 watch(
   () => props.initialType,
   (val) => {
     type.value = val ?? 'office'
+  },
+  { immediate: true }
+)
+// 写作子场景（writing 类型内部分层），同样跟随 prop 变化，创建后锁定
+watch(
+  () => props.initialWritingScene,
+  (val) => {
+    writingScene.value = val ?? 'free'
   },
   { immediate: true }
 )
@@ -192,7 +203,8 @@ const buildUserMessage = (): ChatRequestParams | null => {
     mode: mode.value,
     agentId: agentId.value,
     workspace: workspaceRef.value,
-    type: type.value
+    type: type.value,
+    writingScene: writingScene.value
   }
 }
 

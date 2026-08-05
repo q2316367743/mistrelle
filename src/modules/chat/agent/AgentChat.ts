@@ -16,6 +16,8 @@ import { buildAiAgentPrompt } from '@/entity/ai'
 import type { AiChatMode } from '@/entity'
 import type { ChatType } from '@/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG } from '@/modules/chat/chatType'
+import type { WritingScene } from '@/modules/chat/writingScene'
+import { WRITING_SCENE_CONFIG } from '@/modules/chat/writingScene'
 import { defaultTools, isShellExecTool, toolMap } from '@/modules/tool'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
 import { SUB_AGENT_ALLOW } from '@/modules/subagent/types'
@@ -95,6 +97,8 @@ export class ToolChat {
   private isSubAgent = false
   /** 子 Agent 能力场景（design 型子 Agent 为 'design'，用于注入画布工具）；research 型子 Agent / 主 Agent 缺省 */
   private sceneType?: ChatType
+  /** 写作子场景（writing 类型内部分层，新建对话时选定，创建后锁定；缺省 free） */
+  private writingScene: WritingScene = 'free'
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
   private workspaceSettingsCache: { path: string; content: string } | null = null
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS */
@@ -175,7 +179,10 @@ export class ToolChat {
         ? CHAT_TYPE_CONFIG[this.sceneType].tools({ getSandboxDir: () => this.sandboxDir })
         : []
     }
-    return CHAT_TYPE_CONFIG[this.chatType].tools({ getSandboxDir: () => this.sandboxDir })
+    return CHAT_TYPE_CONFIG[this.chatType].tools({
+      getSandboxDir: () => this.sandboxDir,
+      writingScene: this.writingScene
+    })
   }
 
   private buildTools(functions: ToolFunction[]): ChatCompletionTool[] {
@@ -199,6 +206,18 @@ export class ToolChat {
       return functions.filter((fn) => fn.risk === 'safe' || isShellExecTool(fn))
     }
     return functions
+  }
+
+  /**
+   * 聊天类型固定提示词 + writing 子场景提示词拼接。
+   * 类型与场景均在创建后锁定，组合稳定 → 进入稳定 system 前缀不影响 prompt 缓存。
+   */
+  private buildTypePrompt(): string {
+    if (this.isSubAgent) return ''
+    const base = CHAT_TYPE_CONFIG[this.chatType].prompt
+    if (this.chatType !== 'writing') return base
+    const scenePrompt = WRITING_SCENE_CONFIG[this.writingScene].prompt
+    return scenePrompt ? [base, scenePrompt].filter(Boolean).join('\n\n') : base
   }
 
   private buildWorkspacePrompt(): string {
@@ -306,8 +325,8 @@ export class ToolChat {
       buildTodoPrompt(),
       workspacePrompt,
       workspaceSettingsPrompt,
-      // 聊天类型固定提示词（类型创建后不变 → 前缀稳定可缓存；子 Agent 只读，无需类型指导）
-      this.isSubAgent ? '' : CHAT_TYPE_CONFIG[this.chatType].prompt,
+      // 聊天类型固定提示词 + writing 子场景提示词（类型与场景创建后锁定 → 前缀稳定可缓存；子 Agent 只读，无需类型指导）
+      this.buildTypePrompt(),
       // 子 Agent 使用指导仅主 Agent 注入（子 Agent 的 spawn_agent 已被过滤，指导无意义且会诱导嵌套）
       this.isSubAgent ? '' : this.buildSubAgentGuidancePrompt()
     ]
@@ -714,6 +733,16 @@ export class ToolChat {
   /** 获取当前聊天类型 */
   getType(): ChatType {
     return this.chatType
+  }
+
+  /** 设置写作子场景（新建对话时选定，创建后锁定；仅 writing 类型生效） */
+  setWritingScene(scene: WritingScene): void {
+    this.writingScene = scene
+  }
+
+  /** 获取当前写作子场景 */
+  getWritingScene(): WritingScene {
+    return this.writingScene
   }
 
   init(initialMessages?: ChatMessage[]): void {

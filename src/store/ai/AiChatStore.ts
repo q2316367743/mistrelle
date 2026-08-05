@@ -70,8 +70,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     state.value.push(item)
     // 保存索引
     await aiChatIndexSave(state.value)
-    // 先创建沙盒目录（含 message/ 子目录），再写聊天内容——新路径 {id}/message/main.json 的父目录需先存在
-    await aiChatSandbox(id)
+    // 先创建沙盒目录（含 message/ 子目录，及 writing/article 场景的文章项目目录），再写聊天内容——新路径 {id}/message/main.json 的父目录需先存在
+    await aiChatSandbox(id, { type: params.type, writingScene: params.writingScene })
     // 保存聊天内容（含草稿）
     await aiChatContentSet(buildChatMainPath(id), {
       updatedTime: now,
@@ -80,7 +80,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       workspace: workspace || '',
       messages: [],
       mode: params.mode,
-      type: params.type
+      type: params.type,
+      writingScene: params.writingScene
     })
 
     // 生成聊天消息

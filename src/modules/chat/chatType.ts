@@ -1,6 +1,7 @@
 import { DESIGN_CANVAS_PROMPT } from '@/modules/tool/components/canvas/canvasPrompt'
 import { createCanvasTools } from '@/modules/tool/components/canvas/canvasTools'
 import type { ToolFunction } from '@/domain'
+import { WRITING_SCENE_CONFIG, type WritingScene } from '@/modules/chat/writingScene'
 
 /**
  * 场景级工具工厂上下文：结构上等同 CanvasToolContext，但命名中性，与具体工具解耦。
@@ -8,6 +9,8 @@ import type { ToolFunction } from '@/domain'
  */
 export interface ChatTypeToolContext {
   getSandboxDir: () => string
+  /** writing 类型下的子场景（free / article），仅 writing 场景工具使用 */
+  writingScene?: WritingScene
 }
 
 /**
@@ -48,6 +51,7 @@ export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
   },
   writing: {
     label: '写作',
+    // 写作通用约定（free/article 场景共用基底）；子场景专属提示词在 WRITING_SCENE_CONFIG 按场景维护
     prompt: [
       '## 写作模式',
       '你是一名专业写作助手。你的文档产出统一写入用户工作空间（workspace）或沙盒 outputs/ 目录下的 .md 文件。',
@@ -56,7 +60,7 @@ export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
       '- 每次写作完成后，告知用户文档的完整路径',
       '- 文档结构清晰：使用标题层级、列表、引用组织内容'
     ].join('\n'),
-    tools: () => []
+    tools: (ctx) => WRITING_SCENE_CONFIG[ctx.writingScene ?? 'free'].tools(ctx)
   },
   design: {
     label: '设计创意',

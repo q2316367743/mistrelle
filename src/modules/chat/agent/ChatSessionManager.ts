@@ -1,6 +1,6 @@
 import { ref, toRaw } from 'vue'
 import { throttledWatch } from '@vueuse/core'
-import type { ChatRequestParams, ChatStatus, ChatType } from '@/modules/chat'
+import type { ChatRequestParams, ChatStatus, ChatType, WritingScene } from '@/modules/chat'
 import type { AiChatMode } from '@/entity/ai'
 import { aiChatContentGet, aiChatContentSet } from '@/modules/chat/service/ChatService'
 import { ToolChat } from './AgentChat'
@@ -26,6 +26,8 @@ export class ChatSession {
   readonly mode = ref<AiChatMode>(0)
   /** 跨挂载存活：聊天类型（新建对话时选定，创建后锁定） */
   readonly type = ref<ChatType>('office')
+  /** 跨挂载存活：写作子场景（writing 类型内部分层，创建后锁定；缺省 free） */
+  readonly writingScene = ref<WritingScene>('free')
   /** 跨挂载存活：当前选中的 agent */
   readonly agentId = ref('')
 
@@ -70,6 +72,9 @@ export class ChatSession {
       // 旧数据无 type 字段时回退 office
       this.type.value = content.type ?? 'office'
       this.chat.setType(this.type.value)
+      // 旧数据无 writingScene 字段时回退 free
+      this.writingScene.value = content.writingScene ?? 'free'
+      this.chat.setWritingScene(this.writingScene.value)
     }
     // 常驻持久化：watcher 在水合之后建立，避免 immediate 用空消息覆盖含 draft 的存储文件
     this.unWatch = throttledWatch(this.chat.messages, () => this.persist(), {
@@ -92,6 +97,10 @@ export class ChatSession {
     if (params.type) {
       this.type.value = params.type
       this.chat.setType(params.type)
+    }
+    if (params.writingScene) {
+      this.writingScene.value = params.writingScene
+      this.chat.setWritingScene(params.writingScene)
     }
     await this.chat.sendUserMessage(params)
   }
@@ -132,6 +141,7 @@ export class ChatSession {
       messages: toRaw(this.chat.messages.value),
       mode: this.mode.value,
       type: this.type.value,
+      writingScene: this.writingScene.value,
       todos: toRaw(this.chat.todos.value)
     })
   }

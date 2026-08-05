@@ -1,6 +1,7 @@
 import { AiChatContent, AiChatItem } from '@/entity/ai'
 import { getChatIndexPath, getChatMessageDir, getDataForWorkspace } from '@/global/Constant'
 import { ChatMessage } from '@/domain'
+import type { ChatType, WritingScene } from '@/modules/chat'
 
 let chatIndexPath: string | undefined = undefined
 
@@ -37,8 +38,16 @@ export const aiChatContentSet = async (path: string, content: AiChatContent) => 
   await window.preload.fs.writeTextFile(path, JSON.stringify(content))
 }
 
+/** 沙盒目录创建选项：按聊天类型 / 写作子场景预建专属目录结构 */
+export interface ChatSandboxOptions {
+  /** 聊天类型：writing 场景额外预建文章项目目录 */
+  type?: ChatType
+  /** 写作子场景：article 时预建 articles/{drafts,assets} */
+  writingScene?: WritingScene
+}
+
 // 创建此次聊天的沙盒目录（含 message/ 子目录）
-export const aiChatSandbox = async (id: string) => {
+export const aiChatSandbox = async (id: string, options: ChatSandboxOptions = {}) => {
   const folder = window.preload.path.join(getDataForWorkspace(), id)
   await window.preload.fs.mkdir(folder, true)
   const outputs = window.preload.path.join(folder, 'outputs')
@@ -51,6 +60,15 @@ export const aiChatSandbox = async (id: string) => {
     window.preload.fs.mkdir(tmp),
     window.preload.fs.mkdir(message)
   ])
+  // writing / article 场景：预建文章项目目录（drafts 正文 + assets 配图），供 AI 与侧边栏直接使用
+  if (options.type === 'writing' && options.writingScene === 'article') {
+    const articles = window.preload.path.join(outputs, 'articles')
+    await window.preload.fs.mkdir(articles, true)
+    await Promise.all([
+      window.preload.fs.mkdir(window.preload.path.join(articles, 'drafts')),
+      window.preload.fs.mkdir(window.preload.path.join(articles, 'assets'))
+    ])
+  }
 }
 
 export const getSandboxDir = (id: string) => window.preload.path.join(getDataForWorkspace(), id)

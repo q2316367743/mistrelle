@@ -50,13 +50,15 @@ export interface SubAgentResult {
   status: 'completed' | 'error'
 }
 
-/** 类型解析结果：合法返回 SubAgentType，非法返回错误消息（string） */
-export type ResolveSubAgentTypeResult = SubAgentType | string
+/** 类型解析结果：合法返回 { ok: true }，非法返回 { ok: false, message }（判别式联合，避免与 SubAgentType 字符串混淆） */
+export type ResolveSubAgentTypeResult =
+  | { ok: true; type: SubAgentType }
+  | { ok: false; message: string }
 
 /**
  * 解析 spawn_agent 的 type 参数并校验当前聊天类型是否允许。
  * 缺省 / 空值按 research 处理（向后兼容旧行为）。
- * 不合法返回错误消息（string），由调用方直接回填工具结果，避免模型尝试被禁用的能力。
+ * 非法时返回 { ok: false, message }，由调用方直接回填工具结果，避免模型尝试被禁用的能力。
  */
 export const resolveSubAgentType = (
   raw: unknown,
@@ -65,7 +67,10 @@ export const resolveSubAgentType = (
   const requested = raw === undefined || raw === null || raw === '' ? 'research' : raw
   const allowed = SUB_AGENT_ALLOW[chatType]
   if (typeof requested === 'string' && (allowed as readonly string[]).includes(requested)) {
-    return requested as SubAgentType
+    return { ok: true, type: requested as SubAgentType }
   }
-  return `当前聊天类型不支持「${String(requested)}」型子 Agent，可用：${allowed.join(' / ')}`
+  return {
+    ok: false,
+    message: `当前聊天类型不支持「${String(requested)}」型子 Agent，可用：${allowed.join(' / ')}`
+  }
 }
