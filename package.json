@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@imengyu/vue3-context-menu": "^1.5.2",
+    "@sinclair/typebox": "^0.34.52",
     "@tdesign-vue-next/chat": "^0.5.2",
     "@tiptap/core": "^3.29.2",
     "@tiptap/extension-image": "^3.29.2",

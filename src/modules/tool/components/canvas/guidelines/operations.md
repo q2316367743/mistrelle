@@ -1,6 +1,7 @@
 # 批量编辑与节点速查（operations）
 
-> `canvas_batch_edit` 是设计画布的核心工具。每批 ≤ 25 个操作，任一失败整体回滚。
+> `canvas_batch_edit` 是设计画布的核心工具。每批 ≤ 25 个操作，参数经**严格校验**：
+> 单个操作非法（字段名错误 / 类型不匹配 / 取值越界）只让**该操作**失败并返回错误，其余操作照常执行。
 > 本文是画布模型的完整参考：节点 schema、操作语法、易错点、示例。
 
 ## 1. 图层模型
@@ -92,7 +93,8 @@ type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环
 | `fontWeight:"bold"` | `fontWeight:"700"` | 用数字 |
 | `alignItems:"center"` | `primaryAxisAlignItems:"CENTER"` | 布局组内对齐用大写枚举 |
 | 手写节点 `id` | 省略，系统自动生成 | insert 的 node 不要带 id |
-| update 改 `id/type/children` | 忽略并提示 | 这些字段不可 patch |
+| update 改 `id/type/children` | 报错并自纠 | 这些字段不可 patch，改则整个 update 操作失败 |
+| 数值字段传字符串（如 `width:"500"`） | 传数字 `width:500` | width/height 是数字（布局组内才可用 fill_container / hug_contents） |
 | text 不设 fill | 必须设 fill | 文字默认透明不可见 |
 | 内联 `<svg>...</svg>` 字符串做图标 | 用 rect / ellipse / path / line / star 原生节点组合 | 内联 svg 颜色无法用 $token，导出 PNG 可能缺失 |
 | `path` 描边图标不设 `fill:"none"` | 描边图标设 `fill:"none"` + stroke | 否则内部被填成色块 |

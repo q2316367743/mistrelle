@@ -5,6 +5,11 @@ export interface ToolProperty {
   items?: ToolProperty
   properties?: Record<string, ToolProperty>
   required?: string[]
+  enum?: unknown[]
+  const?: unknown
+  anyOf?: ToolProperty[]
+  oneOf?: ToolProperty[]
+  additionalProperties?: boolean
 }
 
 /**

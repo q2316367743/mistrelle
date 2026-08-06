@@ -1,17 +1,13 @@
 import { nanoid } from 'nanoid'
 import { requestDownload } from '@/plugin/http'
+import { validateBatchOp, validateNode, validatePatch } from './canvasSchemas'
 import type {
   CanvasBatchOp,
   CanvasDoc,
-  CanvasEffect,
   CanvasFileInfo,
-  CanvasGradientPaint,
-  CanvasGradientStop,
   CanvasImageKind,
   CanvasNode,
-  CanvasNodeInput,
-  CanvasNodeType,
-  CanvasPaint
+  CanvasNodeInput
 } from './canvasTypes'
 
 /** 画布文件名固定前缀：outputs/canvas-{version}.canvas，自定义后缀便于筛选与渲染 */
@@ -136,7 +132,7 @@ const resolvePathNode = (
   return current
 }
 
-// ─── 输入清洗：拒绝未知字段 / 非法类型，避免 AI 脏数据污染画布 JSON ──────────
+// ─── 输入校验：TypeBox 单一源（canvasSchemas.ts），非法即抛错反馈模型自纠 ──────────
 
 const CANVAS_NODE_TYPES = new Set<string>([
   'group',
@@ -150,199 +146,6 @@ const CANVAS_NODE_TYPES = new Set<string>([
   'image',
   'svg'
 ])
-
-/** 常见别名归一化：ardot 风格 type 自动映射为本模型类型，减少 AI 试错 */
-const NODE_TYPE_ALIASES: Record<string, CanvasNodeType> = {
-  frame: 'group',
-  container: 'group',
-  box: 'group',
-  div: 'group',
-  section: 'group',
-  rectangle: 'rect',
-  circle: 'ellipse',
-  oval: 'ellipse',
-  poly: 'polygon',
-  label: 'text',
-  divider: 'line',
-  img: 'image',
-  photo: 'image',
-  picture: 'image',
-  icon: 'svg'
-}
-
-const LAYOUT_VALUES = new Set(['none', 'horizontal', 'vertical', 'wrap'])
-const ALIGN_PRIMARY = new Set(['MIN', 'CENTER', 'MAX', 'SPACE_BETWEEN', 'SPACE_EVENLY'])
-const ALIGN_CROSS = new Set(['MIN', 'CENTER', 'MAX', 'BASELINE'])
-const TEXT_ALIGN_VALUES = new Set(['left', 'center', 'right'])
-const TEXT_CASE_VALUES = new Set(['none', 'upper', 'lower'])
-const SIZE_KEYWORDS = new Set(['fill_container', 'hug_contents'])
-const POSITIONING_VALUES = new Set(['AUTO', 'ABSOLUTE'])
-const STROKE_CAP_VALUES = new Set(['none', 'round', 'square'])
-const STROKE_JOIN_VALUES = new Set(['miter', 'bevel', 'round'])
-const STROKE_ALIGN_VALUES = new Set(['inside', 'center', 'outside'])
-const EFFECT_TYPES = new Set(['drop-shadow', 'inner-shadow', 'layer-blur', 'background-blur'])
-const GRADIENT_TYPES = new Set(['linear', 'radial', 'angular'])
-
-const toNum = (v: unknown): number | undefined => {
-  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
-  return Number.isFinite(n) ? n : undefined
-}
-
-const toNumArray = (v: unknown): number[] | undefined => {
-  if (!Array.isArray(v)) return undefined
-  const out = v.map(toNum).filter((n): n is number => n !== undefined)
-  return out.length ? out : undefined
-}
-
-const toSize = (v: unknown): number | 'fill_container' | 'hug_contents' | undefined => {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'string' && SIZE_KEYWORDS.has(v)) return v as 'fill_container' | 'hug_contents'
-  return undefined
-}
-
-/** 清洗颜色 / 渐变画笔：非法结构丢弃，避免渲染层崩溃 */
-const toPaint = (v: unknown): CanvasPaint | undefined => {
-  if (typeof v === 'string' && v) return v
-  if (v && typeof v === 'object') {
-    const g = v as Record<string, unknown>
-    if (
-      typeof g.type === 'string' &&
-      GRADIENT_TYPES.has(g.type) &&
-      Array.isArray(g.stops) &&
-      g.stops.length >= 2
-    ) {
-      const stops: CanvasGradientStop[] = []
-      for (const s of g.stops) {
-        if (typeof s === 'string' && s) {
-          stops.push(s)
-          continue
-        }
-        if (s && typeof s === 'object') {
-          const { offset, color } = s as { offset?: unknown; color?: unknown }
-          const o = toNum(offset)
-          if (o !== undefined && typeof color === 'string' && color) stops.push({ offset: o, color })
-        }
-      }
-      if (stops.length >= 2) {
-        const paint: CanvasGradientPaint = {
-          type: g.type as CanvasGradientPaint['type'],
-          stops
-        }
-        if (typeof g.from === 'string') paint.from = g.from
-        if (typeof g.to === 'string') paint.to = g.to
-        const rotation = toNum(g.rotation)
-        if (rotation !== undefined) paint.rotation = rotation
-        const stretch = toNum(g.stretch)
-        if (stretch !== undefined) paint.stretch = stretch
-        const opacity = toNum(g.opacity)
-        if (opacity !== undefined) paint.opacity = opacity
-        if (typeof g.blendMode === 'string') paint.blendMode = g.blendMode
-        return paint
-      }
-    }
-  }
-  return undefined
-}
-
-const toEffects = (v: unknown): CanvasEffect[] | undefined => {
-  if (!Array.isArray(v)) return undefined
-  const out: CanvasEffect[] = []
-  for (const e of v) {
-    if (!e || typeof e !== 'object') continue
-    const rec = e as Record<string, unknown>
-    if (typeof rec.type !== 'string' || !EFFECT_TYPES.has(rec.type)) continue
-    const effect: CanvasEffect = { type: rec.type as CanvasEffect['type'] }
-    const x = toNum(rec.x)
-    if (x !== undefined) effect.x = x
-    const y = toNum(rec.y)
-    if (y !== undefined) effect.y = y
-    const radius = toNum(rec.radius)
-    if (radius !== undefined) effect.radius = radius
-    const spread = toNum(rec.spread)
-    if (spread !== undefined) effect.spread = spread
-    if (typeof rec.color === 'string') effect.color = rec.color
-    if (typeof rec.visible === 'boolean') effect.visible = rec.visible
-    out.push(effect)
-  }
-  return out.length ? out : undefined
-}
-
-/** 按字段清洗单个值：非法类型返回 undefined */
-const sanitizeField = (key: string, value: unknown): unknown | undefined => {
-  switch (key) {
-    case 'name':
-    case 'text':
-    case 'path':
-    case 'imageUrl':
-    case 'svg':
-    case 'placeholderLabel':
-    case 'blendMode':
-    case 'fontFamily':
-      return typeof value === 'string' ? value : undefined
-    case 'x':
-    case 'y':
-    case 'rotation':
-    case 'gap':
-    case 'layoutGrow':
-    case 'fontSize':
-    case 'letterSpacing':
-    case 'sides':
-    case 'corners':
-    case 'innerRadius':
-    case 'startAngle':
-    case 'strokeWidth':
-      return toNum(value)
-    case 'opacity': {
-      const n = toNum(value)
-      return n !== undefined ? Math.max(0, Math.min(1, n)) : undefined
-    }
-    case 'width':
-    case 'height':
-      return toSize(value)
-    case 'visible':
-    case 'italic':
-      return typeof value === 'boolean' ? value : undefined
-    case 'layoutPositioning':
-      return typeof value === 'string' && POSITIONING_VALUES.has(value) ? value : undefined
-    case 'layout':
-      return typeof value === 'string' && LAYOUT_VALUES.has(value) ? value : undefined
-    case 'primaryAxisAlignItems':
-      return typeof value === 'string' && ALIGN_PRIMARY.has(value) ? value : undefined
-    case 'counterAxisAlignItems':
-      return typeof value === 'string' && ALIGN_CROSS.has(value) ? value : undefined
-    case 'fill':
-    case 'stroke':
-      return toPaint(value)
-    case 'strokeCap':
-      return typeof value === 'string' && STROKE_CAP_VALUES.has(value) ? value : undefined
-    case 'strokeJoin':
-      return typeof value === 'string' && STROKE_JOIN_VALUES.has(value) ? value : undefined
-    case 'strokeAlign':
-      return typeof value === 'string' && STROKE_ALIGN_VALUES.has(value) ? value : undefined
-    case 'dashPattern':
-    case 'points':
-      return toNumArray(value)
-    case 'cornerRadius':
-    case 'padding':
-      return toNum(value) ?? toNumArray(value)
-    case 'effects':
-      return toEffects(value)
-    case 'fontWeight': {
-      if (typeof value === 'number' && Number.isFinite(value)) return value
-      return typeof value === 'string' && /^(100|200|300|400|500|600|700|800|900)$/.test(value)
-        ? value
-        : undefined
-    }
-    case 'lineHeight':
-      return value === 'AUTO' ? 'AUTO' : toNum(value)
-    case 'textAlign':
-      return typeof value === 'string' && TEXT_ALIGN_VALUES.has(value) ? value : undefined
-    case 'textCase':
-      return typeof value === 'string' && TEXT_CASE_VALUES.has(value) ? value : undefined
-    default:
-      return undefined
-  }
-}
 
 /** 按字段推断缺失的节点类型（AI 常省略 type，靠字段结构判断） */
 const inferNodeType = (input: Record<string, unknown>): string | undefined => {
@@ -374,52 +177,41 @@ const normalizeStoredNodes = (nodes: CanvasNode[]): CanvasNode[] => {
   return nodes
 }
 
-/** 清洗节点（含递归 children）：未知类型抛错，其余字段按白名单清洗 */
+/**
+ * 校验节点（含递归 children）：type 缺失时按字段推断补全；
+ * 其余字段经 TypeBox schema（canvasSchemas.ts）严格校验，非法即抛错（不再静默丢弃）。
+ */
 const sanitizeNode = (raw: unknown): CanvasNodeInput => {
   const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
   let type = input.type
-  // type 缺失 / 未知 → 按字段推断；仍是 ardot 风格别名 → 归一化
-  if (!(typeof type === 'string' && (CANVAS_NODE_TYPES.has(type) || NODE_TYPE_ALIASES[type]))) {
+  // type 缺失 / 未知 → 按字段推断（保留文档所述推断能力；ardot 别名不再归一化，非法直接报错）
+  if (!(typeof type === 'string' && CANVAS_NODE_TYPES.has(type))) {
     type = inferNodeType(input)
   }
-  if (typeof type === 'string' && NODE_TYPE_ALIASES[type]) type = NODE_TYPE_ALIASES[type]
   if (typeof type !== 'string' || !CANVAS_NODE_TYPES.has(type)) {
     throw new Error(
       `未知节点类型 ${String(type)}，可用：group / text / rect / ellipse / line / polygon / star / path / image / svg`
     )
   }
-  const node: CanvasNodeInput = { type: type as CanvasNodeType }
-  for (const key of Object.keys(input)) {
-    if (key === 'type' || key === 'children') continue
-    const value = sanitizeField(key, input[key])
-    if (value !== undefined) (node as Record<string, unknown>)[key] = value
+  const node: Record<string, unknown> = { ...input, type }
+  if (Array.isArray(node.children)) {
+    // children 尚未生成 id（由 assignIds 统一补齐），此处先按无 id 校验
+    node.children = node.children.map(sanitizeNode)
   }
-  if (input.children != null) {
-    if (Array.isArray(input.children)) {
-      // children 尚未生成 id（由 assignIds 统一补齐），此处先按无 id 存储
-      node.children = input.children.map(sanitizeNode) as unknown as CanvasNode[]
-    }
+  const errors = validateNode(node)
+  if (errors.length) {
+    throw new Error(`节点参数非法：${errors.join('；')}`)
   }
-  return node
+  return node as unknown as CanvasNodeInput
 }
 
-/** 清洗 update patch：禁改 id/type/children，未知字段与非法类型忽略 */
-const sanitizePatch = (patch: Record<string, unknown> | undefined, issues: string[]): Record<string, unknown> => {
-  const out: Record<string, unknown> = {}
-  for (const key of Object.keys(patch ?? {})) {
-    if (key === 'id' || key === 'type') {
-      issues.push(`update 不能修改 ${key} 字段，已忽略`)
-      continue
-    }
-    if (key === 'children') {
-      issues.push('update 不能直接修改 children，请用 insert / move / delete 操作，已忽略')
-      continue
-    }
-    const value = sanitizeField(key, patch?.[key])
-    if (value !== undefined) out[key] = value
-    else issues.push(`字段 ${key} 非法或类型不匹配，已忽略`)
+/** 校验 update patch / copy overrides：禁改 id/type/children，非法即抛错（不再静默忽略） */
+const sanitizePatch = (patch: Record<string, unknown> | undefined): Record<string, unknown> => {
+  const errors = validatePatch(patch ?? {})
+  if (errors.length) {
+    throw new Error(`patch 参数非法：${errors.join('；')}`)
   }
-  return out
+  return patch ?? {}
 }
 
 /** G 操作：placeholder 渐变占位 / stock·ai 网络占位图（picsum 稳定种子，落盘沙盒） */
@@ -576,25 +368,26 @@ export class CanvasStore {
   }
 
   /**
-   * 批量编辑（对齐 ardot batch_edit）：顺序执行 I/C/U/M/D/G，
-   * 任一步失败则整体回滚（深快照恢复）并抛错，成功后一次性落盘。
+   * 批量编辑（对齐 ardot batch_edit）：顺序执行 I/C/U/M/D/G。
+   * 单点容错：每个 op 先经 TypeBox 校验、再执行；任一 op 校验或执行失败只让该 op
+   * 返回 { error }（results 内联），其余 op 照常执行并落盘 —— 一个坏节点不拖垮整批。
+   * 级联语义：被跳过的 op 不写入 as 绑定，后续引用它的 op 会因找不到绑定而独立报错。
    */
   async batchEdit(ops: CanvasBatchOp[]): Promise<{ results: unknown[]; potentialIssues: string[] }> {
     const doc = this.current.value
     if (!doc) throw new Error('当前没有打开的画布，请先 canvas_create 或 canvas_open')
-    const snapshotNodes = JSON.parse(JSON.stringify(doc.nodes)) as CanvasNode[]
-    const snapshotPalette = JSON.parse(JSON.stringify(doc.palette ?? {})) as Record<string, string>
     const results: unknown[] = []
     const issues: string[] = []
     const bindings = new Map<string, string>()
-    try {
-      for (const op of ops) {
+    for (let i = 0; i < ops.length; i++) {
+      const op = ops[i]
+      try {
+        const opErrors = validateBatchOp(op)
+        if (opErrors.length) throw new Error(opErrors.join('；'))
         results.push(this.executeOp(doc, op, bindings, issues))
+      } catch (err) {
+        results.push({ error: `第 ${i + 1} 个操作失败：${err instanceof Error ? err.message : String(err)}` })
       }
-    } catch (err) {
-      doc.nodes = snapshotNodes
-      doc.palette = snapshotPalette
-      throw err
     }
     await this.persist()
     return { results, potentialIssues: issues }
@@ -619,7 +412,7 @@ export class CanvasStore {
         const source = findNodeInTree(doc.nodes, op.id)
         if (!source) throw new Error(`未找到被复制节点 ${op.id}`)
         const clone = cloneWithNewIds(source.node)
-        if (op.overrides) Object.assign(clone, sanitizePatch(op.overrides, issues))
+        if (op.overrides) Object.assign(clone, sanitizePatch(op.overrides))
         const parent = resolveParentList(doc, op.parent, bindings)
         parent.push(clone)
         if (op.as) bindings.set(op.as, clone.id)
@@ -628,16 +421,17 @@ export class CanvasStore {
       case 'update': {
         const target = resolvePathNode(doc, op.path, bindings)
         if (!target) throw new Error(`未找到更新目标 ${op.path}`)
-        Object.assign(target, sanitizePatch(op.patch, issues))
+        Object.assign(target, sanitizePatch(op.patch))
         return target
       }
       case 'move': {
         const found = findNodeInTree(doc.nodes, op.id)
         if (!found) throw new Error(`未找到节点 ${op.id}`)
         const { node, parent } = found
-        parent.splice(parent.indexOf(node), 1)
+        // 先解析目标父列表（可能抛错），再移除/插入，避免解析失败残留已删节点
         const target = op.parent != null ? resolveParentList(doc, op.parent, bindings) : parent
         const index = op.index ?? target.length
+        parent.splice(parent.indexOf(node), 1)
         target.splice(Math.max(0, Math.min(index, target.length)), 0, node)
         return node
       }

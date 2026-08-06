@@ -9,6 +9,7 @@
 > - 存储与批量编辑 `src/modules/tool/components/canvas/CanvasStore.ts`
 > - 渲染器 `src/modules/tool/components/canvas/canvasRender.ts`
 > - 工具集 `src/modules/tool/components/canvas/canvasTools.ts`
+> - **输入 schema（TypeBox 单一源）** `src/modules/tool/components/canvas/canvasSchemas.ts`
 > - 固定提示词 `src/modules/tool/components/canvas/canvasPrompt.ts`
 > - 内置参考 `src/modules/tool/components/canvas/guidelines/*.md` + `guidelines.ts`
 
@@ -98,10 +99,11 @@ interface CanvasDoc {
 
 - 生命周期：`refreshFiles / open / read / create / delete / save`，`readDoc`/`refreshFiles` **只识别 schema 2**（旧扁平
   shapes 文件直接不可见，兼容策略：不兼容）。
-- `batchEdit(ops)`：顺序执行，失败用执行前深快照恢复 `nodes` 与 `palette` 后抛错，成功一次落盘；返回
-  `{ results, potentialIssues }`。
+- `batchEdit(ops)`：顺序执行 I/C/U/M/D/G，**单点容错**——每个 op 先经 TypeBox 校验再执行，任一 op 校验或执行失败
+  只让该 op 在 `results` 内联返回 `{ error }`，其余 op 照常执行并一次性落盘（一个坏节点不拖垮整批）；返回
+  `{ results, potentialIssues }`。级联语义：被跳过的 op 不写入 `as` 绑定，后续引用它的 op 独立报错。
 - `as` 绑定：insert/copy 可带 `as`， **仅同一批内**用 `parent: "@绑定名"` 引用；跨批用返回的真实 id。
-- `path`：`'id'` 或 `'父id;子id'`（可多层）或 `'@绑定;子id'`；update 禁改 `id/type/children`（静默忽略 + potentialIssues）。
+- `path`：`'id'` 或 `'父id;子id'`（可多层）或 `'@绑定;子id'`；update 禁改 `id/type/children`（TypeBox 校验拒绝并报错）。
 - image 操作：`placeholder` 设 `placeholderLabel`；`stock`/`ai` 用 picsum 稳定种子 URL 下载到沙盒
   `outputs/images/{nodeId}.jpg`（`requestDownload`），失败退回远程 URL。
 
@@ -137,10 +139,14 @@ interface CanvasDoc {
 
 - 旧扁平 `shapes[]` 文件 **不兼容**（schema 1），列表/读取直接过滤；需重新 `canvas_create`。
 - **节点 `type` 可省略**：AI 常省略 `type` 靠字段推断，store 会按字段自动推断（svg/image/path/text/polygon/star/line/group，兜底
-  rect），并支持 ardot 风格别名（`frame`→`group`、`circle`→`ellipse`、`icon`→`svg` 等）；读取已落盘画布时也会对缺失 `type`
-  的存量节点做治愈，保证不崩。
-- **输入清洗**：`insert`/`copy`/`update` 都会校验字段白名单与类型，非法字段忽略并写入 `potentialIssues`
-  ；渐变/效果/枚举等结构非法时丢弃，脏数据不会污染画布 JSON。
+  rect），并在校验前补全；读取已落盘画布时也会对缺失 `type` 的存量节点做治愈，保证不崩。
+- **输入校验（TypeBox 单一源）**：`canvasSchemas.ts` 用 TypeBox 定义节点 / 批量操作 / patch 三套 schema，**同时**生成喂给
+  模型的参数描述（`canvasTools` 的 `parameters`）与运行时校验器，两处永不脱节。字段类型严格（`width/height` 为
+  number 或 `fill_container`/`hug_contents`，`padding` 为 number|number[]，`fontWeight` 为 number|"400"~"900" 等），
+  枚举用 Literal 联合，`additionalProperties: false` 拒绝未知字段。
+- **非法即报错反馈**：`insert`/`copy`/`update` 入参不符合 schema 时抛错，经 `agentTools` 回填给模型（"第 N 个操作失败：字段 xxx …"）
+  让 AI 自纠，不再静默丢弃；渲染层兜底（`buildNode` 未知类型返回空 `Group`、单节点失败跳过）仍保留作最后防线。
+- 旧模型无此校验时可能落盘的脏数据（如 `width:"500"`）读盘仍宽松展示，不影响渲染。
 - 渲染端兜底：`buildNode` 对未知类型返回空 `Group`（绝不返回 `undefined`），单节点构建失败会跳过而非拖垮整张画布。
 - 文本 `hug_contents` 宽度为近似值（measureText / 字符估算），多行文本请给显式宽度。
 - `line` 的 `points` 相对节点 x/y（旧模型为绝对坐标，语义已变）。

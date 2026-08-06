@@ -208,7 +208,7 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       name: 'canvas_batch_edit',
       label: '批量编辑画布',
       description:
-        '核心编辑工具：一次批量执行多个图层操作（insert / copy / update / move / delete / image），≤25 个/批，任一步失败整体回滚。构建顺序建议 背景→主视觉→装饰→文字。详见 canvas_guidelines("operations")',
+        '核心编辑工具：一次批量执行多个图层操作（insert / copy / update / move / delete / image），≤25 个/批。参数经严格校验：单个操作非法只让该操作失败（错误写入返回的 results），其余操作正常执行；构建顺序建议 背景→主视觉→装饰→文字。详见 canvas_guidelines("operations")',
       parameters: {
         type: 'object',
         properties: {
