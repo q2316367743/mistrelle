@@ -14,7 +14,7 @@ import {
 // 注册动画能力到 Leafer 元素（依赖 @leafer-in/animate@2.2.9，leafer-editor 不含动画插件）
 import '@leafer-in/animate'
 import type { CanvasDoc, CanvasEffect, CanvasNode, CanvasPaint } from './canvasTypes'
-import { layoutCanvasDoc, type CanvasLayoutNode } from './canvasLayout'
+import { computeLayoutBounds, layoutCanvasDoc, type CanvasLayoutNode } from './canvasLayout'
 
 export type CanvasRenderNode = Rect | Ellipse | Text | Line | LeaferImage | Polygon | Star | Path | Group
 
@@ -240,7 +240,8 @@ export const buildNode = (
             typeof node.fontWeight === 'number' ? String(node.fontWeight) : node.fontWeight,
           italic: node.italic,
           letterSpacing: node.letterSpacing,
-          lineHeight: typeof node.lineHeight === 'number' ? node.lineHeight : undefined,
+          lineHeight:
+            typeof node.lineHeight === 'number' ? { type: 'percent', value: node.lineHeight } : undefined,
           textAlign: node.textAlign,
           textCase: node.textCase,
           ...(typeof node.width === 'number' || node.width === 'fill_container'
@@ -386,32 +387,33 @@ export interface CanvasExportRegion {
 /**
  * 计算画布内某节点（含全部子树）的绝对包围盒，供按节点导出。
  * 未找到返回 null；节点自身与后代盒子取并集（兼容 0 尺寸 hug 容器）。
+ * 复用 computeLayoutBounds 的父链累加：layout 树子节点坐标是相对父盒，
+ * 旧实现直接取 target.x 会漏祖先位移，深层嵌套节点包围盒错误。
  */
 export const computeNodeBounds = (doc: CanvasDoc, id: string): CanvasExportRegion | null => {
-  const find = (layouts: CanvasLayoutNode[]): CanvasLayoutNode | null => {
-    for (const layout of layouts) {
-      if (layout.node.id === id) return layout
-      const found = find(layout.children)
-      if (found) return found
-    }
-    return null
-  }
-  const target = find(layoutCanvasDoc(doc))
+  const all = computeLayoutBounds(doc)
+  const byId = new Map(all.map((b) => [b.id, b]))
+  const target = byId.get(id)
   if (!target) return null
+  const isDescendantOf = (bounds: { id: string; parentId?: string }): boolean => {
+    let parentId = bounds.parentId
+    while (parentId != null) {
+      if (parentId === id) return true
+      parentId = byId.get(parentId)?.parentId
+    }
+    return false
+  }
   let minX = target.x
   let minY = target.y
   let maxX = target.x + target.width
   let maxY = target.y + target.height
-  const expand = (list: CanvasLayoutNode[]) => {
-    for (const item of list) {
-      minX = Math.min(minX, item.x)
-      minY = Math.min(minY, item.y)
-      maxX = Math.max(maxX, item.x + item.width)
-      maxY = Math.max(maxY, item.y + item.height)
-      expand(item.children)
-    }
+  for (const b of all) {
+    if (b.id === id || !isDescendantOf(b)) continue
+    minX = Math.min(minX, b.x)
+    minY = Math.min(minY, b.y)
+    maxX = Math.max(maxX, b.x + b.width)
+    maxY = Math.max(maxY, b.y + b.height)
   }
-  expand(target.children)
   return normalizeRegion({ x: minX, y: minY, width: maxX - minX, height: maxY - minY })
 }
 

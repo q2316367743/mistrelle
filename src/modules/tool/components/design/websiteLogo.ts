@@ -7,6 +7,7 @@
 import type { ToolFunction } from '@/domain'
 import { requestDownload } from '@/plugin/http'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
+import { readImageInfo } from '@/utils/imageInfo'
 import {
   orderedFaviconSources,
   reportSourceFailure,
@@ -33,7 +34,7 @@ const downloadFromSource = async (
   ctx: DesignToolContext,
   domain: string,
   source: FaviconSource
-): Promise<{ path: string; href: string; format: string } | null> => {
+): Promise<{ path: string; href: string; format: string; width?: number; height?: number } | null> => {
   const sourceUrl = source.buildUrl(domain)
   const sandboxDir = ctx.getSandboxDir()
   if (!sandboxDir) return null
@@ -45,7 +46,15 @@ const downloadFromSource = async (
     const items = await window.preload.fs.readDir(imagesDir)
     const file = items.find((f) => f.path === target || f.name === target.split(/[\\/]/).pop())
     if (!file || file.size <= 0) return null
-    return { path: target, href: window.preload.net.pathToHref(target), format: source.format }
+    // 实际格式按文件头判定（来源扩展名可能误判，如真实 ICO 伪装 .svg），顺带返回真实宽高
+    const info = await readImageInfo(target)
+    return {
+      path: target,
+      href: window.preload.net.pathToHref(target),
+      format: info?.format ?? source.format,
+      width: info?.width,
+      height: info?.height
+    }
   } catch {
     return null
   }
@@ -86,7 +95,8 @@ export const createWebsiteLogoTool = (ctx: DesignToolContext): ToolFunction => (
           path: result.path,
           href: result.href,
           format: result.format,
-          note: 'logo 已下载到沙盒，把 path/href 填进 image 节点 imageUrl 即可使用'
+          ...(result.width != null ? { width: result.width, height: result.height } : {}),
+          note: 'logo 已下载到沙盒，把 path/href 填进 image 节点 imageUrl 即可使用；width/height 为真实尺寸'
         }
       }
       reportSourceFailure(source.id)

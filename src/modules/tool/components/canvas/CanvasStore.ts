@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid'
 import { requestDownload } from '@/plugin/http'
+import { readImageInfo } from '@/utils/imageInfo'
 import { validateBatchOp, validateNode, validatePatch } from './canvasSchemas'
 import type {
   CanvasBatchOp,
@@ -269,22 +270,33 @@ const applyImageOp = async (
     } catch {
       return { error: `图片下载失败：${url}（画布无法渲染非同源远程图片，请提供可下载的素材）` }
     }
-    return { success: true, mode: 'web', url: node.imageUrl }
+    const info = await readImageInfo(target)
+    return {
+      success: true,
+      mode: 'web',
+      url: node.imageUrl,
+      ...(info ? { format: info.format, width: info.width, height: info.height } : {})
+    }
   }
   const w = typeof node.width === 'number' ? Math.max(1, Math.round(node.width)) : 600
   const h = typeof node.height === 'number' ? Math.max(1, Math.round(node.height)) : 600
   const seed = encodeURIComponent(prompt || node.id || 'image')
   const picsumUrl = `https://picsum.photos/seed/${seed}/${w}/${h}`
+  const target = window.preload.path.join(buildCanvasOutputsDir(sandboxDir), 'images', `${node.id}.jpg`)
   try {
-    const imagesDir = window.preload.path.join(buildCanvasOutputsDir(sandboxDir), 'images')
-    const target = window.preload.path.join(imagesDir, `${node.id}.jpg`)
-    await window.preload.fs.mkdir(imagesDir, true)
+    await window.preload.fs.mkdir(window.preload.path.dirname(target), true)
     await requestDownload({ url: picsumUrl }, target)
     node.imageUrl = window.preload.net.pathToHref(target)
   } catch {
     return { error: `网络占位图下载失败：${picsumUrl}` }
   }
-  return { success: true, mode: kind, url: node.imageUrl }
+  const info = await readImageInfo(target)
+  return {
+    success: true,
+    mode: kind,
+    url: node.imageUrl,
+    ...(info ? { format: info.format, width: info.width, height: info.height } : {})
+  }
 }
 
 // ─── Store ──────────────────────────────────────────────────

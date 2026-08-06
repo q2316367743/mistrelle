@@ -8,6 +8,7 @@ import {
   normalizeRegion,
   type CanvasExportRegion
 } from './canvasRender'
+import { computeLayoutBounds } from './canvasLayout'
 import { batchOpSchema } from './canvasSchemas'
 import { CANVAS_GUIDELINES, CANVAS_GUIDELINE_TOPICS } from './guidelines'
 
@@ -130,7 +131,7 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       name: 'canvas_export',
       label: '导出画布图片',
       description:
-        '将当前画布（或指定版本）渲染为 PNG 图片并保存到本地，返回保存路径。缺省导出整张画布（尺寸 = 画布 doc 宽高，越界元素自动裁剪）；若设计内容在画布内的某个容器 / 卡片中，用 node 或 region 指定导出区域，保证导出尺寸与设计尺寸一致。设计过程中用此工具查看效果并迭代',
+        '将当前画布（或指定版本）渲染为 PNG 图片并保存到本地，返回保存路径。缺省导出整张画布（尺寸 = 画布 doc 宽高，越界元素自动裁剪）；若设计内容在画布内的某个容器 / 卡片中，用 node 或 region 指定导出区域，保证导出尺寸与设计尺寸一致。用于目测整体视觉效果；核对元素精确位置 / 尺寸 / 间距请用 canvas_inspect，无需先导出',
       parameters: {
         type: 'object',
         properties: {
@@ -263,6 +264,52 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       }
     },
     {
+      name: 'canvas_inspect',
+      label: '检查渲染几何',
+      description:
+        '返回指定节点渲染后的画布绝对包围盒（x / y / width / height / centerX / centerY，均为布局引擎解析后的真实值，与导出 PNG 同源），供核对元素实际位置、尺寸、间距与对齐。注意：布局组内子节点的最终位置由引擎排布，canvas_get_nodes 返回的 x/y/width/height 可能是缺省或 fill_container / hug_contents 关键字，不能直接用于几何判断——需要精确位置时请用本工具。一次传关心的 2~5 个元素 ids（如标题与徽章），直接相减即可算出相对位置与间距；缺省返回全部',
+      parameters: {
+        type: 'object',
+        properties: {
+          ids: {
+            type: 'array',
+            items: { type: 'string', description: '节点 id' },
+            description: '可选：只返回指定 id 节点的包围盒（缺省返回全部）'
+          },
+          version: { type: 'number', description: '画布版本号（缺省检查当前画布）' }
+        }
+      },
+      internal: true,
+      risk: 'safe',
+      handler: async (...params: unknown[]) => {
+        const { ids, version } = params[0] as { ids?: string[]; version?: number }
+        let doc: CanvasDoc | null
+        if (version != null) {
+          const content = await store().read(version)
+          if (content === null) return { error: `未找到画布 canvas-${version}` }
+          doc = JSON.parse(content) as CanvasDoc
+        } else {
+          doc = store().current.value
+        }
+        if (!doc) {
+          return { error: '当前没有打开的画布，请先 canvas_create 或 canvas_open，或指定 version' }
+        }
+        const nodes = computeLayoutBounds(doc, ids)
+        if (nodes.length === 0) {
+          return {
+            canvas: { width: doc.width, height: doc.height },
+            nodes: [],
+            note: '未找到匹配的节点，请用 canvas_get_nodes 确认节点 id'
+          }
+        }
+        return {
+          canvas: { width: doc.width, height: doc.height },
+          nodes,
+          note: ids?.length ? '已按 ids 过滤' : '返回全部节点'
+        }
+      }
+    },
+    {
       name: 'canvas_set_palette',
       label: '设置调色板',
       description:
@@ -324,6 +371,7 @@ export const CANVAS_TOOL_NAMES = [
   'canvas_export',
   'canvas_batch_edit',
   'canvas_get_nodes',
+  'canvas_inspect',
   'canvas_set_palette',
   'canvas_guidelines'
 ] as const

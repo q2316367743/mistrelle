@@ -1,4 +1,4 @@
-import type { CanvasDoc, CanvasLayoutSize, CanvasNode } from './canvasTypes'
+import type { CanvasDoc, CanvasLayoutSize, CanvasNode, CanvasNodeType } from './canvasTypes'
 
 /**
  * 布局引擎：把图层树解析为「绝对坐标 + 具体尺寸」的布局树。
@@ -36,9 +36,9 @@ const resolvePadding = (padding: number | number[] | undefined): [number, number
   return [0, 0, 0, 0]
 }
 
-/** 文本高度估算（行高因子，用于 hug 文本；与排版规则「行高≈1.2×字号」一致） */
+/** 文本高度估算（行高因子，用于 hug 文本；与排版规则「行高≈1.2×字号」一致；lineHeight 数字按倍率换算） */
 const estimateLineHeight = (node: CanvasNode, fontSize: number): number => {
-  if (typeof node.lineHeight === 'number') return node.lineHeight
+  if (typeof node.lineHeight === 'number') return Math.round(fontSize * node.lineHeight)
   return Math.round(fontSize * 1.2)
 }
 
@@ -85,11 +85,21 @@ const resolveAxisSize = (
 }
 
 /** 叶子节点（非 group）的自然尺寸 */
-const resolveLeafHug = (node: CanvasNode): { width: number; height: number } => {
+const resolveLeafHug = (node: CanvasNode, parentW?: number): { width: number; height: number } => {
   switch (node.type) {
     case 'text': {
       const fontSize = node.fontSize ?? 16
-      return { width: measureTextWidth(node, fontSize), height: estimateLineHeight(node, fontSize) }
+      const lineHeight = estimateLineHeight(node, fontSize)
+      const textWidth = measureTextWidth(node, fontSize)
+      // 可用宽度决定换行行数：显式数字优先；fill_container 用父内容宽；hug/缺省按单行不换行
+      const availW =
+        typeof node.width === 'number'
+          ? node.width
+          : node.width === FILL
+            ? parentW ?? textWidth
+            : textWidth
+      const rows = Math.max(1, Math.ceil(textWidth / Math.max(availW, 1)))
+      return { width: textWidth, height: rows * lineHeight }
     }
     case 'image':
     case 'svg':
@@ -117,7 +127,7 @@ const measureTree = (node: CanvasNode, parentW: number | undefined, parentH: num
   if (!hasLayout(node)) {
     // 自由定位容器（含普通叶子）
     if (!isGroup(node)) {
-      const leafHug = resolveLeafHug(node)
+      const leafHug = resolveLeafHug(node, parentW)
       return {
         width: resolveAxisSize(node.width, parentW, leafHug.width),
         height: resolveAxisSize(node.height, parentH, leafHug.height)
@@ -362,9 +372,16 @@ const arrangeTree = (
     const childX = p.abs ? pad[3] + (p.child.x ?? 0) : pad[3] + p.relX
     const childY = p.abs ? pad[0] + (p.child.y ?? 0) : pad[0] + p.relY
     const c = arrangeTree(p.child, contentW, contentH, childX, childY)
+    // 写回排布尺寸时按方向取主轴 / 交叉轴：horizontal/wrap 主轴=宽、vertical 主轴=高，
+    // 旧实现固定 width=pMain 会把 vertical 组内子节点宽高写反（宽高交换，渲染错位 + 几何错误）
     if (!p.abs) {
-      c.width = p.pMain
-      c.height = p.pCross
+      if (horizontal) {
+        c.width = p.pMain
+        c.height = p.pCross
+      } else {
+        c.width = p.pCross
+        c.height = p.pMain
+      }
     }
     result.children.push(c)
   }
@@ -374,4 +391,74 @@ const arrangeTree = (
 /** 布局整张画布：返回根图层（根节点坐标 = 相对画布的绝对坐标；子节点相对父盒） */
 export const layoutCanvasDoc = (doc: CanvasDoc): CanvasLayoutNode[] => {
   return (doc.nodes ?? []).map((node) => arrangeTree(node, doc.width, doc.height, node.x ?? 0, node.y ?? 0))
+}
+
+// ── 渲染后绝对包围盒（供 AI 核对几何，与预览/导出共用同一布局事实源） ──────
+
+/** 单个节点渲染后的画布绝对包围盒（布局引擎解析后的真实几何） */
+export interface CanvasNodeBounds {
+  id: string
+  name?: string
+  type: CanvasNodeType
+  /** 画布绝对坐标（左上角） */
+  x: number
+  y: number
+  /** 渲染后具体像素（fill / hug 已解析为数值） */
+  width: number
+  height: number
+  /** 包围盒中心（画布绝对坐标） */
+  centerX: number
+  centerY: number
+  parentId?: string
+  /** 层级深度：0 = 根图层 */
+  depth: number
+  rotation?: number
+  visible?: boolean
+  /** 仅 text 节点 */
+  text?: string
+}
+
+/**
+ * 计算画布内节点渲染后的绝对包围盒（平铺列表，DFS 先序）。
+ * - 布局组内子节点的最终位置 / 尺寸由布局引擎决定，原始节点上的 x/y/width/height
+ *   可能是缺省或 fill/hug 关键字，不能直接用于几何判断；本函数返回解析后的真实几何。
+ * - ids 缺省返回全部；指定时只返回命中的节点（用于查看几个元素的相对位置 / 间距 / 对齐）。
+ */
+export const computeLayoutBounds = (doc: CanvasDoc, ids?: string[]): CanvasNodeBounds[] => {
+  const roots = layoutCanvasDoc(doc)
+  const out: CanvasNodeBounds[] = []
+  const idSet = ids?.length ? new Set(ids) : null
+  // layout 树坐标是「相对父盒」（根为画布绝对），沿父链累加得到画布绝对坐标
+  const walk = (
+    layout: CanvasLayoutNode,
+    parentAbsX: number,
+    parentAbsY: number,
+    parentId: string | undefined,
+    depth: number
+  ): void => {
+    const { node } = layout
+    const absX = parentAbsX + layout.x
+    const absY = parentAbsY + layout.y
+    if (!idSet || idSet.has(node.id)) {
+      out.push({
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        x: absX,
+        y: absY,
+        width: layout.width,
+        height: layout.height,
+        centerX: absX + layout.width / 2,
+        centerY: absY + layout.height / 2,
+        parentId,
+        depth,
+        rotation: node.rotation,
+        visible: node.visible,
+        ...(node.type === 'text' ? { text: node.text } : {})
+      })
+    }
+    for (const child of layout.children) walk(child, absX, absY, node.id, depth + 1)
+  }
+  for (const root of roots) walk(root, 0, 0, undefined, 0)
+  return out
 }
