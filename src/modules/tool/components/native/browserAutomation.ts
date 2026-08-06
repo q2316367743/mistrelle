@@ -23,8 +23,8 @@ Supported step types:
 - paste: Paste text/image. Fields: text?
 - scroll: Scroll to element (selector?), position (x?, y?), or pixels (y?)
 - cookies: Manage cookies. Fields: action (get/set/remove/clear), name?, value?, url?, filter?, cookies?
-- getHtml: Get page HTML (document.documentElement.outerHTML)
-- getText: Get page text (document.body.innerText)
+- getHtml: Get page HTML. Optional field: selector (extract only the matching element's outerHTML; omit for document.documentElement.outerHTML)
+- getText: Get page text. Optional field: selector (extract only the matching element's innerText; omit for document.body.innerText)
 - getTitle: Get page title (document.title)
 - hide: Hide browser window
 - show: Show browser window
@@ -52,7 +52,8 @@ Supported step types:
               timeout: { type: 'number', description: 'Timeout in milliseconds' },
               selector: {
                 type: 'string',
-                description: 'CSS selector for click/value/wait/scroll/screenshot steps'
+                description:
+                  'CSS selector for click/value/wait/scroll/screenshot steps, and optional for getHtml/getText to extract only the matching element (an error is returned when nothing matches)'
               },
               value: { type: 'string', description: 'Value for value step' },
               script: {
@@ -191,13 +192,9 @@ function applyStep(browser: InjectCBrowser, step: CbStep): InjectCBrowser {
     case 'cookies':
       return handleCookies(browser, step)
     case 'getHtml':
-      return browser.evaluate(function () {
-        return document.documentElement.outerHTML
-      })
+      return browser.evaluate(extractHtml, step.selector)
     case 'getText':
-      return browser.evaluate(function () {
-        return document.body.innerText
-      })
+      return browser.evaluate(extractText, step.selector)
     case 'getTitle':
       return browser.evaluate(function () {
         return document.title
@@ -238,3 +235,21 @@ function handleCookies(browser: InjectCBrowser, step: CbStep): InjectCBrowser {
 
 export const nativeBrowserAutomationTools: ToolFunction[] =
   window.preload.inject.getPlatform() === 'utools' ? uBrowserAutomationTools : []
+
+function extractHtml(sel?: string): string {
+  if (sel) {
+    const el = document.querySelector(sel)
+    if (!el) throw new Error(`CSS 选择器 "${sel}" 未匹配到任何元素`)
+    return el.outerHTML
+  }
+  return document.documentElement.outerHTML
+}
+
+function extractText(sel?: string): string {
+  if (sel) {
+    const el = document.querySelector(sel) as HTMLElement | null
+    if (!el) throw new Error(`CSS 选择器 "${sel}" 未匹配到任何元素`)
+    return el.innerText
+  }
+  return document.body.innerText
+}
