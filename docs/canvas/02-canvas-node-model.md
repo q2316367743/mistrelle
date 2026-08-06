@@ -17,8 +17,9 @@
 
 ## 1. 设计目标
 
-- **图层树 + 自由定位**为主：海报是"构图 + 排版"艺术，绝对坐标是基本盘；`group` 可 **可选**
-  开启自动布局，仅用于局部整齐排布（徽章 / 多图拼贴 / 卡片）。
+- **图层树 + 区域分组**模型：海报是"构图 + 排版"艺术，画面先拆成区域（卡片 / 标签 / 按钮 / 图标组……）； 区域内 ≥2 个元素必用
+  `group` + 自动布局排布（子节点不手算坐标，交引擎）；孤立原子元素直接自由定位， 手动 x/y 仅用于顶层定位与布局组内 `ABSOLUTE`
+  锚点。
 - **批量原子编辑**：`canvas_batch_edit` 一次执行 insert/copy/update/move/delete/image，≤25 个/批，任一失败整体回滚 →
   少轮次、可控。
 - **调色板 token**：`canvas_set_palette` 定义 3-5 色，fill/stroke 用 `$token名` 引用 → 全页色彩和谐。
@@ -27,14 +28,14 @@
 
 ## 2. 与 ardot batch_edit 的取舍对照
 
-| 从 ardot 照搬（科学流程）                                | 改造 / 丢弃（UI 专属）                            |
-|----------------------------------------------------------|---------------------------------------------------|
-| 批量操作 + 失败回滚、`as` 绑定名单批内引用               | `frame` → `group`（容器，默认自由定位）           |
-| 节点必赋有意义 `name`；`path` 用 `;` 分隔更新嵌套        | flexbox → **可选** `layout`，仅局部用             |
-| 颜色统一 `fill`、圆角 `cornerRadius`、字重数字           | components/ref/reusable 组件体系 → 不做           |
-| 反 AI 俗套风格铁律（style-guide）                        | 完整变量系统 → 简化成 `palette` token             |
-| 分层校验（导出查看 → 修正 ≤2 轮）                        | web-app/mobile/landing 场景 → 创意场景指南        |
-| 按需加载指南（`fetch_guidelines` → `canvas_guidelines`） | fill_container/hug_contents 教条 → 仅布局组内有效 |
+| 从 ardot 照搬（科学流程）                                | 改造 / 丢弃（UI 专属）                                       |
+|----------------------------------------------------------|--------------------------------------------------------------|
+| 批量操作 + 失败回滚、`as` 绑定名单批内引用               | `frame` → `group`（容器；区域内 ≥2 元素必开 `layout`）       |
+| 节点必赋有意义 `name`；`path` 用 `;` 分隔更新嵌套        | flexbox → `layout`，**必用于多元素区域**，原子元素可自由定位 |
+| 颜色统一 `fill`、圆角 `cornerRadius`、字重数字           | components/ref/reusable 组件体系 → 不做                      |
+| 反 AI 俗套风格铁律（style-guide）                        | 完整变量系统 → 简化成 `palette` token                        |
+| 分层校验（导出查看 → 修正 ≤2 轮）                        | web-app/mobile/landing 场景 → 创意场景指南                   |
+| 按需加载指南（`fetch_guidelines` → `canvas_guidelines`） | fill_container/hug_contents 教条 → 仅布局组内有效            |
 
 ## 3. 数据模型（`.canvas` 文件 = schema 2 JSON）
 
@@ -99,8 +100,8 @@ interface CanvasDoc {
 
 - 生命周期：`refreshFiles / open / read / create / delete / save`，`readDoc`/`refreshFiles` **只识别 schema 2**（旧扁平
   shapes 文件直接不可见，兼容策略：不兼容）。
-- `batchEdit(ops)`：顺序执行 I/C/U/M/D/G，**单点容错**——每个 op 先经 TypeBox 校验再执行，任一 op 校验或执行失败
-  只让该 op 在 `results` 内联返回 `{ error }`，其余 op 照常执行并一次性落盘（一个坏节点不拖垮整批）；返回
+- `batchEdit(ops)`：顺序执行 I/C/U/M/D/G， **单点容错**——每个 op 先经 TypeBox 校验再执行，任一 op 校验或执行失败 只让该 op
+  在 `results` 内联返回 `{ error }`，其余 op 照常执行并一次性落盘（一个坏节点不拖垮整批）；返回
   `{ results, potentialIssues }`。级联语义：被跳过的 op 不写入 `as` 绑定，后续引用它的 op 独立报错。
 - `as` 绑定：insert/copy 可带 `as`， **仅同一批内**用 `parent: "@绑定名"` 引用；跨批用返回的真实 id。
 - `path`：`'id'` 或 `'父id;子id'`（可多层）或 `'@绑定;子id'`；update 禁改 `id/type/children`（TypeBox 校验拒绝并报错）。
@@ -123,8 +124,10 @@ interface CanvasDoc {
 
 ## 8. 内置 skill（canvasPrompt.ts + guidelines/）
 
-- **固定提示词**：角色（资深平面设计师）、工作流（选比例 → 定 palette → batch 分层构建 → ≤2 轮修正；导出仅由用户要求触发）、图层模型速查、反
-  AI 俗套铁律、构图与字体铁律、**排版防错规则**（垂直间距、几何中心定位、文字垂直居中 0.58 系数、宽度估算、居中禁止「估宽 + 目测 x」）、按需加载指令。
+- **固定提示词**：角色（资深平面设计师）、工作流（选比例 → 定 palette → batch 构建 → ≤2 轮修正；导出仅由用户要求触发）、图层模型速查、反
+  AI 俗套铁律、构图与字体铁律、 **区域分组铁律**（区域内 ≥2 元素必 group + layout，背景+文字必分组，原子元素可自由定位）、
+  **排版防错规则**（垂直间距、几何中心定位、文字垂直居中 0.58 系数、宽度估算、居中禁止「估宽 + 目测 x」、嵌图居中用 group 而非
+  rect）、按需加载指令。
 - **内置参考**（`guidelines.ts` 用 `?raw` 打包，`canvas_guidelines` 读取）：
   - `style-guide.md`：反 AI 俗套铁律 + 创意武器库（改编自 ardot rules/style-guide.md）
   - `composition.md`：构图法则 + 常用画布尺寸
@@ -140,14 +143,19 @@ interface CanvasDoc {
 - 旧扁平 `shapes[]` 文件 **不兼容**（schema 1），列表/读取直接过滤；需重新 `canvas_create`。
 - **节点 `type` 可省略**：AI 常省略 `type` 靠字段推断，store 会按字段自动推断（svg/image/path/text/polygon/star/line/group，兜底
   rect），并在校验前补全；读取已落盘画布时也会对缺失 `type` 的存量节点做治愈，保证不崩。
-- **输入校验（TypeBox 单一源）**：`canvasSchemas.ts` 用 TypeBox 定义节点 / 批量操作 / patch 三套 schema，**同时**生成喂给
-  模型的参数描述（`canvasTools` 的 `parameters`）与运行时校验器，两处永不脱节。字段类型严格（`width/height` 为
-  number 或 `fill_container`/`hug_contents`，`padding` 为 number|number[]，`fontWeight` 为 number|"400"~"900" 等），
-  枚举用 Literal 联合，`additionalProperties: false` 拒绝未知字段。
-- **非法即报错反馈**：`insert`/`copy`/`update` 入参不符合 schema 时抛错，经 `agentTools` 回填给模型（"第 N 个操作失败：字段 xxx …"）
-  让 AI 自纠，不再静默丢弃；渲染层兜底（`buildNode` 未知类型返回空 `Group`、单节点失败跳过）仍保留作最后防线。
+- **输入校验（TypeBox 单一源）**：`canvasSchemas.ts` 用 TypeBox 定义节点 / 批量操作 / patch 三套 schema， **同时**生成喂给
+  模型的参数描述（`canvasTools` 的 `parameters`）与运行时校验器，两处永不脱节。字段类型严格（`width/height` 为 number 或
+  `fill_container`/`hug_contents`，`padding` 为 number|number[]，`fontWeight` 为 number|"400"~"900" 等）， 枚举用 Literal
+  联合，`additionalProperties: false` 拒绝未知字段。
+- **非法即报错反馈**：`insert`/`copy`/`update` 入参不符合 schema 时抛错，经 `agentTools` 回填给模型（"第 N 个操作失败：字段
+  xxx …"） 让 AI 自纠，不再静默丢弃；渲染层兜底（`buildNode` 未知类型返回空 `Group`、单节点失败跳过）仍保留作最后防线。
 - 旧模型无此校验时可能落盘的脏数据（如 `width:"500"`）读盘仍宽松展示，不影响渲染。
 - 渲染端兜底：`buildNode` 对未知类型返回空 `Group`（绝不返回 `undefined`），单节点构建失败会跳过而非拖垮整张画布。
+- **区域分组**：区域内 ≥2 个元素必须收进 `group` 并用 `layout` 排布（子节点不写 x/y，交引擎）；`rect`
+  不是容器、不能挂子节点，「背景 + 文字」必须用 group 而非 rect 硬凑。手动坐标仅用于顶层定位与布局组内 `ABSOLUTE` 锚点。
+- **布局引擎（flexbox 两阶段）**：`canvasLayout.ts` 采用 measure（测量子节点自然尺寸）→ arrange（排布 + fill 拉伸）两阶段。hug 容器
+  交叉轴 = max(非 fill 子节点) + padding，交叉轴 CENTER/MAX 可靠生效；`fill_container` 交叉轴撑满在 hug 容器内可用，主轴撑满需容器
+  有确定主轴尺寸；text 行高估算统一 1.2×字号。
 - 文本 `hug_contents` 宽度为近似值（measureText / 字符估算），多行文本请给显式宽度。
 - `line` 的 `points` 相对节点 x/y（旧模型为绝对坐标，语义已变）。
 - image 的 `ai` 类型暂按 `stock` 兜底（当前无文生图服务）。
