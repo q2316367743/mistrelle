@@ -291,10 +291,16 @@ const imageOpSchema = Type.Object(
     op: Type.Literal('image'),
     id: Type.String({ description: '目标节点 id' }),
     kind: Type.Union(
-      [Type.Literal('placeholder'), Type.Literal('stock'), Type.Literal('ai')],
-      { description: 'placeholder 渐变占位 / stock 网络占位图 / ai 按 stock 兜底' }
+      [
+        Type.Literal('placeholder'),
+        Type.Literal('stock'),
+        Type.Literal('ai'),
+        Type.Literal('web')
+      ],
+      { description: 'placeholder 渐变占位 / stock 网络占位图 / ai 按 stock 兜底 / web 真实图片 URL（自动下载落盘沙盒）' }
     ),
-    prompt: Type.Optional(Type.String({ description: 'placeholder: 短标签；stock/ai: 种子或描述' }))
+    prompt: Type.Optional(Type.String({ description: 'placeholder: 短标签；stock/ai: 种子或描述；web: 备用描述' })),
+    url: Type.Optional(Type.String({ description: 'web 类型：真实图片 URL（http/https）' }))
   },
   { additionalProperties: false }
 )

@@ -199,7 +199,7 @@ export type CanvasNodeInput = Omit<CanvasNode, 'id'>
 
 // ── 批量编辑操作（对齐 ardot batch_edit 的 I/C/U/M/D/G） ──
 
-export type CanvasImageKind = 'placeholder' | 'stock' | 'ai'
+export type CanvasImageKind = 'placeholder' | 'stock' | 'ai' | 'web'
 
 export type CanvasBatchOp =
   | {
@@ -243,14 +243,19 @@ export type CanvasBatchOp =
       id: string
     }
   | {
-      /** 图片（G）：为目标节点生成图片（占位 / 网络占位图） */
+      /** 图片（G）：为目标节点生成图片（占位 / 网络占位图 / 真实图片） */
       op: 'image'
       /** 目标节点 id */
       id: string
-      /** placeholder 渐变占位 / stock 网络占位图（picsum，稳定种子） / ai 暂按 stock 兜底 */
+      /**
+       * placeholder 渐变占位 / stock 网络占位图（picsum，稳定种子） / ai 暂按 stock 兜底 /
+       * web 真实图片（url 自动下载到沙盒 outputs/images/）
+       */
       kind: CanvasImageKind
-      /** placeholder: 短标签（≤20 字）；stock/ai: 种子或描述 */
+      /** placeholder: 短标签（≤20 字）；stock/ai: 种子或描述；web: 可留空 */
       prompt?: string
+      /** web 类型：真实图片 URL（http/https） */
+      url?: string
     }
 
 // ── 文档 ──────────────────────────────────────────────────

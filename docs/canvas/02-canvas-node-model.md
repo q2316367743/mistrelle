@@ -68,9 +68,10 @@ interface CanvasDoc {
   `stroke` + `strokeWidth`
 - **矢量/图片**：`points`（折线，相对 x/y）、`sides`、`corners`、`innerRadius`、`startAngle`、`path`（SVG 路径）、`imageUrl`、`svg`
   （内联）
-- **图标用原生节点**：图标 / 简单图形优先用原生节点组合（rect / ellipse / path / line / star / polygon），颜色用 `fill` +
-  `$token`；内联 `svg` 字符串仅复杂图标兜底（内部颜色无法引用调色板 token，且导出 PNG 可能因异步加载缺失）。`path` 描边图标设
-  `fill: "none"` + `stroke`；`line` 颜色写在 `stroke`
+- **图标默认用 svg 节点**：图标优先用 `svg` 节点写内联 SVG（`icon_svg` 工具取真实图标，或手写 path），内部颜色可写 `$token名`，
+  落盘时自动替换为调色板实色（见 CanvasStore `resolveSvgTokens`）；简单单色图形（圆点 / 分隔线 / 星标 / 书签）用原生节点组合
+  （rect / ellipse / path / line / star / polygon），颜色用 `fill` + `$token`。`path` 描边图标设 `fill: "none"` + `stroke`；
+  `line` 颜色写在 `stroke`
 - **占位图**：`placeholderLabel`（G 操作 placeholder 生成，渲染层绘制灰色渐变 + 居中标签）
 
 ## 4. 布局引擎（canvasLayout.ts）
@@ -106,7 +107,10 @@ interface CanvasDoc {
 - `as` 绑定：insert/copy 可带 `as`， **仅同一批内**用 `parent: "@绑定名"` 引用；跨批用返回的真实 id。
 - `path`：`'id'` 或 `'父id;子id'`（可多层）或 `'@绑定;子id'`；update 禁改 `id/type/children`（TypeBox 校验拒绝并报错）。
 - image 操作：`placeholder` 设 `placeholderLabel`；`stock`/`ai` 用 picsum 稳定种子 URL 下载到沙盒
-  `outputs/images/{nodeId}.jpg`（`requestDownload`），失败退回远程 URL。
+  `outputs/images/{nodeId}.jpg`（`requestDownload`），失败退回远程 URL；`web` 用真实图片 URL 下载到
+  `outputs/images/{nodeId}.{ext}`（扩展名按 URL 推断，未知默认 png），失败退回远程 URL。
+- 内联 svg 的 `$token名` 调色板替换：insert / copy / update 时递归把节点（含子树）`svg` 字符串中的
+  `$token名` 替换为 `doc.palette` 实色（`resolveSvgTokens`），落盘即实色，渲染层无需改动。
 
 ## 7. 工具清单（canvasTools.ts）
 

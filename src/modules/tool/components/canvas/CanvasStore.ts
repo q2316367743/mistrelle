@@ -132,6 +132,26 @@ const resolvePathNode = (
   return current
 }
 
+// ─── 内联 SVG 的调色板 token 替换 ──────────────────────────
+
+/** 匹配 svg 字符串中的 $token名（字母 / 数字 / 下划线 / 连字符 / 中文） */
+const SVG_TOKEN_RE = /\$([a-zA-Z0-9_\-\u4e00-\u9fa5]+)/g
+
+/** 将 svg 字符串中的 $token名 替换为调色板实色；未命中的 token 原样保留 */
+const resolveSvgTokenString = (svg: string, palette: Record<string, string>): string => {
+  if (!svg.includes('$')) return svg
+  return svg.replace(SVG_TOKEN_RE, (match, token: string) => {
+    const color = palette[token]
+    return color != null ? color : match
+  })
+}
+
+/** 递归替换节点（含子树）内联 svg 中的调色板 token，使 svg 图标能跟随 $token 配色 */
+const resolveSvgTokens = (node: CanvasNode, palette: Record<string, string>): void => {
+  if (typeof node.svg === 'string') node.svg = resolveSvgTokenString(node.svg, palette)
+  node.children?.forEach((child) => resolveSvgTokens(child, palette))
+}
+
 // ─── 输入校验：TypeBox 单一源（canvasSchemas.ts），非法即抛错反馈模型自纠 ──────────
 
 const CANVAS_NODE_TYPES = new Set<string>([
@@ -214,32 +234,55 @@ const sanitizePatch = (patch: Record<string, unknown> | undefined): Record<strin
   return patch ?? {}
 }
 
-/** G 操作：placeholder 渐变占位 / stock·ai 网络占位图（picsum 稳定种子，落盘沙盒） */
+/** 解析图片 URL 的扩展名（决定 web 落盘文件后缀），未知一律用 png */
+const resolveWebImageExt = (url: string): string => {
+  try {
+    const ext = new URL(url).pathname.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase()
+    return ext && ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif', 'ico'].includes(ext) ? ext : 'png'
+  } catch {
+    return 'png'
+  }
+}
+
+/** G 操作：placeholder 渐变占位 / stock·ai 网络占位图（picsum 稳定种子，落盘沙盒）/ web 真实图片（落盘沙盒） */
 const applyImageOp = async (
   doc: CanvasDoc,
   sandboxDir: string,
   node: CanvasNode,
   kind: CanvasImageKind,
   prompt: string | undefined,
-  issues: string[]
+  url?: string
 ): Promise<unknown> => {
   if (kind === 'placeholder') {
     node.placeholderLabel = prompt || '图片'
     return { success: true, mode: 'placeholder', label: node.placeholderLabel }
   }
+  if (kind === 'web') {
+    if (!url) return { error: 'web 类型缺少 url：请提供真实图片地址（http/https）' }
+    const ext = resolveWebImageExt(url)
+    const imagesDir = window.preload.path.join(buildCanvasOutputsDir(sandboxDir), 'images')
+    const target = window.preload.path.join(imagesDir, `${node.id}.${ext}`)
+    try {
+      await window.preload.fs.mkdir(imagesDir, true)
+      await requestDownload({ url }, target)
+      node.imageUrl = window.preload.net.pathToHref(target)
+    } catch {
+      return { error: `图片下载失败：${url}（画布无法渲染非同源远程图片，请提供可下载的素材）` }
+    }
+    return { success: true, mode: 'web', url: node.imageUrl }
+  }
   const w = typeof node.width === 'number' ? Math.max(1, Math.round(node.width)) : 600
   const h = typeof node.height === 'number' ? Math.max(1, Math.round(node.height)) : 600
   const seed = encodeURIComponent(prompt || node.id || 'image')
-  const url = `https://picsum.photos/seed/${seed}/${w}/${h}`
+  const picsumUrl = `https://picsum.photos/seed/${seed}/${w}/${h}`
   try {
     const imagesDir = window.preload.path.join(buildCanvasOutputsDir(sandboxDir), 'images')
     const target = window.preload.path.join(imagesDir, `${node.id}.jpg`)
     await window.preload.fs.mkdir(imagesDir, true)
-    await requestDownload({ url }, target)
+    await requestDownload({ url: picsumUrl }, target)
     node.imageUrl = window.preload.net.pathToHref(target)
   } catch {
-    node.imageUrl = url
-    issues.push(`图片下载失败，已改用远程 URL：${url}`)
+    return { error: `网络占位图下载失败：${picsumUrl}` }
   }
   return { success: true, mode: kind, url: node.imageUrl }
 }
@@ -404,6 +447,7 @@ export class CanvasStore {
         const parent = resolveParentList(doc, op.parent, bindings)
         const node = assignIds(sanitizeNode(op.node))
         if (!node.name) issues.push('insert 的节点缺少 name，建议赋予有意义的图层名')
+        resolveSvgTokens(node, doc.palette ?? {})
         parent.push(node)
         if (op.as) bindings.set(op.as, node.id)
         return node
@@ -413,6 +457,7 @@ export class CanvasStore {
         if (!source) throw new Error(`未找到被复制节点 ${op.id}`)
         const clone = cloneWithNewIds(source.node)
         if (op.overrides) Object.assign(clone, sanitizePatch(op.overrides))
+        resolveSvgTokens(clone, doc.palette ?? {})
         const parent = resolveParentList(doc, op.parent, bindings)
         parent.push(clone)
         if (op.as) bindings.set(op.as, clone.id)
@@ -422,6 +467,7 @@ export class CanvasStore {
         const target = resolvePathNode(doc, op.path, bindings)
         if (!target) throw new Error(`未找到更新目标 ${op.path}`)
         Object.assign(target, sanitizePatch(op.patch))
+        resolveSvgTokens(target, doc.palette ?? {})
         return target
       }
       case 'move': {
@@ -444,7 +490,7 @@ export class CanvasStore {
       case 'image': {
         const found = findNodeInTree(doc.nodes, op.id)
         if (!found) throw new Error(`未找到节点 ${op.id}`)
-        return applyImageOp(doc, this.sandboxDir, found.node, op.kind, op.prompt, issues)
+        return applyImageOp(doc, this.sandboxDir, found.node, op.kind, op.prompt, op.url)
       }
       default:
         throw new Error(`未知操作类型`)

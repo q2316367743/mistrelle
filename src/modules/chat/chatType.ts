@@ -2,6 +2,7 @@ import type { Component } from 'vue'
 import { WorkIcon, EditIcon, PaletteIcon } from 'tdesign-icons-vue-next'
 import { DESIGN_CANVAS_PROMPT } from '@/modules/tool/components/canvas/canvasPrompt'
 import { createCanvasTools } from '@/modules/tool/components/canvas/canvasTools'
+import { createDesignTools } from '@/modules/tool/components/design'
 import type { ToolFunction } from '@/domain'
 import { WRITING_SCENE_CONFIG, type WritingScene } from '@/modules/chat/writingScene'
 
@@ -77,6 +78,6 @@ export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
   design: {
     label: '设计创意',
     prompt: DESIGN_CANVAS_PROMPT,
-    tools: (ctx) => createCanvasTools(ctx)
+    tools: (ctx) => [...createCanvasTools(ctx), ...createDesignTools(ctx)]
   }
 }

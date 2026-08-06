@@ -75,10 +75,10 @@
 | `image`   | 图片                                                           | imageUrl（file:// / http(s)）；建议显式 width/height |
 | `svg`     | 内联 SVG / 图标                                                | svg 字符串（或 imageUrl）                            |
 
-> **图标 / 简单图形铁律**：优先用 **原生节点组合**（`rect` / `ellipse` / `path` / `line` / `star` / `polygon`）画图标，
-> 颜色用 `fill` + `$token名`（如书签 = rect + line，星标 = star）。内联 `svg` 字符串（`svg` 字段）只作 **复杂图标兜底**：
-> 其内部颜色 **无法引用调色板 token**，且按图片异步加载， **导出 PNG 时可能缺失**——不要用内联 svg 做图标。
-> `path` 画描边图标时设 `fill: "none"` + `stroke` + `strokeWidth`；`line` 的颜色写在 `stroke`（不是 fill）。
+> **图标 / 简单图形规则**：图标默认用 **`svg` 节点写内联 SVG**——优先 `icon_svg` 工具取真实图标
+> （Iconify 聚合开源图标库），svg 内颜色可写 `$token名`（落盘时自动替换为调色板实色），或 icon_svg 的 `?color=` 参数直接上色。
+> 简单单色图形（圆点 / 分隔线 / 星标 / 书签）用原生节点组合（`rect` / `ellipse` / `path` / `line` / `star` / `polygon`），
+> 颜色用 `fill` + `$token名`。`path` 画描边图标时设 `fill: "none"` + `stroke` + `strokeWidth`；`line` 的颜色写在 `stroke`（不是 fill）。
 
 ## 3. 常用属性速查
 
@@ -170,6 +170,12 @@ type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环
 - `placeholder`：给节点铺灰色渐变 + 居中短标签（prompt 用 ≤20 字，如 "封面图"）
 - `stock`：picsum 网络占位图（prompt 为种子词，稳定可复用），自动下载到沙盒
 - `ai`：暂按 stock 兜底（无生图服务时不要依赖）
+- `web`：**真实图片**（url 填 http/https 地址，自动下载到沙盒 outputs/images/ 并设为 imageUrl；下载失败退回远程 URL）
+
+**素材工具（design，配合真实素材）**：
+
+- `website_logo(url)`：按网站地址 / 域名获取真实 logo / favicon，自动下载到沙盒 outputs/images/ 返回本地路径 → 填 `image` 节点 `imageUrl`（禁止自己画近似 logo）
+- `icon_svg(name | query, color?)`：Iconify 真实 SVG 图标；`name` 形如 `"mdi:home"`（{集合}:{名称}），`query` 为关键词搜索；返回内联 SVG 字符串 → 填 `svg` 节点（颜色可用 `$token名`）
 
 ## 5. 易错点（DO NOT）
 
@@ -184,7 +190,8 @@ type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环
 | update 改 `id/type/children`           | 报错并自纠                                          | 这些字段不可 patch，改则整个 update 操作失败                        |
 | 数值字段传字符串（如 `width:"500"`）   | 传数字 `width:500`                                  | width/height 是数字（布局组内才可用 fill_container / hug_contents） |
 | text 不设 fill                         | 必须设 fill                                         | 文字默认透明不可见                                                  |
-| 内联 `<svg>...</svg>` 字符串做图标     | 用 rect / ellipse / path / line / star 原生节点组合 | 内联 svg 颜色无法用 $token，导出 PNG 可能缺失                       |
+| 内联 `<svg>...</svg>` 字符串做图标 | 用 icon_svg 工具 / svg 节点内联 SVG，颜色写 `$token名` | svg 节点支持内联 SVG，`$token` 落盘时自动替换为调色板实色 |
+| 自己画一个近似 logo / 品牌图标 | 用 website_logo 取真实 logo、icon_svg 取真实图标 SVG | 真实素材优先，禁止凭空画品牌 logo |
 | `path` 描边图标不设 `fill:"none"`      | 描边图标设 `fill:"none"` + stroke                   | 否则内部被填成色块                                                  |
 | `line` 颜色写在 `fill`                 | 写在 `stroke`                                       | 折线 / 分隔线的颜色字段是 stroke                                    |
 | 三张等宽卡片平铺                       | 用之字 / 不对称                                     | 见 style-guide                                                      |
