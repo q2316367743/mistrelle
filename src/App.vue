@@ -7,17 +7,17 @@
     <div class="common-operator">
       <t-button theme="primary" shape="square" variant="text" @click="toggleCollapsed()">
         <template #icon>
-          <view-list-icon />
+          <AsideLeftIcon />
         </template>
       </t-button>
     </div>
   </t-layout>
 </template>
 <script lang="ts" setup>
-import { ViewListIcon } from 'tdesign-icons-vue-next'
 import { toggleCollapsed } from '@/global/BeanFactory'
 import { appData, dataFolder } from '@/global/Constant'
 import AppSide from '@/pages/app/AppSide.vue'
+import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
 
 window.preload.inject.onPluginEnter((action) => {
   // 对关键字进行处理

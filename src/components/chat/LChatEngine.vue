@@ -55,7 +55,7 @@
       </div>
       <t-button theme="default" variant="text" shape="square" @click="toggleAside()">
         <template #icon>
-          <app-icon />
+          <AsideRightIcon />
         </template>
       </t-button>
     </div>
@@ -66,10 +66,7 @@ import type { ChatRequestParams, ChatType } from '@/modules/chat'
 import { getChatSession, getSandboxDir } from '@/modules/chat'
 import type { ChatMessage, UserMessage } from '@/domain'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
-import {
-  readSubAgentContent,
-  getRunningSubAgentMessages
-} from '@/modules/subagent'
+import { readSubAgentContent, getRunningSubAgentMessages } from '@/modules/subagent'
 import {
   collectSubAgents,
   lastAssistantIdOf,
@@ -77,9 +74,9 @@ import {
 } from '@/modules/chat/agent/agentMessages'
 import SubAgentTabs, { type AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
 import { collapsed } from '@/global/BeanFactory'
-import { AppIcon } from 'tdesign-icons-vue-next'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
+import AsideRightIcon from '@/assets/icons/AsideRIghtIcon.vue'
 
 const props = withDefaults(
   defineProps<{
