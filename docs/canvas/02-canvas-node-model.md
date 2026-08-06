@@ -124,7 +124,7 @@ interface CanvasDoc {
 ## 8. 内置 skill（canvasPrompt.ts + guidelines/）
 
 - **固定提示词**：角色（资深平面设计师）、工作流（选比例 → 定 palette → batch 分层构建 → ≤2 轮修正；导出仅由用户要求触发）、图层模型速查、反
-  AI 俗套铁律、构图与字体铁律、**排版防错规则**（垂直间距、几何中心定位、宽度估算、居中禁止「估宽 + 目测 x」）、按需加载指令。
+  AI 俗套铁律、构图与字体铁律、**排版防错规则**（垂直间距、几何中心定位、文字垂直居中 0.58 系数、宽度估算、居中禁止「估宽 + 目测 x」）、按需加载指令。
 - **内置参考**（`guidelines.ts` 用 `?raw` 打包，`canvas_guidelines` 读取）：
   - `style-guide.md`：反 AI 俗套铁律 + 创意武器库（改编自 ardot rules/style-guide.md）
   - `composition.md`：构图法则 + 常用画布尺寸
