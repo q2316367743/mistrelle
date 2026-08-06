@@ -83,7 +83,6 @@ const handleKeydown = (event: KeyboardEvent) => {
   left: 0;
   border-radius: 5px;
   background: var(--fluent-card-bg);
-  box-shadow: var(--fluent-elevation-2);
   transition: transform var(--fluent-transition-normal), width var(--fluent-transition-normal);
 }
 
@@ -95,6 +94,7 @@ const handleKeydown = (event: KeyboardEvent) => {
   gap: 6px;
   padding: 6px 14px;
   border: none;
+  height: 32px;
   border-radius: 5px;
   background: transparent;
   color: var(--td-text-color-secondary);
@@ -107,13 +107,12 @@ const handleKeydown = (event: KeyboardEvent) => {
     background: var(--fluent-reveal-bg);
   }
 
-  &:focus-visible {
-    box-shadow: var(--fluent-focus-ring);
-  }
-
   &--active {
     color: var(--td-text-color-primary);
     font-weight: 600;
+    &:hover {
+      background-color: transparent;
+    }
   }
 }
 
