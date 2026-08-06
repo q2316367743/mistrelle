@@ -11,6 +11,7 @@
         </template>
       </t-button>
     </div>
+    <VideoExportOverlay />
   </t-layout>
 </template>
 <script lang="ts" setup>
@@ -18,6 +19,7 @@ import { toggleCollapsed } from '@/global/BeanFactory'
 import { appData, dataFolder } from '@/global/Constant'
 import AppSide from '@/pages/app/AppSide.vue'
 import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
+import VideoExportOverlay from '@/components/canvas/VideoExportOverlay.vue'
 
 window.preload.inject.onPluginEnter((action) => {
   // 对关键字进行处理

@@ -152,8 +152,46 @@ export interface CanvasNode {
   svg?: string
   // ── 占位图标签（G 操作 placeholder 生成，渲染层居中绘制） ──
   placeholderLabel?: string
+  // ── 动画（@leafer-in/animate 插件，纯增量，无该字段 = 静态元素） ──
+  /** 入场 / 过渡动画 */
+  animation?: CanvasAnimation
+  /** 出场动画（元素移除或 visible=0 时执行） */
+  animationOut?: CanvasAnimation
   // ── 子节点（children 顺序即 z 序） ──
   children?: CanvasNode[]
+}
+
+/** 节点动画（映射 Leafer 动画插件 @leafer-in/animate 的 IAnimation，纯增量字段） */
+export interface CanvasAnimation {
+  /** 样式过渡动画：目标样式 + 选项 */
+  style?: Record<string, unknown>
+  /** 关键帧动画：每帧样式 + 可选时长/延迟/缓动（优先于 style） */
+  keyframes?: Array<{
+    style?: Record<string, unknown>
+    /** 本关键帧固定时长（秒），设置后忽略 autoDuration 均分 */
+    duration?: number
+    delay?: number
+    easing?: string
+  }>
+  // ── 动画选项（与 Leafer IAnimateOptions 对齐） ──
+  /** 总时长（秒），默认 0.2 */
+  duration?: number
+  /** 延迟（秒），默认 0 */
+  delay?: number
+  /** 'ease' | 'linear' | 'bounce-out' | ... */
+  easing?: string
+  /** 循环播放：true 无限 / 数字次数 */
+  loop?: boolean | number
+  /** 摇摆（往返）循环：到达 to 的次数 */
+  swing?: boolean | number
+  /** 反向动画 to -> from */
+  reverse?: boolean
+  /** 播放倍速 */
+  speed?: number
+  /** 加入动画前元素状态作为 from 关键帧 */
+  join?: boolean
+  /** 是否自动播放（预览默认 true） */
+  autoplay?: boolean
 }
 
 /** 批量插入节点入参：CanvasNode 去掉 id（id 由系统自动生成） */

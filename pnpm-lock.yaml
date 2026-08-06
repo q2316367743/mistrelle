@@ -11,6 +11,9 @@ importers:
       '@imengyu/vue3-context-menu':
         specifier: ^1.5.2
         version: 1.5.4
+      '@leafer-in/animate':
+        specifier: 2.2.9
+        version: 2.2.9(@leafer-in/color@2.2.9(@leafer-in/interface@2.2.9(@leafer-ui/interface@2.2.9)(@leafer/interface@2.2.9))(@leafer-ui/draw@2.2.9)(@leafer-ui/interface@2.2.9))(@leafer-in/interface@2.2.9(@leafer-ui/interface@2.2.9)(@leafer/interface@2.2.9))(@leafer-ui/draw@2.2.9)(@leafer-ui/interface@2.2.9)
       '@sinclair/typebox':
         specifier: ^0.34.52
         version: 0.34.52
@@ -635,6 +638,14 @@ packages:
 
   '@leafer-editor/web@2.2.9':
     resolution: {integrity: sha512-PF36RqrOtYUN4x1eMLhtE97rP//Y76GZ3fx/J1JUi3JpkrEbysWObFMESKtI8alM9x4Zg+JCrFUBf/4FLmoM4Q==}
+
+  '@leafer-in/animate@2.2.9':
+    resolution: {integrity: sha512-e4klP9D/8okPq03EZiOfcfZ2UI8DMV8QU0abIWEMn2X7NxYiMRUozYaX4jqC21fIbJBRmuJ8MjYace1PdIfs6A==}
+    peerDependencies:
+      '@leafer-in/color': ^2.2.9
+      '@leafer-in/interface': ^2.2.9
+      '@leafer-ui/draw': ^2.2.9
+      '@leafer-ui/interface': ^2.2.9
 
   '@leafer-in/arrow@2.2.9':
     resolution: {integrity: sha512-ty3YUlnhAwpRB+S6zh4lNmzcOuE7HGHH1G9HlUuTkbDNA6HhKmHr3Y0VkfqiWmn774tb2uS10KlrekPYUZNWOw==}
@@ -4687,6 +4698,13 @@ snapshots:
       - '@leafer-in/editor'
       - '@leafer-ui/interface'
       - '@leafer/interface'
+
+  '@leafer-in/animate@2.2.9(@leafer-in/color@2.2.9(@leafer-in/interface@2.2.9(@leafer-ui/interface@2.2.9)(@leafer/interface@2.2.9))(@leafer-ui/draw@2.2.9)(@leafer-ui/interface@2.2.9))(@leafer-in/interface@2.2.9(@leafer-ui/interface@2.2.9)(@leafer/interface@2.2.9))(@leafer-ui/draw@2.2.9)(@leafer-ui/interface@2.2.9)':
+    dependencies:
+      '@leafer-in/color': 2.2.9(@leafer-in/interface@2.2.9(@leafer-ui/interface@2.2.9)(@leafer/interface@2.2.9))(@leafer-ui/draw@2.2.9)(@leafer-ui/interface@2.2.9)
+      '@leafer-in/interface': 2.2.9(@leafer-ui/interface@2.2.9)(@leafer/interface@2.2.9)
+      '@leafer-ui/draw': 2.2.9
+      '@leafer-ui/interface': 2.2.9
 
   '@leafer-in/arrow@2.2.9(@leafer-in/interface@2.2.9(@leafer-ui/interface@2.2.9)(@leafer/interface@2.2.9))(@leafer-ui/draw@2.2.9)(@leafer-ui/interface@2.2.9)':
     dependencies:

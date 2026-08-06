@@ -27,7 +27,13 @@
           <refresh-icon />
         </template>
       </t-button>
-      <t-dropdown trigger="click" :disabled="!store.current.value || busy" @click="handleAction">
+      <t-dropdown
+        trigger="click"
+        :disabled="!store.current.value || busy"
+        min-column-width="150px"
+        placement="bottom-right"
+        @click="handleAction"
+      >
         <t-button theme="primary" variant="text" shape="square" title="更多操作">
           <template #icon>
             <more-icon />
@@ -38,7 +44,7 @@
             <template #prefix-icon>
               <folder-open-icon />
             </template>
-            文件夹
+            文件夹中显示
           </t-dropdown-item>
           <t-dropdown-item value="copy">
             <template #prefix-icon>
@@ -51,6 +57,12 @@
               <download-icon />
             </template>
             下载图片
+          </t-dropdown-item>
+          <t-dropdown-item v-if="hasAnimation" value="video">
+            <template #prefix-icon>
+              <video-icon />
+            </template>
+            导出为视频
           </t-dropdown-item>
         </t-dropdown-menu>
       </t-dropdown>
@@ -68,7 +80,8 @@ import {
   DownloadIcon,
   FolderOpenIcon,
   MoreIcon,
-  RefreshIcon
+  RefreshIcon,
+  VideoIcon
 } from 'tdesign-icons-vue-next'
 import type { DropdownProps } from 'tdesign-vue-next'
 import {
@@ -77,7 +90,9 @@ import {
   getCanvasStore
 } from '@/modules/tool/components/canvas/CanvasStore'
 import { exportCanvasPng } from '@/modules/tool/components/canvas/canvasRender'
+import { maxAnimationTime } from '@/modules/tool/components/canvas/canvasVideoExport'
 import CanvasRenderer from './CanvasRenderer.vue'
+import { openVideoExportDialog } from './VideoExportDialog'
 
 const props = defineProps<{
   sandbox?: string
@@ -95,6 +110,12 @@ const canvasOptions = computed(() =>
     value: file.version
   }))
 )
+
+/** 当前画布是否存在动画（决定是否显示「导出为视频」入口） */
+const hasAnimation = computed(() => {
+  const doc = store.value.current.value
+  return doc ? maxAnimationTime(doc) > 0 : false
+})
 
 const emptyText = '请先让 AI 创建画布'
 
@@ -199,6 +220,7 @@ const handleDownload = async () => {
 const handleAction: DropdownProps['onClick'] = (data) => {
   if (data.value === 'copy') void handleCopy()
   else if (data.value === 'download') void handleDownload()
+  else if (data.value === 'video') openVideoExportDialog({ sandbox: props.sandbox ?? '' })
   else if (data.value === 'folder') {
     if (selected.value) {
       window.preload.inject.shell.showItemInFolder(

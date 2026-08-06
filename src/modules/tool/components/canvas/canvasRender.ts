@@ -11,6 +11,8 @@ import {
   Platform,
   Image as LeaferImage
 } from 'leafer-editor'
+// 注册动画能力到 Leafer 元素（依赖 @leafer-in/animate@2.2.9，leafer-editor 不含动画插件）
+import '@leafer-in/animate'
 import type { CanvasDoc, CanvasEffect, CanvasNode, CanvasPaint } from './canvasTypes'
 import { layoutCanvasDoc, type CanvasLayoutNode } from './canvasLayout'
 
@@ -24,6 +26,13 @@ const compact = (obj: Record<string, unknown>): Record<string, unknown> => {
   }
   return out
 }
+
+/** 动画属性透传：无动画节点不产生任何开销 */
+const buildAnimationProps = (node: CanvasNode): Record<string, unknown> =>
+  compact({
+    animation: node.animation,
+    animationOut: node.animationOut
+  })
 
 /** 解析 $name 调色板引用（纯色字符串或渐变 stops 内的颜色） */
 const resolveColorString = (value: string, palette: Record<string, string>): string => {
@@ -102,7 +111,7 @@ const toEffectsProps = (effects: CanvasEffect[] | undefined): Record<string, unk
   return props
 }
 
-/** 节点公共属性（几何 + 变换 + 效果），坐标为文档空间 */
+/** 节点公共属性（几何 + 变换 + 效果 + 动画），坐标为文档空间 */
 const buildCommon = (layout: CanvasLayoutNode, effects: boolean): Record<string, unknown> => {
   const { node } = layout
   return compact({
@@ -114,7 +123,8 @@ const buildCommon = (layout: CanvasLayoutNode, effects: boolean): Record<string,
     opacity: node.opacity,
     blendMode: node.blendMode,
     visible: node.visible,
-    ...(effects ? toEffectsProps(node.effects) : {})
+    ...(effects ? toEffectsProps(node.effects) : {}),
+    ...buildAnimationProps(node)
   })
 }
 
@@ -422,6 +432,31 @@ const roundRegion = (region: CanvasExportRegion): CanvasExportRegion => ({
   height: Math.max(1, Math.round(region.height))
 })
 
+/** 动画元素的最小接口（@leafer-in/animate 运行时向元素注入 animate()） */
+interface AnimatedElementLike {
+  animate?: () => { stop(): void } | undefined
+  children?: unknown
+}
+
+/** 遍历 Leafer 子节点（LeafList 非数组，统一走 forEach） */
+const eachChild = (children: unknown, fn: (child: unknown) => void): void => {
+  ;(children as { forEach?: (cb: (item: unknown) => void) => void } | undefined)?.forEach?.(fn)
+}
+
+/**
+ * 将根元素树中所有带动画的元素推进到结束态（静态导出用）：
+ * 动画 autoplay 默认开启，直接导出会抓到播放中间态（如渐入动画首帧 opacity=0），
+ * 先对每个动画实例 stop()（即 complete → 落到 endingStyle）再导出，保证静态图 = 设计终态。
+ */
+export const settleAnimations = (roots: CanvasRenderNode[]): void => {
+  const walk = (element: unknown): void => {
+    const animated = element as AnimatedElementLike
+    animated.animate?.()?.stop()
+    eachChild(animated.children, walk)
+  }
+  for (const root of roots) walk(root)
+}
+
 /**
  * 离屏渲染画布为 PNG Blob（原始文档分辨率，与视口缩放无关）。
  * 缺省导出整张画布（0,0 → doc 尺寸，越界元素裁剪）；传 region 可导出指定矩形，
@@ -440,9 +475,12 @@ export const exportCanvasPng = async (doc: CanvasDoc, region?: CanvasExportRegio
   document.body.appendChild(canvas)
   const offscreen = new Leafer({ view: canvas, width, height })
   try {
-    for (const element of buildDocElements(doc, 1)) {
+    const elements = buildDocElements(doc, 1)
+    for (const element of elements) {
       offscreen.add(element)
     }
+    // 先停到动画结束态，避免 PNG 抓到播放中间帧（渐入/打字机动画尤其明显）
+    settleAnimations(elements)
     // screenshot 限定导出矩形：默认整张画布，region 时导出指定区域（含裁剪），尺寸与设计一致
     // 文件名不能带扩展名（带 '.' 会触发浏览器下载），blob: true 走 toBlob 返回 Blob
     const result = await offscreen.export('png', { blob: true, screenshot: { ...r } })

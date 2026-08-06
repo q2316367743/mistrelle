@@ -74,6 +74,55 @@ const layoutSizeSchema = Type.Union([
   Type.Literal('hug_contents', { description: '包裹内容' })
 ])
 
+// ── 动画 schema（additionalProperties: true 放行任意样式键，仅约束选项结构） ──
+
+const animationStyleSchema = Type.Object(
+  {},
+  {
+    additionalProperties: true,
+    description:
+      '目标样式（style）或关键帧样式：任意渲染属性，如 x / y / rotation / opacity / fill / cornerRadius / scaleX / scaleY'
+  }
+)
+
+const animationSchema = Type.Object(
+  {
+    style: Type.Optional(animationStyleSchema),
+    keyframes: Type.Optional(
+      Type.Array(
+        Type.Object(
+          {
+            style: Type.Optional(animationStyleSchema),
+            duration: Type.Optional(Type.Number({ description: '本关键帧固定时长（秒）' })),
+            delay: Type.Optional(Type.Number({ description: '本关键帧延迟（秒）' })),
+            easing: Type.Optional(Type.String({ description: '本关键帧缓动方式' }))
+          },
+          { additionalProperties: true }
+        ),
+        { description: '关键帧动画（优先于 style）' }
+      )
+    ),
+    duration: Type.Optional(Type.Number({ description: '总时长（秒），默认 0.2' })),
+    delay: Type.Optional(Type.Number({ description: '延迟（秒），默认 0' })),
+    easing: Type.Optional(Type.String({ description: "缓动方式：'ease' / 'linear' / 'bounce-out' 等" })),
+    loop: Type.Optional(
+      Type.Union([Type.Boolean(), Type.Number()], { description: '循环播放：true 无限 / 数字次数' })
+    ),
+    swing: Type.Optional(
+      Type.Union([Type.Boolean(), Type.Number()], { description: '摇摆（往返）循环：到达 to 的次数' })
+    ),
+    reverse: Type.Optional(Type.Boolean({ description: '反向动画 to -> from' })),
+    speed: Type.Optional(Type.Number({ description: '播放倍速，越大越快' })),
+    join: Type.Optional(Type.Boolean({ description: '加入动画前元素状态作为 from 关键帧' })),
+    autoplay: Type.Optional(Type.Boolean({ description: '是否自动播放（预览默认 true）' }))
+  },
+  {
+    additionalProperties: true,
+    description:
+      '节点动画：style 过渡或 keyframes 关键帧 + 动画选项（duration/delay/easing/loop/swing/reverse/speed/join/autoplay）'
+  }
+)
+
 // ── 节点字段（nodeSchema 与 nodePatchSchema 共用） ──────────
 
 const nodeFieldSchema = {
@@ -148,7 +197,9 @@ const nodeFieldSchema = {
   path: Type.Optional(Type.String({ description: 'SVG 路径数据，如 M10 20 L60 20 L60 60 Z' })),
   imageUrl: Type.Optional(Type.String({ description: '图片地址（file:// / http(s) / data URL）' })),
   svg: Type.Optional(Type.String({ description: '内联 SVG 字符串（与 imageUrl 二选一）' })),
-  placeholderLabel: Type.Optional(Type.String({ description: '占位图标签' }))
+  placeholderLabel: Type.Optional(Type.String({ description: '占位图标签' })),
+  animation: Type.Optional(animationSchema),
+  animationOut: Type.Optional(animationSchema)
 }
 
 // ── 节点 schema（递归，含 children） ───────────────────────

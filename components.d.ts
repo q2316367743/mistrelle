@@ -97,6 +97,8 @@ declare module 'vue' {
     TTooltip: typeof import('tdesign-vue-next')['Tooltip']
     TTree: typeof import('tdesign-vue-next')['Tree']
     UtoolsImage: typeof import('./src/components/UtoolsImage/UtoolsImage.vue')['default']
+    VideoExportContent: typeof import('./src/components/chat/aside/design/VideoExportContent.vue')['default']
+    VideoExportOverlay: typeof import('./src/components/canvas/VideoExportOverlay.vue')['default']
     WritingAside: typeof import('./src/components/chat/aside/writing/WritingAside.vue')['default']
   }
 }

@@ -52,6 +52,32 @@
 ```
 type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环）；stops 可为纯色字符串（自动均分）或 `{"offset":0,"color":"#fff"}`。
 
+### 动画（节点 animation 字段）
+
+给任意节点加 `animation` 字段即可描述动效（预览自动播放；导出由用户在画布面板操作）：
+
+```jsonc
+{ "op": "insert", "parent": "root", "node": {
+  "type": "text", "name": "主标题", "text": "年度报告", "fontSize": 96, "fill": "$主色",
+  "animation": { "style": { "opacity": 1, "y": 40 }, "duration": 0.8, "easing": "ease-out" }
+}}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `style` | 目标样式：x / y / rotation / opacity / fill / cornerRadius / scaleX / scaleY 等任意渲染属性 |
+| `keyframes` | 关键帧动画（优先于 style），如 `[{style:{opacity:0}},{style:{opacity:1}}]`，每帧可带 duration / delay / easing |
+| `duration` / `delay` | 时长 / 延迟（秒） |
+| `easing` | 缓动：'ease' / 'linear' / 'bounce-out' 等 |
+| `loop` | 循环：true 无限 / 数字次数（背景光晕"呼吸"常用 opacity loop） |
+| `swing` | 摇摆往返循环 |
+| `reverse` / `speed` / `join` / `autoplay` | 反向 / 倍速 / 加入起始态 / 自动播放 |
+
+要点：
+- 动画 = 「节点初始状态 → 目标 style」，节点自身的 x / y / opacity 即动画起点，无需额外写 from
+- 文字也支持动画：打字机（style.text 更长字符串）、数字 count（text 为数字）
+- 动效导出 mp4 / gif / webm 由用户在画布面板「导出为视频」操作（可选择帧率 / 时长 / 格式 / 分辨率），AI 只负责写 animation 字段
+
 ## 4. 批量操作（operations）
 
 `operations` 是操作数组，顺序执行：
