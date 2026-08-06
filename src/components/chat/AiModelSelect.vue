@@ -25,7 +25,13 @@
         </div>
         <div v-if="thinking" class="ai-thinking-row">
           <span class="ai-thinking-label">思考强度</span>
-          <t-radio-group v-model="effort" theme="button" size="small" :options="effortOptions" />
+          <t-radio-group
+            v-model="effort"
+            theme="button"
+            size="small"
+            variant="primary-filled"
+            :options="effortOptions"
+          />
         </div>
       </div>
       <div class="ai-provide-setting flex mb-4px" @click="handleModelSetting()">
@@ -84,6 +90,15 @@ const handleModelSetting = () => router.push('/setting/ai')
   align-items: center;
   cursor: pointer;
   height: 32px;
+  padding: 0 8px;
+  border-radius: var(--td-radius-medium);
+  transition: background-color 0.3s ease-in-out;
+  &:hover {
+    background: var(--td-bg-color-container-hover);
+  }
+  &:active {
+    background: var(--td-bg-color-container-active);
+  }
 }
 .ai-select-label {
   max-width: 120px;
