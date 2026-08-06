@@ -96,6 +96,9 @@ interface CanvasDoc {
   doc 尺寸，越界元素裁剪，杜绝「导出尺寸 ≠ 画布尺寸」）；传 `region {x,y,width,height}` 可导出指定区域（用于画布内容器 /
   卡片按设计区域导出）。辅助函数：`computeNodeBounds(doc, id)`（节点含子树包围盒）、`normalizeRegion(region)`。
 - 预览组件 `CanvasRenderer.vue` 调用 `buildDocElements`（fit/缩放/平移逻辑不变）。
+- **预览交互：双击复制节点 id**（`CanvasRenderer.vue`）：监听 `double_tap`，从命中元素沿 `parent` 链向上取最近带 `id`
+  的元素（叶子命中自身 id，group 背景 rect 回退到 group id，空白画布无 id 忽略），`clipboard.copyText(id)` 后
+  `MessageUtil.success('已复制元素 id：xxx')` / 失败 `MessageUtil.error` —— 便于用户在 AI 修复时直接把 id 粘贴给模型。
 
 ## 6. Store 与批量编辑（CanvasStore.ts）
 

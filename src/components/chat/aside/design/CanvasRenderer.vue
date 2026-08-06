@@ -10,9 +10,16 @@
 </template>
 <script lang="ts" setup>
 import { App } from 'leafer-editor'
+import { MessageUtil } from '@/utils/modal'
 import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
 import { buildDocElements } from '@/modules/tool/components/canvas/canvasRender'
 import type { CanvasDoc } from '@/modules/tool/components/canvas/canvasTypes'
+
+/** 双击命中的元素最小结构（leafer 2.2.9 的 d.ts 被混淆，用本地接口收窄，避免 any） */
+interface CanvasTapTarget {
+  id?: string
+  parent?: CanvasTapTarget | null
+}
 
 const props = defineProps<{
   sandbox?: string
@@ -25,6 +32,18 @@ const canvasHost = ref<HTMLElement>()
 const { width: containerWidth, height: containerHeight } = useElementSize(containerRef)
 
 let app: App | null = null
+
+/** 双击画布元素：复制其节点 id 到剪贴板并提示（双击空白区域不处理） */
+const handleDoubleTap = (event: { target?: CanvasTapTarget | null }) => {
+  let el = event.target
+  while (el && !el.id) el = el.parent ?? null
+  if (!el?.id) return
+  if (window.preload.inject.clipboard.copyText(el.id)) {
+    MessageUtil.success(`已复制元素 id：${el.id}`)
+  } else {
+    MessageUtil.error('复制失败')
+  }
+}
 
 onMounted(() => {
   if (!canvasHost.value) return
@@ -48,6 +67,9 @@ onMounted(() => {
     // 普通滚轮即缩放（不含修饰键）
     wheel: { zoomMode: 'mouse' }
   })
+  // 双击元素 → 复制其节点 id，方便 AI 修复（沿 parent 链向上取最近带 id 元素：
+  // 命中叶子复制自身 id，命中 group 背景 rect 回退到 group id，空白画布无 id 则忽略）
+  app.tree.on('double_tap', handleDoubleTap)
   render()
 })
 
