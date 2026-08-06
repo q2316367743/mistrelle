@@ -37,13 +37,13 @@
     </ChatList>
     <div class="r-chat-list__locator-group">
       <t-tooltip
-        v-for="message in messages"
+        v-for="message in userMessages"
         :key="message.id"
-        content="定位到这条消息"
+        :content="getLocatorTooltip(message)"
         placement="left"
       >
         <t-button
-          :class="['r-chat-list__locator', `r-chat-list__locator--${message.role}`]"
+          class="r-chat-list__locator r-chat-list__locator--user"
           variant="text"
           shape="square"
           size="small"
@@ -58,7 +58,7 @@
 </template>
 <script lang="ts" setup>
 import { ChatList, ChatMessage } from '@tdesign-vue-next/chat'
-import { ChatMessage as ChatMessageType, ChatStatus } from '@/domain'
+import { ChatMessage as ChatMessageType, ChatStatus, UserMessage } from '@/domain'
 import type { PropType } from 'vue'
 
 const props = defineProps({
@@ -85,6 +85,27 @@ const emit = defineEmits<{
 
 const textLoading = computed(() => props.status === 'pending')
 const isStreamLoad = computed(() => props.status === 'streaming')
+
+const userMessages = computed(() =>
+  props.messages.filter((message): message is UserMessage => message.role === 'user')
+)
+
+const LOCATOR_TEXT_MAX = 10
+
+const getLocatorTooltip = (message: UserMessage) => {
+  const fallback = message.content
+    .map((item) => {
+      if (item.type === 'skill') return item.data.name
+      if (item.type === 'tool') return item.data.label
+      if (item.type === 'attachment') return item.data.map((file) => file.name ?? '').join(', ')
+      return ''
+    })
+    .filter(Boolean)
+    .join(', ')
+  const text = message.content.find((item) => item.type === 'text')?.data || fallback
+
+  return text.length > LOCATOR_TEXT_MAX ? `${text.slice(0, LOCATOR_TEXT_MAX)}…` : text
+}
 
 const scrollToMessage = (messageId: string) => {
   const target = document.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(messageId)}"]`)
@@ -144,10 +165,6 @@ const scrollToMessage = (messageId: string) => {
 
 .r-chat-list__locator--user {
   color: var(--td-brand-color);
-}
-
-.r-chat-list__locator--assistant {
-  color: var(--td-success-color);
 }
 
 .r-chat-list__locator:hover {
