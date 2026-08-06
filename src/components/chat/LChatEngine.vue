@@ -33,10 +33,15 @@
     </t-content>
     <!--    <t-aside v-if="aside" width="240px" class="l-chat-tool__aside shrink-0">-->
     <t-aside
-      :width="aside ? `${width}px` : '0'"
-      :class="['l-chat-tool__aside', 'shrink-0', { 'border-left-none': !aside }]"
+      :width="fullscreen ? '100%' : aside ? `${width}px` : '0'"
+      :class="[
+        'l-chat-tool__aside',
+        'shrink-0',
+        { 'border-left-none': !aside },
+        { 'l-chat-tool__aside--fullscreen': fullscreen }
+      ]"
     >
-      <div v-if="aside" class="l-chat-tool__resizer" @mousedown="startResize" />
+      <div v-if="aside && !fullscreen" class="l-chat-tool__resizer" @mousedown="startResize" />
       <l-chat-aside
         :messages="messages"
         :workspace="workspace"
@@ -53,11 +58,19 @@
       <div class="l-chat-tool__title">
         <span class="ellipsis" :title="chatName">{{ chatName }}</span>
       </div>
-      <t-button theme="default" variant="text" shape="square" @click="toggleAside()">
-        <template #icon>
-          <AsideRightIcon />
-        </template>
-      </t-button>
+      <div class="ml-auto flex gap-8px">
+        <t-button theme="default" variant="text" shape="square" @click="toggleFullscreen()">
+          <template #icon>
+            <fullscreen-exit1-icon v-if="fullscreen" />
+            <fullscreen1-icon v-else />
+          </template>
+        </t-button>
+        <t-button theme="default" variant="text" shape="square" @click="toggleAside()">
+          <template #icon>
+            <AsideRightIcon />
+          </template>
+        </t-button>
+      </div>
     </div>
   </t-layout>
 </template>
@@ -77,6 +90,7 @@ import { collapsed } from '@/global/BeanFactory'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import AsideRightIcon from '@/assets/icons/AsideRIghtIcon.vue'
+import { Fullscreen1Icon, FullscreenExit1Icon, FullscreenIcon } from 'tdesign-icons-vue-next'
 
 const props = withDefaults(
   defineProps<{
@@ -96,6 +110,7 @@ const inputValue = ref('')
 const modelValue = ref('')
 // 侧边栏是否展示
 const [aside, toggleAside] = useBoolState(false)
+const [fullscreen, toggleFullscreen] = useBoolState(false)
 // 侧边栏宽度
 const width = useUtoolsKvStorage<number>(LocalNameEnum.KEY_AI_ASIDE_WIDTH, 232)
 
@@ -329,6 +344,7 @@ watch(
 </script>
 <style scoped lang="less">
 .l-chat-tool {
+  position: relative;
   overflow: hidden;
   height: v-bind(height);
   padding: 48px 8px 16px;
@@ -348,6 +364,9 @@ watch(
     top: 0;
     left: 0;
     right: 0;
+    z-index: 11;
+    height: 48px;
+    box-sizing: border-box;
     color: var(--td-text-color-primary);
     padding: 8px;
     transition: padding-left 0.1s ease-in-out;
@@ -375,6 +394,16 @@ watch(
     border-left: 1px solid var(--td-border-level-1-color);
     &.border-left-none {
       border-left: none;
+    }
+    &.l-chat-tool__aside--fullscreen {
+      position: absolute;
+      top: 48px;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 10;
+      border-left: none;
+      background-color: var(--td-bg-color-container) !important;
     }
   }
   &__resizer {
