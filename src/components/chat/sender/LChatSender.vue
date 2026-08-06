@@ -81,7 +81,7 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { useSettingAiStore, useSettingDefaultStore } from '@/store'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
-import type { SkillItem, ToolItem, UserMessageContent } from '@/domain'
+import type { SkillItem, ThinkingEffort, ToolItem, UserMessageContent } from '@/domain'
 import {
   buildFileSuggestion,
   buildSkillSuggestion,
@@ -92,6 +92,7 @@ import {
   type ToolSuggestionItem
 } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
+import type { ChatSenderInitial } from './chatSenderInitial'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
 import { AiChatMode } from '@/entity'
@@ -99,29 +100,18 @@ import { LockOffIcon, TaskIcon } from 'tdesign-icons-vue-next'
 
 const props = withDefaults(
   defineProps<{
-    initialInput?: string
-    initialModel?: string
+    initial?: ChatSenderInitial
     loading?: boolean
     placeholder?: string
     sandboxDir?: string
     tokenTotal?: number
-    initialWorkspace?: string
-    initialAgentId?: string
-    initialMode?: AiChatMode
-    initialType?: ChatType
-    initialWritingScene?: WritingScene
   }>(),
   {
-    initialInput: '',
-    initialModel: '',
+    initial: () => ({}),
     loading: false,
     tokenTotal: 0,
     placeholder: '描述任务，/ 调用技能，# 使用工具，@ 添加上下文',
-    sandboxDir: '',
-    initialWorkspace: '',
-    initialMode: 0,
-    initialType: 'office',
-    initialWritingScene: 'article'
+    sandboxDir: ''
   }
 )
 const emit = defineEmits<{
@@ -131,30 +121,14 @@ const emit = defineEmits<{
 
 const skills = ref<LocalSkill[]>([])
 const sandboxFiles = ref<ChatFileRef[]>([])
-const modelKey = ref(props.initialModel || useSettingDefaultStore().state.defaultAssistantModel)
-const thinking = ref(true)
-const effort = ref<'low' | 'high' | 'max'>('high')
-const agentId = ref(props.initialAgentId || '')
-const mode = ref<AiChatMode>(props.initialMode)
-const type = ref<ChatType>(props.initialType)
-const writingScene = ref<WritingScene>(props.initialWritingScene)
-const workspaceRef = ref(props.initialWorkspace || '')
-// 新建对话页类型选择在 sender 挂载后才确定，需跟随 prop 变化（类型创建后锁定，运行期不变化）
-watch(
-  () => props.initialType,
-  (val) => {
-    type.value = val ?? 'office'
-  },
-  { immediate: true }
-)
-// 写作子场景（writing 类型内部分层），同样跟随 prop 变化，创建后锁定
-watch(
-  () => props.initialWritingScene,
-  (val) => {
-    writingScene.value = val ?? 'article'
-  },
-  { immediate: true }
-)
+const modelKey = ref(props.initial.model || useSettingDefaultStore().state.defaultAssistantModel)
+const thinking = ref(props.initial.thinking ?? true)
+const effort = ref<ThinkingEffort>(props.initial.effort ?? 'high')
+const agentId = ref(props.initial.agentId || '')
+const mode = ref<AiChatMode>(props.initial.mode ?? 0)
+const type = ref<ChatType>(props.initial.type ?? 'office')
+const writingScene = ref<WritingScene>(props.initial.writingScene ?? 'article')
+const workspaceRef = ref(props.initial.workspace || '')
 const projectAssetContext = inject(projectAssetContextKey, null)
 const projectAssetFiles = computed(() => projectAssetContext?.files.value ?? [])
 const files = computed(() => [...sandboxFiles.value, ...projectAssetFiles.value])
@@ -279,7 +253,7 @@ const editor = useEditor({
     FileMention,
     ToolMention
   ],
-  content: props.initialInput || '',
+  content: props.initial.input || '',
   editable: !props.loading,
   editorProps: {
     attributes: { class: 'l-chat-sender__pm' },
@@ -456,36 +430,23 @@ const handleContainerDrop = async (event: DragEvent) => {
   if (filePath) insertFileByPath(filePath)
 }
 
-// =================================== 监听 props 初始值 ===================================
-
+// =================================== 监听 props 初始对象 ===================================
+// 初始化参数由父组件一次性提供，异步水合 / 恢复上次会话配置时整体重建对象引用，
+// 浅监听引用变化统一应用，无需逐个字段监听；各字段沿用原 fallback 语义
 watch(
-  () => props.initialInput,
-  (value) => {
-    if (inputValue.value !== value) setText(value)
-  }
-)
-watch(
-  () => props.initialModel,
-  (value) => {
-    modelKey.value = value || useSettingDefaultStore().state.defaultAssistantModel
-  }
-)
-watch(
-  () => props.initialAgentId,
-  (value) => {
-    agentId.value = value || ''
-  }
-)
-watch(
-  () => props.initialMode,
-  (value) => {
-    mode.value = value || 0
-  }
-)
-watch(
-  () => props.initialWorkspace,
-  (value) => {
-    workspaceRef.value = value || ''
+  () => props.initial,
+  (init) => {
+    if (init.input !== undefined && inputValue.value !== init.input) setText(init.input)
+    if (init.model !== undefined) {
+      modelKey.value = init.model || useSettingDefaultStore().state.defaultAssistantModel
+    }
+    if (init.thinking !== undefined) thinking.value = init.thinking
+    if (init.effort !== undefined) effort.value = init.effort
+    if (init.agentId !== undefined) agentId.value = init.agentId
+    if (init.mode !== undefined) mode.value = init.mode
+    if (init.type !== undefined) type.value = init.type
+    if (init.writingScene !== undefined) writingScene.value = init.writingScene
+    if (init.workspace !== undefined) workspaceRef.value = init.workspace
   }
 )
 watch(
@@ -511,7 +472,7 @@ watch(
 // =================================== 生命周期 ===================================
 
 onMounted(async () => {
-  setText(props.initialInput)
+  setText(props.initial.input || '')
   skills.value = await localSkillList()
   await useSettingAiStore().initPromise
 })

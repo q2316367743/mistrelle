@@ -15,9 +15,7 @@
       </div>
       <div class="page-new__sender">
         <l-chat-sender
-          :initial-model="model"
-          :initial-type="type"
-          :initial-writing-scene="scene"
+          :initial="{ model, type, writingScene: scene }"
           @send="handleSend"
         />
       </div>

@@ -54,7 +54,7 @@ type WritingScene = 'article'
 
 ```
 PageNew.vue（选 writing → 二级场景固定 article）
-  → LChatSender（initialWritingScene prop → ChatRequestParams.writingScene）
+  → LChatSender（initial.writingScene → ChatRequestParams.writingScene）
   → AiChatStore.add（aiChatSandbox 建目录 + AiChatContent.writingScene 持久化）
   → ChatSessionManager.load（恢复 writingScene 并 set 到 ToolChat；首条 draft 由此发送）
   → AgentChat（buildTypePrompt / getTypeTools 注入）

@@ -19,12 +19,7 @@
         @switch="handleSwitchAgent"
       />
       <l-chat-sender
-        :initial-input="inputValue"
-        :initial-model="modelValue"
-        :initial-agent-id="agentId"
-        :initial-workspace="workspace"
-        :initial-mode="mode"
-        :initial-type="chatType"
+        :initial="initialState"
         :loading="status === 'pending' || status === 'streaming'"
         :sandbox-dir="sandboxDir"
         @send="handleSend"
@@ -77,7 +72,8 @@
 <script lang="ts" setup>
 import type { ChatRequestParams, ChatType } from '@/modules/chat'
 import { getChatSession, getSandboxDir } from '@/modules/chat'
-import type { ChatMessage, UserMessage } from '@/domain'
+import type { ChatMessage, ThinkingEffort, UserMessage } from '@/domain'
+import type { ChatSenderInitial } from '@/components/chat/sender/chatSenderInitial'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
 import { readSubAgentContent, getRunningSubAgentMessages } from '@/modules/subagent'
 import {
@@ -108,6 +104,8 @@ const props = withDefaults(
 
 const inputValue = ref('')
 const modelValue = ref('')
+const thinking = ref(true)
+const effort = ref<ThinkingEffort>('high')
 // 侧边栏是否展示
 const [aside, toggleAside] = useBoolState(false)
 const [fullscreen, toggleFullscreen] = useBoolState(false)
@@ -207,17 +205,33 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', handleWindowResize)
 })
 
-// 恢复上次使用的模型：新会话草稿发送时 user 消息一加入即可回填，无需等待整个回答结束
+// 恢复上次使用的模型 / 思考配置：新会话草稿发送时 user 消息一加入即可回填，无需等待整个回答结束
 watch(
   messages,
   (val) => {
     const lastUser = val.findLast((e) => e.role === 'user') as UserMessage | undefined
     if (lastUser) {
       modelValue.value = `${lastUser.provide}:${lastUser.model}`
+      thinking.value = lastUser.thinking ?? true
+      effort.value = lastUser.reasoning_effort ?? 'high'
     }
   },
   { immediate: true }
 )
+
+// sender 初始化参数：组合会话状态与上次聊天恢复的模型 / 思考配置，任一字段变化都会重建对象引用，
+// sender 侧浅监听该引用即可整体应用（异步水合 / 恢复完成后外部不再变化）
+const initialState = computed<ChatSenderInitial>(() => ({
+  input: inputValue.value,
+  model: modelValue.value,
+  thinking: thinking.value,
+  effort: effort.value,
+  agentId: agentId.value,
+  mode: mode.value,
+  type: chatType.value,
+  writingScene: writingScene.value,
+  workspace: workspace.value
+}))
 
 // ─── 子 Agent 切换 ────────────────────────────────────────────────
 

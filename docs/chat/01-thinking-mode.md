@@ -71,6 +71,38 @@ AiModelSelect (v-model:thinking / v-model:effort)
 - `AgentChat.buildResumeRequestParams` 从存储的 `userMessage` 恢复 `thinking` / `reasoning_effort`，保证 resume 续跑一致。
 - `createPendingAssistantMessage`（`agentMessages.ts`）新增可选 `thinking` / `reasoningEffort`，随请求写入 assistant 消息供持久化。
 
+## 上次聊天配置恢复
+
+`LChatEngine.vue` 在「恢复上次模型」的 `messages` watch 中一并恢复思考配置（复用最后一条 user 消息）：
+
+```
+lastUser.thinking ?? true → sender.thinking
+lastUser.reasoning_effort ?? 'high' → sender.effort
+```
+
+## 初始化参数对象封装
+
+`LChatSender.vue` 的初始化参数统一收敛为单个 `initial: ChatSenderInitial` 对象（`src/components/chat/sender/chatSenderInitial.ts`），
+取代原先逐个 `initial*` prop + 逐个 watch 的写法：
+
+```ts
+interface ChatSenderInitial {
+  input?: string
+  model?: string
+  thinking?: boolean
+  effort?: ThinkingEffort
+  agentId?: string
+  mode?: AiChatMode
+  type?: ChatType
+  writingScene?: WritingScene
+  workspace?: string
+}
+```
+
+- setup 一次性从 `props.initial` 初始化内部 ref（`thinking ?? true`、`effort ?? 'high'`）。
+- 外部仅在异步水合（`ChatSession.load`）与恢复上次配置时重建对象引用，故只需**浅监听** `() => props.initial` 整体应用，
+  无需 `deep` 与逐个字段监听；数据加载完成后外部不再变化。
+
 ## 子 Agent 继承
 
 `spawn_agent` 派发的子 Agent 继承主 Agent 的思考配置：
@@ -88,7 +120,9 @@ AiModelSelect (v-model:thinking / v-model:effort)
 | `src/modules/chat/agent/agentTypes.ts` | `AgentStreamingBody` 类型 |
 | `src/modules/chat/agent/agentStream.ts` | 按 thinking 构建请求 body |
 | `src/components/chat/AiModelSelect.vue` | 思考开关 + 强度选择器 UI |
-| `src/components/chat/sender/LChatSender.vue` | 接线发送参数 |
+| `src/components/chat/sender/LChatSender.vue` | 接线发送参数（`initial` 对象初始化） |
+| `src/components/chat/sender/chatSenderInitial.ts` | `ChatSenderInitial` 初始化参数类型 |
+| `src/components/chat/LChatEngine.vue` | 恢复上次模型 / 思考配置并组装 `initialState` |
 | `src/modules/chat/agent/AgentChat.ts` | 消息写入 / resume 恢复 |
 | `src/modules/chat/agent/agentTools.ts`、`src/modules/subagent/{types,runner}.ts` | 子 Agent 继承 |
 

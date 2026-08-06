@@ -82,13 +82,6 @@
 - 通用组件：才可放入 `src/components/`
 - 禁止将业务组件直接放入 `src/components`
 
-6. **API 文档约定**
-
-- 已核实契约的云效 OpenAPI 统一记录在 `docs/api/`（按分类编号，如 `01-repositories.md`），`docs/api/README.md` 维护通用约定与
-  18 个分类的索引（含已核实/待接入状态）
-- 接入新接口前 **先查 `docs/api/`**；未覆盖的接口需抓取阿里云官方文档核实契约后， **先补录到 `docs/api/`
-  对应文档，再实现代码**（preload 方法 → API 封装 → 页面）
-
 ---
 
 ## 📁 目录结构示例 + 错误示例对照表
