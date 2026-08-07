@@ -8,7 +8,7 @@
 
       <t-tabs v-model="activeTab" placement="top">
         <t-tab-panel value="font" label="字体">
-          <div class="font-toolbar">
+          <div class="font-toolbar mt-8px">
             <t-button theme="primary" variant="outline" @click="openFolder">
               <template #icon><FolderOpenIcon /></template>
               打开字体目录
@@ -17,7 +17,7 @@
               <template #icon><AddIcon /></template>
               添加字体
             </t-button>
-            <t-button variant="text" @click="reload">
+            <t-button theme="primary" variant="text" class="ml-auto" @click="reload">
               <template #icon><RefreshIcon /></template>
               刷新
             </t-button>
@@ -31,6 +31,7 @@
             size="medium"
             :pagination="pagination"
             hover
+            max-height="calc(100vh - 273px)"
             :table-layout="'fixed'"
           >
             <template #source="{ row }">
@@ -39,7 +40,12 @@
               </t-tag>
             </template>
             <template #op="{ row }">
-              <t-button v-if="row.source === 'library'" variant="text" theme="danger" @click="removeFont(row)">
+              <t-button
+                v-if="row.source === 'library'"
+                variant="text"
+                theme="danger"
+                @click="removeFont(row)"
+              >
                 删除
               </t-button>
             </template>
@@ -47,7 +53,7 @@
         </t-tab-panel>
 
         <t-tab-panel value="image" label="插图素材">
-          <t-empty description="插图素材管理即将上线，敬请期待" />
+          <t-empty description="插图素材管理即将上线，敬请期待" class="mt-15vh" />
         </t-tab-panel>
       </t-tabs>
     </div>
@@ -63,12 +69,12 @@ const activeTab = ref('font')
 const fonts = ref<FontItem[]>([])
 const loading = ref(false)
 
-const pagination = {
+const pagination = computed(() => ({
   defaultCurrent: 1,
   defaultPageSize: 20,
-  total: computed(() => fonts.value.length),
+  total: fonts.value.length,
   showJumper: true
-}
+}))
 
 const columns = computed(() => [
   { colKey: 'name', title: '字体名称', ellipsis: true, minWidth: 200 },
@@ -89,7 +95,7 @@ const reload = async () => {
 }
 
 const openFolder = () => {
-  window.preload.inject.shell.showItemInFolder(window.preload.font.getAssetsDir())
+  window.preload.inject.shell.openPath(window.preload.font.getAssetsDir())
 }
 
 const addFont = async () => {
