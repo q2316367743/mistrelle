@@ -64,27 +64,30 @@ interface CanvasDoc {
 - **样式**：`fill` / `stroke`（纯色 / 渐变对象 / `$token名`）、`strokeWidth`、`dashPattern`、`cornerRadius`、`effects[]`
   （drop-shadow / inner-shadow / layer-blur / background-blur）
 - **文本**：`text`、`fontSize`、`fontFamily`、`fontWeight`（数字或 "400"~"900"）、`italic`、`letterSpacing`、`lineHeight`（数值 =
-  行高倍率，如 1.5 = 1.5×字号；或 `AUTO` ≈ 1.2×字号）、`textAlign`（left/center/right）、`textCase`（none/upper/lower）；文字颜色 =
+  行高倍率，如 1.5 = 1.5×字号；或 `AUTO` ≈ 1.2×字号）、`textAlign`（left/center/right）、`textCase`
+  （none/upper/lower）；文字颜色 =
   `fill`（必须设置否则不可见），描边字 = `stroke` + `strokeWidth`
 - **矢量/图片**：`points`（折线，相对 x/y）、`sides`、`corners`、`innerRadius`、`startAngle`、`path`（SVG 路径）、`imageUrl`、`svg`
   （内联）
-- **图标默认用 svg 节点**：图标优先用 `svg` 节点写内联 SVG（`icon_svg` 工具取真实图标，或手写 path），内部颜色可写 `$token名`，
-  落盘时自动替换为调色板实色（见 CanvasStore `resolveSvgTokens`）；简单单色图形（圆点 / 分隔线 / 星标 / 书签）用原生节点组合
-  （rect / ellipse / path / line / star / polygon），颜色用 `fill` + `$token`。`path` 描边图标设 `fill: "none"` + `stroke`；
+- **图标默认用 svg 节点**：图标优先用 `svg` 节点写内联 SVG（`icon_svg` 工具取真实图标，或手写 path），内部颜色可写
+  `$token名`， 落盘时自动替换为调色板实色（见 CanvasStore `resolveSvgTokens`）；简单单色图形（圆点 / 分隔线 / 星标 /
+  书签）用原生节点组合 （rect / ellipse / path / line / star / polygon），颜色用 `fill` + `$token`。`path` 描边图标设
+  `fill: "none"` + `stroke`；
   `line` 颜色写在 `stroke`
 - **占位图**：`placeholderLabel`（G 操作 placeholder 生成，渲染层绘制灰色渐变 + 居中标签）
 
 ## 4. 布局引擎（canvasLayout.ts）
 
 `layoutCanvasDoc(doc) → LayoutNode[]`：输出每节点绝对 x/y/w/h。
-- `computeLayoutBounds(doc, ids?) → CanvasNodeBounds[]`：遍历布局树，沿父链累加相对坐标得到**画布绝对包围盒**
+
+- `computeLayoutBounds(doc, ids?) → CanvasNodeBounds[]`：遍历布局树，沿父链累加相对坐标得到 **画布绝对包围盒**
   （平铺列表，含 id/name/type/x/y/width/height/centerX/centerY/parentId/depth/rotation/visible/text），
   `ids` 缺省返回全部、指定则过滤——供 AI 核对元素实际位置 / 间距 / 对齐，避免像素分析。
 
 - 自由定位：非布局组内子节点直接按 x/y。
 - **vertical 布局子节点宽高写回修复**：`arrangeTree` 写回 AUTO 子节点尺寸时曾固定 `width=pMain`，而 vertical 布局
-  主轴=高度、交叉轴=宽度，导致子节点宽高整体交换（显式宽度 text 被压成竖排、fill 元素错位、`canvas_inspect` 几何错误）；
-  现已按 `horizontal/wrap → 主轴=宽`、`vertical → 主轴=高` 方向正确写回。
+  主轴=高度、交叉轴=宽度，导致子节点宽高整体交换（显式宽度 text 被压成竖排、fill 元素错位、`canvas_inspect` 几何错误）； 现已按
+  `horizontal/wrap → 主轴=宽`、`vertical → 主轴=高` 方向正确写回。
 - 可选自动布局：horizontal / vertical / wrap 按 gap/padding/对齐排布；fill 均分剩余；`layoutPositioning: 'ABSOLUTE'`
   子节点忽略布局。
 - `hug_contents`：文本宽度用 `canvas.measureText` 近似（document 不可用时有字符估算兜底）；容器 = 子节点扩展 + padding。
@@ -102,7 +105,7 @@ interface CanvasDoc {
   `line` 的颜色取自 `stroke`（兼容旧数据 `fill` 兜底），并保留 dashPattern / strokeCap。
 - `exportCanvasPng(doc, region?)`：scale=1 复用同一构建，通过 `screenshot` 限定导出矩形—— **缺省严格导出整张画布**（0,0 →
   doc 尺寸，越界元素裁剪，杜绝「导出尺寸 ≠ 画布尺寸」）；传 `region {x,y,width,height}` 可导出指定区域（用于画布内容器 /
-  卡片按设计区域导出）。辅助函数：`computeNodeBounds(doc, id)`（节点含子树包围盒，**复用 computeLayoutBounds 的父链累加，
+  卡片按设计区域导出）。辅助函数：`computeNodeBounds(doc, id)`（节点含子树包围盒， **复用 computeLayoutBounds 的父链累加，
   修复旧版深层节点漏祖先位移的 bug**）、`normalizeRegion(region)`。
 - 预览组件 `CanvasRenderer.vue` 调用 `buildDocElements`（fit/缩放/平移逻辑不变）。
 - **预览交互：双击复制节点 id**（`CanvasRenderer.vue`）：监听 `double_tap`，从命中元素沿 `parent` 链向上取最近带 `id`
@@ -126,16 +129,16 @@ interface CanvasDoc {
 
 ## 7. 工具清单（canvasTools.ts）
 
-| 工具                                                                            | 风险             | 说明                                                                                          |
-|---------------------------------------------------------------------------------|------------------|-----------------------------------------------------------------------------------------------|
-| `canvas_list` / `canvas_read` / `canvas_open` / `canvas_delete` / `canvas_save` | safe / dangerous | 生命周期（schema 2 过滤）                                                                     |
-| `canvas_create`                                                                 | safe             | 创建画布；description 内置常用比例                                                            |
-| `canvas_export`                                                                 | sensitive        | 渲染 PNG（路径感知策略，沙盒内放行）；支持可选 `node`（节点包围盒）/ `region`（指定区域）导出 |
-| `canvas_batch_edit`                                                             | sensitive        | 核心：`operations: CanvasBatchOp[]`                                                           |
-| `canvas_get_nodes`                                                              | safe             | 返回图层树 + palette（输入参数，布局组内子节点无最终坐标）                                    |
+| 工具                                                                            | 风险             | 说明                                                                                              |
+|---------------------------------------------------------------------------------|------------------|---------------------------------------------------------------------------------------------------|
+| `canvas_list` / `canvas_read` / `canvas_open` / `canvas_delete` / `canvas_save` | safe / dangerous | 生命周期（schema 2 过滤）                                                                         |
+| `canvas_create`                                                                 | safe             | 创建画布；description 内置常用比例                                                                |
+| `canvas_export`                                                                 | sensitive        | 渲染 PNG（路径感知策略，沙盒内放行）；支持可选 `node`（节点包围盒）/ `region`（指定区域）导出     |
+| `canvas_batch_edit`                                                             | sensitive        | 核心：`operations: CanvasBatchOp[]`                                                               |
+| `canvas_get_nodes`                                                              | safe             | 返回图层树 + palette（输入参数，布局组内子节点无最终坐标）                                        |
 | `canvas_inspect`                                                                | safe             | 返回指定节点渲染后的画布绝对包围盒（x/y/width/height/centerX/centerY），供核对位置/尺寸/间距/对齐 |
-| `canvas_set_palette`                                                            | sensitive        | 定义/合并调色板                                                                               |
-| `canvas_guidelines`                                                             | safe             | topic: style-guide / composition / typography / operations / workflow                         |
+| `canvas_set_palette`                                                            | sensitive        | 定义/合并调色板                                                                                   |
+| `canvas_guidelines`                                                             | safe             | topic: style-guide / composition / typography / operations / workflow                             |
 
 安全策略：`canvas_*` 全部注册 `allow`（仅读写沙盒 outputs/），`canvas_export` 走路径感知策略。
 
@@ -170,14 +173,15 @@ interface CanvasDoc {
 - 渲染端兜底：`buildNode` 对未知类型返回空 `Group`（绝不返回 `undefined`），单节点构建失败会跳过而非拖垮整张画布。
 - **区域分组**：区域内 ≥2 个元素必须收进 `group` 并用 `layout` 排布（子节点不写 x/y，交引擎）；`rect`
   不是容器、不能挂子节点，「背景 + 文字」必须用 group 而非 rect 硬凑。手动坐标仅用于顶层定位与布局组内 `ABSOLUTE` 锚点。
-- **布局引擎（flexbox 两阶段）**：`canvasLayout.ts` 采用 measure（测量子节点自然尺寸）→ arrange（排布 + fill 拉伸）两阶段。hug 容器
-  交叉轴 = max(非 fill 子节点) + padding，交叉轴 CENTER/MAX 可靠生效；`fill_container` 交叉轴撑满在 hug 容器内可用，主轴撑满需容器
-  有确定主轴尺寸；text 行高估算：`lineHeight` 数字按倍率换算（×字号），`AUTO` 用 1.2×字号。
+- **布局引擎（flexbox 两阶段）**：`canvasLayout.ts` 采用 measure（测量子节点自然尺寸）→ arrange（排布 + fill 拉伸）两阶段。hug
+  容器 交叉轴 = max (非 fill 子节点) + padding，交叉轴 CENTER/MAX 可靠生效；`fill_container` 交叉轴撑满在 hug
+  容器内可用，主轴撑满需容器 有确定主轴尺寸；text 行高估算：`lineHeight` 数字按倍率换算（×字号），`AUTO` 用 1.2×字号。
 - 文本 `hug_contents` 宽度为近似值（measureText / 字符估算），多行文本请给显式宽度。
-- **几何核对用 `canvas_inspect`**：`canvas_get_nodes` 返回的是输入参数（布局组内子节点无最终坐标、尺寸可能为
-  fill/hug 关键字），`canvas_inspect` 返回布局引擎解析后的画布绝对包围盒（与导出 PNG 同源），AI 判断间距 / 对齐 / 中心
-  一律以它为准，禁止像素测量脚本。核对几何无需先 `canvas_export`，导出仅用于目测整体视觉。
-- **图片真实尺寸**：给 image 节点设 width/height 前用 `image_info(path)` 拿真实宽高（纯字节解析 png/jpeg/gif/bmp/webp/ico/svg，
+- **几何核对用 `canvas_inspect`**：`canvas_get_nodes` 返回的是输入参数（布局组内子节点无最终坐标、尺寸可能为 fill/hug 关键字），
+  `canvas_inspect` 返回布局引擎解析后的画布绝对包围盒（与导出 PNG 同源），AI 判断间距 / 对齐 / 中心 一律以它为准，禁止像素测量脚本。核对几何无需先
+  `canvas_export`，导出仅用于目测整体视觉。
+- **图片真实尺寸**：给 image 节点设 width/height 前用 `image_info(path)` 拿真实宽高（纯字节解析
+  png/jpeg/gif/bmp/webp/ico/svg，
   `src/utils/imageInfo.ts`）；`website_logo` 与 `canvas_batch_edit` 的 image 操作（web/stock）下载落盘后返回值已附带
   `width/height/format`，无需再写 python 解析脚本。
 - `line` 的 `points` 相对节点 x/y（旧模型为绝对坐标，语义已变）。
