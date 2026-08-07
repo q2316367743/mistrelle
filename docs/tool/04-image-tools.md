@@ -42,7 +42,8 @@
 | `{ created, data:[{ b64_json }] }`                 | OpenAI 同步（gpt-image 系列默认） | 直接取 `data[0].b64_json`，strip data URI 前缀后 `atob` 写盘                     |
 | `{ code, data:[{ status:'submitted', task_id }] }` | apimart GPT-Image-2 等异步        | 轮询 `GET {baseUrl}/tasks/{task_id}`，`completed` 后取 `result.images[0].url[0]` |
 
-- **轮询参数**：每 3s 一次，最多 100 次（≈5 分钟）；`failed` / `cancelled` 立即返回其 `error.message`。
+- **轮询参数**：每 3s 一次，最多 100 次（≈5 分钟）；请求异常与 `failed` / `cancelled` 状态
+  **连续 5 次确认失败**才返回其 `error.message`（容错中转站偶发抖动 / 状态闪烁），中途任何有效任务响应即清零连续失败计数。
 - **错误提取**：axios 抛错（`error.response.data.error.message` / `message` / HTTP 状态）与 2xx 但顶层
   `error` / `code!==200` 均兜底为可读中文错误。
 - **size**：缺省补 `1024x1024`（部分中转站如 V-API gpt-image 系列强制要求 size，该值全模型通用）；

@@ -17,6 +17,8 @@ import { useSettingAiStore, useSettingDefaultStore } from '@/store'
 const POLL_INTERVAL_MS = 3000
 /** 异步任务最大轮询次数（≈ 5 分钟） */
 const POLL_MAX_TIMES = 100
+/** 连续失败容忍次数：达到该阈值才判定轮询失败（中途有效响应即清零） */
+const POLL_MAX_CONSECUTIVE_FAILURES = 5
 /** 缺省输出尺寸：部分中转站（如 V-API gpt-image 系列）强制要求 size，全模型通用的安全值 */
 const DEFAULT_SIZE = '1024x1024'
 
@@ -154,6 +156,8 @@ const pollTaskImage = async (
   taskId: string
 ): Promise<{ url?: string; error?: string }> => {
   const url = `${baseUrl}/tasks/${encodeURIComponent(taskId)}`
+  let consecutiveFailures = 0
+  let lastError = '任务查询失败'
   for (let i = 0; i < POLL_MAX_TIMES; i++) {
     await sleep(POLL_INTERVAL_MS)
     let respBody: unknown
@@ -165,19 +169,30 @@ const pollTaskImage = async (
         })
       ).data
     } catch (e) {
-      return { error: `任务查询失败：${extractRequestError(e)}` }
+      consecutiveFailures++
+      lastError = `任务查询失败：${extractRequestError(e)}`
+      if (consecutiveFailures >= POLL_MAX_CONSECUTIVE_FAILURES) return { error: lastError }
+      continue
     }
     const info = getTaskInfo(respBody)
-    if (!info) continue
+    if (!info) {
+      consecutiveFailures++
+      lastError = '任务查询响应异常：未返回任务信息'
+      if (consecutiveFailures >= POLL_MAX_CONSECUTIVE_FAILURES) return { error: lastError }
+      continue
+    }
+    consecutiveFailures = 0
     const status = info['status']
     if (status === 'completed') {
       const imageUrl = extractTaskImageUrl(info)
-      return imageUrl ? { url: imageUrl } : { error: '生图任务已完成，但未返回图片地址' }
+      if (imageUrl) return { url: imageUrl }
+      return { error: '生图任务已完成，但未返回图片地址' }
     }
     if (status === 'failed' || status === 'cancelled') {
-      return {
-        error: extractTaskError(info) ?? `生图任务${status === 'failed' ? '失败' : '被取消'}`
-      }
+      consecutiveFailures++
+      lastError = extractTaskError(info) ?? `生图任务${status === 'failed' ? '失败' : '被取消'}`
+      if (consecutiveFailures >= POLL_MAX_CONSECUTIVE_FAILURES) return { error: lastError }
+      continue
     }
   }
   return { error: '生图任务超时（约 5 分钟）：请稍后在服务端查询结果' }
