@@ -245,7 +245,7 @@ const resolveWebImageExt = (url: string): string => {
   }
 }
 
-/** G 操作：placeholder 渐变占位 / stock·ai 网络占位图（picsum 稳定种子，落盘沙盒）/ web 真实图片（落盘沙盒） */
+/** G 操作：placeholder 渐变占位 / stock·ai 网络占位图（picsum 稳定种子，落盘沙盒）/ web 真实图片（落盘沙盒）/ local 本地图片（引用绝对路径） */
 const applyImageOp = async (
   doc: CanvasDoc,
   sandboxDir: string,
@@ -266,7 +266,7 @@ const applyImageOp = async (
     try {
       await window.preload.fs.mkdir(imagesDir, true)
       await requestDownload({ url }, target)
-      node.imageUrl = window.preload.net.pathToHref(target)
+      node.imageUrl = target
     } catch {
       return { error: `图片下载失败：${url}（画布无法渲染非同源远程图片，请提供可下载的素材）` }
     }
@@ -274,6 +274,17 @@ const applyImageOp = async (
     return {
       success: true,
       mode: 'web',
+      url: node.imageUrl,
+      ...(info ? { format: info.format, width: info.width, height: info.height } : {})
+    }
+  }
+  if (kind === 'local') {
+    if (!url) return { error: 'local 类型缺少 url：请提供本地图片绝对路径' }
+    node.imageUrl = url
+    const info = await readImageInfo(url)
+    return {
+      success: true,
+      mode: 'local',
       url: node.imageUrl,
       ...(info ? { format: info.format, width: info.width, height: info.height } : {})
     }
@@ -286,7 +297,7 @@ const applyImageOp = async (
   try {
     await window.preload.fs.mkdir(window.preload.path.dirname(target), true)
     await requestDownload({ url: picsumUrl }, target)
-    node.imageUrl = window.preload.net.pathToHref(target)
+    node.imageUrl = target
   } catch {
     return { error: `网络占位图下载失败：${picsumUrl}` }
   }

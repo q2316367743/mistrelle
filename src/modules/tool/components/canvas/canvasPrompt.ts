@@ -35,6 +35,7 @@ export const DESIGN_CANVAS_PROMPT = [
   '- 未经用户要求，禁止调用 canvas_export 导出；不自动导出查看，导出动作只由用户意图触发',
   '',
   '### 真实素材铁律（logo / 品牌图必须用真实资源）',
+  '- image 节点的 imageUrl 直接填工具返回的本地绝对路径（path）即可，渲染层自动转 file 协议；http(s)/data URL 也可直接填',
   '- 用户提供官网 / 品牌链接时：logo 必须用该网站真实 logo，禁止自己画一个近似 logo，也禁止用占位图冒充',
   '- 取 logo：调用 website_logo(url) 工具（自动从多个免费来源下载官网图标到沙盒 outputs/images/ 并返回本地路径），把返回的 path/href 填进 image 节点的 imageUrl',
   '- 其他真实图片（banner / 配图 / 用户给的图）：用 image 操作 web 类型（url 填真实图片地址，自动下载落盘沙盒）；无真实来源时才用 stock / placeholder 占位',

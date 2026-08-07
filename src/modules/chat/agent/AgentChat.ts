@@ -148,10 +148,15 @@ export class ToolChat {
     const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
     const map = new Map<string, ToolFunction>()
     for (const fn of [
+      // agent 带的工具
       ...this.functions,
+      // 类型带的工具
       ...this.getTypeTools(),
+      // 用户主动选择的工具
       ...selected,
+      // 默认工具
       ...defaultTools,
+      // 待办工具
       createTodoTool(this.todos)
     ]) {
       // 子 Agent 不暴露 spawn_agent：防止嵌套派发（子 Agent 的 chatId 是自身 id，再派发路径会错乱）

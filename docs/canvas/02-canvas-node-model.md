@@ -101,6 +101,9 @@ interface CanvasDoc {
   Group 变换，元素坐标保持文档空间 → Path 不再需要二次 scale、阴影/模糊随组自动缩放。
 - `buildNode(layout, palette)` 递归：group → `Group`（有 fill 时内嵌背景 `Rect`）；叶子映射 Leafer primitive；text 映射
   `Text`（含描边字 / 字距 / 行高 / 对齐 / 大小写）；svg 用 `Platform.toURL` 转 blob。
+- **图片引用统一（`resolveImageHref`）**：imageUrl 数据层存**本地绝对路径**（web/stock/local 落盘均存原始路径，
+  `image_generate` / `image_crop` / `website_logo` 返回的 path 直接填）；image / svg 分支渲染时在此唯一转换——
+  已是 URL（`file:` / `http(s):` / `data:` / `blob:`）原样透传，否则按本地路径 `pathToHref` 转 file href 交给 Leafer。
 - **渲染语义**：`fill` / `stroke` 为 `"none"` 时表示显式无填充 / 无描边（渲染时省略属性，避免给 Canvas 赋非法颜色导致状态泄漏）；
   `line` 的颜色取自 `stroke`（兼容旧数据 `fill` 兜底），并保留 dashPattern / strokeCap。
 - `exportCanvasPng(doc, region?)`：scale=1 复用同一构建，通过 `screenshot` 限定导出矩形—— **缺省严格导出整张画布**（0,0 →
@@ -122,8 +125,10 @@ interface CanvasDoc {
 - `as` 绑定：insert/copy 可带 `as`， **仅同一批内**用 `parent: "@绑定名"` 引用；跨批用返回的真实 id。
 - `path`：`'id'` 或 `'父id;子id'`（可多层）或 `'@绑定;子id'`；update 禁改 `id/type/children`（TypeBox 校验拒绝并报错）。
 - image 操作：`placeholder` 设 `placeholderLabel`；`stock`/`ai` 用 picsum 稳定种子 URL 下载到沙盒
-  `outputs/images/{nodeId}.jpg`（`requestDownload`），失败退回远程 URL；`web` 用真实图片 URL 下载到
-  `outputs/images/{nodeId}.{ext}`（扩展名按 URL 推断，未知默认 png），失败退回远程 URL。
+  `outputs/images/{nodeId}.jpg`（`requestDownload`）；`web` 用真实图片 URL 下载到
+  `outputs/images/{nodeId}.{ext}`（扩展名按 URL 推断，未知默认 png）；`local` 直接引用本地图片绝对路径
+  （url 填 path，如 `image_generate` / `image_crop` / `website_logo` 的返回值）。下载失败返回 `{ error }` 让模型自纠。
+  以上落盘 / 引用一律**存裸路径**（不再预转 file://），渲染层 `resolveImageHref` 统一转换。
 - 内联 svg 的 `$token名` 调色板替换：insert / copy / update 时递归把节点（含子树）`svg` 字符串中的
   `$token名` 替换为 `doc.palette` 实色（`resolveSvgTokens`），落盘即实色，渲染层无需改动。
 
@@ -183,7 +188,7 @@ interface CanvasDoc {
   `canvas_export`，导出仅用于目测整体视觉。
 - **图片真实尺寸**：给 image 节点设 width/height 前用 `image_info(path)` 拿真实宽高（基于系统内置
   Sharp 在**主进程**读元信息，不把全量图片字节读进渲染进程，见 `src/utils/imageInfo.ts`）；`website_logo`
-  与 `canvas_batch_edit` 的 image 操作（web/stock）下载落盘后返回值已附带
+  与 `canvas_batch_edit` 的 image 操作（web/stock/local）返回值已附带
   `width/height/format`，无需再写 python 解析脚本。
 - `line` 的 `points` 相对节点 x/y（旧模型为绝对坐标，语义已变）。
 - image 的 `ai` 类型暂按 `stock` 兜底；真实文生图能力由设计工具 `image_generate`（生图）+ `image_crop`（裁切）

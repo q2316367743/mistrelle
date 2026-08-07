@@ -11,7 +11,10 @@ export const useState = <T>(initial: T): [Ref<T>, (v: T) => void] => {
   ]
 }
 
-export const useBoolState = (initial: boolean, key?: string): [Ref<boolean>, () => void] => {
+export const useBoolState = (
+  initial: boolean,
+  key?: string
+): [Ref<boolean>, (val?: boolean) => void] => {
   const [data, setData] = useState(initial)
   if (key) {
     watch(data, (v) => localStorage.setItem(key, JSON.stringify({ value: v })))
@@ -19,8 +22,12 @@ export const useBoolState = (initial: boolean, key?: string): [Ref<boolean>, () 
   }
   return [
     data,
-    () => {
-      setData(!data.value)
+    (val?: boolean) => {
+      if (typeof val === 'boolean') {
+        setData(val)
+      } else {
+        setData(!data.value)
+      }
     }
   ]
 }

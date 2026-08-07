@@ -195,7 +195,7 @@ const nodeFieldSchema = {
   innerRadius: Type.Optional(Type.Number({ minimum: 0, maximum: 1, description: '星形内半径比例（0~1）' })),
   startAngle: Type.Optional(Type.Number({ description: '起始角度偏移（度，-180~180）' })),
   path: Type.Optional(Type.String({ description: 'SVG 路径数据，如 M10 20 L60 20 L60 60 Z' })),
-  imageUrl: Type.Optional(Type.String({ description: '图片地址（file:// / http(s) / data URL）' })),
+  imageUrl: Type.Optional(Type.String({ description: '图片地址（本地绝对路径 / file:// / http(s) / data URL）' })),
   svg: Type.Optional(Type.String({ description: '内联 SVG 字符串（与 imageUrl 二选一）' })),
   placeholderLabel: Type.Optional(Type.String({ description: '占位图标签' })),
   animation: Type.Optional(animationSchema),
@@ -295,12 +295,13 @@ const imageOpSchema = Type.Object(
         Type.Literal('placeholder'),
         Type.Literal('stock'),
         Type.Literal('ai'),
-        Type.Literal('web')
+        Type.Literal('web'),
+        Type.Literal('local')
       ],
-      { description: 'placeholder 渐变占位 / stock 网络占位图 / ai 按 stock 兜底 / web 真实图片 URL（自动下载落盘沙盒）' }
+      { description: 'placeholder 渐变占位 / stock 网络占位图 / ai 按 stock 兜底 / web 真实图片 URL（自动下载落盘沙盒）/ local 本地图片路径' }
     ),
-    prompt: Type.Optional(Type.String({ description: 'placeholder: 短标签；stock/ai: 种子或描述；web: 备用描述' })),
-    url: Type.Optional(Type.String({ description: 'web 类型：真实图片 URL（http/https）' }))
+    prompt: Type.Optional(Type.String({ description: 'placeholder: 短标签；stock/ai: 种子或描述；web/local: 备用描述' })),
+    url: Type.Optional(Type.String({ description: 'local: 本地图片绝对路径；web: 真实图片 URL（http/https）' }))
   },
   { additionalProperties: false }
 )

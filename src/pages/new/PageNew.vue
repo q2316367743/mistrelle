@@ -3,7 +3,9 @@
     <div class="page-new">
       <div class="page-new__hero">
         <div class="page-new__title">Hi，今天从哪里开始</div>
-        <div class="page-new__subtitle">选择一种聊天类型，创建后类型锁定，获得专属侧边栏与 AI 能力</div>
+        <div class="page-new__subtitle">
+          选择一种聊天类型，创建后类型锁定，获得专属侧边栏与 AI 能力
+        </div>
       </div>
       <div class="page-new__types">
         <segmented-control v-model="type" :options="typeOptions" />
@@ -14,10 +16,7 @@
         </template>
       </div>
       <div class="page-new__sender">
-        <l-chat-sender
-          :initial="{ model, type, writingScene: scene }"
-          @send="handleSend"
-        />
+        <l-chat-sender :initial="{ model, type, writingScene: scene }" @send="handleSend" />
       </div>
     </div>
   </page-layout>
@@ -27,6 +26,7 @@ import { useAiChatStore, useSettingDefaultStore } from '@/store'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { CHAT_TYPE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
+import { toggleCollapsed } from '@/global/BeanFactory'
 
 const router = useRouter()
 
@@ -47,6 +47,7 @@ const handleSend = async (message: ChatRequestParams) => {
   }
   const id = await useAiChatStore().add(message)
   await router.push(`/chat/${id}`)
+  toggleCollapsed(true)
 }
 
 watch(

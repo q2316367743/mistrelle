@@ -35,6 +35,17 @@ const buildAnimationProps = (node: CanvasNode): Record<string, unknown> =>
     animationOut: node.animationOut
   })
 
+/**
+ * 图片引用统一为本地绝对路径（数据层），渲染时在此唯一转换：
+ * 已是 URL（file / http(s) / data / blob）原样透传（AI 可合法填入远程地址），
+ * 否则视为本地文件路径转 file href 交给 Leafer 加载。
+ */
+const resolveImageHref = (value: string | undefined): string | undefined => {
+  if (!value) return undefined
+  if (/^(file|https?|data|blob):/i.test(value)) return value
+  return window.preload.net.pathToHref(value)
+}
+
 /** 解析 $name 调色板引用（纯色字符串或渐变 stops 内的颜色） */
 const resolveColorString = (value: string, palette: Record<string, string>): string => {
   if (value.startsWith('$')) {
@@ -326,11 +337,11 @@ export const buildNode = (
           ...buildCommon(layout, true),
           ...(width > 0 ? { width } : {}),
           ...(height > 0 ? { height } : {}),
-          url: node.imageUrl
+          url: resolveImageHref(node.imageUrl)
         })
       )
     case 'svg': {
-      const url = node.svg ? Platform.toURL(node.svg, 'svg') : node.imageUrl
+      const url = node.svg ? Platform.toURL(node.svg, 'svg') : resolveImageHref(node.imageUrl)
       return new LeaferImage(
         compact({
           ...buildCommon(layout, true),

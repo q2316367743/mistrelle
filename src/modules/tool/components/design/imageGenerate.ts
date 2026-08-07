@@ -30,7 +30,7 @@ export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction =>
   label: '生成图片',
   description:
     '根据文字描述生成一张插画 / 素材图片并保存到本地，返回图片绝对路径（path），' +
-    '把 path 填进画布 image 节点 imageUrl 即可使用。需要已配置默认生图模型；' +
+    '把 path 直接填进画布 image 节点 imageUrl 即可使用（渲染层自动转 file 协议）。需要已配置默认生图模型；' +
     '未配置或服务未就绪时返回错误，此时回退 stock / placeholder 占位或请用户提供素材。',
   parameters: {
     type: 'object',
@@ -79,7 +79,7 @@ export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction =>
       success: true,
       path: result.path,
       ...(result.width != null ? { width: result.width, height: result.height } : {}),
-      note: '图片已生成，把 path 填进画布 image 节点的 imageUrl 即可使用'
+      note: '图片已生成，把 path 填进画布 image 节点的 imageUrl 即可使用（本地路径自动转 file 协议）'
     }
   }
 })

@@ -72,7 +72,7 @@
 | `polygon` | 正多边形                                                       | width、height、sides                                 |
 | `star`    | 星形                                                           | width、height、corners                               |
 | `path`    | SVG 路径                                                       | path                                                 |
-| `image`   | 图片                                                           | imageUrl（file:// / http(s)）；建议显式 width/height |
+| `image`   | 图片                                                           | imageUrl（本地绝对路径 / file:// / http(s)）；建议显式 width/height |
 | `svg`     | 内联 SVG / 图标                                                | svg 字符串（或 imageUrl）                            |
 
 > **图标 / 简单图形规则**：图标默认用 **`svg` 节点写内联 SVG**——优先 `icon_svg` 工具取真实图标
@@ -170,7 +170,10 @@ type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环
 - `placeholder`：给节点铺灰色渐变 + 居中短标签（prompt 用 ≤20 字，如 "封面图"）
 - `stock`：picsum 网络占位图（prompt 为种子词，稳定可复用），自动下载到沙盒
 - `ai`：暂按 stock 兜底（无生图服务时不要依赖）
-- `web`：**真实图片**（url 填 http/https 地址，自动下载到沙盒 outputs/images/ 并设为 imageUrl；下载失败退回远程 URL）
+- `web`：**真实图片**（url 填 http/https 地址，自动下载到沙盒 outputs/images/ 并设为 imageUrl；下载失败返回错误）
+- `local`：**本地图片**（url 填本地绝对路径，如 image_generate / image_crop / website_logo 返回的 path，直接引用）
+
+> imageUrl 数据层统一存**本地绝对路径**，渲染时自动转 file 协议；http(s)/data URL 也可直接填。
 
 **素材工具（design，配合真实素材）**：
 

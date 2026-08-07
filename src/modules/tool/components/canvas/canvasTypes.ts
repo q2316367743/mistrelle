@@ -146,7 +146,7 @@ export interface CanvasNode {
   /** SVG 路径数据，如 M10 20 L60 20 L60 60 Z */
   path?: string
   // ── 图片 / SVG ──
-  /** 图片地址（file:// / http(s) / data URL） */
+  /** 图片地址（本地绝对路径 / file:// / http(s) / data URL；本地路径渲染时自动转 file 协议） */
   imageUrl?: string
   /** 内联 SVG 字符串（与 imageUrl 二选一） */
   svg?: string
@@ -199,7 +199,7 @@ export type CanvasNodeInput = Omit<CanvasNode, 'id'>
 
 // ── 批量编辑操作（对齐 ardot batch_edit 的 I/C/U/M/D/G） ──
 
-export type CanvasImageKind = 'placeholder' | 'stock' | 'ai' | 'web'
+export type CanvasImageKind = 'placeholder' | 'stock' | 'ai' | 'web' | 'local'
 
 export type CanvasBatchOp =
   | {
@@ -249,12 +249,12 @@ export type CanvasBatchOp =
       id: string
       /**
        * placeholder 渐变占位 / stock 网络占位图（picsum，稳定种子） / ai 暂按 stock 兜底 /
-       * web 真实图片（url 自动下载到沙盒 outputs/images/）
+       * web 真实图片（url 自动下载到沙盒 outputs/images/） / local 本地图片（url 填绝对路径）
        */
       kind: CanvasImageKind
-      /** placeholder: 短标签（≤20 字）；stock/ai: 种子或描述；web: 可留空 */
+      /** placeholder: 短标签（≤20 字）；stock/ai: 种子或描述；web/local: 可留空 */
       prompt?: string
-      /** web 类型：真实图片 URL（http/https） */
+      /** web 类型：真实图片 URL（http/https）；local 类型：本地图片绝对路径 */
       url?: string
     }
 

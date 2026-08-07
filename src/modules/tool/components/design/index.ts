@@ -25,6 +25,7 @@ export const createDesignTools = (ctx: DesignToolContext): ToolFunction[] => {
     createFontListTool(),
     createFontRegisterTool(),
     createImageCropTool()
+    // TODO: 二维码生成
   ]
   // 仅配置了默认生图模型时注入 image_generate：未配置则 AI 无生图能力，走占位图 / 用户素材
   if (useSettingDefaultStore().state.defaultImageModel) {
