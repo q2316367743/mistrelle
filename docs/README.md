@@ -1,52 +1,52 @@
 # docs/ 文档索引
 
-> 本目录存放项目技术文档，供后续 AI 参考。**请先读本文件**，按功能定位目标文档，无需逐个查看文件名。
+> 本目录存放项目技术文档，供后续 AI 参考。 **请先读本文件**，按功能定位目标文档，无需逐个查看文件名。
 
 ## 索引
 
 ### canvas/ —— 画布
 
-| 文档 | 描述 |
-|------|------|
-| [02-canvas-node-model.md](./canvas/02-canvas-node-model.md) | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill |
-| [03-canvas-animation-export.md](./canvas/03-canvas-animation-export.md) | 画布动画与视频导出（v3）：声明式动画、逐帧渲染 + ffmpeg 导出、剪映式全屏进度遮罩 |
+| 文档                                                                    | 描述                                                                                               |
+|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| [02-canvas-node-model.md](./canvas/02-canvas-node-model.md)             | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill |
+| [03-canvas-animation-export.md](./canvas/03-canvas-animation-export.md) | 画布动画与视频导出（v3）：声明式动画、逐帧渲染 + ffmpeg 导出、剪映式全屏进度遮罩                   |
 
 ### chat/ —— 对话
 
-| 文档 | 描述 |
-|------|------|
-| [01-thinking-mode.md](./chat/01-thinking-mode.md) | DeepSeek 思考模式：`thinking` / `reasoning_effort` 参数、扁平字段设计、思维链渲染 |
-| [02-chat-locator.md](./chat/02-chat-locator.md) | 对话侧边定位器（RChatList Locator）：仅用户消息展示、tooltip 预览前 10 字 |
-| [03-canvas-node-reference.md](./chat/03-canvas-node-reference.md) | 画布节点引用：双击节点 → 输入框 canvasMention → `CanvasContent` 结构化注入 |
+| 文档                                                              | 描述                                                                              |
+|-------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| [01-thinking-mode.md](./chat/01-thinking-mode.md)                 | DeepSeek 思考模式：`thinking` / `reasoning_effort` 参数、扁平字段设计、思维链渲染 |
+| [02-chat-locator.md](./chat/02-chat-locator.md)                   | 对话侧边定位器（RChatList Locator）：仅用户消息展示、tooltip 预览前 10 字         |
+| [03-canvas-node-reference.md](./chat/03-canvas-node-reference.md) | 画布节点引用：双击节点 → 输入框 canvasMention → `CanvasContent` 结构化注入        |
 
 ### setting/ —— 设置
 
-| 文档 | 描述 |
-|------|------|
+| 文档                                                   | 描述                                                                                          |
+|--------------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | [01-ai-model-fetch.md](./setting/01-ai-model-fetch.md) | AI 设置「从接口获取模型」抽屉：`FetchModelsDrawer` 命令式外壳 + `FetchModelsContent` 内容组件 |
 
 ### subagent/ —— 子 Agent
 
-| 文档 | 描述 |
-|------|------|
+| 文档                                                      | 描述                                                                               |
+|-----------------------------------------------------------|------------------------------------------------------------------------------------|
 | [01-subagent-module.md](./subagent/01-subagent-module.md) | 子 Agent 模块：能力类型 × 聊天类型矩阵、research / design 两类、模块结构与运行流程 |
 
 ### tool/ —— 工具
 
-| 文档 | 描述 |
-|------|------|
+| 文档                                                    | 描述                                                                                          |
+|---------------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | [01-browser-selector.md](./tool/01-browser-selector.md) | 浏览器工具 CSS 选择器提取：`browser_fetch` / `browser_actions` 可选 selector 参数、空结果防护 |
-| [02-asset-tools.md](./tool/02-asset-tools.md) | 设计素材工具：`website_logo` / `icon_svg` 获取真实素材，来源打分降序尝试 |
-| [03-font-tools.md](./tool/03-font-tools.md) | 字体工具与渲染：`font_list` / `font_register`、system / library / online 三态统一契约 |
+| [02-asset-tools.md](./tool/02-asset-tools.md)           | 设计素材工具：`website_logo` / `icon_svg` 获取真实素材，来源打分降序尝试                      |
+| [03-font-tools.md](./tool/03-font-tools.md)             | 字体工具与渲染：`font_list` / `font_register`、system / library / online 三态统一契约         |
 
 ### writing/ —— 写作
 
-| 文档 | 描述 |
-|------|------|
-| [01-writing-scene.md](./writing/01-writing-scene.md) | 写作子场景（WritingScene）：大类型管框架、子场景管能力，当前唯一场景 article |
-| [02-article-data-layer.md](./writing/02-article-data-layer.md) | 文章数据层与工具：project.json 索引 + drafts 正文 + assets 配图、`article_*` 工具驱动 |
-| [03-article-aside.md](./writing/03-article-aside.md) | 文章侧边栏：writing 侧边栏按 chatType → writingScene 两层拆分、`ArticleAside` 项目容器 |
-| [04-image-export.md](./writing/04-image-export.md) | md 图片引用与 zip 导出：相对路径约定、`imageRef.ts` 解析与压缩导出 |
+| 文档                                                           | 描述                                                                                   |
+|----------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| [01-writing-scene.md](./writing/01-writing-scene.md)           | 写作子场景（WritingScene）：大类型管框架、子场景管能力，当前唯一场景 article           |
+| [02-article-data-layer.md](./writing/02-article-data-layer.md) | 文章数据层与工具：project.json 索引 + drafts 正文 + assets 配图、`article_*` 工具驱动  |
+| [03-article-aside.md](./writing/03-article-aside.md)           | 文章侧边栏：writing 侧边栏按 chatType → writingScene 两层拆分、`ArticleAside` 项目容器 |
+| [04-image-export.md](./writing/04-image-export.md)             | md 图片引用与 zip 导出：相对路径约定、`imageRef.ts` 解析与压缩导出                     |
 
 ---
 
