@@ -1,5 +1,5 @@
 const { statSync, existsSync } = require('node:fs')
-const { readdir, readFile, writeFile, mkdir, rm, copyFile, rename } = require('node:fs/promises')
+const { readdir, readFile, writeFile, mkdir, rm, copyFile, rename, stat } = require('node:fs/promises')
 const { join } = require('node:path')
 
 module.exports = {
@@ -49,5 +49,18 @@ module.exports = {
   },
   writeBinaryFile: (path, arrayBuffer) => {
     return writeFile(path, Buffer.from(arrayBuffer))
+  },
+  stat: async (path) => {
+    const s = await stat(path)
+    return {
+      path,
+      isDirectory: s.isDirectory(),
+      isFile: s.isFile(),
+      size: s.size,
+      mtime: s.mtime,
+      ctime: s.ctime,
+      atime: s.atime,
+      birthtime: s.birthtime
+    }
   }
 }

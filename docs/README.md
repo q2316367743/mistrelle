@@ -39,6 +39,7 @@
 | [02-asset-tools.md](./tool/02-asset-tools.md)           | 设计素材工具：`website_logo` / `icon_svg` 获取真实素材，来源打分降序尝试                                          |
 | [03-font-tools.md](./tool/03-font-tools.md)             | 字体工具与渲染：`font_list` / `font_register`、system / library / online 三态统一契约                             |
 | [04-image-tools.md](./tool/04-image-tools.md)           | 生图与裁剪：`image_generate`（接口自适应，OpenAI 同步 + apimart 异步轮询）+ `image_crop` 本地切分、多素材合并省钱 |
+| [05-file-tools.md](./tool/05-file-tools.md)             | 文件系统工具：`image_info` 收敛为格式 / 宽高（去 size）、新增 `file_stat` 基于 fs.stat 返回权威文件信息          |
 
 ### writing/ —— 写作
 
