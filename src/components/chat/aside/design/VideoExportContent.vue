@@ -11,7 +11,10 @@
       <t-form-item label="帧率">
         <t-select v-model="fps" :options="fpsOptions" class="video-export-content__full" />
       </t-form-item>
-      <t-form-item label="时长（秒）" :help="`建议不小于动画最长时长（当前 ${defaultDuration} 秒）`">
+      <t-form-item
+        label="时长（秒）"
+        :help="`建议不小于动画最长时长（当前 ${defaultDuration} 秒）`"
+      >
         <t-input-number
           v-model="duration"
           :min="0.5"
@@ -35,8 +38,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
-import { maxAnimationTime, startVideoExport } from '@/modules/tool/components/canvas/canvasVideoExport'
+import { getCanvasStore, maxAnimationTime, startVideoExport } from '@/modules/canvas'
 
 const props = defineProps<{
   sandbox: string

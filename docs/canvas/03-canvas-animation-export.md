@@ -5,11 +5,11 @@
 > （Fluent Design 规范），支持取消，完成后自动打开视频所在目录。
 >
 > 关键文件（已落地）：
-> - 数据模型 `src/modules/tool/components/canvas/canvasTypes.ts`（`CanvasAnimation` + `animation` / `animationOut` 字段）
-> - 渲染器 `src/modules/tool/components/canvas/canvasRender.ts`（`import '@leafer-in/animate'` + 动画属性透传 + PNG 导出
+> - 数据模型 `../../src/modules/canvas/canvasTypes.ts`（`CanvasAnimation` + `animation` / `animationOut` 字段）
+> - 渲染器 `../../src/modules/canvas/canvasRender.ts`（`import '@leafer-in/animate'` + 动画属性透传 + PNG 导出
 >   `settleAnimations`）
-> - 逐帧导出管线 `src/modules/tool/components/canvas/canvasVideoExport.ts`（ **新增**，含用户侧入口 `startVideoExport`）
-> - 导出状态单例 `src/modules/tool/components/canvas/videoExportState.ts`（ **新增**）
+> - 逐帧导出管线 `../../src/modules/canvas/canvasVideoExport.ts`（ **新增**，含用户侧入口 `startVideoExport`）
+> - 导出状态单例 `../../src/modules/canvas/videoExportState.ts`（ **新增**）
 > - 全局遮罩 `src/components/canvas/VideoExportOverlay.vue`（ **新增**，挂载于 `App.vue` 根）
 > - 导出 UI `src/components/chat/aside/design/VideoExportDialog.tsx` + `VideoExportContent.vue`（ **新增**，
 >   `DesignAside.vue` 下拉菜单「导出为视频」入口，仅存在动画时显示）

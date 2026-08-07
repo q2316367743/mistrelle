@@ -27,7 +27,7 @@
   </transition>
 </template>
 <script lang="ts" setup>
-import { getVideoExportController } from '@/modules/tool/components/canvas/videoExportState'
+import { getVideoExportController } from '@/modules/canvas'
 
 const controller = getVideoExportController()
 const state = controller.state

@@ -10,7 +10,7 @@
 > - 裁剪工具 `src/modules/tool/components/design/imageCrop.ts`
 > - 生图服务封装 `src/modules/chat/service/ImageGenerate.ts`（已实现，接口自适应）
 > - Sharp 包装 `src-utools/src/inject.js`（inject.sharp）+ 类型 `src/types/inject.d.ts`
-> - 省钱指南 `src/modules/tool/components/canvas/guidelines/image-generation.md`
+> - 省钱指南 `../../src/modules/canvas/guidelines/image-generation.md`
 > - 注入点 `src/global/ChatTypeConfig.ts`（design 配置）
 
 ---

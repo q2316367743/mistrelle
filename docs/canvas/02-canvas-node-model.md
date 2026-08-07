@@ -4,14 +4,14 @@
 > 参考 ardot `batch_edit` 的"科学流程"，但 **不搬它的 UI 布局学说**（frame/flexbox 教条、组件/变量体系）。
 >
 > 关键文件：
-> - 数据模型 `src/modules/tool/components/canvas/canvasTypes.ts`
-> - 布局引擎 `src/modules/tool/components/canvas/canvasLayout.ts`
-> - 存储与批量编辑 `src/modules/tool/components/canvas/CanvasStore.ts`
-> - 渲染器 `src/modules/tool/components/canvas/canvasRender.ts`
+> - 数据模型 `../../src/modules/canvas/canvasTypes.ts`
+> - 布局引擎 `../../src/modules/canvas/canvasLayout.ts`
+> - 存储与批量编辑 `../../src/modules/canvas/CanvasStore.ts`
+> - 渲染器 `../../src/modules/canvas/canvasRender.ts`
 > - 工具集 `src/modules/tool/components/canvas/canvasTools.ts`
-> - **输入 schema（TypeBox 单一源）** `src/modules/tool/components/canvas/canvasSchemas.ts`
-> - 固定提示词 `src/modules/tool/components/canvas/canvasPrompt.ts`
-> - 内置参考 `src/modules/tool/components/canvas/guidelines/*.md` + `guidelines.ts`
+> - **输入 schema（TypeBox 单一源）** `../../src/modules/canvas/canvasSchemas.ts`
+> - 固定提示词 `../../src/modules/canvas/canvasPrompt.ts`
+> - 内置参考 `../../src/modules/canvas/guidelines/*.md` + `guidelines.ts`
 
 ---
 

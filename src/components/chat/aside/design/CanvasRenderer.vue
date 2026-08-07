@@ -11,10 +11,8 @@
 <script lang="ts" setup>
 import { App } from 'leafer-editor'
 import { MessageUtil } from '@/utils/modal'
-import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
-import { buildDocElements } from '@/modules/tool/components/canvas/canvasRender'
-import { ensureFontsForDoc } from '@/modules/tool/components/canvas/fontRegistry'
-import type { CanvasDoc, CanvasNode } from '@/modules/tool/components/canvas/canvasTypes'
+import { ensureFontsForDoc, getCanvasStore, buildDocElements } from '@/modules/canvas'
+import type { CanvasDoc, CanvasNode } from '@/modules/canvas'
 import { CANVAS_NODE_PICK_KEY } from '@/components/chat/design/canvasNodeBridge'
 
 /** 双击命中的元素最小结构（leafer 2.2.9 的 d.ts 被混淆，用本地接口收窄，避免 any） */

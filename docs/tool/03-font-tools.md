@@ -6,7 +6,7 @@
 > 关键文件：
 > - 工具工厂 `src/modules/tool/components/design/index.ts`
 > - 字体工具 `src/modules/tool/components/design/fontTools.ts`
-> - 渲染层字体注册器 `src/modules/tool/components/canvas/fontRegistry.ts`
+> - 渲染层字体注册器 `../../src/modules/canvas/fontRegistry.ts`
 > - preload 字体模块 `src-utools/src/font.js`（Node 环境，系统字体扫描 / 资源库管理）
 > - preload 挂载 `src-utools/preload.js`（`window.preload.font`）
 > - 类型声明 `src/types/font.d.ts` + `src/vite-env.d.ts`

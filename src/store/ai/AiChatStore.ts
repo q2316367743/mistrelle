@@ -15,7 +15,7 @@ import {
   useChatName
 } from '@/modules/chat'
 import { useSnowflake } from '@/hooks'
-import { destroyCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
+import { destroyCanvasStore } from '@/modules/canvas'
 import { TextContent, UserMessageContent } from '@/domain'
 
 /**

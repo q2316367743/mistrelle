@@ -1,16 +1,22 @@
 import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
-import { buildCanvasOutputsDir, getCanvasStore, parseCanvasVersion } from './CanvasStore'
-import type { CanvasBatchOp, CanvasDoc, CanvasNode, CanvasToolContext } from './canvasTypes'
 import {
+  buildCanvasOutputsDir,
+  getCanvasStore,
+  parseCanvasVersion,
   computeNodeBounds,
   exportCanvasPng,
   normalizeRegion,
-  type CanvasExportRegion
-} from './canvasRender'
-import { computeLayoutBounds } from './canvasLayout'
-import { batchOpSchema } from './canvasSchemas'
-import { CANVAS_GUIDELINES, CANVAS_GUIDELINE_TOPICS } from './guidelines'
+  type CanvasExportRegion,
+  CanvasBatchOp,
+  CanvasDoc,
+  CanvasNode,
+  CanvasToolContext,
+  computeLayoutBounds,
+  batchOpSchema,
+  CANVAS_GUIDELINES,
+  CANVAS_GUIDELINE_TOPICS
+} from '@/modules/canvas'
 
 const ctxError = (): never => {
   throw new Error('画布工具缺少沙盒目录上下文')
@@ -47,7 +53,8 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       handler: async (...params: unknown[]) => {
         const { version } = params[0] as { version: number }
         const content = await store().read(version)
-        if (content === null) return { error: `未找到画布 canvas-${version}（可能不是 schema 2 模型）` }
+        if (content === null)
+          return { error: `未找到画布 canvas-${version}（可能不是 schema 2 模型）` }
         return { content }
       }
     },
@@ -62,10 +69,14 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
           title: { type: 'string', description: '画布标题（可选，用于侧边栏辨识）' },
           width: { type: 'number', description: '画布宽度' },
           height: { type: 'number', description: '画布高度' },
-          background: { type: 'string', description: '背景颜色，默认 #ffffff；深色作品建议直接给深色背景' },
+          background: {
+            type: 'string',
+            description: '背景颜色，默认 #ffffff；深色作品建议直接给深色背景'
+          },
           palette: {
             type: 'object',
-            description: '可选：初始调色板，token名 → 颜色，如 {"主色":"#E63946","中性色":"#1D3557"}'
+            description:
+              '可选：初始调色板，token名 → 颜色，如 {"主色":"#E63946","中性色":"#1D3557"}'
           }
         },
         required: ['width', 'height']
@@ -138,11 +149,13 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
           version: { type: 'number', description: '画布版本号（缺省导出当前画布）' },
           path: {
             type: 'string',
-            description: 'PNG 保存路径（缺省保存到沙盒 outputs/canvas-{version}.png；父目录不存在会自动创建）'
+            description:
+              'PNG 保存路径（缺省保存到沙盒 outputs/canvas-{version}.png；父目录不存在会自动创建）'
           },
           node: {
             type: 'string',
-            description: '导出指定节点的包围盒（含全部子树），用于「设计在画布内某容器 / 卡片」时按设计区域导出，尺寸 = 该节点包围盒'
+            description:
+              '导出指定节点的包围盒（含全部子树），用于「设计在画布内某容器 / 卡片」时按设计区域导出，尺寸 = 该节点包围盒'
           },
           region: {
             type: 'object',
@@ -178,7 +191,12 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
           return { error: '当前没有打开的画布，请先 canvas_create 或 canvas_open，或指定 version' }
         }
         // 解析导出区域：node → region → 整张画布；node/region 均缺省时严格按画布尺寸导出（裁剪越界）
-        const defaultRegion = (): CanvasExportRegion => ({ x: 0, y: 0, width: doc.width, height: doc.height })
+        const defaultRegion = (): CanvasExportRegion => ({
+          x: 0,
+          y: 0,
+          width: doc.width,
+          height: doc.height
+        })
         const nodeBounds = node != null ? computeNodeBounds(doc, node) : null
         if (node != null && !nodeBounds) {
           return { error: `未找到节点 ${node}，请用 canvas_get_nodes 获取节点 id` }
@@ -192,7 +210,8 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
               ? '已按指定区域导出'
               : '导出尺寸 = 画布尺寸（越界元素已裁剪）'
         const target =
-          path || window.preload.path.join(buildCanvasOutputsDir(sandboxDir), `canvas-${doc.version}.png`)
+          path ||
+          window.preload.path.join(buildCanvasOutputsDir(sandboxDir), `canvas-${doc.version}.png`)
         const blob = await exportCanvasPng(doc, exportRegion)
         await window.preload.fs.mkdir(window.preload.path.dirname(target), true)
         await window.preload.fs.writeBinaryFile(target, await blob.arrayBuffer())
@@ -259,7 +278,8 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
               .map((n) => ({ ...n, children: n.children ? pick(n.children) : undefined }))
           nodes = pick(doc.nodes)
         }
-        if (nodes.length === 0) return { nodes: [], palette: doc.palette ?? {}, note: '当前画布暂无图层' }
+        if (nodes.length === 0)
+          return { nodes: [], palette: doc.palette ?? {}, note: '当前画布暂无图层' }
         return { nodes, palette: doc.palette ?? {} }
       }
     },

@@ -87,10 +87,10 @@ import type { DropdownProps } from 'tdesign-vue-next'
 import {
   buildCanvasFileName,
   buildCanvasOutputsDir,
-  getCanvasStore
-} from '@/modules/tool/components/canvas/CanvasStore'
-import { exportCanvasPng } from '@/modules/tool/components/canvas/canvasRender'
-import { maxAnimationTime } from '@/modules/tool/components/canvas/canvasVideoExport'
+  exportCanvasPng,
+  getCanvasStore,
+  maxAnimationTime
+} from '@/modules/canvas'
 import CanvasRenderer from './CanvasRenderer.vue'
 import { openVideoExportDialog } from './VideoExportDialog'
 

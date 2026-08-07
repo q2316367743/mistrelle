@@ -2,7 +2,7 @@
   <page-layout title="Skill">
     <template #extra>
       <t-radio-group v-model="active" variant="primary-filled">
-        <t-radio-button value="local">本地</t-radio-button>
+        <t-radio-button value="local">已安装</t-radio-button>
         <t-radio-button value="skillhub">SkillHub</t-radio-button>
       </t-radio-group>
     </template>

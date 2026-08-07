@@ -12,7 +12,7 @@ import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
 import type { WritingScene } from '@/modules/chat/writingScene'
 import { ARTICLE_SCENE_PROMPT } from '@/modules/tool/components/article/articlePrompt'
 import { createArticleTools } from '@/modules/tool/components/article/articleTools'
-import { DESIGN_CANVAS_PROMPT } from '@/modules/tool/components/canvas/canvasPrompt'
+import { DESIGN_CANVAS_PROMPT } from '@/modules/canvas'
 import { createCanvasTools } from '@/modules/tool/components/canvas/canvasTools'
 import { createDesignTools } from '@/modules/tool/components/design'
 
