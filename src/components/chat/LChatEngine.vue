@@ -56,6 +56,7 @@
         <span class="ellipsis" :title="chatName">{{ chatName }}</span>
       </div>
       <div class="ml-auto flex gap-8px">
+        <todo-progress-button :todos="instance.todos.value" />
         <t-button theme="default" variant="text" shape="square" @click="toggleFullscreen()">
           <template #icon>
             <fullscreen-exit1-icon v-if="fullscreen" />
@@ -84,6 +85,7 @@ import {
   lastAssistantIndexOf
 } from '@/modules/chat/agent/agentMessages'
 import SubAgentTabs, { type AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
+import TodoProgressButton from '@/components/chat/TodoProgressButton.vue'
 import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
 import { collapsed } from '@/global/BeanFactory'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
@@ -409,7 +411,7 @@ watch(
     align-items: center;
     font-size: 20px;
     font-weight: 600;
-    width: calc(100% - 120px);
+    width: calc(100% - 240px);
   }
 
   &__aside {
