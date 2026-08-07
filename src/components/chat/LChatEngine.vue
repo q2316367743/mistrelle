@@ -19,6 +19,7 @@
         @switch="handleSwitchAgent"
       />
       <l-chat-sender
+        ref="senderRef"
         :initial="initialState"
         :loading="status === 'pending' || status === 'streaming'"
         :sandbox-dir="sandboxDir"
@@ -82,6 +83,7 @@ import {
   lastAssistantIndexOf
 } from '@/modules/chat/agent/agentMessages'
 import SubAgentTabs, { type AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
+import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
 import { collapsed } from '@/global/BeanFactory'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
@@ -162,6 +164,10 @@ const instance = session.chat
 // 交互桥供 ask/confirm 卡片注入作答；本组件是 UI 消费方，使能后挂起决策才能被作答
 provide(INTERACTIVE_KEY, instance.interactive)
 instance.interactive.setEnabled(true)
+
+// 画布侧边栏双击节点 → 注入聊天输入框（CanvasRenderer inject，经本组件转发到 LChatSender.addCanvasNode）
+const senderRef = ref<{ addCanvasNode: (ref: CanvasNodeRef) => void }>()
+provide(CANVAS_NODE_PICK_KEY, (ref) => senderRef.value?.addCanvasNode(ref))
 
 watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 

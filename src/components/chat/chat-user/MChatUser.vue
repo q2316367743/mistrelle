@@ -39,6 +39,17 @@
             @{{ file.name }}
           </t-tag>
         </template>
+        <t-tag
+          v-else-if="item.type === 'canvas'"
+          theme="default"
+          variant="light"
+          :title="`画布 canvas-${item.data.version} 节点 ${item.data.nodeId}`"
+          size="small"
+          class="r-chat-list__inline-tag mr-4px"
+        >
+          <template #icon><LayersIcon /></template>
+          画布(canvas-{{ item.data.version }})节点({{ item.data.label || item.data.nodeId }})
+        </t-tag>
       </template>
     </div>
     <div class="footer">
@@ -53,7 +64,7 @@
 <script lang="ts" setup>
 import { UserMessage } from '@/domain'
 import { ChatMessage } from '@tdesign-vue-next/chat'
-import { CodeIcon, FileIcon, ToolsIcon } from 'tdesign-icons-vue-next'
+import { CodeIcon, FileIcon, LayersIcon, ToolsIcon } from 'tdesign-icons-vue-next'
 
 defineProps({
   message: {

@@ -75,7 +75,7 @@
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Mention from '@tiptap/extension-mention'
-import { mergeAttributes } from '@tiptap/core'
+import { mergeAttributes, Node as TiptapNode } from '@tiptap/core'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
@@ -93,6 +93,7 @@ import {
 } from './mentionSuggestion'
 import { serializeEditorContent } from './chatSenderContent'
 import type { ChatSenderInitial } from './chatSenderInitial'
+import type { CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
 import { AiChatMode } from '@/entity'
@@ -134,18 +135,30 @@ const projectAssetFiles = computed(() => projectAssetContext?.files.value ?? [])
 const files = computed(() => [...sandboxFiles.value, ...projectAssetFiles.value])
 
 const inputValue = ref('')
-const mentionState = ref<{ skills: SkillItem[]; files: ChatFileRef[]; tools: ToolItem[] }>({
+const mentionState = ref<{
+  skills: SkillItem[]
+  files: ChatFileRef[]
+  tools: ToolItem[]
+  canvas: CanvasNodeRef[]
+}>({
   skills: [],
   files: [],
-  tools: []
+  tools: [],
+  canvas: []
 })
 
-type MentionState = { skills: SkillItem[]; files: ChatFileRef[]; tools: ToolItem[] }
+type MentionState = {
+  skills: SkillItem[]
+  files: ChatFileRef[]
+  tools: ToolItem[]
+  canvas: CanvasNodeRef[]
+}
 
 const extractMentions = (editor: Editor): MentionState => {
   const resultSkills: SkillItem[] = []
   const resultFiles: ChatFileRef[] = []
   const resultTools: ToolItem[] = []
+  const resultCanvas: CanvasNodeRef[] = []
   editor.state.doc.descendants((node: PMNode) => {
     if (node.type.name === 'skillMention') {
       resultSkills.push({ path: node.attrs.id, name: node.attrs.label })
@@ -158,9 +171,15 @@ const extractMentions = (editor: Editor): MentionState => {
       })
     } else if (node.type.name === 'toolMention') {
       resultTools.push({ name: node.attrs.id, label: node.attrs.label })
+    } else if (node.type.name === 'canvasMention') {
+      resultCanvas.push({
+        version: Number(node.attrs.version ?? 0),
+        nodeId: String(node.attrs.nodeId ?? ''),
+        label: String(node.attrs.label ?? '') || undefined
+      })
     }
   })
-  return { skills: resultSkills, files: resultFiles, tools: resultTools }
+  return { skills: resultSkills, files: resultFiles, tools: resultTools, canvas: resultCanvas }
 }
 
 const getContents = (): UserMessageContent[] => {
@@ -230,6 +249,30 @@ const ToolMention = Mention.extend({ name: 'toolMention' }).configure({
   ]
 })
 
+/** 画布节点引用标签：双击侧边栏画布节点程序化插入（无触发字符，不挂 suggestion 插件） */
+const CanvasMention = TiptapNode.create({
+  name: 'canvasMention',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: false,
+  addAttributes: () => ({
+    version: { default: 0 },
+    nodeId: { default: '' },
+    label: { default: '' }
+  }),
+  parseHTML: () => [{ tag: 'span[data-type="canvas"]' }],
+  renderHTML: ({ node }) => [
+    'span',
+    mergeAttributes({
+      class: 'l-chat-sender__inline-tag t-tag t-tag--default t-tag--light t-tag--medium',
+      'data-type': 'canvas',
+      contenteditable: 'false'
+    }),
+    `画布(canvas-${node.attrs.version})节点(${node.attrs.label || node.attrs.nodeId})`
+  ]
+})
+
 // 直接读取 suggestion 插件内部的 active 状态，作为回车是否让位给选中的权威判断，
 // 避免依赖易失同步的外部标志（曾导致弹层可见时回车误触发发送）。
 const isSuggestionActive = (ed?: Editor | null): boolean => {
@@ -251,7 +294,8 @@ const editor = useEditor({
     }),
     SkillMention,
     FileMention,
-    ToolMention
+    ToolMention,
+    CanvasMention
   ],
   content: props.initial.input || '',
   editable: !props.loading,
@@ -327,7 +371,8 @@ const canSend = computed(() =>
     inputValue.value.trim() ||
     mentionState.value.skills.length ||
     mentionState.value.files.length ||
-    mentionState.value.tools.length
+    mentionState.value.tools.length ||
+    mentionState.value.canvas.length
   )
 )
 const showPlaceholder = computed(
@@ -335,7 +380,8 @@ const showPlaceholder = computed(
     !inputValue.value &&
     !mentionState.value.skills.length &&
     !mentionState.value.files.length &&
-    !mentionState.value.tools.length
+    !mentionState.value.tools.length &&
+    !mentionState.value.canvas.length
 )
 
 const focusInput = () => editor.value?.commands.focus()
@@ -407,7 +453,22 @@ const handleClearMode = () => {
 const clear = () => {
   editor.value?.commands.clearContent(true)
   inputValue.value = ''
-  mentionState.value = { skills: [], files: [], tools: [] }
+  mentionState.value = { skills: [], files: [], tools: [], canvas: [] }
+}
+
+/** 画布侧边栏双击节点后注入：在输入框插入 canvasMention 标签（LChatEngine 经 DI 桥接调用） */
+const addCanvasNode = (ref: CanvasNodeRef) => {
+  editor.value
+    ?.chain()
+    .focus()
+    .insertContent([
+      {
+        type: 'canvasMention',
+        attrs: { version: ref.version, nodeId: ref.nodeId, label: ref.label ?? '' }
+      },
+      { type: 'text', text: ' ' }
+    ])
+    .run()
 }
 
 const handleSend = () => {
@@ -478,6 +539,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => editor.value?.destroy())
+
+defineExpose({ addCanvasNode })
 </script>
 <style scoped lang="less">
 @import 'LChatSender.less';

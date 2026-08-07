@@ -13,7 +13,8 @@ import { App } from 'leafer-editor'
 import { MessageUtil } from '@/utils/modal'
 import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
 import { buildDocElements } from '@/modules/tool/components/canvas/canvasRender'
-import type { CanvasDoc } from '@/modules/tool/components/canvas/canvasTypes'
+import type { CanvasDoc, CanvasNode } from '@/modules/tool/components/canvas/canvasTypes'
+import { CANVAS_NODE_PICK_KEY } from '@/components/chat/design/canvasNodeBridge'
 
 /** 双击命中的元素最小结构（leafer 2.2.9 的 d.ts 被混淆，用本地接口收窄，避免 any） */
 interface CanvasTapTarget {
@@ -27,17 +28,42 @@ const props = defineProps<{
 
 const store = computed(() => getCanvasStore(props.sandbox ?? ''))
 
+/** 画布侧边栏 → 聊天输入框的注入回调（LChatEngine provide），为空时降级为复制节点 id */
+const pickCanvasNode = inject(CANVAS_NODE_PICK_KEY, null)
+
 const containerRef = ref<HTMLElement>()
 const canvasHost = ref<HTMLElement>()
 const { width: containerWidth, height: containerHeight } = useElementSize(containerRef)
 
 let app: App | null = null
 
-/** 双击画布元素：复制其节点 id 到剪贴板并提示（双击空白区域不处理） */
+/** 在节点树中按 id 查找节点（含子树） */
+const findNode = (nodes: CanvasNode[], id: string): CanvasNode | null => {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children?.length) {
+      const found = findNode(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/** 双击画布元素：把「画布版本 + 节点 id」注入到聊天输入框，让 AI 能 canvas_open(version) 定位并修改 */
 const handleDoubleTap = (event: { target?: CanvasTapTarget | null }) => {
   let el = event.target
   while (el && !el.id) el = el.parent ?? null
   if (!el?.id) return
+  const doc = store.value.current.value
+  if (!doc) return
+  const node = findNode(doc.nodes, el.id)
+  const ref = { version: doc.version, nodeId: el.id, label: node?.name || el.id }
+  if (pickCanvasNode) {
+    pickCanvasNode(ref)
+    MessageUtil.success('已将画布节点添加到输入框')
+    return
+  }
+  // 无输入框桥接时降级为复制节点 id（保留原能力）
   if (window.preload.inject.clipboard.copyText(el.id)) {
     MessageUtil.success(`已复制元素 id：${el.id}`)
   } else {
@@ -67,7 +93,7 @@ onMounted(() => {
     // 普通滚轮即缩放（不含修饰键）
     wheel: { zoomMode: 'mouse' }
   })
-  // 双击元素 → 复制其节点 id，方便 AI 修复（沿 parent 链向上取最近带 id 元素：
+  // 双击元素 → 把画布版本 + 节点 id 注入聊天输入框（供 AI 定位修改；沿 parent 链向上取最近带 id 元素：
   // 命中叶子复制自身 id，命中 group 背景 rect 回退到 group id，空白画布无 id 则忽略）
   app.tree.on('double_tap', handleDoubleTap)
   render()

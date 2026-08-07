@@ -5,6 +5,7 @@ import type {
 import type {
   AIMessage,
   AIMessageContent,
+  CanvasContent,
   ChatMessage,
   SkillContent,
   TextContent,
@@ -125,7 +126,8 @@ const buildPinnedContext = (msg: ChatMessage): string => {
   if (msg.role !== 'user') return ''
   const skills = msg.content.filter((c): c is SkillContent => c.type === 'skill')
   const tools = msg.content.filter((c): c is ToolContent => c.type === 'tool')
-  if (skills.length === 0 && tools.length === 0) return ''
+  const canvases = msg.content.filter((c): c is CanvasContent => c.type === 'canvas')
+  if (skills.length === 0 && tools.length === 0 && canvases.length === 0) return ''
 
   const parts: string[] = []
   if (skills.length > 0) {
@@ -139,6 +141,15 @@ const buildPinnedContext = (msg: ChatMessage): string => {
       .map((t) => `- 工具「${t.data.label}」（调用名 ${t.data.name}）：请直接调用 ${t.data.name} 执行`)
       .join('\n')
     parts.push(`用户在本条消息中指定了以下工具，请直接调用（无需再确认）：\n${list}`)
+  }
+  if (canvases.length > 0) {
+    const list = canvases
+      .map(
+        (c) =>
+          `- 画布节点：画布 canvas-${c.data.version} 中的节点 ${c.data.nodeId}（图层名 ${c.data.label ?? c.data.nodeId}）：请先 canvas_open(${c.data.version}) 打开画布，再用 canvas_get_nodes / canvas_batch_edit 等工具定位并处理该节点`
+      )
+      .join('\n')
+    parts.push(`用户在本条消息中指定了以下画布节点，请先打开画布定位节点，再按需修改：\n${list}`)
   }
   return parts.join('\n\n')
 }

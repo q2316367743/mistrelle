@@ -89,6 +89,14 @@ export type ToolItem = {
   label: string
 }
 export type ToolContent = ChatBaseContent<'tool', ToolItem>
+/** 用户在画布侧边栏双击节点引用：version 即 canvas-{version}.canvas 版本号，供 AI canvas_open 打开定位节点 */
+export type CanvasItem = {
+  version: number
+  nodeId: string
+  /** 节点图层名（无 name 时回退为 nodeId），仅用于展示 */
+  label?: string
+}
+export type CanvasContent = ChatBaseContent<'canvas', CanvasItem>
 export type ThinkingContent = ChatBaseContent<
   'thinking',
   {
@@ -142,7 +150,12 @@ type AIContentTypeMap = {
 }
 export type AIContentType = keyof AIContentTypeMap
 export type AIMessageContent = AIContentTypeMap[AIContentType]
-export type UserMessageContent = TextContent | AttachmentContent | SkillContent | ToolContent
+export type UserMessageContent =
+  | TextContent
+  | AttachmentContent
+  | SkillContent
+  | ToolContent
+  | CanvasContent
 /** 思考强度（DeepSeek 思考模式）：low / high / max，默认 high */
 export type ThinkingEffort = 'low' | 'high' | 'max'
 export interface UserMessage extends ChatBaseMessage {
