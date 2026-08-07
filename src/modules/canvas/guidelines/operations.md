@@ -19,8 +19,8 @@
 
 | 场景                                                  | 判定                         |
 |-------------------------------------------------------|------------------------------|
-| 文字放在背景 / 色块里（标签、按钮、数字圆点、图标底） | 背景 + 文字 = 2 元素 → group |
-| 图标落在底座上                                        | 图标 + 底 = 2 元素 → group   |
+| 文字放在背景 / 色块里（标签、按钮、数字圆点里的数字） | 背景 + 文字 = 2 元素 → group，layout + CENTER 双向居中 |
+| 图标落在底座上（图标底）                              | 图标 + 底 = 2 元素 → group，**不开排布 layout** + 图标 `layoutPositioning:"ABSOLUTE"` 圆心反推叠放（开 horizontal/vertical 会并排） |
 | 标题 + 副标题 / 多行信息要对齐成一体                  | → group                      |
 | 卡片（背景 + 标题 + 正文 + 标签）                     | → group（可用嵌套 group）    |
 | 孤立单个文字 / 色块 / 图形 / 图片                     | 原子元素，直接自由定位       |
@@ -53,12 +53,14 @@
 - **hug 组交叉轴** = max(非 fill 子节点交叉轴) + padding，交叉轴对齐（CENTER/MAX）自动生效，矮元素相对最高元素居中
 - 文本子节点不要手写 width/height，交引擎按内容估算
 - group 有背景（fill）时建议显式 `padding`，文字才不会贴边
+- **多行正文禁止一个 text 写 `\n`**：拆成多个独立单行 text + 容器 `layout:"vertical"` + gap 堆叠，单行高度精确、容器不溢出（引擎对含 `\n` 的 text 行数测量不稳定）
 
 **layout 选型**：
 
 - `horizontal`：标签、按钮、行内图标组——配 `counterAxisAlignItems:"CENTER"` 垂直居中
 - `vertical`：卡片（标题 + 正文 + 标签纵向堆叠）、标题区块
 - `wrap`：徽章墙、多图拼贴（行内交叉轴对齐暂未实现，行内元素按顶部对齐）
+- **svg 图标嵌圆底 ≠ horizontal/vertical**（排布语义会并排）：group 不开 layout + 图标 `layoutPositioning:"ABSOLUTE"` 用圆心反推坐标叠放
 
 ## 2. 节点类型
 
@@ -200,6 +202,8 @@ type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环
 | 三张等宽卡片平铺                       | 用之字 / 不对称                                     | 见 style-guide                                                      |
 | 背景 rect 与文字 text 分开手算绝对坐标 | 先建 group 收拢背景+文字，用 layout 排布            | 区域内 ≥2 元素必须分组（见 1.5）                                    |
 | 给 layout 组内的子节点手动写 x/y       | 不写 x/y，交引擎 AUTO 排布                          | 子节点位置由布局引擎决定，手写会错位                                |
+| 图标嵌圆底用了 layout horizontal/vertical | group 不开 layout + 图标 `layoutPositioning:"ABSOLUTE"` 圆心反推 | 排布型 layout 会并排而非叠加，svg 无尺寸也无法靠 CENTER 居中 |
+| 一个 text 用 `\n` 写多行正文              | 拆成多个独立单行 text + 容器 `layout:"vertical"` + gap 堆叠     | 引擎对含 `\n` 的 text 高度测量不稳定（行数被低估），容器高度算错、文字溢出背景 |
 
 ## 6. 示例：一张音乐海报（单批构建）
 

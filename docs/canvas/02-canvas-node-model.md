@@ -155,7 +155,8 @@ interface CanvasDoc {
   **主视觉来源策略**（每个设计必须有 hero；无真实素材时 `image_generate` 生图是首选，避免纯文字海报）、
   **几何核对主动校验**（每轮 batch_edit 后主动用 `canvas_inspect` 核对四边边距 / 间距 / 对齐，不目测、不写像素脚本）、
   **排版防错规则**（垂直间距、几何中心定位、文字垂直居中 0.58 系数、宽度估算、居中禁止「估宽 + 目测 x」、嵌图居中用 group 而非
-  rect、**四边安全边距**：四边留白 ≥ 画布短边 × 4% 且底部 ≥ 顶部）、按需加载指令。
+  rect、svg 图标嵌圆底用 `layoutPositioning:"ABSOLUTE"` 叠圆心（排布型 layout 会并排）、**多行正文禁用 `\n` 换行**——拆多个单行 text +
+  容器 vertical 堆叠（引擎对含 `\n` 的 text 行数测量不稳定，高度被低估会溢出背景）、**四边安全边距**：四边留白 ≥ 画布短边 × 4% 且底部 ≥ 顶部）、按需加载指令。
   - **动态生图规则**：`hasImageGenerate = !!useSettingDefaultStore().state.defaultImageModel`，与 `createDesignTools` 的工具注入同源判断。
     仅配置默认生图模型（`image_generate` 工具已注入）时，提示词才追加生图增强规则（主视觉生图首选 + sprite 合并 + `image_crop` 切分 +
     `canvas_guidelines("image-generation")` 引用），避免「提示词提到 image_generate、工具却未注入」的错配；未配置时主视觉来源只用真实素材 +
@@ -186,6 +187,8 @@ interface CanvasDoc {
 - 渲染端兜底：`buildNode` 对未知类型返回空 `Group`（绝不返回 `undefined`），单节点构建失败会跳过而非拖垮整张画布。
 - **区域分组**：区域内 ≥2 个元素必须收进 `group` 并用 `layout` 排布（子节点不写 x/y，交引擎）；`rect`
   不是容器、不能挂子节点，「背景 + 文字」必须用 group 而非 rect 硬凑。手动坐标仅用于顶层定位与布局组内 `ABSOLUTE` 锚点。
+  例外：**svg 图标嵌圆底（图标底+图标）不能用排布型 layout**（horizontal/vertical 会并排而非叠加），须 group 不开 layout +
+  图标 `layoutPositioning:"ABSOLUTE"` 用圆心反推坐标叠放（`svg.x = 圆底中心X − svg宽/2`）。
 - **布局引擎（flexbox 两阶段）**：`canvasLayout.ts` 采用 measure（测量子节点自然尺寸）→ arrange（排布 + fill 拉伸）两阶段。hug
   容器 交叉轴 = max (非 fill 子节点) + padding，交叉轴 CENTER/MAX 可靠生效；`fill_container` 交叉轴撑满在 hug
   容器内可用，主轴撑满需容器 有确定主轴尺寸；text 行高估算：`lineHeight` 数字按倍率换算（×字号），`AUTO` 用 1.2×字号。
