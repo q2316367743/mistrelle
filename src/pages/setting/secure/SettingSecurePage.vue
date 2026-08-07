@@ -79,16 +79,6 @@
           </SecuritySection>
 
           <SecuritySection
-            icon="secured"
-            title="传输加密"
-            description="本地与云端通信使用端到端加密通道"
-          >
-            <template #action>
-              <t-tag theme="success" variant="light">已开启</t-tag>
-            </template>
-          </SecuritySection>
-
-          <SecuritySection
             icon="folder-locked"
             title="删除保护"
             description="开启后优先移到废纸篓/回收站，关闭后按系统删除"
@@ -101,7 +91,7 @@
           <SecuritySection
             icon="folder-blocked"
             title="批量删除审批"
-            description="需开启删除保护，一次删除达到该数量时需要审批"
+            description="删除达到该数量时需要审批"
           >
             <template #action>
               <t-input-number
