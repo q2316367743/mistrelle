@@ -217,12 +217,13 @@ export class ToolChat {
   }
 
   /**
-   * 聊天类型固定提示词 + writing 子场景提示词拼接。
-   * 类型与场景均在创建后锁定，组合稳定 → 进入稳定 system 前缀不影响 prompt 缓存。
+   * 聊天类型提示词（工厂按场景上下文动态组装）+ writing 子场景提示词拼接。
+   * 类型与场景均在创建后锁定，组合稳定 → 进入稳定 system 前缀；design 提示词可随运行时设置
+   * （是否配置生图模型）动态变化，与注入工具保持一致。
    */
   private buildTypePrompt(): string {
     if (this.isSubAgent) return ''
-    const base = CHAT_TYPE_CONFIG[this.chatType].prompt
+    const base = CHAT_TYPE_CONFIG[this.chatType].prompt(this.typeToolsContext())
     if (this.chatType !== 'writing') return base
     const scenePrompt = WRITING_SCENE_CONFIG[this.writingScene].prompt
     return scenePrompt ? [base, scenePrompt].filter(Boolean).join('\n\n') : base

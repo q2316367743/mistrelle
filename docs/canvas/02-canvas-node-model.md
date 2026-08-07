@@ -149,19 +149,26 @@ interface CanvasDoc {
 
 ## 8. 内置 skill（canvasPrompt.ts + guidelines/）
 
-- **固定提示词**：角色（资深平面设计师）、工作流（选比例 → 定 palette → batch 构建 → ≤2 轮修正；导出仅由用户要求触发）、图层模型速查、反
+- **固定提示词**（`buildDesignCanvasPrompt({ hasImageGenerate })` 动态组装）：角色（资深平面设计师）、工作流（选比例 → 定 palette → batch
+  构建 → ≤2 轮修正；导出仅由用户要求触发）、图层模型速查、反
   AI 俗套铁律、构图与字体铁律、 **区域分组铁律**（区域内 ≥2 元素必 group + layout，背景+文字必分组，原子元素可自由定位）、
+  **主视觉来源策略**（每个设计必须有 hero；无真实素材时 `image_generate` 生图是首选，避免纯文字海报）、
+  **几何核对主动校验**（每轮 batch_edit 后主动用 `canvas_inspect` 核对四边边距 / 间距 / 对齐，不目测、不写像素脚本）、
   **排版防错规则**（垂直间距、几何中心定位、文字垂直居中 0.58 系数、宽度估算、居中禁止「估宽 + 目测 x」、嵌图居中用 group 而非
-  rect）、按需加载指令。
+  rect、**四边安全边距**：四边留白 ≥ 画布短边 × 4% 且底部 ≥ 顶部）、按需加载指令。
+  - **动态生图规则**：`hasImageGenerate = !!useSettingDefaultStore().state.defaultImageModel`，与 `createDesignTools` 的工具注入同源判断。
+    仅配置默认生图模型（`image_generate` 工具已注入）时，提示词才追加生图增强规则（主视觉生图首选 + sprite 合并 + `image_crop` 切分 +
+    `canvas_guidelines("image-generation")` 引用），避免「提示词提到 image_generate、工具却未注入」的错配；未配置时主视觉来源只用真实素材 +
+    几何图形。提示词经 `ChatTypeConfig.prompt(ctx)` 工厂组装（AgentChat.buildTypePrompt 调用）。
 - **内置参考**（`guidelines.ts` 用 `?raw` 打包，`canvas_guidelines` 读取）：
   - `style-guide.md`：反 AI 俗套铁律 + 创意武器库（改编自 ardot rules/style-guide.md）
-  - `composition.md`：构图法则 + 常用画布尺寸
+  - `composition.md`：构图法则 + 常用画布尺寸 + 四边安全边距（比例 + 底线）
   - `typography.md`：字体层级 / 字距行距 / 描边与渐变文字
   - `operations.md`：batch_edit 操作与节点速查 + 示例
-  - `workflow.md`：端到端工作流与收敛阈值
+  - `workflow.md`：端到端工作流与收敛阈值（构建后主动用 canvas_inspect 核对四边边距）
   - 场景指南：`poster.md`（海报）/ `book-cover.md`（书籍封面）/ `album-cover.md`（专辑封面）/ `social-media.md`（公众号封面 +
     小红书配图）/ `knowledge-card.md`（读书笔记 / 知识卡片）
-  - 素材指南：`image-generation.md`（生图 + 多素材合并 sprite 一次生成 + `image_crop` 切分的省钱规范）
+  - 素材指南：`image-generation.md`（生图 + 多素材合并 sprite 一次生成 + `image_crop` 切分的省钱规范；无真实素材时生图是主视觉首选，避免纯文字海报）
   - 各场景指南统一结构：画布尺寸表 → 构图 → 文字排版 → 色彩 → 素材来源 → 自检清单
 
 ## 9. 注意事项
