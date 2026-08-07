@@ -14,7 +14,8 @@
       "ESNext"
     ],
     "types": [
-      "@types/node"
+      "@types/node",
+      "../node_modules/utools-api-types/"
     ],
     "rootDir": ".",
   },

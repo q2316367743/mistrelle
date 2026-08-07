@@ -133,6 +133,22 @@ module.exports = {
     run: (args, onProgress) => api.runFFmpeg(args, onProgress),
   },
 
+  // uTools 内置 Sharp 图像处理库；ZTools / browser 环境无此能力时为 undefined，调用方需判空
+  sharp: api.sharp && {
+    /**
+     * 读取图片元信息（宽高 / 格式）
+     * @param {string | Uint8Array | ArrayBuffer} input 图片文件路径或二进制数据
+     */
+    metadata: (input) => api.sharp(input).metadata(),
+    /**
+     * 裁剪指定区域并输出 PNG 文件
+     * @param {string} input 源图片文件路径
+     * @param {{left:number, top:number, width:number, height:number}} region 裁剪区域
+     * @param {string} output 输出 PNG 文件路径
+     */
+    crop: (input, region, output) => api.sharp(input).extract(region).png().toFile(output),
+  },
+
   db: api?.db,
   dbStorage: api?.dbStorage,
   dbCryptoStorage: api?.dbCryptoStorage,

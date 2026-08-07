@@ -156,6 +156,7 @@ interface CanvasDoc {
   - `workflow.md`：端到端工作流与收敛阈值
   - 场景指南：`poster.md`（海报）/ `book-cover.md`（书籍封面）/ `album-cover.md`（专辑封面）/ `social-media.md`（公众号封面 +
     小红书配图）/ `knowledge-card.md`（读书笔记 / 知识卡片）
+  - 素材指南：`image-generation.md`（生图 + 多素材合并 sprite 一次生成 + `image_crop` 切分的省钱规范）
   - 各场景指南统一结构：画布尺寸表 → 构图 → 文字排版 → 色彩 → 素材来源 → 自检清单
 
 ## 9. 注意事项
@@ -180,16 +181,18 @@ interface CanvasDoc {
 - **几何核对用 `canvas_inspect`**：`canvas_get_nodes` 返回的是输入参数（布局组内子节点无最终坐标、尺寸可能为 fill/hug 关键字），
   `canvas_inspect` 返回布局引擎解析后的画布绝对包围盒（与导出 PNG 同源），AI 判断间距 / 对齐 / 中心 一律以它为准，禁止像素测量脚本。核对几何无需先
   `canvas_export`，导出仅用于目测整体视觉。
-- **图片真实尺寸**：给 image 节点设 width/height 前用 `image_info(path)` 拿真实宽高（纯字节解析
-  png/jpeg/gif/bmp/webp/ico/svg，
-  `src/utils/imageInfo.ts`）；`website_logo` 与 `canvas_batch_edit` 的 image 操作（web/stock）下载落盘后返回值已附带
+- **图片真实尺寸**：给 image 节点设 width/height 前用 `image_info(path)` 拿真实宽高（基于系统内置
+  Sharp 在**主进程**读元信息，不把全量图片字节读进渲染进程，见 `src/utils/imageInfo.ts`）；`website_logo`
+  与 `canvas_batch_edit` 的 image 操作（web/stock）下载落盘后返回值已附带
   `width/height/format`，无需再写 python 解析脚本。
 - `line` 的 `points` 相对节点 x/y（旧模型为绝对坐标，语义已变）。
-- image 的 `ai` 类型暂按 `stock` 兜底（当前无文生图服务）。
+- image 的 `ai` 类型暂按 `stock` 兜底；真实文生图能力由设计工具 `image_generate`（生图）+ `image_crop`（裁切）
+  提供，省钱合并生成规范见 `canvas_guidelines("image-generation")`（`docs/tool/04-image-tools.md`）。
 - 图片未显式 width/height 时可能 0 尺寸不可见，建议 G 前先给目标节点尺寸。
 
 ## 10. v2 预留（下个迭代）
 
 - 变量系统、组件（reusable/ref）如后续需要再评估（当前用 palette 满足色彩一致性）。
 - 更多场景指南（如海报子类型细分：电影 / 音乐 / 活动）可按需补充 `guidelines/` 文件与 topic。
-- G 操作的 `ai` 类型待接入真实文生图服务后升级。
+- G 操作的 `ai` 类型暂不接入生图服务（独立 `image_generate` 工具已提供生图入口，`docs/tool/04-image-tools.md`），
+  后续如需整合到画布 image 操作再升级。

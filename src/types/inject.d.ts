@@ -434,6 +434,36 @@ interface InjectFfmpeg {
   run(args: string[], onProgress?: (progress: InjectFfmpegProgress) => void): InjectFfmpegPromise
 }
 
+interface InjectSharpRegion {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+interface InjectSharpCropResult {
+  width: number
+  height: number
+  format?: string
+  size?: number
+}
+
+interface InjectSharpMetadata {
+  width?: number
+  height?: number
+  format?: string
+  size?: number
+  space?: string
+  channels?: number
+}
+
+interface InjectSharp {
+  /** 读取图片元信息（宽高 / 格式） */
+  metadata(input: string | Uint8Array | ArrayBuffer): Promise<InjectSharpMetadata>
+  /** 裁剪指定区域并输出 PNG 文件，返回裁剪后宽高 */
+  crop(input: string, region: InjectSharpRegion, output: string): Promise<InjectSharpCropResult>
+}
+
 interface InjectDbPromises {
   put(doc: InjectDbDoc): Promise<InjectDbReturn>
   get<T extends Record<string, any> = Record<string, any>>(
@@ -646,6 +676,8 @@ interface InjectApi {
   screen: InjectScreen
   ai: InjectAi
   ffmpeg: InjectFfmpeg
+  /** uTools 内置 Sharp；ZTools / browser 环境可能缺失（undefined） */
+  sharp?: InjectSharp
   db: InjectDb
   dbStorage: InjectDbStorage
   dbCryptoStorage: InjectDbCryptoStorage

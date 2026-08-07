@@ -9,7 +9,7 @@
 > - 图标工具 `src/modules/tool/components/design/iconSvg.ts`
 > - logo 工具 `src/modules/tool/components/design/websiteLogo.ts`
 > - 来源适配器 + 打分 `src/modules/tool/components/design/faviconSources.ts`
-> - 注入点 `src/modules/chat/chatType.ts`（design 配置）
+> - 注入点 `src/global/ChatTypeConfig.ts`（design 配置）
 
 ---
 

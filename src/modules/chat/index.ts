@@ -6,3 +6,4 @@ export * from './engine/UseChatName'
 export * from './engine/UseDiscussionName'
 
 export * from './service/ChatService'
+export * from './service/ImageGenerate'

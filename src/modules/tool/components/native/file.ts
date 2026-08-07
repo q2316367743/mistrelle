@@ -141,7 +141,7 @@ export const fileTools: ToolFunction[] = [
     name: 'image_info',
     label: '读取图片信息',
     description:
-      '读取本地图片文件的实际格式与宽高（支持 png / jpeg / gif / bmp / webp / ico / svg）。给 image 节点设置 width/height 前先调用，按真实尺寸等比缩放，避免失真；返回格式按文件头判定（与扩展名无关）',
+      '读取本地图片文件的实际格式与宽高（基于系统内置图像引擎，支持 png / jpeg / webp / gif 等常见位图格式）。给 image 节点设置 width/height 前先调用，按真实尺寸等比缩放，避免失真；格式由图像引擎按内容判定（与扩展名无关）',
     parameters: {
       type: 'object',
       properties: {

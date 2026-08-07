@@ -10,7 +10,7 @@
 
 ## 场景定义
 
-`src/modules/chat/writingScene.ts`（单一数据源）：
+`src/modules/chat/writingScene.ts`：场景类型 + UI 选项（单一数据源）；配置表在 `src/global/ChatTypeConfig.ts`。
 
 ```ts
 type WritingScene = 'article'
@@ -31,7 +31,7 @@ type WritingScene = 'article'
 ## 工具注入
 
 `AgentChat.getTypeTools()`：主 Agent 按 `chatType` 注入；`writing` 时经 `ChatTypeToolContext.writingScene` 透传场景，
-由 `chatType.ts` 分发给 `WRITING_SCENE_CONFIG[scene].tools`。子 Agent 逻辑不变（design 型 → canvas）。
+由 `src/global/ChatTypeConfig.ts` 分发给 `WRITING_SCENE_CONFIG[scene].tools`。子 Agent 逻辑不变（design 型 → canvas）。
 
 ## 目录结构（按类型预建）
 
@@ -67,8 +67,9 @@ PageNew.vue（选 writing → 二级场景固定 article）
 
 ## 关键文件
 
-- `src/modules/chat/writingScene.ts`：场景类型 + 配置表 + UI 选项（新增场景唯一改动点）
-- `src/modules/chat/chatType.ts`：`ChatTypeToolContext.writingScene` + `CHAT_TYPE_OPTIONS` + writing.tools 分发
+- `src/modules/chat/writingScene.ts`：场景类型 + UI 选项（新增场景唯一改动点）
+- `src/global/ChatTypeConfig.ts`：`CHAT_TYPE_CONFIG` / `WRITING_SCENE_CONFIG` 组合配置（跨模块组合根）
+- `src/modules/chat/chatType.ts`：`ChatTypeToolContext.writingScene` + `CHAT_TYPE_OPTIONS`
 - `src/modules/chat/agent/AgentChat.ts`：`buildTypePrompt` / `getTypeTools` / `setWritingScene`
 - `src/modules/chat/agent/ChatSessionManager.ts`：writingScene 持久化与恢复
 - `src/modules/chat/service/ChatService.ts`：`aiChatSandbox` 按场景建目录

@@ -335,7 +335,7 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       name: 'canvas_guidelines',
       label: '获取设计参考',
       description:
-        '获取内置设计参考（按需加载，避免全部塞进提示词）。通用：style-guide 反 AI 俗套 / composition 构图 / typography 字体排版 / operations 批量编辑与节点速查 / workflow 端到端工作流；场景：poster 海报 / book-cover 书籍封面 / album-cover 专辑封面 / social-media 公众号封面与小红书配图 / knowledge-card 读书笔记与知识卡片。做某类作品前先读对应场景指南',
+        '获取内置设计参考（按需加载，避免全部塞进提示词）。通用：style-guide 反 AI 俗套 / composition 构图 / typography 字体排版 / operations 批量编辑与节点速查 / workflow 端到端工作流 / image-generation 生图与多素材合并省钱规范；场景：poster 海报 / book-cover 书籍封面 / album-cover 专辑封面 / social-media 公众号封面与小红书配图 / knowledge-card 读书笔记与知识卡片。做某类作品前先读对应场景指南',
       parameters: {
         type: 'object',
         properties: {

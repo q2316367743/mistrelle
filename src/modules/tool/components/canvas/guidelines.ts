@@ -13,6 +13,7 @@ import bookCover from './guidelines/book-cover.md?raw'
 import albumCover from './guidelines/album-cover.md?raw'
 import socialMedia from './guidelines/social-media.md?raw'
 import knowledgeCard from './guidelines/knowledge-card.md?raw'
+import imageGeneration from './guidelines/image-generation.md?raw'
 
 export const CANVAS_GUIDELINE_TOPICS = [
   'style-guide',
@@ -20,6 +21,7 @@ export const CANVAS_GUIDELINE_TOPICS = [
   'typography',
   'operations',
   'workflow',
+  'image-generation',
   'poster',
   'book-cover',
   'album-cover',
@@ -35,6 +37,7 @@ export const CANVAS_GUIDELINES: Record<CanvasGuidelineTopic, string> = {
   typography,
   operations,
   workflow,
+  'image-generation': imageGeneration,
   poster,
   'book-cover': bookCover,
   'album-cover': albumCover,
