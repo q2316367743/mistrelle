@@ -1,13 +1,15 @@
-# 生图与裁剪工具（image_generate / image_crop）
+# 生图 / 裁剪 / 去背景工具（image_generate / image_crop / image_remove_background）
 
-> design 对话注入的 2 个图片处理工具：生图（依赖默认生图模型，多素材合并省钱）+ 本地裁剪（uTools Sharp）。
-> 定位：解决「AI 无插画素材 / 想省生图成本」——需要多素材时拼一张 sprite 一次生成，再本地切分。
+> design 对话注入的 3 个图片处理工具：生图（依赖默认生图模型，多素材合并省钱）+ 本地裁剪 + 本地去背景（uTools Sharp）。
+> 定位：解决「AI 无插画素材 / 想省生图成本 / 生图产物带白底盖住画布背景」——多素材拼 sprite 一次生成，
+> 本地切分；需要透明底时本地 flood fill 去背景。
 
 > 关键文件：
 >
 > - 工具工厂 `src/modules/tool/components/design/index.ts`
 > - 生图工具 `src/modules/tool/components/design/imageGenerate.ts`
 > - 裁剪工具 `src/modules/tool/components/design/imageCrop.ts`
+> - 去背景工具 `src/modules/tool/components/design/imageRemoveBackground.ts`
 > - 生图服务封装 `src/modules/chat/service/ImageGenerate.ts`（已实现，接口自适应）
 > - Sharp 包装 `src-utools/src/inject.js`（inject.sharp）+ 类型 `src/types/inject.d.ts`
 > - 省钱指南 `../../src/modules/canvas/guidelines/image-generation.md`
@@ -66,11 +68,34 @@
 - `grid` 等分：`cellW = floor((W − gap×(cols−1)) / cols)`，末行 / 末列吸收余量保证全覆盖；
   `regions` 显式区域自动取整并钳制到图片边界内。
 
+### `image_remove_background`（本地去背景，不耗模型）
+
+| 项       | 值                                                                                                                |
+| -------- | ----------------------------------------------------------------------------------------------------------------- |
+| 参数     | `path`（源图，必填）+ `color?`（默认白 `#ffffff`）+ `tolerance?`（0~255，默认 40）+ `output?`（缺省同目录 `{basename}_no-bg.png`） |
+| 返回成功 | `{ success, path, width, height, removedPixels?, note }`                                                         |
+| 返回失败 | `{ error }`（缺 path / 非 uTools 无 sharp / color 非法 / 处理失败）                                               |
+| 风险     | sensitive，路径感知策略（源图 / 输出限沙盒 / 工作空间 / 主目录）                                                  |
+| 注入条件 | 无条件注入（本地处理，不依赖生图模型）                                                                            |
+
+- **算法**：flood fill（BFS）——从图片四条边像素为种子，四邻域扩展，凡与目标色在容差内
+  （RGB 各通道差值 ≤ tolerance）且与边缘连通的像素，alpha 置 0，输出 PNG。
+  只清除「从外到内的连续背景」，主体内部未被边缘连通的同色区域不受影响。
+- **实现**：`inject.sharp.removeBackground(input, options, output)`（`src-utools/src/inject.js`）：
+  `ensureAlpha().raw().toBuffer({ resolveWithObject: true })` 读 RGBA → JS BFS → `sharp(data, { raw })` PNG 写回；
+  ZTools / browser 环境缺失（undefined），工具判空报错。
+- **color 支持**：hex（`#ffffff`）/ `rgb(r,g,b)` / `[r,g,b]`；非法回退纯白。
+- **removedPixels = 0**：边缘未匹配到背景色（主体占满整图 / 背景不连续 / 容差过小），返回成功但带提示，
+  AI 应提高 tolerance 或改用 color 指定实际背景色后重试。
+
 ## 2. 与 canvas / 指南的关系
 
 - 产出 path 填进画布 `image` 节点 `imageUrl` 使用。
 - `canvas_guidelines("image-generation")` 内建省钱规范：**多个素材合并一张 sprite 一次生成 → image_crop
   切分**（1 次生图换 N 素材，裁剪本地免费）。
+- **生图不支持真透明**：`image_generate` 产物必带不透明背景（多为白底）；需要透明底素材时
+  先用 `image_remove_background` 去背景再填画布，禁止把白底图直接盖在深色 / 彩色背景上
+  （`image_generate` description、canvasPrompt 生图增强规则、指南均已告知 AI）。
 - canvas 的 `image` 操作 `ai` 类型仍按 stock 兜底（未接入 image_generate），不在本次范围。
 
 ## 3. 注意事项
@@ -78,4 +103,6 @@
 - 未配置默认生图模型或模型无效时工具返回明确 error，AI 应如实告知用户并回退 stock / placeholder / 用户素材。
 - 接口返回无法识别（无 url / b64_json / task_id）时同样返回明确 error，避免静默失败。
 - image_generate 只在配置默认生图模型后注入；未配置时模型上下文里看不到该工具，不会误调用。
-- 裁剪输出固定 PNG；多张输出按 `{basename}_crop_{index}.png` 命名。
+- 裁剪 / 去背景输出固定 PNG；去背景输出按 `{basename}_no-bg.png` 命名（可用 output 覆盖）。
+- **路径包含判断统一用 `isPathUnder(target, parent)`**（`src/utils/sandbox.ts`，两端 `normalizePath` 归一化并去尾部 `/`）；
+  工具策略里不要再本地重复实现，直接 `import { isPathUnder } from '@/utils/sandbox'`。

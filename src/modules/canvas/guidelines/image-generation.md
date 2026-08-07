@@ -22,7 +22,7 @@
    - 整体布局：`a {cols}x{rows} grid of ...`
    - 每个格子独立描述：`Cell 1: ...; Cell 2: ...`（从左到右、从上到下编号）
    - 统一风格前缀（材质 / 配色 / 光照 / 视角 / 风格词），保证各格风格一致
-   - 格子之间留**均匀间距**（建议 16~32px 留白）便于裁剪；背景纯色（白 / 透明感知）
+   - 格子之间留**均匀间距**（建议 16~32px 留白）便于裁剪；背景统一**纯白**（便于 image_remove_background 去背景）
 3. **切分**：用 `image_crop(path, { grid: { cols, rows, gap } })` 按网格切成多张 PNG；
    留白间距等于 gap 时用 `grid` 等分即可；间距不齐时用 `regions` 显式给出每个格子区域。
 4. 把每张裁剪结果的 `path` 分别填进画布中对应的 `image` 节点。
@@ -65,5 +65,8 @@ Consistent flat vector style, muted colors, rounded corners, no text.
 - 生图失败 / 服务未就绪（`image_generate` 返回 error）→ 如实告知用户，回退 `stock` / `placeholder`
   或请用户提供素材，不反复重试无意义的生图。
 - 只需单个素材 → 直接 `image_generate` 一次即可，无需 sprite。
-- 需要透明底素材时：prompt 说明 `transparent background`；若必须透明底，用 `regions` 精确裁剪并让
-  格子之间**不留间隙**（gap 传 0），避免透明区域被裁掉。
+- **生图不支持真透明**：`image_generate` 产物必带不透明背景色（多为白底），prompt 写 `transparent background`
+  模型也产不出真透明。需要透明底素材时：先用 `image_remove_background(path)` 去除背景（从边缘清除连续白底，
+  产出带 alpha 的 PNG），再把去背景后的 path 填进画布 `image` 节点——禁止把带白底的图直接盖在深色 / 彩色背景上。
+- sprite 图背景建议用**纯白**（非渐变、非透明区域穿插）：白色最易被去背景工具干净清除；若必须用 `regions`
+  精确裁剪，让格子之间**不留间隙**（gap 传 0），避免切割线裁到主体。

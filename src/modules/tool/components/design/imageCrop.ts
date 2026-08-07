@@ -7,19 +7,13 @@
  */
 import type { ToolFunction } from '@/domain'
 import { registerToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
+import { isPathUnder } from '@/utils/sandbox'
 
 interface CropRegion {
   left: number
   top: number
   width: number
   height: number
-}
-
-const isPathUnder = (target: string, parent: string): boolean => {
-  if (!target || !parent) return false
-  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
-  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
-  return t === p || t.startsWith(p + '/')
 }
 
 /** 归一化用户区域：取整、钳制到图片边界内、宽高至少为 1；完全越界返回 null */

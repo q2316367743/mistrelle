@@ -457,11 +457,34 @@ interface InjectSharpMetadata {
   channels?: number
 }
 
+interface InjectSharpRemoveBackgroundOptions {
+  /** 要去除的背景色：hex（#ffffff）/ rgb() / [r,g,b]，默认纯白 */
+  color?: string | [number, number, number]
+  /** 颜色容差 0~255，默认 40 */
+  tolerance?: number
+}
+
+interface InjectSharpRemoveBackgroundResult {
+  width: number
+  height: number
+  /** 被置为透明的像素数（0 表示未匹配到背景色） */
+  removedPixels: number
+}
+
 interface InjectSharp {
   /** 读取图片元信息（宽高 / 格式） */
   metadata(input: string | Uint8Array | ArrayBuffer): Promise<InjectSharpMetadata>
   /** 裁剪指定区域并输出 PNG 文件，返回裁剪后宽高 */
   crop(input: string, region: InjectSharpRegion, output: string): Promise<InjectSharpCropResult>
+  /**
+   * 去除图片「从外到内的连续背景色」（flood fill）：从四边边缘像素出发，
+   * 与目标色在容差内且与边缘连通的像素全部置为透明，输出 PNG。
+   */
+  removeBackground(
+    input: string,
+    options: InjectSharpRemoveBackgroundOptions,
+    output: string
+  ): Promise<InjectSharpRemoveBackgroundResult>
 }
 
 interface InjectDbPromises {

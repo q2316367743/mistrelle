@@ -54,7 +54,8 @@ const MAIN_VISUAL_STRATEGY_BASE = [
 const IMAGE_GENERATE_RULES = [
   '### 主视觉来源策略（生图增强，已配置默认生图模型）',
   '- 无真实素材的插画 / 人物 / 场景 / 纹理 / 抽象视觉 → **用 image_generate(prompt, path?) 生成**（已配置默认生图模型，工具可用），把返回的本地 path 填进 image 节点 imageUrl；生成失败或服务不可用时才回退 stock / placeholder / 几何图形组合。',
-  '- 多个生图素材合并成一张 sprite 图一次生成、再用 image_crop 切分（省钱规范见 canvas_guidelines("image-generation")）；生图失败时如实告知用户，不反复重试。'
+  '- 多个生图素材合并成一张 sprite 图一次生成、再用 image_crop 切分（省钱规范见 canvas_guidelines("image-generation")）；生图失败时如实告知用户，不反复重试。',
+  '- **生图产物带不透明背景色（多为白底，模型不支持真透明）**：需要透明底素材时，用 image_remove_background(path) 去除背景（从边缘清除连续白底，产出带 alpha 的 PNG）后，再把去背景后的 path 填进画布；禁止把带白底的图直接盖在深色 / 彩色背景上。'
 ]
 
 const DESIGN_CANVAS_AFTER_VISUAL = [

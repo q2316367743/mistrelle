@@ -105,13 +105,6 @@ export const listWorkspaceEntries = async (
     }))
 }
 
-export const isPathUnder = (filePath: string, dir: string): boolean => {
-  if (!dir) return false
-  const normalizedPath = window.preload.path.resolve(filePath)
-  const normalizedDir = window.preload.path.resolve(dir)
-  return normalizedPath.startsWith(normalizedDir + window.preload.path.sep) || normalizedPath === normalizedDir
-}
-
 export const copyToInputs = async (filePath: string, sandboxDir: string): Promise<string> => {
   const inputsDir = window.preload.path.join(sandboxDir, 'inputs')
   const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'file'

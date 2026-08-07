@@ -10,6 +10,7 @@ import type { ToolFunction } from '@/domain'
 import { useSettingDefaultStore } from '@/store/setting/SettingDefaultStore'
 import { generateImage } from '@/modules/chat/service/ImageGenerate'
 import { registerToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
+import { isPathUnder } from '@/utils/sandbox'
 import type { DesignToolContext } from './websiteLogo'
 
 /** 默认输出路径：{sandboxDir}/outputs/images/image-{时间戳}.png */
@@ -18,19 +19,15 @@ const buildDefaultOutputPath = (sandboxDir: string): string => {
   return window.preload.path.join(imagesDir, `image-${Date.now()}.png`)
 }
 
-const isPathUnder = (target: string, parent: string): boolean => {
-  if (!target || !parent) return false
-  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
-  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
-  return t === p || t.startsWith(p + '/')
-}
-
 export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction => ({
   name: 'image_generate',
   label: '生成图片',
   description:
     '根据文字描述生成一张插画 / 素材图片并保存到本地，返回图片绝对路径（path），' +
-    '把 path 直接填进画布 image 节点 imageUrl 即可使用（渲染层自动转 file 协议）。需要已配置默认生图模型；' +
+    '把 path 直接填进画布 image 节点 imageUrl 即可使用（渲染层自动转 file 协议）。' +
+    '注意：生图模型不支持真透明，产物必带不透明背景色（通常为白色）——需要透明底素材时，' +
+    '生成后用 image_remove_background(path) 去除背景（从边缘清除连续白底，产出带 alpha 的 PNG），' +
+    '再把去背景后的 path 填进画布，切勿把带白底的图直接盖在深色/彩色背景上。需要已配置默认生图模型；' +
     '未配置或服务未就绪时返回错误，此时回退 stock / placeholder 占位或请用户提供素材。',
   parameters: {
     type: 'object',

@@ -1,6 +1,6 @@
 import type { ToolFunction, ToolPolicyVerdict } from '@/domain'
 import { useSettingSecureStore } from '@/store/setting/SettingSecureStore'
-import { isPathBlacklisted } from '@/utils/sandbox'
+import { isPathBlacklisted, isPathUnder } from '@/utils/sandbox'
 import { browserActionsPolicy } from './policies/browserActionsPolicy'
 import { httpDownloadPolicy } from './policies/httpDownloadPolicy'
 import type { ToolPolicy, ToolPolicyContext } from './toolPolicyTypes'
@@ -8,13 +8,6 @@ import type { ToolPolicy, ToolPolicyContext } from './toolPolicyTypes'
 export type { ToolPolicyContext, ToolPolicy } from './toolPolicyTypes'
 
 // ─── 路径工具 ──────────────────────────────────────────────
-
-function isPathUnder(target: string, parent: string): boolean {
-  if (!target || !parent) return false
-  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
-  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
-  return t === p || t.startsWith(p + '/')
-}
 
 /** 判断路径是否处于可信区域（沙盒或用户工作空间） */
 function isInTrustedZone(path: string, ctx: ToolPolicyContext): boolean {

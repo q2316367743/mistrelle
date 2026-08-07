@@ -1,5 +1,6 @@
 import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
+import { isPathUnder } from '@/utils/sandbox'
 import {
   buildCanvasOutputsDir,
   getCanvasStore,
@@ -419,12 +420,6 @@ for (const name of CANVAS_TOOL_NAMES) {
 }
 
 /** 判断路径是否处于可信区域（沙盒或工作空间），供 canvas_export 策略使用 */
-const isPathUnder = (target: string, parent: string): boolean => {
-  if (!target || !parent) return false
-  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
-  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
-  return t === p || t.startsWith(p + '/')
-}
 
 /**
  * canvas_export 写入策略（写 PNG 文件，涉及外部路径）：

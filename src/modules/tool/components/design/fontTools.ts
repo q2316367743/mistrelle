@@ -7,17 +7,11 @@
  */
 import type { ToolFunction } from '@/domain'
 import { registerToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
+import { isPathUnder } from '@/utils/sandbox'
 
 /** 字体列表默认上限：避免超 MAX_TOOL_RESULT_BYTES，模型可按 query / offset 翻页 */
 const DEFAULT_LIMIT = 100
 const MAX_LIMIT = 500
-
-const isPathUnder = (target: string, parent: string): boolean => {
-  if (!target || !parent) return false
-  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
-  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
-  return t === p || t.startsWith(p + '/')
-}
 
 export const createFontListTool = (): ToolFunction => ({
   name: 'font_list',

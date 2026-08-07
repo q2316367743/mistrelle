@@ -1,11 +1,5 @@
 import type { ToolPolicy } from '@/modules/tool'
-
-function isPathUnder(target: string, parent: string): boolean {
-  if (!target || !parent) return false
-  const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
-  const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
-  return t === p || t.startsWith(p + '/')
-}
+import { isPathUnder } from '@/utils/sandbox'
 
 /**
  * http_download 审批策略：

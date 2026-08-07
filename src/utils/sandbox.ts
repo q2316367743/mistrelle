@@ -1,11 +1,13 @@
-function isSubPath(target: string, parent: string): boolean {
+/** 判断 target 是否位于 parent 目录下（含相等）；两端路径归一化并去除尾部分隔符 */
+export function isPathUnder(target: string, parent: string): boolean {
+  if (!target || !parent) return false
   const t = window.preload.path.normalizePath(target).replace(/\/$/, '')
   const p = window.preload.path.normalizePath(parent).replace(/\/$/, '')
   return t === p || t.startsWith(p + '/')
 }
 
 export function isPathBlacklisted(path: string, blackList: string[]): boolean {
-  return blackList.some(pattern => isSubPath(path, pattern))
+  return blackList.some(pattern => isPathUnder(path, pattern))
 }
 
 export function isDomainBlocked(
