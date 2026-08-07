@@ -1,9 +1,12 @@
-import { ref, toRaw } from 'vue'
+import { ref, toRaw, watch } from 'vue'
 import { throttledWatch } from '@vueuse/core'
 import type { ChatRequestParams, ChatStatus, ChatType, WritingScene } from '@/modules/chat'
 import type { AiChatMode } from '@/entity/ai'
 import { aiChatContentGet, aiChatContentSet } from '@/modules/chat/service/ChatService'
 import { ToolChat } from './AgentChat'
+
+/** 空闲会话自动回收 TTL：组件已关闭且非运行中的会话在超时后销毁并释放内存 */
+const IDLE_RECLAIM_TTL = 5 * 60 * 1000
 
 export interface ChatSessionOptions {
   storageKey: string
@@ -34,8 +37,13 @@ export class ChatSession {
   private hydrated = false
   private destroyed = false
   private unWatch?: () => void
+  private unWatchStatus?: () => void
+  /** 当前挂载消费本会话的组件数（>0 时豁免回收） */
+  private activeCount = 0
+  /** 空闲回收定时器 */
+  private idleTimer?: ReturnType<typeof setTimeout>
 
-  constructor(options: ChatSessionOptions) {
+  constructor(options: ChatSessionOptions, private readonly onIdleExpire: () => void) {
     this.storageKey = options.storageKey
     this.chat = new ToolChat({ sandboxDir: options.sandboxDir, chatId: options.chatId })
   }
@@ -46,6 +54,40 @@ export class ChatSession {
 
   get status() {
     return this.chat.status
+  }
+
+  /** 会话是否处于作答中（运行态，回收豁免） */
+  get isRunning(): boolean {
+    const s = this.chat.status.value
+    return s === 'pending' || s === 'streaming'
+  }
+
+  /** 组件挂载消费本会话：登记活跃并取消待回收定时器 */
+  touch(): void {
+    this.activeCount += 1
+    this.cancelIdleReclaim()
+  }
+
+  /** 组件卸载释放本会话：无活跃消费且未运行则安排过期回收 */
+  release(): void {
+    this.activeCount = Math.max(0, this.activeCount - 1)
+    if (this.activeCount === 0 && !this.isRunning) this.scheduleIdleReclaim()
+  }
+
+  private scheduleIdleReclaim(): void {
+    this.cancelIdleReclaim()
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = undefined
+      // 二次校验，避免释放瞬间会话又被复用或转入运行态
+      if (this.activeCount === 0 && !this.isRunning) this.onIdleExpire()
+    }, IDLE_RECLAIM_TTL)
+  }
+
+  private cancelIdleReclaim(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer)
+      this.idleTimer = undefined
+    }
   }
 
   /**
@@ -80,6 +122,14 @@ export class ChatSession {
     this.unWatch = throttledWatch(this.chat.messages, () => this.persist(), {
       throttle: 1000,
       deep: true
+    })
+    // 状态 watcher：运行中（pending/streaming）豁免回收；结束且无挂载消费时重新安排过期回收
+    this.unWatchStatus = watch(this.chat.status, () => {
+      if (this.isRunning) {
+        this.cancelIdleReclaim()
+      } else if (this.activeCount === 0) {
+        this.scheduleIdleReclaim()
+      }
     })
     // 新会话首轮发送草稿；否则恢复上次挂起的 ask/confirm 决策（sendUserMessage 后 status
     // 为 pending/streaming，resumePendingInteractives 内部会因 canStartRequest 直接返回）
@@ -119,10 +169,12 @@ export class ChatSession {
     this.chat.messages.value = [...this.chat.messages.value]
   }
 
-  /** 销毁会话：停止持久化并销毁引擎实例（删除聊天 / 任务 / 项目时调用） */
+  /** 销毁会话：停止持久化并销毁引擎实例（删除聊天 / 任务 / 项目或空闲过期回收时调用） */
   destroy(): void {
     this.destroyed = true
+    this.cancelIdleReclaim()
     this.unWatch?.()
+    this.unWatchStatus?.()
     this.chat.destroy()
   }
 
@@ -146,7 +198,7 @@ const sessions = new Map<string, ChatSession>()
 /**
  * 会话管理器：获取指定存储键对应的会话。存在即复用（跨组件挂载存活），
  * 不存在则新建并登记。键使用 storageKey（唯一 JSON 路径），避免独立聊天与
- * 项目任务 id 撞车。
+ * 项目任务 id 撞车。每次获取都会 touch 会话，标记其处于挂载消费中。
  */
 export const getChatSession = (
   storageKey: string,
@@ -154,10 +206,20 @@ export const getChatSession = (
 ): ChatSession => {
   let session = sessions.get(storageKey)
   if (!session) {
-    session = new ChatSession({ storageKey, ...options })
+    const created = new ChatSession({ storageKey, ...options }, () => {
+      created.destroy()
+      sessions.delete(storageKey)
+    })
+    session = created
     sessions.set(storageKey, session)
   }
+  session.touch()
   return session
+}
+
+/** 组件卸载时释放会话：仅注销挂载消费，不做销毁；空闲会话由过期回收统一处理 */
+export const releaseChatSession = (storageKey: string): void => {
+  sessions.get(storageKey)?.release()
 }
 
 /** 查询会话当前状态；无会话返回 undefined（供列表组件展示加载图标） */

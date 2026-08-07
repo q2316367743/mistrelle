@@ -72,7 +72,7 @@
 </template>
 <script lang="ts" setup>
 import type { ChatRequestParams, ChatType } from '@/modules/chat'
-import { getChatSession, getSandboxDir } from '@/modules/chat'
+import { getChatSession, getSandboxDir, releaseChatSession } from '@/modules/chat'
 import type { ChatMessage, ThinkingEffort, UserMessage } from '@/domain'
 import type { ChatSenderInitial } from '@/components/chat/sender/chatSenderInitial'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
@@ -209,6 +209,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleWindowResize)
+  // 注销挂载消费：空闲会话由会话管理器按 TTL 过期自动回收
+  releaseChatSession(props.storageKey)
 })
 
 // 恢复上次使用的模型 / 思考配置：新会话草稿发送时 user 消息一加入即可回填，无需等待整个回答结束
