@@ -14,7 +14,7 @@ export interface AiProvideOption extends AiModel {
   key: string
 }
 
-const handleModelOption = (
+export const handleModelOption = (
   items: Array<AiProvide>,
   type: AiModelType
 ): Array<SelectOptionGroup> => {
@@ -47,6 +47,9 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
   })
   const vectorOptions = computed<Array<SelectOptionGroup>>(() => {
     return handleModelOption(items.value, 'vector')
+  })
+  const imageOptions = computed<Array<SelectOptionGroup>>(() => {
+    return handleModelOption(items.value, 'image')
   })
 
   const optionMap = computed<Map<string, AiProvideOption>>(() => {
@@ -110,6 +113,7 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
     items,
     options,
     vectorOptions,
+    imageOptions,
     optionMap,
     ready,
     initPromise,

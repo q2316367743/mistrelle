@@ -86,6 +86,16 @@
                 添加模型
               </t-button>
             </div>
+            <t-input
+              v-model="modelKeyword"
+              clearable
+              placeholder="搜索模型 ID 或名称"
+              class="model-section__search"
+            >
+              <template #prefixIcon>
+                <SearchIcon />
+              </template>
+            </t-input>
 
             <template v-if="form.models.length > 0">
               <template v-for="group in modelGroups" :key="group.family">
@@ -93,6 +103,14 @@
                   <div class="model-group__title">{{ group.family }}</div>
                   <div v-for="model in group.models" :key="model.identifier" class="model-item">
                     <div class="model-item__info">
+                      <t-tag
+                        v-if="model.type !== 'chat'"
+                        size="small"
+                        variant="light"
+                        :theme="MODEL_TYPE_THEME[model.type]"
+                      >
+                        {{ MODEL_TYPE_LABEL[model.type] }}
+                      </t-tag>
                       <t-tooltip :content="model.identifier" placement="top">
                         <span class="model-item__name">{{ model.model || model.identifier }}</span>
                       </t-tooltip>
@@ -124,6 +142,11 @@
                   </div>
                 </div>
               </template>
+              <t-empty
+                v-if="modelGroups.length === 0"
+                description="未找到匹配的模型"
+                style="margin-top: 12px"
+              />
             </template>
             <t-empty
               v-else
@@ -139,10 +162,11 @@
 
 <script lang="ts" setup>
 import OpenAI from 'openai'
-import { AddIcon, DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
+import { AddIcon, DeleteIcon, EditIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import { useSettingAiStore } from '@/store'
 import type { AiModel } from '@/entity'
 import { MessageUtil } from '@/utils/modal'
+import { MODEL_TYPE_LABEL, MODEL_TYPE_THEME, guessModelType } from '@/utils/aiModel'
 import { openModelDialog } from './modals/OpenModelDialog'
 import { fetchModelsDrawer } from './modals/FetchModelsDrawer'
 
@@ -306,13 +330,23 @@ async function handleDelete(id: string) {
 
 // ---------- 模型分组 ----------
 
+const modelKeyword = ref('')
+
 function getModelFamily(id: string): string {
   return id.split(/[-_.\d]/).filter(Boolean)[0] || id
 }
 
 const modelGroups = computed(() => {
+  const kw = modelKeyword.value.trim().toLowerCase()
+  const list = kw
+    ? form.models.filter(
+        (m) =>
+          m.identifier.toLowerCase().includes(kw) ||
+          (m.model || '').toLowerCase().includes(kw)
+      )
+    : form.models
   const map = new Map<string, AiModel[]>()
-  for (const m of form.models) {
+  for (const m of list) {
     const family = getModelFamily(m.identifier)
     if (!map.has(family)) map.set(family, [])
     map.get(family)!.push(m)
@@ -405,8 +439,7 @@ async function handleFetchModels() {
         form.models.push({
           identifier: m.id,
           model: m.name,
-          // TODO：确定模型类型
-          type: 'chat',
+          type: guessModelType(m.id),
           enable: selectedIds.includes(m.id)
         })
       }
@@ -516,6 +549,14 @@ async function handleFetchModels() {
     font-size: 16px;
     font-weight: 600;
     color: var(--td-text-color-primary);
+  }
+
+  &__search {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--td-bg-color-container);
+    padding: 12px 0 12px;
   }
 }
 

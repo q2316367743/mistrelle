@@ -53,6 +53,18 @@
         </template>
       </t-list-item>
       <t-list-item>
+        <t-list-item-meta title="默认生图模型" description="设计创意时，用于生成插画" />
+        <template #action>
+          <t-select
+            v-model="state.defaultImageModel"
+            :options="imageOptions"
+            class="w-360px"
+            placeholder="请选择默认生图模型"
+            clearable
+          />
+        </template>
+      </t-list-item>
+      <t-list-item>
         <t-list-item-meta
           title="Skill 忽略目录"
           description="扫描本地 Skill 文件时忽略的文件夹名称"
@@ -73,7 +85,7 @@
 import { useSettingDefaultStore, useSettingAiStore } from '@/store'
 
 const { state } = toRefs(useSettingDefaultStore())
-const { options, vectorOptions } = toRefs(useSettingAiStore())
+const { options, vectorOptions, imageOptions } = toRefs(useSettingAiStore())
 </script>
 <style scoped lang="less">
 .setting-list {
