@@ -9,7 +9,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { App } from 'leafer-editor'
+import { App, EditorEvent } from 'leafer-editor'
 import { MessageUtil } from '@/utils/modal'
 import { ensureFontsForDoc, getCanvasStore, buildDocElements } from '@/modules/canvas'
 import type { CanvasDoc, CanvasNode } from '@/modules/canvas'
@@ -21,8 +21,28 @@ interface CanvasTapTarget {
   parent?: CanvasTapTarget | null
 }
 
-const props = defineProps<{
-  sandbox?: string
+/** 编辑器选中事件的最小结构（value 单选中为元素，多选中为数组） */
+interface CanvasSelectTarget {
+  id?: string
+}
+interface CanvasSelectEvent {
+  value?: CanvasSelectTarget | CanvasSelectTarget[] | null
+}
+
+const props = withDefaults(
+  defineProps<{
+    sandbox?: string
+    /** 外部指定选中的节点 id（元素树联动）：变化时在画布上同步选中 */
+    selectedId?: string
+  }>(),
+  {
+    sandbox: '',
+    selectedId: undefined
+  }
+)
+
+const emit = defineEmits<{
+  (e: 'select', id: string | undefined): void
 }>()
 
 const store = computed(() => getCanvasStore(props.sandbox ?? ''))
@@ -95,6 +115,8 @@ onMounted(() => {
   // 双击元素 → 把画布版本 + 节点 id 注入聊天输入框（供 AI 定位修改；沿 parent 链向上取最近带 id 元素：
   // 命中叶子复制自身 id，命中 group 背景 rect 回退到 group id，空白画布无 id 则忽略）
   app.tree.on('double_tap', handleDoubleTap)
+  // 画布选中变化（点击元素 / 程序化 select / render 重建时 cancel）→ 上抛给元素树联动
+  app.editor.on(EditorEvent.SELECT, handleEditorSelect)
   render()
 })
 
@@ -102,6 +124,28 @@ onBeforeUnmount(() => {
   app?.destroy?.()
   app = null
 })
+
+/** 编辑器选中事件 → 提取单个节点 id 上抛（多选只取首个，空白画布选中为空） */
+const handleEditorSelect = (event: CanvasSelectEvent) => {
+  const value = event.value
+  const id = Array.isArray(value) ? value[0]?.id : value?.id
+  emit('select', id)
+}
+
+// 元素树选中 → 画布同步：按 id 找到渲染元素并选中；id 失效时取消选中
+watch(
+  () => props.selectedId,
+  (id) => {
+    if (!app) return
+    if (id == null) {
+      app.editor.cancel()
+      return
+    }
+    const target = app.tree.findId(id)
+    if (target) app.editor.select(target)
+    else app.editor.cancel()
+  }
+)
 
 /** 等比缩放到容器内，返回缩放比例（画布过大时缩小，过小时保持原大） */
 const fitScale = (doc: CanvasDoc): number => {

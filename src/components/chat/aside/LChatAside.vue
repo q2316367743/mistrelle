@@ -15,7 +15,7 @@
     :workspace="workspace"
     :writing-scene="writingScene"
   />
-  <design-aside v-else-if="type === 'design'" :sandbox="sandbox" />
+  <design-aside v-else-if="type === 'design'" :sandbox="sandbox" :fullscreen="fullscreen" />
 </template>
 <script lang="ts" setup>
 import type { ChatMessage, TodoItem } from '@/domain'
@@ -35,6 +35,7 @@ withDefaults(
     todos: TodoItem[]
     agentHistory: AgentHistoryItem[]
     activeAgentId: string
+    fullscreen?: boolean
   }>(),
   {
     type: 'office',
@@ -44,7 +45,8 @@ withDefaults(
     sandbox: '',
     todos: () => [],
     agentHistory: () => [],
-    activeAgentId: 'main'
+    activeAgentId: 'main',
+    fullscreen: false
   }
 )
 

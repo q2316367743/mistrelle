@@ -67,7 +67,20 @@
         </t-dropdown-menu>
       </t-dropdown>
     </div>
-    <canvas-renderer :sandbox="sandbox" class="design-aside__canvas" />
+    <div class="design-aside__body" :class="{ 'design-aside__body--split': fullscreen }">
+      <canvas-element-tree
+        v-if="fullscreen"
+        :nodes="store.current.value?.nodes ?? []"
+        :selected-id="selectedId"
+        @select="handleElementSelect"
+      />
+      <canvas-renderer
+        :sandbox="sandbox"
+        :selected-id="selectedId"
+        class="design-aside__canvas"
+        @select="handleElementSelect"
+      />
+    </div>
   </div>
 </template>
 <script lang="ts" setup>
@@ -92,10 +105,13 @@ import {
   maxAnimationTime
 } from '@/modules/canvas'
 import CanvasRenderer from './CanvasRenderer.vue'
+import CanvasElementTree from './CanvasElementTree.vue'
 import { openVideoExportDialog } from './VideoExportDialog'
 
 const props = defineProps<{
   sandbox?: string
+  /** 侧边栏全屏：展示「左元素树 + 右画布」双栏布局 */
+  fullscreen?: boolean
 }>()
 
 const store = computed(() => getCanvasStore(props.sandbox ?? ''))
@@ -103,6 +119,12 @@ const store = computed(() => getCanvasStore(props.sandbox ?? ''))
 const selected = ref<number | undefined>(undefined)
 const creating = ref(false)
 const busy = ref(false)
+/** 画布选中节点 id（元素树 ↔ 画布双向联动的唯一数据源） */
+const selectedId = ref<string | undefined>(undefined)
+
+const handleElementSelect = (id: string | undefined) => {
+  selectedId.value = id
+}
 
 const canvasOptions = computed(() =>
   store.value.files.value.map((file) => ({
@@ -253,8 +275,20 @@ const handleAction: DropdownProps['onClick'] = (data) => {
     min-width: 0;
   }
 
-  &__canvas {
+  &__body {
+    flex: 1;
+    min-height: 0;
     margin-top: 8px;
+    display: flex;
+
+    &--split {
+      gap: 8px;
+    }
+  }
+
+  &__canvas {
+    flex: 1;
+    min-width: 0;
   }
 }
 </style>

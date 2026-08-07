@@ -15,6 +15,7 @@ declare module 'vue' {
     AskChatQuestion: typeof import('./src/components/chat/chat-assistant/tool/AskChatQuestion.vue')['default']
     AskChatTool: typeof import('./src/components/chat/chat-assistant/tool/AskChatTool.vue')['default']
     BgResult: typeof import('./src/components/Result/BgResult.vue')['default']
+    CanvasElementTree: typeof import('./src/components/chat/aside/design/CanvasElementTree.vue')['default']
     CanvasRenderer: typeof import('./src/components/chat/aside/design/CanvasRenderer.vue')['default']
     ConfirmChatTool: typeof import('./src/components/chat/chat-assistant/tool/ConfirmChatTool.vue')['default']
     DefaultChatTool: typeof import('./src/components/chat/chat-assistant/tool/DefaultChatTool.vue')['default']

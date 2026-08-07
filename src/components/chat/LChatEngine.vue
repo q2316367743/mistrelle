@@ -47,6 +47,7 @@
         :active-agent-id="activeAgentId"
         :type="asideType"
         :writing-scene="writingScene"
+        :fullscreen="fullscreen"
         @view-agent="handleViewSubAgent"
       />
     </t-aside>
