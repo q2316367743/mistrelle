@@ -27,6 +27,7 @@ declare global {
       fs: FsApi
       path: PathApi
       zip: ZipApi
+      font: FontApi
       shellExec: {
         cliRun(
           command: string,

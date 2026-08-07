@@ -13,6 +13,7 @@ import { App } from 'leafer-editor'
 import { MessageUtil } from '@/utils/modal'
 import { getCanvasStore } from '@/modules/tool/components/canvas/CanvasStore'
 import { buildDocElements } from '@/modules/tool/components/canvas/canvasRender'
+import { ensureFontsForDoc } from '@/modules/tool/components/canvas/fontRegistry'
 import type { CanvasDoc, CanvasNode } from '@/modules/tool/components/canvas/canvasTypes'
 import { CANVAS_NODE_PICK_KEY } from '@/components/chat/design/canvasNodeBridge'
 
@@ -125,12 +126,14 @@ const resetView = () => {
 // 当前渲染对应的视图标识（画布版本 + 容器尺寸），用于判断是否重置缩放/平移
 let viewKey = ''
 
-const render = () => {
+const render = async () => {
   if (!app) return
   const doc = store.value.current.value
   app.tree.clear()
   app.editor?.cancel()
   if (!doc) return
+  // 确保画布用到的字体已加载（资源库 / 在线字体走 FontFace），保证预览与 measureText 用同一字体源
+  await ensureFontsForDoc(doc)
   const width = Math.max(40, Math.round(containerWidth.value - 16))
   const height = Math.max(40, Math.round(containerHeight.value - 16))
   const key = `${doc.version}@${width}x${height}`

@@ -88,7 +88,7 @@
 | 描边                       | `stroke` + `strokeWidth`       | 结构同 fill                                                               |
 | 圆角                       | `cornerRadius`                 | **不是 borderRadius**                                                     |
 | 字重                       | `fontWeight`                   | 数字 400 / 700，或字符串 "400"~"900"                                      |
-| 字体                       | `fontFamily`                   | 指定家族；中文建议思源 / 霞鹜等                                           |
+| 字体                       | `fontFamily`                   | **先用 `font_list` 查本机可用字体**（系统 + 资源库），取返回的 name 填入；未安装可 `font_register` 注册字体文件 |
 | 字间距 / 行高              | `letterSpacing` / `lineHeight` | lineHeight 可数值或 "AUTO"                                                |
 | 大小写                     | `textCase`                     | none / upper / lower                                                      |
 | 阴影 / 模糊                | `effects`                      | 数组：[{type:"drop-shadow",x,y,radius,color}, {type:"layer-blur",radius}] |

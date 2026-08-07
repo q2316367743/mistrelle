@@ -130,6 +130,11 @@ export const routes: Array<RouteRecordRaw> = [
     name: '设置/安全中心',
     path: '/setting/secure',
     component: () => import('@/pages/setting/secure/SettingSecurePage.vue')
+  },
+  {
+    name: '设置/资源管理',
+    path: '/setting/assets',
+    component: () => import('@/pages/setting/assets/SettingAssetPage.vue')
   }
 ]
 

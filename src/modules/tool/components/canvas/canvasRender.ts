@@ -15,6 +15,7 @@ import {
 import '@leafer-in/animate'
 import type { CanvasDoc, CanvasEffect, CanvasNode, CanvasPaint } from './canvasTypes'
 import { computeLayoutBounds, layoutCanvasDoc, type CanvasLayoutNode } from './canvasLayout'
+import { ensureFontsForDoc } from './fontRegistry'
 
 export type CanvasRenderNode = Rect | Ellipse | Text | Line | LeaferImage | Polygon | Star | Path | Group
 
@@ -465,6 +466,8 @@ export const settleAnimations = (roots: CanvasRenderNode[]): void => {
  * 供「设计在画布内某容器 / 卡片」时按区域导出，保证导出尺寸与设计尺寸一致。
  */
 export const exportCanvasPng = async (doc: CanvasDoc, region?: CanvasExportRegion): Promise<Blob> => {
+  // 先确保画布用到的字体已加载（资源库 / 在线字体走 FontFace，系统字体 Chromium 原生可用）
+  await ensureFontsForDoc(doc)
   const r = region ? roundRegion(region) : { x: 0, y: 0, width: doc.width, height: doc.height }
   const width = Math.max(1, r.width)
   const height = Math.max(1, r.height)

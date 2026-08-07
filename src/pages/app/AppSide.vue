@@ -141,7 +141,8 @@ import {
   ToolsIcon,
   AiEducationIcon,
   LightbulbIcon,
-  AbilityOpenIcon
+  AbilityOpenIcon,
+  FolderFilledIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
@@ -164,7 +165,8 @@ const settingOptions = [
   { label: '记忆～', icon: AiIcon, value: 'ai' },
   { label: '模型', icon: AppIcon, value: 'ai' },
   { label: '安全中心', icon: SecuredIcon, value: 'secure' },
-  { label: '网络设置', icon: InternetIcon, value: 'network' }
+  { label: '网络设置', icon: InternetIcon, value: 'network' },
+  { label: '资源管理', icon: FolderFilledIcon, value: 'assets' }
 ]
 
 const noteIconStyle = computed(() => ({
