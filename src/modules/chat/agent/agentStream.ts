@@ -3,7 +3,7 @@ import type {
   ChatCompletionTool
 } from 'openai/resources/chat/completions'
 import type { Ref } from 'vue'
-import type { ChatMessage } from '@/domain'
+import type { ChatMessage, ChatUsage } from '@/domain'
 import {
   createClient,
   extractReasoningContent,
@@ -57,7 +57,9 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
     model: options.requestParams.message.model,
     messages: options.apiMessages,
     stream: true,
-    tools: options.tools
+    tools: options.tools,
+    // 请求流式 usage，使末个 chunk 携带完整 token 统计
+    stream_options: { include_usage: true }
   }
   if (typeof options.requestParams.message.thinking === 'boolean') {
     body.thinking = { type: options.requestParams.message.thinking ? 'enabled' : 'disabled' }
@@ -87,8 +89,17 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
 
   const accumulated = new Map<number, { id: string; name: string; args: string }>()
   let finishReason: string | null | undefined
+  let usage: ChatUsage | undefined
   for await (const chunk of stream) {
-    if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [] }
+    if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
+    // usage 常出现在带 include_usage 的末个 chunk（choices 为空），需在跳过前捕获
+    if (chunk.usage) {
+      usage = {
+        promptTokens: chunk.usage.prompt_tokens,
+        completionTokens: chunk.usage.completion_tokens,
+        totalTokens: chunk.usage.total_tokens
+      }
+    }
     const choice = chunk.choices?.[0]
     if (!choice) continue
     const sseChunk: SSEChunkData = { data: chunk, event: 'data' }
@@ -124,7 +135,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
     }
   }
 
-  if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [] }
+  if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
   const toolCalls: ToolCall[] = Array.from(accumulated.values()).map((call) => ({
     toolCallId: call.id || `call_${nanoid()}`,
     toolCallName: call.name,
@@ -156,5 +167,5 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
       finishReasonToStatus(finishReason)
     )
   }
-  return { cancelled: false, finishReason, toolCalls }
+  return { cancelled: false, finishReason, toolCalls, usage }
 }

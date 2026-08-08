@@ -89,22 +89,6 @@ export const buildPublicContext = (discussion: AiDiscussion, chat: AiGroupChat):
   return summaryPrefix + buildTranscript(discussion, contextMessages)
 }
 
-/** 估算 token 数（中英文混合：CJK 约 1 token/字，其余约 1 token/4 字符） */
-export const estimateTokens = (text: string): number => {
-  if (!text) return 0
-  const cjkRegex = /[　-〿぀-ヿ㐀-䶿一-鿿豈-﫿＀-￯가-힯]/u
-  let tokens = 0
-  for (const char of text) {
-    if (cjkRegex.test(char)) tokens += 1
-  }
-  const rest = text.replace(/[　-〿぀-ヿ㐀-䶿一-鿿豈-﫿＀-￯가-힯]/gu, ' ')
-  const words = rest.trim().split(/\s+/).filter(Boolean)
-  for (const word of words) {
-    tokens += Math.max(1, Math.round(word.length / 4))
-  }
-  return tokens
-}
-
 const buildRequestParams = async (
   modelKey: string,
   content: string

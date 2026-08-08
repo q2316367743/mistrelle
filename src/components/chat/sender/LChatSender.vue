@@ -52,15 +52,29 @@
           </t-tag>
         </div>
         <div class="flex gap-8px items-center">
-          <t-button v-if="tokenTotal > 0" shape="square" variant="text" theme="default">
-            <t-progress
-              :percentage="tokenTotal"
-              theme="circle"
-              :size="18"
-              :label="false"
-              :stroke-width="2"
-            />
-          </t-button>
+          <t-popup
+            v-if="tokenUsage"
+            trigger="click"
+            placement="top"
+            :overlay-inner-style="tokenPopupStyle"
+          >
+            <t-button shape="circle" variant="text" theme="default" class="l-chat-sender__token-btn">
+              <t-progress
+                :percentage="tokenPercent"
+                theme="circle"
+                :size="18"
+                :label="false"
+                :stroke-width="2"
+              />
+            </t-button>
+            <template #content>
+              <token-usage-panel
+                :context-tokens="tokenUsage.contextTokens"
+                :context-window="tokenUsage.contextWindow"
+                :breakdown="tokenUsage.breakdown"
+              />
+            </template>
+          </t-popup>
           <ai-model-select v-model="modelKey" v-model:thinking="thinking" v-model:effort="effort" />
           <t-button v-if="loading" theme="danger" variant="outline" @click="handleStop">
             停止
@@ -81,7 +95,8 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { useSettingAiStore, useSettingDefaultStore } from '@/store'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
-import type { SkillItem, ThinkingEffort, ToolItem, UserMessageContent } from '@/domain'
+import type { SkillItem, ThinkingEffort, TokenBreakdown, ToolItem, UserMessageContent } from '@/domain'
+import { formatTokens } from '@/utils/tokenEstimate'
 import {
   buildFileSuggestion,
   buildSkillSuggestion,
@@ -105,12 +120,16 @@ const props = withDefaults(
     loading?: boolean
     placeholder?: string
     sandboxDir?: string
-    tokenTotal?: number
+    tokenUsage?: {
+      contextTokens: number
+      contextWindow: number
+      breakdown: TokenBreakdown
+    }
   }>(),
   {
     initial: () => ({}),
     loading: false,
-    tokenTotal: 0,
+    tokenUsage: undefined,
     placeholder: '描述任务，/ 调用技能，# 使用工具，@ 添加上下文',
     sandboxDir: ''
   }
@@ -383,6 +402,15 @@ const showPlaceholder = computed(
     !mentionState.value.tools.length &&
     !mentionState.value.canvas.length
 )
+
+/** 当前上下文占上下文窗口的百分比（圆环展示） */
+const tokenPercent = computed(() => {
+  const usage = props.tokenUsage
+  if (!usage || usage.contextWindow <= 0) return 0
+  return Math.min(Math.round((usage.contextTokens / usage.contextWindow) * 100), 100)
+})
+
+const tokenPopupStyle: Record<string, string> = { padding: '4px' }
 
 const focusInput = () => editor.value?.commands.focus()
 

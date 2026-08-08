@@ -53,7 +53,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { AiDiscussion, AiGroupChat } from '@/entity/ai'
-import { buildPublicContext, estimateTokens } from '@/modules/discussion/GroupChatEngine'
+import { buildPublicContext } from '@/modules/discussion/GroupChatEngine'
+import { estimateTokens } from '@/utils/tokenEstimate'
 
 const props = defineProps<{
   chat?: AiGroupChat

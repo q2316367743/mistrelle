@@ -4,6 +4,8 @@ import type {
   AIMessageContent,
   ChatMessage,
   ChatMessageStatus,
+  ChatUsage,
+  TokenBreakdown,
   ToolCallContent
 } from '@/domain'
 import { nanoid } from 'nanoid'
@@ -127,6 +129,36 @@ export const setAssistantStatus = (
   if (status === 'complete' || status === 'stop') {
     assistant.finishedAt = Date.now()
   }
+}
+
+/**
+ * 记录 assistant 消息的 token 用量（agent loop 每步调用一次）：
+ * - promptTokens：取最近一步（上下文随步骤增长，代表当前完整上下文）
+ * - completionTokens / totalTokens：各步累加
+ */
+export const setAssistantUsage = (
+  messages: Ref<ChatMessage[]>,
+  messageId: string,
+  usage: ChatUsage
+): void => {
+  const assistant = getAssistant(messages, messageId)
+  if (!assistant) return
+  assistant.usage = {
+    promptTokens: usage.promptTokens,
+    completionTokens: (assistant.usage?.completionTokens ?? 0) + usage.completionTokens,
+    totalTokens: (assistant.usage?.totalTokens ?? 0) + usage.totalTokens
+  }
+}
+
+/** 写入当前上下文的 token 构成估算（归一化到 promptTokens 后的精确值） */
+export const setAssistantTokenBreakdown = (
+  messages: Ref<ChatMessage[]>,
+  messageId: string,
+  breakdown: TokenBreakdown
+): void => {
+  const assistant = getAssistant(messages, messageId)
+  if (!assistant) return
+  assistant.tokenBreakdown = breakdown
 }
 
 /** 单个子 Agent 的汇总信息（供 UI tab 栏与侧边栏「Agent 记录」复用） */

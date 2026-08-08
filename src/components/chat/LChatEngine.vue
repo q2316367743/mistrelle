@@ -23,6 +23,7 @@
         :initial="initialState"
         :loading="status === 'pending' || status === 'streaming'"
         :sandbox-dir="sandboxDir"
+        :token-usage="tokenUsage"
         @send="handleSend"
         @stop="handleStop()"
       />
@@ -75,7 +76,7 @@
 <script lang="ts" setup>
 import type { ChatRequestParams, ChatType } from '@/modules/chat'
 import { getChatSession, getSandboxDir, releaseChatSession } from '@/modules/chat'
-import type { ChatMessage, ThinkingEffort, UserMessage } from '@/domain'
+import type { ChatMessage, ThinkingEffort, TokenBreakdown, UserMessage } from '@/domain'
 import type { ChatSenderInitial } from '@/components/chat/sender/chatSenderInitial'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
 import { readSubAgentContent, getRunningSubAgentMessages } from '@/modules/subagent'
@@ -90,6 +91,8 @@ import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/components/chat/desi
 import { collapsed } from '@/global/BeanFactory'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
+import { DEFAULT_CONTEXT_WINDOW } from '@/global/Constant'
+import { useSettingAiStore } from '@/store'
 import AsideRightIcon from '@/assets/icons/AsideRIghtIcon.vue'
 import { Fullscreen1Icon, FullscreenExit1Icon, FullscreenIcon } from 'tdesign-icons-vue-next'
 
@@ -243,6 +246,29 @@ const initialState = computed<ChatSenderInitial>(() => ({
   writingScene: writingScene.value,
   workspace: workspace.value
 }))
+
+// 当前上下文 token 占用：取最后一条 assistant 消息的 usage.promptTokens 作为当前上下文大小，
+// tokenBreakdown 提供构成明细；窗口优先取模型配置，缺省用常量兜底。无 assistant 消息时返回 undefined。
+const tokenUsage = computed<{
+  contextTokens: number
+  contextWindow: number
+  breakdown: TokenBreakdown
+} | undefined>(() => {
+  const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant')
+  if (!lastAssistant || lastAssistant.role !== 'assistant' || !lastAssistant.usage) return undefined
+  const modelKey = `${lastAssistant.provide}:${lastAssistant.model}`
+  const contextWindow = useSettingAiStore().optionMap.get(modelKey)?.context || DEFAULT_CONTEXT_WINDOW
+  return {
+    contextTokens: lastAssistant.usage.promptTokens,
+    contextWindow,
+    breakdown: lastAssistant.tokenBreakdown ?? {
+      system: 0,
+      tools: 0,
+      conversation: 0,
+      skills: 0
+    }
+  }
+})
 
 // ─── 子 Agent 切换 ────────────────────────────────────────────────
 

@@ -170,6 +170,28 @@ export interface UserMessage extends ChatBaseMessage {
   reasoning_effort?: ThinkingEffort
   content: UserMessageContent[]
 }
+/** 单次模型请求的 token 用量（来自 API usage 字段） */
+export interface ChatUsage {
+  // 输入 token（一次请求发送给模型的全部内容）
+  promptTokens: number
+  // 输出 token
+  completionTokens: number
+  // prompt + completion
+  totalTokens: number
+}
+
+/** 当前上下文按构成来源拆分后的 token 估算（本地估算后归一化到 promptTokens） */
+export interface TokenBreakdown {
+  // 系统提示词
+  system: number
+  // 工具及子智能体
+  tools: number
+  // 对话消息
+  conversation: number
+  // 技能
+  skills: number
+}
+
 export type TodoStatus = 'pending' | 'in_progress' | 'completed'
 export interface TodoItem {
   id: string
@@ -203,6 +225,10 @@ export interface AIMessage extends ChatBaseMessage {
   finishedAt?: number
   /** 本条回复过程中 spawn 的子 Agent ID 列表（用于 UI 展示子 Agent 切换卡片） */
   subAgentIds?: string[]
+  /** 本条回复消耗的 token 用量（来自 API usage；多步 agent loop 累计） */
+  usage?: ChatUsage
+  /** 当前上下文按来源拆分后的 token 估算（归一化到 usage.promptTokens） */
+  tokenBreakdown?: TokenBreakdown
 }
 export interface SystemMessage extends ChatBaseMessage {
   role: 'system'

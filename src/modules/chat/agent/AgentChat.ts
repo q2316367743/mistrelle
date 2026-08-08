@@ -34,11 +34,14 @@ import {
   appendAssistantContent,
   createPendingAssistantMessage,
   setAssistantStatus,
+  setAssistantTokenBreakdown,
+  setAssistantUsage,
   updateToolCallContent
 } from './agentMessages'
 import { streamAgentStep } from './agentStream'
 import { executeToolCalls, parseArguments, runSingleTool } from './agentTools'
 import type { ToolCall } from './agentTypes'
+import { estimateTokenBreakdown, normalizeTokenBreakdown } from '@/utils/tokenEstimate'
 import { InteractiveBridge, findPendingInteractiveToolcall } from './interactive'
 import { copyToInputs } from '@/utils/chatSender'
 import { isPathUnder } from '@/utils/sandbox'
@@ -101,6 +104,8 @@ export class ToolChat {
   private writingScene: WritingScene = 'article'
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
   private workspaceSettingsCache: { path: string; content: string } | null = null
+  /** 最近一次构建请求时的技能目录提示词（用于 token 构成估算，随消息持久化） */
+  private lastSkillCatalogPrompt = ''
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS */
   private maxSteps?: number
   /** 触顶步数后是否执行最后一次无工具收尾调用，强制模型立即输出总结（子 Agent 使用） */
@@ -325,6 +330,7 @@ export class ToolChat {
     const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
     const skills = await localSkillList()
     const catalogPrompt = buildSkillCatalogPrompt(skills)
+    this.lastSkillCatalogPrompt = catalogPrompt
     const workspacePrompt = this.buildWorkspacePrompt()
     const workspaceSettingsPrompt = await this.buildWorkspaceSettingsPrompt()
     // system 前缀保持稳定的可缓存内容；skill 正文由 load_skill 工具按需在对话中加载，不进 system
@@ -395,24 +401,31 @@ export class ToolChat {
     const maxSteps = this.mode === 2 ? Infinity : (this.maxSteps ?? MAX_AGENT_STEPS)
     this.hitMaxSteps.value = false
     this.reachedMaxSteps.value = false
+    // 最近一次请求的 API 消息与工具定义（用于完成时估算 token 构成）
+    let lastApiMessages: ChatCompletionMessageParam[] = []
+    let lastTools: ChatCompletionTool[] = []
     while (seq === this.ctx.requestSeq && !signal.aborted && step < maxSteps) {
       step++
       const functions = this.filterToolsByMode(this.getFunctions(params))
       const resolvedParams = await this.resolveModel(params)
+      lastApiMessages = await this.buildRequestMessages(params, assistantMessageId)
+      lastTools = this.buildTools(functions)
       const result = await streamAgentStep({
         messages: this.messages,
         assistantMessageId,
         requestParams: resolvedParams,
-        apiMessages: await this.buildRequestMessages(params, assistantMessageId),
-        tools: this.buildTools(functions),
+        apiMessages: lastApiMessages,
+        tools: lastTools,
         config: this.ctx.config,
         signal,
         seq,
         currentSeq: () => this.ctx.requestSeq
       })
       if (result.cancelled) return
+      if (result.usage) setAssistantUsage(this.messages, assistantMessageId, result.usage)
       if (result.toolCalls.length === 0) {
         this.status.value = result.finishReason === 'length' ? 'stop' : 'complete'
+        this.estimateAndStoreBreakdown(assistantMessageId, lastApiMessages, lastTools)
         this.ctx.config.onComplete?.(false, resolvedParams)
         return
       }
@@ -457,9 +470,29 @@ export class ToolChat {
             ext: { continueHint: true }
           })
         }
+        this.estimateAndStoreBreakdown(assistantMessageId, lastApiMessages, lastTools)
       }
       this.status.value = 'complete'
     }
+  }
+
+  /**
+   * 估算当前上下文的 token 构成并写入消息（归一化到该消息 usage.promptTokens）。
+   * usage 缺失时跳过，避免渲染无意义的全 0 明细。
+   */
+  private estimateAndStoreBreakdown(
+    assistantMessageId: string,
+    apiMessages: ChatCompletionMessageParam[],
+    tools: ChatCompletionTool[]
+  ): void {
+    const assistant = this.messages.value.find((m) => m.id === assistantMessageId)
+    if (!assistant || assistant.role !== 'assistant' || !assistant.usage) return
+    if (!apiMessages || apiMessages.length === 0) return
+    const breakdown = normalizeTokenBreakdown(
+      estimateTokenBreakdown(apiMessages, tools, this.lastSkillCatalogPrompt),
+      assistant.usage.promptTokens
+    )
+    setAssistantTokenBreakdown(this.messages, assistantMessageId, breakdown)
   }
 
   /**
@@ -490,6 +523,8 @@ export class ToolChat {
         currentSeq: () => this.ctx.requestSeq
       })
       if (result.cancelled) return false
+      if (result.usage) setAssistantUsage(this.messages, assistantMessageId, result.usage)
+      this.estimateAndStoreBreakdown(assistantMessageId, apiMessages, [])
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') throw error
       return false

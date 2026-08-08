@@ -83,6 +83,7 @@ declare module 'vue' {
     TLoading: typeof import('tdesign-vue-next')['Loading']
     TodoList: typeof import('./src/components/chat/TodoList.vue')['default']
     TodoProgressButton: typeof import('./src/components/chat/TodoProgressButton.vue')['default']
+    TokenUsagePanel: typeof import('./src/components/chat/sender/TokenUsagePanel.vue')['default']
     TOption: typeof import('tdesign-vue-next')['Option']
     TPagination: typeof import('tdesign-vue-next')['Pagination']
     TPopconfirm: typeof import('tdesign-vue-next')['Popconfirm']

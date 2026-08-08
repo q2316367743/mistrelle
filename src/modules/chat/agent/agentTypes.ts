@@ -2,6 +2,7 @@ import type {
   ChatCompletionAssistantMessageParam,
   ChatCompletionCreateParamsStreaming
 } from 'openai/resources/chat/completions'
+import type { ChatUsage } from '@/domain'
 
 export type ToolCall = {
   toolCallId: string
@@ -26,4 +27,6 @@ export type StreamStepResult = {
   cancelled: boolean
   finishReason?: string | null
   toolCalls: ToolCall[]
+  /** 本次 API 请求的 token 用量（支持 usage 的流式接口才有） */
+  usage?: ChatUsage
 }
