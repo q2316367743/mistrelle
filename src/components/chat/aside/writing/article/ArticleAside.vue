@@ -25,10 +25,6 @@
           </div>
         </t-option>
       </t-select>
-      <t-radio-group v-model="mode" size="small" theme="button" variant="default-filled">
-        <t-radio-button value="edit">编辑</t-radio-button>
-        <t-radio-button value="preview">预览</t-radio-button>
-      </t-radio-group>
       <t-button
         theme="primary"
         variant="text"
@@ -51,6 +47,7 @@
         shape="square"
         title="导出为 ZIP（含图片）"
         :disabled="!activeArticle || exporting"
+        class="mr-8px"
         @click="handleExport"
       >
         <template #icon>
@@ -81,16 +78,15 @@ import {
   getArticleStore
 } from '@/modules/tool/components/article/articleStore'
 import { exportArticleZip } from '@/modules/tool/components/article/imageRef'
-import type {
-  ArticlePlatform,
-  ArticleStatus
-} from '@/modules/tool/components/article/articleTypes'
+import type { ArticlePlatform, ArticleStatus } from '@/modules/tool/components/article/articleTypes'
 import { MessageUtil } from '@/utils/modal'
 import ArticleEditor from './components/ArticleEditor.vue'
 
 const props = defineProps<{
   sandbox?: string
   workspace?: string
+  /** 侧边栏全屏：全屏可编辑，非全屏仅预览 */
+  fullscreen?: boolean
 }>()
 
 /** 项目根：{workspace}/articles/（有工作空间）或 {sandbox}/outputs/articles/ */
@@ -98,7 +94,8 @@ const root = computed(() => buildArticleRoot(props.workspace ?? '', props.sandbo
 const store = computed(() => getArticleStore(root.value))
 
 const articles = computed(() => store.value.project.value?.articles ?? [])
-const mode = ref<'edit' | 'preview'>('preview')
+/** 编辑 / 预览由侧边栏全屏状态驱动：全屏可编辑，非全屏仅预览 */
+const mode = computed<'edit' | 'preview'>(() => (props.fullscreen ? 'edit' : 'preview'))
 
 const activeId = ref('')
 const activeArticle = computed(() => articles.value.find((a) => a.id === activeId.value))
@@ -107,7 +104,9 @@ const exporting = ref(false)
 
 /** 当前文章 md 所在目录（预览图片解析基准） */
 const activeMdDir = computed(() =>
-  activeArticle.value ? window.preload.path.dirname(window.preload.path.join(root.value, activeArticle.value.file)) : ''
+  activeArticle.value
+    ? window.preload.path.dirname(window.preload.path.join(root.value, activeArticle.value.file))
+    : ''
 )
 
 /** 配图目录（粘贴 / 拖入图片落盘于此） */

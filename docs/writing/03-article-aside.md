@@ -16,15 +16,17 @@ src/components/chat/aside/writing/
 
 ## 布局（常驻顶部 select）
 
-- **header 一行**：文章下拉 select（`flex:1`）→ 编辑/预览切换（radio）→ 在文件夹中显示 / 刷新 / 导出为 ZIP 按钮。
+- **header 一行**：文章下拉 select（`flex:1`）→ 在文件夹中显示 / 刷新 / 导出为 ZIP 按钮。
 - **select 下拉选项**：自定义 option 展示标题 + 平台 tag + 状态 tag（草稿 / 写作中 / 已完稿）+ 字数；选中后 select 显示标题。
 - **正文区**：当前选中文章的编辑 / 预览内容；未选中时显示空态提示。
 - 文章由 AI 生成（`article_create` 工具），**不提供手动新建按钮**；「在文件夹中显示」按钮定位当前文章文件（未选中时打开项目根目录）。
-- 默认进入**预览**模式，点「编辑」切换可编辑态。
+- 编辑 / 预览由**侧边栏全屏状态**驱动（无手动切换）：全屏（`fullscreen`）= 编辑态，非全屏 = 预览态。
 
 ## 数据流
 
 - 场景来源：`ChatSession.writingScene` → `LChatEngine` → `LChatAside`（`:writing-scene`）→ `WritingAside` 分发。
+- 编辑/预览模式：`LChatEngine.fullscreen` → `LChatAside` → `WritingAside` → `ArticleAside` 逐层透传 `:fullscreen`；
+  `ArticleAside` 派生 `mode = fullscreen ? 'edit' : 'preview'` 传给 `ArticleEditor`（`editable` 切换）。
 - 项目定位：`ArticleAside` 内 `buildArticleRoot(workspace, sandbox)` 计算 root；
   `getArticleStore(root)` 获取共享 store（与 article_* 工具同一响应式实例）。
 - 文章选择：header 下拉 `select`（`:value` + `@change` 手动加载，清空复位），自定义 option 展示平台 / 状态 / 字数；

@@ -249,15 +249,19 @@ const initialState = computed<ChatSenderInitial>(() => ({
 
 // 当前上下文 token 占用：取最后一条 assistant 消息的 usage.promptTokens 作为当前上下文大小，
 // tokenBreakdown 提供构成明细；窗口优先取模型配置，缺省用常量兜底。无 assistant 消息时返回 undefined。
-const tokenUsage = computed<{
-  contextTokens: number
-  contextWindow: number
-  breakdown: TokenBreakdown
-} | undefined>(() => {
+const tokenUsage = computed<
+  | {
+      contextTokens: number
+      contextWindow: number
+      breakdown: TokenBreakdown
+    }
+  | undefined
+>(() => {
   const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant')
   if (!lastAssistant || lastAssistant.role !== 'assistant' || !lastAssistant.usage) return undefined
   const modelKey = `${lastAssistant.provide}:${lastAssistant.model}`
-  const contextWindow = useSettingAiStore().optionMap.get(modelKey)?.context || DEFAULT_CONTEXT_WINDOW
+  const contextWindow =
+    useSettingAiStore().optionMap.get(modelKey)?.context || DEFAULT_CONTEXT_WINDOW
   return {
     contextTokens: lastAssistant.usage.promptTokens,
     contextWindow,
@@ -297,7 +301,7 @@ const asideType = computed<ChatType>(() => {
 watch(
   asideType,
   (type) => {
-    if (type === 'design') aside.value = true
+    if (['design', 'writing'].includes(type)) aside.value = true
   },
   { immediate: true }
 )

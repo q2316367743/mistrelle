@@ -14,6 +14,7 @@
     :sandbox="sandbox"
     :workspace="workspace"
     :writing-scene="writingScene"
+    :fullscreen="fullscreen"
   />
   <design-aside v-else-if="type === 'design'" :sandbox="sandbox" :fullscreen="fullscreen" />
 </template>
