@@ -14,10 +14,24 @@ import {
 // 注册动画能力到 Leafer 元素（依赖 @leafer-in/animate@2.2.9，leafer-editor 不含动画插件）
 import '@leafer-in/animate'
 import type { CanvasDoc, CanvasEffect, CanvasNode, CanvasPaint } from './canvasTypes'
-import { computeLayoutBounds, layoutCanvasDoc, type CanvasLayoutNode } from './canvasLayout'
+import {
+  computeLayoutBounds,
+  layoutCanvasDoc,
+  measureTextLineHeight,
+  type CanvasLayoutNode
+} from './canvasLayout'
 import { ensureFontsForDoc } from './fontRegistry'
 
-export type CanvasRenderNode = Rect | Ellipse | Text | Line | LeaferImage | Polygon | Star | Path | Group
+export type CanvasRenderNode =
+  | Rect
+  | Ellipse
+  | Text
+  | Line
+  | LeaferImage
+  | Polygon
+  | Star
+  | Path
+  | Group
 
 /** 过滤 undefined 字段，避免给 Leafer 传空值 */
 const compact = (obj: Record<string, unknown>): Record<string, unknown> => {
@@ -66,7 +80,8 @@ const resolvePaint = (
     return resolveColorString(paint, palette)
   }
   // 防御：渐变对象必须是合法结构（stops 数组），否则视为无效填充，避免渲染崩溃
-  if (typeof paint !== 'object' || !Array.isArray(paint.stops) || paint.stops.length === 0) return undefined
+  if (typeof paint !== 'object' || !Array.isArray(paint.stops) || paint.stops.length === 0)
+    return undefined
   return {
     ...paint,
     stops: paint.stops.map((stop) =>
@@ -141,7 +156,10 @@ const buildCommon = (layout: CanvasLayoutNode, effects: boolean): Record<string,
 }
 
 /** 描边属性（宽度已按像素，坐标为文档空间） */
-const buildStrokeProps = (node: CanvasNode, stroke: CanvasPaint | undefined): Record<string, unknown> =>
+const buildStrokeProps = (
+  node: CanvasNode,
+  stroke: CanvasPaint | undefined
+): Record<string, unknown> =>
   compact({
     stroke,
     strokeWidth: node.strokeWidth,
@@ -152,7 +170,10 @@ const buildStrokeProps = (node: CanvasNode, stroke: CanvasPaint | undefined): Re
   })
 
 /** G placeholder：灰色渐变底 + 居中短标签 */
-const buildPlaceholder = (layout: CanvasLayoutNode, palette: Record<string, string>): CanvasRenderNode => {
+const buildPlaceholder = (
+  layout: CanvasLayoutNode,
+  palette: Record<string, string>
+): CanvasRenderNode => {
   const { node } = layout
   const group = new Group(compact({ ...buildCommon(layout, true) }))
   const bg = new Rect(
@@ -241,7 +262,12 @@ export const buildNode = (
       }
       return group
     }
-    case 'text':
+    case 'text': {
+      // 布局与渲染共享同一行高事实源（measureTextLineHeight）：显式传布局 height + lineHeight(px) +
+      // verticalAlign middle，使字形在布局框内垂直居中（布局 height = 行数 × 单行高），布局几何 = 渲染几何。
+      // 预留调试点：若实测发现文字在容器内仍有垂直偏移（Leafer baseline 与字形包围盒的 <1~2px 差），
+      // 优先调整 measureTextLineHeight 返回值，勿改 y（会破坏 canvas_inspect 与渲染的一致性）。
+      const lineHeight = measureTextLineHeight(node, node.fontSize ?? 16)
       return new Text(
         compact({
           ...buildCommon(layout, true),
@@ -252,20 +278,18 @@ export const buildNode = (
             typeof node.fontWeight === 'number' ? String(node.fontWeight) : node.fontWeight,
           italic: node.italic,
           letterSpacing: node.letterSpacing,
-          lineHeight:
-            typeof node.lineHeight === 'number' ? { type: 'percent', value: node.lineHeight } : undefined,
+          lineHeight: { type: 'px', value: lineHeight },
           textAlign: node.textAlign,
           textCase: node.textCase,
-          ...(typeof node.width === 'number' || node.width === 'fill_container'
-            ? { width }
-            : {}),
-          ...(typeof node.height === 'number' || node.height === 'fill_container'
-            ? { height }
-            : {}),
-          fill: noFill ? undefined : fill ?? '#000000',
+          ...(typeof node.width === 'number' || node.width === 'fill_container' ? { width } : {}),
+          ...(height > 0 ? { height } : {}),
+          verticalAlign: 'middle',
+          autoSizeAlign: false,
+          fill: noFill ? undefined : (fill ?? '#000000'),
           ...buildStrokeProps(node, stroke)
         })
       )
+    }
     case 'rect':
       return new Rect(
         compact({
@@ -273,7 +297,7 @@ export const buildNode = (
           width,
           height,
           cornerRadius: node.cornerRadius,
-          fill: noFill ? undefined : fill ?? '#e6e6e6',
+          fill: noFill ? undefined : (fill ?? '#e6e6e6'),
           ...buildStrokeProps(node, stroke)
         })
       )
@@ -283,7 +307,7 @@ export const buildNode = (
           ...buildCommon(layout, true),
           width,
           height,
-          fill: noFill ? undefined : fill ?? '#e6e6e6',
+          fill: noFill ? undefined : (fill ?? '#e6e6e6'),
           ...buildStrokeProps(node, stroke)
         })
       )
@@ -295,7 +319,7 @@ export const buildNode = (
           height,
           sides: node.sides ?? 3,
           startAngle: node.startAngle,
-          fill: noFill ? undefined : fill ?? '#e6e6e6',
+          fill: noFill ? undefined : (fill ?? '#e6e6e6'),
           ...buildStrokeProps(node, stroke)
         })
       )
@@ -308,7 +332,7 @@ export const buildNode = (
           corners: node.corners ?? 5,
           innerRadius: node.innerRadius,
           startAngle: node.startAngle,
-          fill: noFill ? undefined : fill ?? '#e6e6e6',
+          fill: noFill ? undefined : (fill ?? '#e6e6e6'),
           ...buildStrokeProps(node, stroke)
         })
       )
@@ -327,7 +351,7 @@ export const buildNode = (
         compact({
           ...buildCommon(layout, true),
           path: node.path ?? '',
-          fill: noFill ? undefined : fill ?? '#e6e6e6',
+          fill: noFill ? undefined : (fill ?? '#e6e6e6'),
           ...buildStrokeProps(node, stroke)
         })
       )
@@ -430,11 +454,19 @@ export const computeNodeBounds = (doc: CanvasDoc, id: string): CanvasExportRegio
 }
 
 /** 归一化导出区域：数值有效、非负，宽高至少 1（防御脏数据） */
-export const normalizeRegion = (region: Partial<CanvasExportRegion> | undefined): CanvasExportRegion => {
+export const normalizeRegion = (
+  region: Partial<CanvasExportRegion> | undefined
+): CanvasExportRegion => {
   const x = region?.x != null && Number.isFinite(region.x) ? Math.max(0, Math.round(region.x)) : 0
   const y = region?.y != null && Number.isFinite(region.y) ? Math.max(0, Math.round(region.y)) : 0
-  const w = region?.width != null && Number.isFinite(region.width) ? Math.max(1, Math.round(region.width)) : 1
-  const h = region?.height != null && Number.isFinite(region.height) ? Math.max(1, Math.round(region.height)) : 1
+  const w =
+    region?.width != null && Number.isFinite(region.width)
+      ? Math.max(1, Math.round(region.width))
+      : 1
+  const h =
+    region?.height != null && Number.isFinite(region.height)
+      ? Math.max(1, Math.round(region.height))
+      : 1
   return { x, y, width: w, height: h }
 }
 
@@ -476,7 +508,10 @@ export const settleAnimations = (roots: CanvasRenderNode[]): void => {
  * 缺省导出整张画布（0,0 → doc 尺寸，越界元素裁剪）；传 region 可导出指定矩形，
  * 供「设计在画布内某容器 / 卡片」时按区域导出，保证导出尺寸与设计尺寸一致。
  */
-export const exportCanvasPng = async (doc: CanvasDoc, region?: CanvasExportRegion): Promise<Blob> => {
+export const exportCanvasPng = async (
+  doc: CanvasDoc,
+  region?: CanvasExportRegion
+): Promise<Blob> => {
   // 先确保画布用到的字体已加载（资源库 / 在线字体走 FontFace，系统字体 Chromium 原生可用）
   await ensureFontsForDoc(doc)
   const r = region ? roundRegion(region) : { x: 0, y: 0, width: doc.width, height: doc.height }

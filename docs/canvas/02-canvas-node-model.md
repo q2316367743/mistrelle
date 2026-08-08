@@ -64,7 +64,7 @@ interface CanvasDoc {
 - **样式**：`fill` / `stroke`（纯色 / 渐变对象 / `$token名`）、`strokeWidth`、`dashPattern`、`cornerRadius`、`effects[]`
   （drop-shadow / inner-shadow / layer-blur / background-blur）
 - **文本**：`text`、`fontSize`、`fontFamily`、`fontWeight`（数字或 "400"~"900"）、`italic`、`letterSpacing`、`lineHeight`（数值 =
-  行高倍率，如 1.5 = 1.5×字号；或 `AUTO` ≈ 1.2×字号）、`textAlign`（left/center/right）、`textCase`
+  行高倍率，如 1.5 = 1.5×字号；缺省 / `AUTO` = 真实字形高度，按字体实际测量）、`textAlign`（left/center/right）、`textCase`
   （none/upper/lower）；文字颜色 =
   `fill`（必须设置否则不可见），描边字 = `stroke` + `strokeWidth`
 - **矢量/图片**：`points`（折线，相对 x/y）、`sides`、`corners`、`innerRadius`、`startAngle`、`path`（SVG 路径）、`imageUrl`、`svg`
@@ -93,6 +93,10 @@ interface CanvasDoc {
 - `hug_contents`：文本宽度用 `canvas.measureText` 近似（document 不可用时有字符估算兜底）；容器 = 子节点扩展 + padding。
 - **hug 文本多行高度**：`resolveLeafHug` 按可用宽度（显式 `width` 数字 → 该值；`fill_container` → 父内容区宽；缺省 → 单行不换行）
   估算换行行数（`ceil(文本宽 / 可用宽)`），hug 高度 = 行数 × 行高——保证布局引擎 / `canvas_inspect` 尺寸与渲染一致。
+- **text 行高 = 绝对测量**：`measureTextLineHeight` 对缺省 / `AUTO` 用 `canvas.measureText(text)` 的
+  `actualBoundingBoxAscent + Descent`（真实字形高度，与字体相关；utools 固定 Chromium 环境，无兼容问题），
+  `lineHeight` 数字仍按倍率 × 字号。布局与渲染共用该函数，text 渲染时显式传布局 height + `lineHeight(px)` +
+  `verticalAlign:'middle'`，使字形在布局框内垂直居中 → **布局几何 = 渲染几何 = 屏幕视觉**，不再有 ≈height/8 的垂直偏差。
 - **预览与导出共用同一实现**（单一事实源）。
 
 ## 5. 渲染器（canvasRender.ts）
@@ -100,7 +104,8 @@ interface CanvasDoc {
 - `buildDocElements(doc, scale, offsetX, offsetY) → [rootGroup]`：背景 + 全部根图层包在 **一个根 Group**，缩放/平移用根
   Group 变换，元素坐标保持文档空间 → Path 不再需要二次 scale、阴影/模糊随组自动缩放。
 - `buildNode(layout, palette)` 递归：group → `Group`（有 fill 时内嵌背景 `Rect`）；叶子映射 Leafer primitive；text 映射
-  `Text`（含描边字 / 字距 / 行高 / 对齐 / 大小写）；svg 用 `Platform.toURL` 转 blob。
+  `Text`（含描边字 / 字距 / 行高 / 对齐 / 大小写；行高与布局共用 `measureTextLineHeight`，显式传布局 height +
+  `lineHeight:{type:'px'}` + `verticalAlign:'middle'`，保证字形在布局框内垂直居中）；svg 用 `Platform.toURL` 转 blob。
 - **图片引用统一（`resolveImageHref`）**：imageUrl 数据层存**本地绝对路径**（web/stock/local 落盘均存原始路径，
   `image_generate` / `image_crop` / `website_logo` 返回的 path 直接填）；image / svg 分支渲染时在此唯一转换——
   已是 URL（`file:` / `http(s):` / `data:` / `blob:`）原样透传，否则按本地路径 `pathToHref` 转 file href 交给 Leafer。
@@ -191,7 +196,8 @@ interface CanvasDoc {
   图标 `layoutPositioning:"ABSOLUTE"` 用圆心反推坐标叠放（`svg.x = 圆底中心X − svg宽/2`）。
 - **布局引擎（flexbox 两阶段）**：`canvasLayout.ts` 采用 measure（测量子节点自然尺寸）→ arrange（排布 + fill 拉伸）两阶段。hug
   容器 交叉轴 = max (非 fill 子节点) + padding，交叉轴 CENTER/MAX 可靠生效；`fill_container` 交叉轴撑满在 hug
-  容器内可用，主轴撑满需容器 有确定主轴尺寸；text 行高估算：`lineHeight` 数字按倍率换算（×字号），`AUTO` 用 1.2×字号。
+  容器内可用，主轴撑满需容器 有确定主轴尺寸；text 行高：`lineHeight` 数字按倍率换算（×字号），缺省 / `AUTO` 用真实字形高度
+  （`measureTextLineHeight`，canvas 绝对测量，与渲染同源）。
 - 文本 `hug_contents` 宽度为近似值（measureText / 字符估算），多行文本请给显式宽度。
 - **几何核对用 `canvas_inspect`**：`canvas_get_nodes` 返回的是输入参数（布局组内子节点无最终坐标、尺寸可能为 fill/hug 关键字），
   `canvas_inspect` 返回布局引擎解析后的画布绝对包围盒（与导出 PNG 同源），AI 判断间距 / 对齐 / 中心 一律以它为准，禁止像素测量脚本。核对几何无需先

@@ -15,6 +15,7 @@ import {
   CanvasToolContext,
   computeLayoutBounds,
   batchOpSchema,
+  ensureFontsForDoc,
   CANVAS_GUIDELINES,
   CANVAS_GUIDELINE_TOPICS
 } from '@/modules/canvas'
@@ -288,7 +289,7 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       name: 'canvas_inspect',
       label: '检查渲染几何',
       description:
-        '返回指定节点渲染后的画布绝对包围盒（x / y / width / height / centerX / centerY，均为布局引擎解析后的真实值，与导出 PNG 同源），供核对元素实际位置、尺寸、间距与对齐。注意：布局组内子节点的最终位置由引擎排布，canvas_get_nodes 返回的 x/y/width/height 可能是缺省或 fill_container / hug_contents 关键字，不能直接用于几何判断——需要精确位置时请用本工具。一次传关心的 2~5 个元素 ids（如标题与徽章），直接相减即可算出相对位置与间距；缺省返回全部',
+        '返回指定节点渲染后的画布绝对包围盒（x / y / width / height / centerX / centerY，均为布局引擎解析后的真实值，与导出 PNG / 屏幕视觉完全一致），供核对元素实际位置、尺寸、间距与对齐。注意：布局组内子节点的最终位置由引擎排布，canvas_get_nodes 返回的 x/y/width/height 可能是缺省或 fill_container / hug_contents 关键字，不能直接用于几何判断——需要精确位置时请用本工具。一次传关心的 2~5 个元素 ids（如标题与徽章），直接相减即可算出相对位置与间距；缺省返回全部',
       parameters: {
         type: 'object',
         properties: {
@@ -315,6 +316,8 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
         if (!doc) {
           return { error: '当前没有打开的画布，请先 canvas_create 或 canvas_open，或指定 version' }
         }
+        // 先加载字体：text 高度按真实字形测量（measureTextLineHeight），需与渲染/导出同一字体源，否则几何会按默认字体测量
+        await ensureFontsForDoc(doc)
         const nodes = computeLayoutBounds(doc, ids)
         if (nodes.length === 0) {
           return {

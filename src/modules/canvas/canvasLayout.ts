@@ -36,9 +36,33 @@ const resolvePadding = (padding: number | number[] | undefined): [number, number
   return [0, 0, 0, 0]
 }
 
-/** 文本高度估算（行高因子，用于 hug 文本；与排版规则「行高≈1.2×字号」一致；lineHeight 数字按倍率换算） */
-const estimateLineHeight = (node: CanvasNode, fontSize: number): number => {
+/**
+ * 文本单行高度（px），布局与渲染共用的单一事实源：
+ * - lineHeight 显式数字 → 倍率 × fontSize（Figma/CSS 语义，AI 指南约定不变）
+ * - 缺省 / 'AUTO' → 真实字形高度（canvas 2d 绝对测量：actualBoundingBoxAscent + Descent），
+ *   与 Leafer 渲染同源，使布局几何 = 渲染几何，消除原 1.2×字号 估算造成的垂直偏差（≈height/8）。
+ * 预留调试点：Leafer 行内 baseline 取自字体 metrics，可能与 measureText 的字形包围盒存在 <1~2px
+ * 差异；若实测分组内文字仍有垂直偏移，优先在此调整返回值（或渲染层 lineHeight 的 px 值），勿改布局 y。
+ */
+export const measureTextLineHeight = (node: CanvasNode, fontSize: number): number => {
   if (typeof node.lineHeight === 'number') return Math.round(fontSize * node.lineHeight)
+  const text = node.text ?? ''
+  if (text) {
+    const family = node.fontFamily || 'sans-serif'
+    const weight = typeof node.fontWeight === 'number' ? String(node.fontWeight) : node.fontWeight || '400'
+    try {
+      const ctx = document.createElement('canvas').getContext('2d')
+      if (ctx) {
+        ctx.font = `${weight} ${fontSize}px ${family}`
+        const m = ctx.measureText(text)
+        const ascent = m.actualBoundingBoxAscent ?? 0
+        const descent = m.actualBoundingBoxDescent ?? 0
+        if (ascent + descent > 0) return Math.ceil(ascent + descent)
+      }
+    } catch {
+      // canvas 测量失败，走兜底
+    }
+  }
   return Math.round(fontSize * 1.2)
 }
 
@@ -89,7 +113,7 @@ const resolveLeafHug = (node: CanvasNode, parentW?: number): { width: number; he
   switch (node.type) {
     case 'text': {
       const fontSize = node.fontSize ?? 16
-      const lineHeight = estimateLineHeight(node, fontSize)
+      const lineHeight = measureTextLineHeight(node, fontSize)
       const textWidth = measureTextWidth(node, fontSize)
       // 可用宽度决定换行行数：显式数字优先；fill_container 用父内容宽；hug/缺省按单行不换行
       const availW =
