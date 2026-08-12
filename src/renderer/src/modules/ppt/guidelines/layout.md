@@ -59,3 +59,4 @@
 - 间距用 `gap` 而非反复 margin；比例分配用 `grow` / 百分比而非硬编码像素。
 - 卡片化：信息块放进带 `backgroundColor="FFFFFF" borderRadius="8" padding="24"` 的卡片容器，视觉更专业。
 - 对齐优先于微调：同组元素靠容器对齐，不靠手调坐标。
+- ⚠️ **布局边界（已自动规避）**：胶囊标签 / 徽章 / 图标+文字组合避免「HStack 直接嵌套无宽度的 HStack 再放文本」——POM 对嵌套 HStack 链中无显式宽度的文本测量会产生 NaN 宽度导致构建失败；系统已自动为受影响文本补 `w="max"`，若仍遇到 `addTextBox: width must be a finite positive EMU value` 错误，请给文本或容器显式宽度（如 `w="max"`）。

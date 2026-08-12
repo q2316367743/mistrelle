@@ -297,13 +297,18 @@ export const buildProcessArrowNode = (_Self: unknown) =>
     { additionalProperties: false, description: '流程箭头节点' }
   )
 
+/** commonProps 去掉 w/h（Svg 的 w/h 仅接受数字，不能是 "max" / 百分比） */
+const { w: _svgW, h: _svgH, ...svgCommonProps } = commonProps
+
 export const buildSvgNode = (_Self: unknown) =>
   Type.Object(
     {
       type: Type.Literal('svg'),
+      w: Type.Optional(Type.Number({ description: 'SVG 宽度（px，**仅接受数字**，不支持 max / 百分比）' })),
+      h: Type.Optional(Type.Number({ description: 'SVG 高度（px，**仅接受数字**，不支持 max / 百分比）' })),
       svgContent: Type.Optional(Type.String({ description: '内联 SVG 内容' })),
       color: Type.Optional(Type.String({ description: '统一着色（stroke）' })),
-      ...commonProps
+      ...svgCommonProps
     },
-    { additionalProperties: false, description: '内联 SVG 节点（w/h 默认 24）' }
+    { additionalProperties: false, description: '内联 SVG 节点（w/h 仅接受数字）' }
   )

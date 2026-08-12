@@ -242,6 +242,8 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 5. **经验指南**：基于 POM 官方三文档（nodes / layout-system / styling-guide）转写为经验提示词（layout.md / nodes.md / styling.md），`ppt_guidelines` topics 扩展为 layout / nodes / styling / pom-xml / workflow。
 6. 提示词强化：**页面根元素必须是 VStack / HStack 布局容器**（flexbox 先布局后内容）；字号分级按官方规范（标题 28-40 / 小标题 18-24 / 正文 13-16 / 注释 10-12）。
 7. **设计风格支持**（与 design 同源）：新建 PPT 会话可选设计风格（PageNew 开放选择），风格在创建后锁定，水合时经 `buildDesignStylePrompt` 注入稳定 system 前缀；PPT 不接生图，跳过「正向/反向提示词」段（`withVisualPrompt: false`），只注入配色方案 / 字体规范 / 布局约束——AI 创建 PPT 时按风格色板写 `<Theme>`、按风格字体排版。
+8. **POM 布局 bug 规避（实测）**：嵌套 HStack 链（≥2 层无像素宽）中的 Text 未显式声明 `w` 时，POM 10.3.0 布局测量产生 NaN 宽度 → `buildPptx` 抛 `addTextBox: width must be a finite positive EMU value`（导出 PPTX/PNG 全部失败，渲染保留旧图）。`PptStore.prepareElements` 自动为受影响 Text 补 `w="max"`（视觉等价，实测修复 13 页真实文件）；渲染错误附边界提示供 AI 自纠。已写入 layout 指南。
+9. **Svg 节点 w/h 仅数字（实测）**：POM 的 `<Svg>` 只接受数字 `w`/`h`（`"max"` / `"50%"` 被拒且报误导性的 `Missing required attribute "w"`，而 w 缺失反而通过）。`pptElementSchemas` 的 svg 分支 w/h 改为纯数字；`PptStore.withPages` 写回前用 `parseXml` 严格校验（serializeXml 宽容，坏数据会静默落盘、下次读取才炸——写回前拦截并当场反馈 AI，不污染文件）。已写入 nodes 指南。
 
 ### 12.3 已知限制（第一版范围，与 §8 一致）
 

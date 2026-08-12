@@ -46,7 +46,7 @@
 ## 4. 媒体类：Image / Svg / Icon
 
 - `Image`：`src`（ **base64 data URI 或本地绝对路径，禁止 http**）；`sizing`（contain / cover / crop）；缺省 w/h 时用原图尺寸。
-- `Svg`：内联 SVG 内容；`w/h` 默认 24；`color` 统一着色（子元素显式 stroke/fill 优先）。
+- `Svg`：`svgContent` 为内联 SVG 内容；**`w` / `h` 仅接受数字（px），不支持 "max" / 百分比**（写 "max" 会导致 XML 校验失败）；`color` 统一着色（子元素显式 stroke/fill 优先）。
 - `Icon`：`name`（lucide 图标名，如 rocket / check-circle / trending-up / users / target）；`size` 默认 24；`color`；`variant`
   （circle-filled / circle-outlined / square-filled / square-outlined）+ `bgColor`（默认 E0E0E0）做带底色图标。
 

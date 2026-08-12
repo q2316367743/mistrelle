@@ -83,6 +83,30 @@ const normalizeTableColumns = (node: POMNode): void => {
   if ('children' in node && Array.isArray(node.children)) node.children.forEach(normalizeTableColumns)
 }
 
+/**
+ * 规避 POM 布局 bug（10.3.0 实测）：**嵌套 HStack 链中的 Text 若未显式声明 w，
+ * 布局测量得到 NaN 宽度 → buildPptx 抛 addTextBox: width must be a finite positive EMU value**。
+ * 触发条件：Text 的祖先存在 ≥2 层且均无显式像素宽度的 HStack（胶囊标签 / 徽章 / 图标+文字组合常见）；
+ * 显式声明 w（含 w="max"）走非测量路径即正常。这里自动给受影响 Text 补 w="max"（视觉等价，
+ * 父级为 hug 时解析为内容宽），AI 无需感知。
+ */
+const normalizeHStackText = (node: POMNode, hstackChain: number): void => {
+  if (node.type === 'hstack') {
+    const hasPixelW = typeof node.w === 'number'
+    const chain = hasPixelW ? 0 : hstackChain + 1
+    if ('children' in node && Array.isArray(node.children)) {
+      node.children.forEach((child) => normalizeHStackText(child, chain))
+    }
+    return
+  }
+  if (node.type === 'text' && node.w === undefined && hstackChain >= 2) {
+    node.w = 'max'
+  }
+  if ('children' in node && Array.isArray(node.children)) {
+    node.children.forEach((child) => normalizeHStackText(child, hstackChain))
+  }
+}
+
 /** 页面操作返回（error 或 success + 1 起始 slideId） */
 export type PptPageResult = { error: string } | { success: true; slideId: number; total: number }
 
@@ -282,7 +306,11 @@ export class PptStore {
       throw new Error(`元素校验失败：${errors.join('；')}`)
     }
     const nodes = elements as POMNode[]
-    nodes.forEach(normalizeTableColumns)
+    // POM 布局边界规避：Table columns 补全 + 嵌套 HStack 链中 Text 补 w（详见函数注释）
+    nodes.forEach((node) => {
+      normalizeTableColumns(node)
+      normalizeHStackText(node, 0)
+    })
     return nodes
   }
 
@@ -321,6 +349,13 @@ export class PptStore {
       // serializeXml 不保留 <Theme>（parseXml 已解析为色板），写回时拼回文件头的 Theme 声明
       const themeXml = extractThemeXml(xml)
       const newXml = themeXml ? `${themeXml}\n${serializeXml(pages)}` : serializeXml(pages)
+      // 写回前校验：serializeXml 宽容（坏数据如 svg w="max" 会静默落盘，下次读取 parseXml 才炸），
+      // 这里立即用 parseXml 严格校验拦截，错误当场反馈 AI，避免坏数据污染文件
+      try {
+        parseXml(newXml)
+      } catch (err) {
+        return { error: `XML 校验未通过（未写入）：${errorText(err)}` }
+      }
       await this.persist({ id: targetId, name: buildPptFileName(targetId), xml: newXml })
       if (this.current.value?.id === targetId) {
         // 原地更新当前文档（对象替换触发 watch 自动渲染）
@@ -361,7 +396,11 @@ export class PptStore {
       if (this.currentPage.value > svgs.length) this.currentPage.value = Math.max(1, svgs.length)
     } catch (err) {
       this.renderState.value = 'error'
-      this.renderError.value = errorText(err)
+      const message = errorText(err)
+      // POM 布局边界提示：嵌套 HStack 链中文本宽度 NaN（normalize 已自动规避，此处兜底说明）
+      this.renderError.value = /addTextBox|finite/.test(message)
+        ? `${message}\n提示：POM 布局边界——嵌套 HStack 中的文本需要显式宽度（w），已自动处理；若仍失败请检查是否有异常布局（如无宽度容器直接嵌套）`
+        : message
       console.error('[ppt] 渲染失败，保留旧图：', this.renderError.value)
     }
   }
