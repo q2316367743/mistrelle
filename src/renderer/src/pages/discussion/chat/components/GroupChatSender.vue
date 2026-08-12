@@ -9,7 +9,7 @@
       <div class="group-chat-sender__input" :class="{ 'is-disabled': loading }" @click="focusInput">
         <span v-if="showPlaceholder" class="group-chat-sender__placeholder">{{ placeholder }}</span>
         <div
-          ref="editorRef"
+          ref="_editorRef"
           class="group-chat-sender__editor"
           contenteditable="plaintext-only"
           :data-disabled="loading"
@@ -39,7 +39,9 @@
       <div class="group-chat-sender__hint">
         <span class="group-chat-sender__hint-muted">输入 @ 选择成员，仅被 @ 的成员会回复</span>
       </div>
-      <t-button v-if="loading" theme="danger" variant="outline" @click="emit('stop')">停止</t-button>
+      <t-button v-if="loading" theme="danger" variant="outline" @click="emit('stop')"
+        >停止</t-button
+      >
       <t-button v-else theme="primary" :disabled="!canSend" @click="handleSend">发送</t-button>
     </div>
   </div>
@@ -57,8 +59,22 @@ interface RoleMention {
   id: string
   name: string
 }
-type SkillSuggestion = { key: string; title: string; description: string; token: string; type: 'skill'; data: LocalSkill }
-type RoleSuggestion = { key: string; title: string; description: string; token: string; type: 'role'; data: RoleMention }
+type SkillSuggestion = {
+  key: string
+  title: string
+  description: string
+  token: string
+  type: 'skill'
+  data: LocalSkill
+}
+type RoleSuggestion = {
+  key: string
+  title: string
+  description: string
+  token: string
+  type: 'role'
+  data: RoleMention
+}
 type Suggestion = SkillSuggestion | RoleSuggestion
 
 const props = withDefaults(
@@ -86,15 +102,25 @@ const roleMentions = computed<RoleMention[]>(() => {
     .map((r) => ({ id: r.id, name: r.name }))
 })
 
-const { editorRef, inputValue, selectedSkills, selectedRoles, segments, setText, insertTag, clear, focus: focusInput, handleInput, handleKeydown, handlePaste } =
-  useChatSender({
-    skills,
-    files,
-    roles: roleMentions,
-    loading: computed(() => props.loading),
-    onInput: () => undefined,
-    onSend: () => handleSend()
-  })
+const {
+  editorRef: _editorRef,
+  inputValue,
+  selectedSkills,
+  segments,
+  insertTag,
+  clear,
+  focus: focusInput,
+  handleInput,
+  handleKeydown,
+  handlePaste
+} = useChatSender({
+  skills,
+  files,
+  roles: roleMentions,
+  loading: computed(() => props.loading),
+  onInput: () => undefined,
+  onSend: () => handleSend()
+})
 
 const suggestionIndex = ref(0)
 const popupStyle: Record<string, string> = { width: '300px', whiteSpace: 'normal' }
@@ -109,7 +135,9 @@ const suggestions = computed<Suggestion[]>(() => {
   const keyword = match[2].toLowerCase()
   if (match[1] === '/') {
     return skills.value
-      .filter((item) => matchKeyword(`${item.name} ${item.dirName} ${formatSkillDescription(item)}`, keyword))
+      .filter((item) =>
+        matchKeyword(`${item.name} ${item.dirName} ${formatSkillDescription(item)}`, keyword)
+      )
       .slice(0, 8)
       .map((item) => ({
         key: `skill:${item.path}`,

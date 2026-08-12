@@ -71,7 +71,6 @@ const {
   running,
   compressing,
   orderedRoles,
-  messageListRef,
   send,
   newContext,
   compressContext,

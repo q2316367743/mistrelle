@@ -119,7 +119,7 @@ export class GroupChatEngine {
   ) {}
 
   /** 并发驱动多个被 @ 的成员各自作答 */
-  async runResponders(userMessage: AiGroupChatMessage, responderRoleIds: string[]) {
+  async runResponders(_userMessage: AiGroupChatMessage, responderRoleIds: string[]) {
     if (this.activeChats.size > 0 || responderRoleIds.length === 0) return
     const agentStore = useAiAgentStore()
     const responderAgents = responderRoleIds.map((id) => agentStore.getById(id)).filter(Boolean) as AiAgent[]

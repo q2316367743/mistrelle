@@ -120,7 +120,6 @@ const {
   record,
   input,
   loading,
-  messageListRef,
   running,
   started,
   canStart,

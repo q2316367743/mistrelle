@@ -11,6 +11,10 @@
   "compilerOptions": {
     "composite": true,
     "baseUrl": ".",
+    "jsxImportSource": "vue",
+    "moduleResolution": "bundler",
+    "target": "ESNext",
+    "module": "ESNext",
     "paths": {
       "@/*": [
         "src/renderer/src/*"

@@ -159,7 +159,7 @@ onMounted(() => {
 })
 
 // 工作空间切换（用户更换目录）→ 释放旧 store，重载新项目
-watch(root, (val, old) => {
+watch(root, (_val, old) => {
   if (old) destroyArticleStore(old)
   activeId.value = ''
   content.value = ''

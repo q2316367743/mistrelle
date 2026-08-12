@@ -112,7 +112,6 @@ import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { useSettingAiStore, useSettingDefaultStore, useDesignStyleStore } from '@/store'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
 import type { SkillItem, ThinkingEffort, TokenBreakdown, ToolItem, UserMessageContent } from '@/domain'
-import { formatTokens } from '@/utils/tokenEstimate'
 import {
   buildFileSuggestion,
   buildSkillSuggestion,

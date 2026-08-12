@@ -1,5 +1,5 @@
 <template>
-  <div ref="containerRef" class="segmented" role="radiogroup" @keydown="handleKeydown">
+  <div class="segmented" role="radiogroup" @keydown="handleKeydown">
     <div class="segmented__indicator" :style="indicatorStyle" />
     <button
       v-for="(option, index) in options"
@@ -18,7 +18,7 @@
     </button>
   </div>
 </template>
-<script lang="ts" setup generic="T extends string">
+<script lang="ts" setup>
 import type { Component } from 'vue'
 
 interface SegmentedOption<T> {
@@ -28,12 +28,11 @@ interface SegmentedOption<T> {
 }
 
 const props = defineProps<{
-  options: readonly SegmentedOption<T>[]
+  options: readonly SegmentedOption<any>[]
 }>()
 
-const modelValue = defineModel<T>()
+const modelValue = defineModel<any>()
 
-const containerRef = ref<HTMLElement>()
 const itemRefs = ref<HTMLElement[]>([])
 
 const selectedIndex = computed(() =>
@@ -50,7 +49,7 @@ const indicatorStyle = computed(() => {
   }
 })
 
-const handleSelect = (value: T) => {
+const handleSelect = (value: any) => {
   modelValue.value = value
 }
 
@@ -83,7 +82,9 @@ const handleKeydown = (event: KeyboardEvent) => {
   left: 0;
   border-radius: 5px;
   background: var(--fluent-card-bg);
-  transition: transform var(--fluent-transition-normal), width var(--fluent-transition-normal);
+  transition:
+    transform var(--fluent-transition-normal),
+    width var(--fluent-transition-normal);
 }
 
 .segmented__item {
@@ -101,7 +102,9 @@ const handleKeydown = (event: KeyboardEvent) => {
   font-size: var(--td-font-size-body-medium);
   cursor: pointer;
   outline: none;
-  transition: color var(--fluent-transition-fast), background-color var(--fluent-transition-fast);
+  transition:
+    color var(--fluent-transition-fast),
+    background-color var(--fluent-transition-fast);
 
   &:hover {
     background: var(--fluent-reveal-bg);

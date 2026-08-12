@@ -43,7 +43,7 @@
 </template>
 
 <script lang="ts" setup>
-import { BrowseIcon, EditIcon, DeleteIcon } from 'tdesign-icons-vue-next'
+import { EditIcon, DeleteIcon } from 'tdesign-icons-vue-next'
 import { AiAgent, AI_AGENT_CATEGORY_MAP } from '@/entity/ai'
 import { toolMap } from '@/modules/tool'
 import { useSettingAiStore } from '@/store'

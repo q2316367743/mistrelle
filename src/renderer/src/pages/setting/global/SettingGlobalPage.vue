@@ -3,9 +3,9 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { useSettingGlobalStore } from '@/store'
-
-const { state } = toRefs(useSettingGlobalStore())
+// import { useSettingGlobalStore } from '@/store'
+//
+// const { state } = toRefs(useSettingGlobalStore())
 </script>
 <style scoped lang="less">
 .setting-global {

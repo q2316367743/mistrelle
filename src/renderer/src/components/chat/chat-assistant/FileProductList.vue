@@ -82,7 +82,7 @@ const products = computed<ProductFile[]>(() => {
   return result
 })
 
-const { listRef, collapsed, isCollapsible, maxHeight, toggleProducts } = useProductListCollapse(products)
+const { collapsed, isCollapsible, maxHeight, toggleProducts } = useProductListCollapse(products)
 
 const CODE_EXTS = new Set([
   '.ts',

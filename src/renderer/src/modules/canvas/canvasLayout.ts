@@ -271,7 +271,6 @@ const arrangeTree = (
   const contentW = size.width - pad[1] - pad[3]
   const contentH = size.height - pad[0] - pad[2]
   const horizontal = node.layout === 'horizontal' || node.layout === 'wrap'
-  const vertical = node.layout === 'vertical' || node.layout === 'wrap'
   const primary = node.primaryAxisAlignItems ?? 'MIN'
   const counter = node.counterAxisAlignItems ?? 'MIN'
   const gap = node.gap ?? 0

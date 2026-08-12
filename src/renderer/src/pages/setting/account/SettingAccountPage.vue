@@ -50,7 +50,6 @@
 import { useSettingAccountStore } from '@/store'
 
 const { state } = toRefs(useSettingAccountStore())
-const isUtools = window.preload.inject.getPlatform() === 'utools'
 
 const resetNickname = async () => {
     const user = await window.preload.inject.os.getUser()

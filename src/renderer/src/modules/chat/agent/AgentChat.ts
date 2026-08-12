@@ -600,7 +600,7 @@ export class ToolChat {
 
   private handleRequestError(
     error: unknown,
-    requestParams: ChatRequestParams,
+    _requestParams: ChatRequestParams,
     assistantMessageId: string
   ): void {
     if (error instanceof Error && error.name === 'AbortError') {

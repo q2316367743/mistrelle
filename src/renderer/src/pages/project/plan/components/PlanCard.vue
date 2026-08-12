@@ -55,9 +55,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
-import { CalendarIcon, MoreIcon, TimeIcon } from 'tdesign-icons-vue-next'
-import { PLAN_STATUSES, PLAN_STATUS_META, PLAN_PRIORITY_META } from '@/modules/project'
+import { CalendarIcon, TimeIcon } from 'tdesign-icons-vue-next'
+import { PLAN_STATUS_META, PLAN_PRIORITY_META } from '@/modules/project'
 import { dayDiff, isPlanOverdue } from '../func'
 import type { ProjectPlan, ProjectPlanStatus } from '@/entity/project/ProjectPlan'
 import { usePlanContextmenu } from '@/pages/project/plan/modals/PlanContextmenu'
@@ -72,8 +71,6 @@ const emit = defineEmits<{
   detail: [ProjectPlan]
   'status-change': [ProjectPlan, ProjectPlanStatus]
 }>()
-
-const statusOptions = PLAN_STATUSES.map((s) => ({ value: s, label: PLAN_STATUS_META[s].label }))
 
 const priorityMeta = computed(() => PLAN_PRIORITY_META[props.plan.priority])
 const statusMeta = computed(() => PLAN_STATUS_META[props.plan.status])

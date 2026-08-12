@@ -1,4 +1,4 @@
-import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
+import type { ChatRequestParams, ChatType } from '@/modules/chat'
 import { getChatSession, getSandboxDir, releaseChatSession } from '@/modules/chat'
 import type { ChatMessage, ThinkingEffort, TokenBreakdown, UserMessage } from '@/domain'
 import type { ChatSenderInitial } from '@/components/chat/sender/chatSenderInitial'
@@ -138,7 +138,8 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     | undefined
   >(() => {
     const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant')
-    if (!lastAssistant || lastAssistant.role !== 'assistant' || !lastAssistant.usage) return undefined
+    if (!lastAssistant || lastAssistant.role !== 'assistant' || !lastAssistant.usage)
+      return undefined
     const modelKey = `${lastAssistant.provide}:${lastAssistant.model}`
     const contextWindow =
       useSettingAiStore().optionMap.get(modelKey)?.context || DEFAULT_CONTEXT_WINDOW
@@ -263,7 +264,9 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     () => lastAssistantIdOf(messages.value),
     () => {
       if (activeAgentId.value === 'main') return
-      const currentSubIds = new Set(subAgentTabs.value.map((t) => t.id).filter((id) => id !== 'main'))
+      const currentSubIds = new Set(
+        subAgentTabs.value.map((t) => t.id).filter((id) => id !== 'main')
+      )
       if (!currentSubIds.has(activeAgentId.value)) activeAgentId.value = 'main'
     }
   )

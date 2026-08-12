@@ -157,7 +157,9 @@ const handleFiles = (plan: ProjectPlan) => {
   })
 }
 
-const handleAddTask = async (plan: ProjectPlan) => {}
+const handleAddTask = async (plan: ProjectPlan) => {
+  console.log('新增任务', plan)
+}
 const handleDetail = async (plan: ProjectPlan) => {
   openPlanDetailDialog({
     projectId: props.id,

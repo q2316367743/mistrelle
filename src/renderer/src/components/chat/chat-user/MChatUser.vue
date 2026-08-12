@@ -63,7 +63,6 @@
 </template>
 <script lang="ts" setup>
 import { UserMessage } from '@/domain'
-import { ChatMessage } from '@tdesign-vue-next/chat'
 import { CodeIcon, FileIcon, LayersIcon, ToolsIcon } from 'tdesign-icons-vue-next'
 
 defineProps({

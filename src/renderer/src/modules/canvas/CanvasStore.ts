@@ -247,7 +247,7 @@ const resolveWebImageExt = (url: string): string => {
 
 /** G 操作：placeholder 渐变占位 / stock·ai 网络占位图（picsum 稳定种子，落盘沙盒）/ web 真实图片（落盘沙盒）/ local 本地图片（引用绝对路径） */
 const applyImageOp = async (
-  doc: CanvasDoc,
+  _doc: CanvasDoc,
   sandboxDir: string,
   node: CanvasNode,
   kind: CanvasImageKind,

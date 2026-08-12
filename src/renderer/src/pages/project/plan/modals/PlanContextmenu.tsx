@@ -1,4 +1,3 @@
-import { ProjectPlan } from '@/entity'
 import { useContextMenu } from '@/hooks'
 import {
   ChatAddIcon,

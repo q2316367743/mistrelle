@@ -45,7 +45,7 @@
 <script lang="ts" setup>
 import { useSettingAiStore } from '@/store'
 import type { ThinkingEffort } from '@/domain'
-import { ChevronDownIcon, ChevronRightIcon, SearchIcon, Setting1Icon } from 'tdesign-icons-vue-next'
+import { ChevronDownIcon, ChevronRightIcon, Setting1Icon } from 'tdesign-icons-vue-next'
 
 const modelValue = defineModel({
   type: String,

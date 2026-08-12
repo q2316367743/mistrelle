@@ -55,7 +55,7 @@
 
       <t-tab-panel value="layout" label="布局规则">
         <div class="put-layout">
-          <div v-for="(rule, idx) in form.layoutRules" :key="idx" class="put-layout__row">
+          <div v-for="(_rule, idx) in form.layoutRules" :key="idx" class="put-layout__row">
             <t-input v-model="form.layoutRules[idx]" placeholder="输入一条布局硬约束" />
             <t-button theme="danger" variant="text" shape="square" @click="removeRule(idx)">
               <template #icon><DeleteIcon /></template>

@@ -12,10 +12,6 @@ const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : und
 const strArray = (v: unknown): string[] | undefined =>
   Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : undefined
 
-const err = (msg: string): never => {
-  throw new Error(msg)
-}
-
 /**
  * 返回文章场景工具实例（按 workspace / sandbox 定位项目根），供 WritingSceneConfig 场景级注入。
  * 项目根：{workspace}/articles/（有工作空间）或 {sandbox}/outputs/articles/（无工作空间）。
