@@ -85,12 +85,12 @@ export const getSandboxDir = (id: string) => window.preload.path.join(getDataFor
 export const aiChatList = async (): Promise<Array<AiChatItem>> => {
   const folder = getDataForWorkspace()
   const indexPath = buildChatIndexPath()
-  if (!(await window.preload.fs.existsSync(folder))) {
+  if (!(window.preload.fs.existsSync(folder))) {
     await window.preload.fs.mkdir(folder)
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }
-  if (!(await window.preload.fs.existsSync(indexPath))) {
+  if (!(window.preload.fs.existsSync(indexPath))) {
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }
@@ -112,7 +112,7 @@ export const aiChatRemove = async (id: string) => {
 // 删除该聊天的沙盒目录（含 message/ 子目录及全部子 Agent 文件）
 export const aiChatSandboxRemove = async (id: string) => {
   const folder = getSandboxDir(id)
-  if (await window.preload.fs.existsSync(folder)) {
+  if (window.preload.fs.existsSync(folder)) {
     await window.preload.fs.rm(folder)
   }
 }
@@ -121,7 +121,7 @@ export const aiChatSandboxRemove = async (id: string) => {
  * 读取完整聊天内容（含 draft 与 messages），兼容旧格式 { list: ChatMessage[] }
  */
 export const aiChatContentGet = async (path: string): Promise<AiChatContent | undefined> => {
-  if (!(await window.preload.fs.existsSync(path))) return undefined
+  if (!(window.preload.fs.existsSync(path))) return undefined
   try {
     const data = JSON.parse(await window.preload.fs.readTextFile(path))
     if (Array.isArray(data.list)) {

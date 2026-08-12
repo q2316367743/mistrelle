@@ -25,7 +25,7 @@ export const transcribeAudio = async (
   if (result.exitCode !== 0) {
     throw new Error(result.stderr?.trim() || result.error || '音频转写失败')
   }
-  if (!(await window.preload.fs.existsSync(outputPath))) {
+  if (!(window.preload.fs.existsSync(outputPath))) {
     throw new Error('转写未产出文本文件')
   }
   return window.preload.fs.readTextFile(outputPath)

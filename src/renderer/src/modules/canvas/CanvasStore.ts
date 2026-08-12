@@ -38,7 +38,7 @@ const isSchema2 = (value: unknown): value is CanvasDoc =>
   (value as { schema?: unknown }).schema === 2
 
 const readDoc = async (path: string): Promise<CanvasDoc | null> => {
-  if (!(await window.preload.fs.existsSync(path))) return null
+  if (!(window.preload.fs.existsSync(path))) return null
   try {
     const parsed = JSON.parse(await window.preload.fs.readTextFile(path)) as unknown
     if (!isSchema2(parsed)) return null
@@ -328,7 +328,7 @@ export class CanvasStore {
   /** 重新扫描 outputs/ 下的 .canvas 文件列表（仅识别 schema 2） */
   async refreshFiles(): Promise<CanvasFileInfo[]> {
     const dir = buildCanvasOutputsDir(this.sandboxDir)
-    if (!(await window.preload.fs.existsSync(dir))) {
+    if (!(window.preload.fs.existsSync(dir))) {
       this.files.value = []
       return this.files.value
     }
@@ -360,7 +360,7 @@ export class CanvasStore {
   /** 读取指定版本画布的原始 JSON 文本（供 AI 分析，不改动当前画布；返回前治愈缺失 type） */
   async read(version: number): Promise<string | null> {
     const path = window.preload.path.join(buildCanvasOutputsDir(this.sandboxDir), buildCanvasFileName(version))
-    if (!(await window.preload.fs.existsSync(path))) return null
+    if (!(window.preload.fs.existsSync(path))) return null
     const parsed = JSON.parse(await window.preload.fs.readTextFile(path)) as unknown
     if (!isSchema2(parsed)) return null
     const doc = parsed as CanvasDoc
@@ -404,7 +404,7 @@ export class CanvasStore {
   /** 删除指定版本画布文件 */
   async delete(version: number): Promise<void> {
     const path = window.preload.path.join(buildCanvasOutputsDir(this.sandboxDir), buildCanvasFileName(version))
-    if (await window.preload.fs.existsSync(path)) {
+    if (window.preload.fs.existsSync(path)) {
       await window.preload.fs.rm(path)
     }
     if (this.current.value?.version === version) this.current.value = null
@@ -528,7 +528,7 @@ export class CanvasStore {
 
   private async persistDoc(doc: CanvasDoc): Promise<void> {
     const dir = buildCanvasOutputsDir(this.sandboxDir)
-    if (!(await window.preload.fs.existsSync(dir))) {
+    if (!(window.preload.fs.existsSync(dir))) {
       await window.preload.fs.mkdir(dir, true)
     }
     const path = window.preload.path.join(dir, buildCanvasFileName(doc.version))

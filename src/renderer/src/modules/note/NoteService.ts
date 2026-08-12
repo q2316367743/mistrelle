@@ -73,7 +73,7 @@ const sanitizeFileName = (name: string): string =>
 /** 列出父目录内展示名（文件夹名 / 笔记名），跳过隐藏项与 .assets 附件目录 */
 export const listSiblingNames = async (root: string, parentRel: string): Promise<string[]> => {
   const dir = folderRelToAbs(root, parentRel)
-  if (!(await window.preload.fs.existsSync(dir))) return []
+  if (!(window.preload.fs.existsSync(dir))) return []
   const items = await window.preload.fs.readDir(dir)
   const names: string[] = []
   for (const item of items) {
@@ -128,7 +128,7 @@ const readDirNodes = async (dirAbs: string, parentKey: string): Promise<NoteNode
 
 /** 读取笔记库树（根不存在时自动创建） */
 export const readNoteTree = async (root: string): Promise<NoteNode[]> => {
-  if (!(await window.preload.fs.existsSync(root))) {
+  if (!(window.preload.fs.existsSync(root))) {
     await window.preload.fs.mkdir(root)
     return []
   }
@@ -186,14 +186,14 @@ export const renameNote = async (root: string, key: string, newName: string): Pr
   if (err) throw new Error(err)
 
   const oldMd = noteKeyToAbs(root, key)
-  if (!(await window.preload.fs.existsSync(oldMd))) throw new Error(`笔记不存在：${key}`)
+  if (!(window.preload.fs.existsSync(oldMd))) throw new Error(`笔记不存在：${key}`)
   const content = await window.preload.fs.readTextFile(oldMd)
 
   const newKey = parentRel ? `${parentRel}/${target}` : target
   await window.preload.fs.rename(oldMd, noteKeyToAbs(root, newKey))
 
   const oldAssets = noteAssetsDirAbs(root, key)
-  if (await window.preload.fs.existsSync(oldAssets)) {
+  if (window.preload.fs.existsSync(oldAssets)) {
     await window.preload.fs.rename(oldAssets, noteAssetsDirAbs(root, newKey))
   }
 
@@ -214,7 +214,7 @@ export const renameFolder = async (root: string, rel: string, newName: string): 
   if (err) throw new Error(err)
 
   const oldDir = folderRelToAbs(root, rel)
-  if (!(await window.preload.fs.existsSync(oldDir))) throw new Error(`文件夹不存在：${rel}`)
+  if (!(window.preload.fs.existsSync(oldDir))) throw new Error(`文件夹不存在：${rel}`)
   const newRel = parentRel ? `${parentRel}/${target}` : target
   await window.preload.fs.rename(oldDir, folderRelToAbs(root, newRel))
 }
@@ -222,15 +222,15 @@ export const renameFolder = async (root: string, rel: string, newName: string): 
 /** 删除笔记：移除 md 文件与附件目录 */
 export const deleteNote = async (root: string, key: string): Promise<void> => {
   const md = noteKeyToAbs(root, key)
-  if (await window.preload.fs.existsSync(md)) await window.preload.fs.rm(md)
+  if (window.preload.fs.existsSync(md)) await window.preload.fs.rm(md)
   const assets = noteAssetsDirAbs(root, key)
-  if (await window.preload.fs.existsSync(assets)) await window.preload.fs.rm(assets)
+  if (window.preload.fs.existsSync(assets)) await window.preload.fs.rm(assets)
 }
 
 /** 删除文件夹（递归） */
 export const deleteFolder = async (root: string, rel: string): Promise<void> => {
   const dir = folderRelToAbs(root, rel)
-  if (await window.preload.fs.existsSync(dir)) await window.preload.fs.rm(dir)
+  if (window.preload.fs.existsSync(dir)) await window.preload.fs.rm(dir)
 }
 
 const EXTERNAL_RE = /^(https?:|data:|file:|blob:|mailto:|#)/i

@@ -128,12 +128,12 @@ const audioHref = computed(() => (hasAudio.value ? subscribeFileHref(audioPath.v
 
 const loadContent = async () => {
   // Electron 迁移：fs.existsSync 已异步化，媒体存在性随内容一起加载
-  hasVideo.value = await window.preload.fs.existsSync(videoPath.value)
-  hasAudio.value = await window.preload.fs.existsSync(audioPath.value)
-  summaryContent.value = await window.preload.fs.existsSync(summaryPath.value)
+  hasVideo.value = window.preload.fs.existsSync(videoPath.value)
+  hasAudio.value = window.preload.fs.existsSync(audioPath.value)
+  summaryContent.value = window.preload.fs.existsSync(summaryPath.value)
     ? await window.preload.fs.readTextFile(summaryPath.value)
     : ''
-  textContent.value = await window.preload.fs.existsSync(textPath.value)
+  textContent.value = window.preload.fs.existsSync(textPath.value)
     ? await window.preload.fs.readTextFile(textPath.value)
     : ''
 }

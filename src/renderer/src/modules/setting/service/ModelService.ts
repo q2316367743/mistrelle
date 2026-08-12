@@ -8,7 +8,7 @@ import { getModelPath } from '@/global/Constant'
  */
 export const modelList = async (): Promise<Array<AiProvide>> => {
   const path = getModelPath()
-  if (!(await window.preload.fs.existsSync(path))) return []
+  if (!(window.preload.fs.existsSync(path))) return []
   return JSON.parse(await window.preload.fs.readTextFile(path))
 }
 

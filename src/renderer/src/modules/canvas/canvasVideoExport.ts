@@ -300,7 +300,7 @@ export const exportCanvasVideo = async (
     await encodeFrames(framesDir, outPath, fps, format, options.loop ?? true, controller)
     return { path: outPath }
   } finally {
-    if (await window.preload.fs.existsSync(framesDir)) {
+    if (window.preload.fs.existsSync(framesDir)) {
       await window.preload.fs.rm(framesDir)
     }
     offscreen.destroy()

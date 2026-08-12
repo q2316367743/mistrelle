@@ -8,7 +8,7 @@ export type ProjectAssetTreeNode = FileItem & { children?: ProjectAssetTreeNode[
  */
 export const readProjectAssetTree = async (id: string): Promise<ProjectAssetTreeNode[]> => {
   const rootDir = buildProjectAssetDirPath(id)
-  if (!(await window.preload.fs.existsSync(rootDir))) {
+  if (!(window.preload.fs.existsSync(rootDir))) {
     await window.preload.fs.mkdir(rootDir)
   }
   return readAssetDir(rootDir)

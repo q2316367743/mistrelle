@@ -34,7 +34,7 @@ export const buildProjectPlanLogPath = (id: string, planId: string) =>
 
 const ensurePlanDir = async (id: string) => {
   const dir = buildProjectPlanDir(id)
-  if (!(await window.preload.fs.existsSync(dir))) {
+  if (!(window.preload.fs.existsSync(dir))) {
     await window.preload.fs.mkdir(dir, true)
   }
   return dir
@@ -48,7 +48,7 @@ const toIndexItem = (p: ProjectPlan): ProjectPlanIndexItem => ({ ...p, tags: [..
 export const projectPlanList = async (id: string): Promise<ProjectPlanIndexItem[]> => {
   await ensurePlanDir(id)
   const indexPath = buildProjectPlanIndexPath(id)
-  if (!(await window.preload.fs.existsSync(indexPath))) {
+  if (!(window.preload.fs.existsSync(indexPath))) {
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }
@@ -68,7 +68,7 @@ export const projectPlanGet = async (
   planId: string
 ): Promise<ProjectPlan | undefined> => {
   const p = buildProjectPlanItemPath(id, planId)
-  if (!(await window.preload.fs.existsSync(p))) return undefined
+  if (!(window.preload.fs.existsSync(p))) return undefined
   return JSON.parse(await window.preload.fs.readTextFile(p))
 }
 
@@ -91,7 +91,7 @@ export const projectPlanAdd = async (id: string, plan: ProjectPlan) => {
  */
 export const projectPlanUpdate = async (id: string, plan: ProjectPlan) => {
   const planDir = window.preload.path.join(buildProjectPlanDir(id), plan.id)
-  if (!(await window.preload.fs.existsSync(planDir))) {
+  if (!(window.preload.fs.existsSync(planDir))) {
     await window.preload.fs.mkdir(planDir, true)
     await window.preload.fs.mkdir(buildProjectPlanFilesDir(id, plan.id), true)
   }
@@ -108,7 +108,7 @@ export const projectPlanUpdate = async (id: string, plan: ProjectPlan) => {
  */
 export const projectPlanRemove = async (id: string, planId: string) => {
   const planDir = window.preload.path.join(buildProjectPlanDir(id), planId)
-  if (await window.preload.fs.existsSync(planDir)) {
+  if (window.preload.fs.existsSync(planDir)) {
     await window.preload.fs.rm(planDir)
   }
   const list = await projectPlanList(id)
@@ -126,7 +126,7 @@ export const projectPlanListFiles = async (
   planId: string
 ): Promise<Array<FileItem>> => {
   const dir = buildProjectPlanFilesDir(id, planId)
-  if (!(await window.preload.fs.existsSync(dir))) {
+  if (!(window.preload.fs.existsSync(dir))) {
     await window.preload.fs.mkdir(dir)
   }
   return window.preload.fs.readDir(dir)
@@ -142,7 +142,7 @@ export const projectPlanLogList = async (
   planId: string
 ): Promise<ProjectPlanLog[]> => {
   const p = buildProjectPlanLogPath(id, planId)
-  if (!(await window.preload.fs.existsSync(p))) {
+  if (!(window.preload.fs.existsSync(p))) {
     await window.preload.fs.writeTextFile(p, JSON.stringify([]))
     return []
   }

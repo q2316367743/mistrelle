@@ -19,7 +19,7 @@
         @switch="handleSwitchAgent"
       />
       <l-chat-sender
-        ref="senderRef"
+        ref="_senderRef"
         :initial="initialState"
         :loading="status === 'pending' || status === 'streaming'"
         :sandbox-dir="sandboxDir"
@@ -144,6 +144,7 @@ const handleWindowResize = () => {
 }
 
 const {
+  senderRef: _senderRef,
   instance,
   messages,
   status,

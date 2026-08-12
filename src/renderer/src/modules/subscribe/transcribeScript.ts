@@ -58,7 +58,7 @@ if __name__ == "__main__":
  */
 export const ensureTranscribeScript = async (): Promise<string> => {
   const path = buildTranscribeScriptPath()
-  if (await window.preload.fs.existsSync(path)) return path
+  if (window.preload.fs.existsSync(path)) return path
   await window.preload.fs.mkdir(window.preload.path.join(dataFolder, 'runtime'), true)
   await window.preload.fs.writeTextFile(path, TRANSCRIBE_SCRIPT_TEMPLATE)
   return path

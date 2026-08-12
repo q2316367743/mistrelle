@@ -208,7 +208,7 @@ const poll = async () => {
   if (!novel || dirtyFile.value) return
   const file = activeFile.value
   const filePath = window.preload.path.join(root.value, novel.dir, NOVEL_FILES[file])
-  if (!(await window.preload.fs.existsSync(filePath))) return
+  if (!(window.preload.fs.existsSync(filePath))) return
   try {
     const st = await window.preload.fs.stat(filePath)
     if (lastPoll && lastPoll.file === file && lastPoll.mtime === st.mtime) return

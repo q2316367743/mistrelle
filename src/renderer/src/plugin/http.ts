@@ -151,7 +151,9 @@ export async function requestDownload(
   config: Omit<HttpRequest, 'charset' | 'webview'>,
   path: string
 ): Promise<void> {
-  return window.preload.net.downloadFileFromUrl(httpRequestToAxiosConfig(config), path)
+  const _config = httpRequestToAxiosConfig(config)
+  console.log(_config)
+  return window.preload.net.downloadFileFromUrl(_config, path)
 }
 
 // ====================================== 包装方法 ======================================

@@ -106,12 +106,12 @@ const splitName = (p: string) => p.split('/').pop() || p.split('\\').pop() || 'f
  */
 const uniquePath = async (baseDir: string, name: string): Promise<string> => {
   let dest = window.preload.path.join(baseDir, name)
-  if (!(await window.preload.fs.existsSync(dest))) return dest
+  if (!(window.preload.fs.existsSync(dest))) return dest
   const extIdx = name.lastIndexOf('.')
   const stem = extIdx > 0 ? name.slice(0, extIdx) : name
   const ext = extIdx > 0 ? name.slice(extIdx) : ''
   let i = 1
-  while (await window.preload.fs.existsSync(dest)) {
+  while (window.preload.fs.existsSync(dest)) {
     dest = window.preload.path.join(baseDir, `${stem} (${i})${ext}`)
     i++
   }

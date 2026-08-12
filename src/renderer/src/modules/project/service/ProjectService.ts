@@ -23,7 +23,7 @@ export const buildProjectNoteDirPath = (id: string) =>
  */
 export const listProjectAssets = async (id: string): Promise<Array<FileItem>> => {
   const dir = buildProjectAssetDirPath(id)
-  if (!(await window.preload.fs.existsSync(dir))) {
+  if (!(window.preload.fs.existsSync(dir))) {
     await window.preload.fs.mkdir(dir)
   }
   return window.preload.fs.readDir(dir)
@@ -32,12 +32,12 @@ export const listProjectAssets = async (id: string): Promise<Array<FileItem>> =>
 export const projectList = async (): Promise<Array<Project>> => {
   const folder = getAppData2Project()
   const indexPath = buildProjectIndexPath()
-  if (!(await window.preload.fs.existsSync(folder))) {
+  if (!(window.preload.fs.existsSync(folder))) {
     await window.preload.fs.mkdir(folder)
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }
-  if (!(await window.preload.fs.existsSync(indexPath))) {
+  if (!(window.preload.fs.existsSync(indexPath))) {
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }

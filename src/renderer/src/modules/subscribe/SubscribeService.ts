@@ -51,7 +51,7 @@ export const buildSubscribeMediaPath = (
 
 const ensureSubscribeDir = async (projectId: string) => {
   const dir = buildProjectSubscribeDir(projectId)
-  if (!(await window.preload.fs.existsSync(dir))) {
+  if (!(window.preload.fs.existsSync(dir))) {
     await window.preload.fs.mkdir(dir, true)
   }
   return dir
@@ -63,7 +63,7 @@ const ensureSubscribeDir = async (projectId: string) => {
 export const subscribeBloggerList = async (projectId: string): Promise<SubscribeBlogger[]> => {
   await ensureSubscribeDir(projectId)
   const indexPath = buildProjectSubscribeIndexPath(projectId)
-  if (!(await window.preload.fs.existsSync(indexPath))) {
+  if (!(window.preload.fs.existsSync(indexPath))) {
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }
@@ -131,7 +131,7 @@ export const subscribeBloggerUpdate = async (projectId: string, blogger: Subscri
 
 export const subscribeBloggerRemove = async (projectId: string, bloggerId: string) => {
   const dir = buildSubscribeBloggerDir(projectId, bloggerId)
-  if (await window.preload.fs.existsSync(dir)) {
+  if (window.preload.fs.existsSync(dir)) {
     await window.preload.fs.rm(dir)
   }
   const list = await subscribeBloggerList(projectId)
@@ -148,7 +148,7 @@ export const subscribeVideoList = async (
   bloggerId: string
 ): Promise<SubscribeItem[]> => {
   const indexPath = buildSubscribeVideoIndexPath(projectId, bloggerId)
-  if (!(await window.preload.fs.existsSync(indexPath))) {
+  if (!(window.preload.fs.existsSync(indexPath))) {
     await window.preload.fs.mkdir(buildSubscribeBloggerDir(projectId, bloggerId), true)
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
@@ -225,7 +225,7 @@ export const subscribeVideoRemove = async (
   subscribeId: string
 ) => {
   const dir = buildSubscribeVideoDir(projectId, bloggerId, subscribeId)
-  if (await window.preload.fs.existsSync(dir)) {
+  if (window.preload.fs.existsSync(dir)) {
     await window.preload.fs.rm(dir)
   }
   const list = await subscribeVideoList(projectId, bloggerId)
@@ -273,8 +273,8 @@ export const subscribeDownload = async (
   const dir = buildSubscribeVideoDir(projectId, bloggerId, subscribeId)
   const videoPath = buildSubscribeMediaPath(projectId, bloggerId, subscribeId, 'video.mp4')
   const audioPath = buildSubscribeMediaPath(projectId, bloggerId, subscribeId, 'audio.mp3')
-  if (await window.preload.fs.existsSync(videoPath)) return
-  if (await window.preload.fs.existsSync(audioPath)) return
+  if (window.preload.fs.existsSync(videoPath)) return
+  if (window.preload.fs.existsSync(audioPath)) return
 
   await updateVideoStatus(projectId, bloggerId, subscribeId, {
     status: 'downloading',
@@ -340,8 +340,8 @@ export const subscribeExtractAudio = async (
 ) => {
   const videoPath = buildSubscribeMediaPath(projectId, bloggerId, subscribeId, 'video.mp4')
   const audioPath = buildSubscribeMediaPath(projectId, bloggerId, subscribeId, 'audio.mp3')
-  if (!(await window.preload.fs.existsSync(videoPath))) throw new Error('视频文件不存在，请先下载')
-  if (await window.preload.fs.existsSync(audioPath)) return
+  if (!(window.preload.fs.existsSync(videoPath))) throw new Error('视频文件不存在，请先下载')
+  if (window.preload.fs.existsSync(audioPath)) return
   await extractAudioTo(videoPath, audioPath)
 }
 
@@ -355,7 +355,7 @@ export const subscribeTranscribe = async (
   recognize?: SubscribeRecognizeSetting
 ) => {
   const audioPath = buildSubscribeMediaPath(projectId, bloggerId, subscribeId, 'audio.mp3')
-  if (!(await window.preload.fs.existsSync(audioPath))) throw new Error('音频文件不存在，请先下载/提取')
+  if (!(window.preload.fs.existsSync(audioPath))) throw new Error('音频文件不存在，请先下载/提取')
   const textPath = buildSubscribeMediaPath(projectId, bloggerId, subscribeId, 'text.md')
   await updateVideoStatus(projectId, bloggerId, subscribeId, {
     status: 'transcribing',
@@ -382,7 +382,7 @@ export const subscribeSummarize = async (
   subscribeId: string
 ) => {
   const textPath = buildSubscribeMediaPath(projectId, bloggerId, subscribeId, 'text.md')
-  if (!(await window.preload.fs.existsSync(textPath))) throw new Error('转写文案不存在，请先转写')
+  if (!(window.preload.fs.existsSync(textPath))) throw new Error('转写文案不存在，请先转写')
   const summaryPath = buildSubscribeMediaPath(projectId, bloggerId, subscribeId, 'summary.md')
   const text = await window.preload.fs.readTextFile(textPath)
   await updateVideoStatus(projectId, bloggerId, subscribeId, {

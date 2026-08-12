@@ -13,8 +13,9 @@ export const netApi = {
    * @param config axios 请求配置
    * @param path 保存的地址
    */
-  downloadFileFromUrl: (config: Record<string, unknown>, path: string): Promise<void> =>
-    ipcRenderer.invoke(NetChannels.downloadFileFromUrl, config, path),
+  downloadFileFromUrl: (config: Record<string, unknown>, path: string): Promise<void> => {
+    return ipcRenderer.invoke(NetChannels.downloadFileFromUrl, config, path)
+  },
 
   /** 将绝对路径转换为 mistrelle:// URL（渲染层经自定义协议加载本地资源；dev 下 file:// 会被 Chromium 拦截） */
   pathToHref: (path: string): string => `mistrelle://local/${encodeURIComponent(resolve(path))}`

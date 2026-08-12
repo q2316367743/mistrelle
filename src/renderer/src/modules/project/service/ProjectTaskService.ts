@@ -36,12 +36,12 @@ export const buildProjectTaskSandboxPath = (projectId: string, taskId: string) =
 export const projectTaskList = async (projectId: string): Promise<Array<ProjectChat>> => {
   const dir = buildProjectTaskDirPath(projectId)
   const indexPath = buildProjectTaskIndexPath(projectId)
-  if (!(await window.preload.fs.existsSync(dir))) {
+  if (!(window.preload.fs.existsSync(dir))) {
     await window.preload.fs.mkdir(dir, true)
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }
-  if (!(await window.preload.fs.existsSync(indexPath))) {
+  if (!(window.preload.fs.existsSync(indexPath))) {
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
   }

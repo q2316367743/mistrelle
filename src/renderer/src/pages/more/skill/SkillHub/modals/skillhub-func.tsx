@@ -124,6 +124,7 @@ export const openSkillHubDownload = (
         dp.destroy()
         onSuccess?.()
       } catch (e) {
+        console.log(e)
         MessageUtil.error('下载失败', e)
         dp.update({ confirmLoading: false, closeBtn: true, cancelBtn: '取消' })
       } finally {

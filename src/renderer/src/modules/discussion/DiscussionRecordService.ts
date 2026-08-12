@@ -74,8 +74,8 @@ const readIndex = async (discussionId: string): Promise<AiDiscussionRecordItem[]
     if (store.index) return store.index
     const folder = buildDiscussionFolderPath(discussionId)
     const path = buildDiscussionIndexPath(discussionId)
-    if (!(await window.preload.fs.existsSync(folder))) await window.preload.fs.mkdir(folder)
-    if (!(await window.preload.fs.existsSync(path))) {
+    if (!(window.preload.fs.existsSync(folder))) await window.preload.fs.mkdir(folder)
+    if (!(window.preload.fs.existsSync(path))) {
       await window.preload.fs.writeTextFile(path, JSON.stringify([]))
     }
     const text = await window.preload.fs.readTextFile(path)
@@ -144,7 +144,7 @@ export const discussionRecordGet = async (discussionId: string, recordId: string
   const path = buildDiscussionRecordPath(discussionId, recordId)
   // 读操作走对应路径的队列，避免读到正在写入的半截文件
   return getQueue(path).enqueue(async () => {
-    if (!(await window.preload.fs.existsSync(path))) return undefined
+    if (!(window.preload.fs.existsSync(path))) return undefined
     return JSON.parse(await window.preload.fs.readTextFile(path)) as AiDiscussionRecord
   })
 }
@@ -173,7 +173,7 @@ export const discussionRecordRemove = async (discussionId: string, recordId: str
   await mutateIndex(discussionId, (list) => list.filter((e) => e.id !== recordId))
   const path = buildDiscussionRecordPath(discussionId, recordId)
   await getQueue(path).enqueue(async () => {
-    if (await window.preload.fs.existsSync(path)) await window.preload.fs.rm(path)
+    if (window.preload.fs.existsSync(path)) await window.preload.fs.rm(path)
   })
 }
 
@@ -183,13 +183,13 @@ export const discussionRecordRemoveAll = async (discussionId: string) => {
     list.map((item) =>
       getQueue(buildDiscussionRecordPath(discussionId, item.id)).enqueue(async () => {
         const path = buildDiscussionRecordPath(discussionId, item.id)
-        if (await window.preload.fs.existsSync(path)) await window.preload.fs.rm(path)
+        if (window.preload.fs.existsSync(path)) await window.preload.fs.rm(path)
       })
     )
   )
   const folder = buildDiscussionFolderPath(discussionId)
   await getQueue(buildDiscussionIndexPath(discussionId)).enqueue(async () => {
-    if (await window.preload.fs.existsSync(folder)) await window.preload.fs.rm(folder)
+    if (window.preload.fs.existsSync(folder)) await window.preload.fs.rm(folder)
   })
   storeMap.delete(discussionId)
 }

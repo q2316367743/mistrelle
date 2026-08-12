@@ -30,7 +30,7 @@ const formatDate = (time: number): string => {
 
 export const groupChatGet = async (discussionId: string): Promise<AiGroupChat> => {
   const path = buildChatPath(discussionId)
-  if (!(await window.preload.fs.existsSync(path))) return buildAiGroupChat(discussionId)
+  if (!(window.preload.fs.existsSync(path))) return buildAiGroupChat(discussionId)
   try {
     const text = await window.preload.fs.readTextFile(path)
     const parsed = JSON.parse(text) as AiGroupChat
@@ -59,12 +59,12 @@ export const clearChatLogically = (chat: AiGroupChat, now: number): void => {
 export const clearChatCompletely = async (discussionId: string): Promise<AiGroupChat> => {
   const chatPath = buildChatPath(discussionId)
   const memoryPath = buildMemoryFolderPath(discussionId)
-  if (await window.preload.fs.existsSync(chatPath)) {
+  if (window.preload.fs.existsSync(chatPath)) {
     await enqueueByPath(chatPath, async () => {
-      if (await window.preload.fs.existsSync(chatPath)) await window.preload.fs.rm(chatPath)
+      if (window.preload.fs.existsSync(chatPath)) await window.preload.fs.rm(chatPath)
     })
   }
-  if (await window.preload.fs.existsSync(memoryPath)) {
+  if (window.preload.fs.existsSync(memoryPath)) {
     await window.preload.fs.rm(memoryPath)
   }
   return buildAiGroupChat(discussionId)
@@ -130,7 +130,7 @@ export const compressContext = (chat: AiGroupChat, summary: string, now: number)
 
 const readMemoryFile = async (discussionId: string, date: string): Promise<AiGroupChatMemory> => {
   const path = buildMemoryPath(discussionId, date)
-  if (!(await window.preload.fs.existsSync(path))) return { date, entries: [] }
+  if (!(window.preload.fs.existsSync(path))) return { date, entries: [] }
   try {
     const text = await window.preload.fs.readTextFile(path)
     return JSON.parse(text) as AiGroupChatMemory
@@ -141,7 +141,7 @@ const readMemoryFile = async (discussionId: string, date: string): Promise<AiGro
 
 const writeMemoryFile = async (discussionId: string, memory: AiGroupChatMemory): Promise<void> => {
   const folder = buildMemoryFolderPath(discussionId)
-  if (!(await window.preload.fs.existsSync(folder))) await window.preload.fs.mkdir(folder)
+  if (!(window.preload.fs.existsSync(folder))) await window.preload.fs.mkdir(folder)
   const path = buildMemoryPath(discussionId, memory.date)
   await enqueueByPath(path, () => window.preload.fs.writeTextFile(path, JSON.stringify(memory)))
 }
