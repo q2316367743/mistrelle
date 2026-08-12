@@ -1,19 +1,17 @@
 <template>
-    <l-chat-engine
-      v-if="storageKey && chat"
-      :key="storageKey"
-      :chat-id="chat.id"
-      :chat-name="chat.name"
-      :storage-key="storageKey"
-    />
-    <loading-result v-else title="正在加载中" />
+  <l-chat-engine
+    v-if="storageKey && chat"
+    :key="storageKey"
+    :chat-id="chat.id"
+    :chat-name="chat.name"
+    :storage-key="storageKey"
+  />
+  <loading-result v-else title="正在加载中" />
 </template>
 <script lang="ts" setup>
-import { AiChatItem, AiAgent } from '@/entity/ai'
-import { useAiAgentStore, useAiChatStore } from '@/store'
-import { aiChatGet, buildChatMainPath } from '@/modules/chat'
-import { MessageUtil } from '@/utils/modal'
-import { useSafeBack } from '@/hooks'
+import { AiChatItem } from '@/entity/ai'
+import { useAiChatStore } from '@/store'
+import { buildChatMainPath } from '@/modules/chat'
 
 const route = useRoute()
 
