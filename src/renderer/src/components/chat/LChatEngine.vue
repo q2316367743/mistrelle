@@ -180,11 +180,11 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', handleWindowResize)
 })
 
-// 画布面板（design 会话或 design 型子 Agent）默认展开侧边栏：type 需异步水合，故用 watch 而非直接判断
+// 画布面板（design / ppt 会话或对应子 Agent）默认展开侧边栏：type 需异步水合，故用 watch 而非直接判断
 watch(
   asideType,
   (type) => {
-    if (['design', 'writing'].includes(type)) {
+    if (['design', 'ppt', 'writing'].includes(type)) {
       aside.value = true
       toggleCollapsed(true)
     }

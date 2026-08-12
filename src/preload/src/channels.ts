@@ -225,3 +225,28 @@ export interface SharpRemoveBackgroundResult {
   height: number
   removedPixels: number
 }
+
+// ── ppt ────────────────────────────────────────────────────
+export const PptChannels = {
+  /** POM XML → 每页 SVG 字符串数组（预览渲染） */
+  renderPptxToSvgs: 'ppt:renderPptxToSvgs',
+  /** POM XML → PPTX 字节（导出 PPTX） */
+  buildPptxBytes: 'ppt:buildPptxBytes',
+  /** POM XML → 指定页 PNG 字节（导出 PNG） */
+  renderPptxToPngs: 'ppt:renderPptxToPngs'
+} as const
+
+export interface PptRenderOptions {
+  w: number
+  h: number
+}
+
+export interface PptRenderPngOptions extends PptRenderOptions {
+  /** 1 起始页码，缺省导出全部页 */
+  slides?: number[]
+}
+
+export interface PptPngResult {
+  page: number
+  bytes: ArrayBuffer
+}

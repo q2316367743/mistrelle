@@ -53,6 +53,7 @@ sharp（metadata/crop/removeBackground）
 | db | `db:get/put/remove/bulkDocs/allDocs` | invoke |
 | ffmpeg | `ffmpeg:run`（invoke→`{id}`）+ `ffmpeg:progress`/`ffmpeg:done`（事件推送）+ `ffmpeg:kill/quit`（send） | 混合 |
 | sharp | `sharp:metadata/crop/removeBackground` | invoke |
+| ppt | `ppt:renderPptxToSvgs`（XML→每页 SVG）/ `ppt:buildPptxBytes`（XML→PPTX 字节）/ `ppt:renderPptxToPngs`（XML→指定页 PNG） | invoke（POM 渲染在 main，`src/main/src/ppt/pptRenderer.ts`） |
 
 ## 四、数据层
 

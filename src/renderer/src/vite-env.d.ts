@@ -28,6 +28,7 @@ declare global {
       path: PathApi
       zip: ZipApi
       font: FontApi
+      ppt: PptApi
       shellExec: {
         cliRun(
           command: string,

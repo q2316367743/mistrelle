@@ -49,7 +49,8 @@
 
 | 文档                                                            | 描述                                                                                                                               |
 |-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型方案：POM 库调研（纯 JS+WASM、Node 22+、ESM-only、官方预览链路 XML→PPTX→SVG）、浏览器直跑三卡点、升级 Electron 后零补丁架构、PptStore / ppt_* 工具契约 / 侧边栏 UI / 注册链路 7 处改动清单 |
+| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型（已实现）：POM 库调研（纯 JS+WASM、Node 22+、ESM-only、预览链路 XML→PPTX→SVG）、主进程渲染 + IPC、PptStore / ppt_* 工具契约 / 侧边栏 UI / 注册链路、实现记录与实测差异 |
+| [02-pom-xml-guide.md](./ppt/02-pom-xml-guide.md)                | POM XML 语法指南（`ppt_guidelines` 数据源）：文档结构 / Theme 色板 / 布局 / Text / Icon / Shape / Table / Chart / 其他节点 / 设计铁律 / batch_edit 片段规范 |
 
 ### chat/ —— 对话
 

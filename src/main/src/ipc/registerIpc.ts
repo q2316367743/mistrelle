@@ -8,6 +8,7 @@ import { registerFontIpc } from './fontIpc'
 import { registerDbIpc } from './dbIpc'
 import { registerFfmpegIpc } from './ffmpegIpc'
 import { registerSharpIpc } from './sharpIpc'
+import { registerPptIpc } from './pptIpc'
 
 export function registerIpc(): void {
   registerShellIpc()
@@ -22,4 +23,5 @@ export function registerIpc(): void {
   registerDbIpc()
   registerFfmpegIpc()
   registerSharpIpc()
+  registerPptIpc()
 }

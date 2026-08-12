@@ -1,8 +1,9 @@
 # PPT 专家（ChatType: 'ppt'）：POM 库调研与实现方案
 
-> 状态：**方案文档（待实现）**。本文档基于对 `@hirokisakabe/pom@10.3.0` 的源码级调研写成。
-> 背景：项目计划升级为最新版 Electron（不再兼容 uTools 旧内核），因此本方案以「升级后环境」为主，
-> 同时保留 uTools 7.8 现状的兼容性分析作为决策依据。
+> 状态：**已实现**（Electron 迁移完成后按本文档第 10 节实施）。本文档基于对 `@hirokisakabe/pom@10.3.0` 的源码级调研写成，
+> 实现时的实测差异见文末「实现记录」。
+> 背景：项目已升级为最新版 Electron（不再兼容 uTools 旧内核），本方案按「升级后环境」实施；
+> uTools 7.8 现状的兼容性分析仅作为决策依据保留。
 
 ---
 
@@ -204,3 +205,37 @@ type PptBatchOp =
 - 仓库：https://github.com/hirokisakabe/pom （monorepo：pom / pom-cli / pom-md / pom-jsx / pom-editor）
 - `@hirokisakabe/pom@10.3.0`（unpkg 源码扫描）、`@hirokisakabe/pom-cli@0.10.0`（preview 链路）、`pptx-glimpse@3.2.8`（browser 构建）
 - uTools 7.8.0 运行时：Electron 22.3.27 / Node 16.17（本机安装包二进制分析 + 官方 preload 文档）
+
+## 12. 实现记录（2026-08，实测差异与补充）
+
+### 12.1 已落地的实现
+
+| 项 | 说明 |
+|---|---|
+| 依赖 | `@hirokisakabe/pom@10.3.0` + `pptx-glimpse@3.2.8`（均 `dependencies`，主进程 externalize 后打包进 asar） |
+| 主进程渲染 | `src/main/src/ppt/pptRenderer.ts`（buildPptx → SVG / PPTX 字节 / PNG）+ `src/main/src/ipc/pptIpc.ts` |
+| IPC | `PptChannels`：`ppt:renderPptxToSvgs` / `ppt:buildPptxBytes` / `ppt:renderPptxToPngs`（preload `window.preload.ppt`） |
+| 渲染进程 | `src/renderer/src/modules/ppt/`：`PptStore.ts`（500ms 防抖自动渲染）/ `pptTypes.ts` / `pptRender.ts` / `pptPrompt.ts` / `pptGuidelines.ts` |
+| 工具 | `src/renderer/src/modules/tool/components/ppt/pptTools.ts`（10 个 ppt_* 工具 + 策略：全 allow，导出工具走 `isPathUnder` 路径感知审批） |
+| UI | `src/components/chat/aside/ppt/PptAside.vue` + `PptRenderer.vue`（SVG `<img>` 渲染、翻页 / 缩放 / 缩略图导航 / 自动滚动定位） |
+| 注册 | `chatType.ts`（ChatType + CHAT_TYPE_OPTIONS，design 后插入，图标 `SlideshowIcon`）/ `ChatTypeConfig.ts` / `LChatAside.vue` / `LChatEngine.vue` / `SUB_AGENT_ALLOW`（ppt 无子 Agent，空数组） |
+| 指南 | `docs/ppt/02-pom-xml-guide.md`（= `src/renderer/src/modules/ppt/guidelines/pom-xml-guide.md`，`ppt_guidelines` 经 `?raw` 读取） |
+
+### 12.2 实测差异（相对调研结论）
+
+1. **CJS 无法 `require` POM**：`exports` 无 `require` 条件，`ERR_PACKAGE_PATH_NOT_EXPORTED`（Node 22 / 24 均如此）。
+   主进程（CJS）用**动态 `import('@hirokisakabe/pom')`** 加载（走 import 条件），electron-vite 构建会保留原生 `import()`（`dynamicImportInCjs`），POC 与构建产物均已验证。
+2. **`buildPptx` 只接受 XML 字符串**：源码 `buildPptx(xml)` 内部先 `parseXml(xml)`，README 中「传 POMNode 数组」的示例不成立。
+3. **`parseXml` 返回「页列表」**：顶层 `<Slide>` 解析为 POMNode 数组（单子元素直接返回该节点，多子元素隐式包 `{type:'vstack'}`）；
+   `serializeXml` 输出顶层即 `<Slide>`（round-trip 可 parse）——`ppt_batch_edit` 的「解析 → 操作 → 序列化写回」由此实现。
+4. **Table 无 `data` / `header*` 属性**：用子元素 `<Tr><Td .../></Tr>`（`Td` 文字色属性为 `color`，非 `textColor`）；Chart 用 `<ChartSeries><ChartDataPoint label value/></ChartSeries>` 子元素（JSON 属性形式亦可，但需 `&quot;` 转义）。
+5. **Theme round-trip 内联**：`$token` 在 parse 时解析为 hex 实色，`serializeXml` 写回后 `<Theme>` 声明消失（视觉等价）——已写入指南第 2 条提示 AI。
+6. **ChatService.ts 无需改动**：`aiChatSandbox` 已对所有聊天类型统一预建 `outputs/`，满足 ppt 需求。
+7. **PNG 导出**：直接用 `pptx-glimpse` 的 `convertPptxToPng`（含 resvg），无需自接 resvg-wasm。
+8. **图标**：`SlideshowIcon` 在 tdesign 确认存在；`FilePptIcon` 不存在（导出 PPTX 菜单用 `FileIcon`）。
+
+### 12.3 已知限制（第一版范围，与 §8 一致）
+
+- SVG 经 `<img>` + data URI 渲染，无元素级点击交互；图片仅 base64 / 沙盒本地文件；无 ppt 型子 Agent。
+- 渲染失败保留旧图，错误文本记录在 `PptStore.renderError`，AI 经 `ppt_read` 返回值读取自纠。
+- 中文默认用 POM 内置 Noto Sans JP（字形偏日式），后续可映射系统字体（参考 pom-cli `EXTRA_FONT_MAPPING`）。
