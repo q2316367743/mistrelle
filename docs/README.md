@@ -20,7 +20,7 @@
 
 | 文档                                                                           | 描述                                                                                                                                                     |
 |--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 首次远程下载、sharp 移植、renderer 异步化适配清单 |
+| [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload，例外：net 下载因 onDownloadProgress 回调无法过 IPC 而保留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 首次远程下载、sharp 移植、renderer 异步化适配清单 |
 | [02-local-protocol.md](./migration/02-local-protocol.md)                       | `mistrelle://` 本地资源协议：渲染层 URL 加载本地字体/图片，规避 dev 下 http 页面加载 file:// 被 Chromium 拦截；`registerLocalSchemes` 须在 app ready 前注册、handler 读盘返回 |
 
 ### subscribe/ —— 订阅

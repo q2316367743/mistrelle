@@ -94,11 +94,6 @@ export const FsChannels = {
   stat: 'fs:stat'
 } as const
 
-// ── net ────────────────────────────────────────────────────
-export const NetChannels = {
-  downloadFileFromUrl: 'net:downloadFileFromUrl'
-} as const
-
 // ── shellExec ──────────────────────────────────────────────
 export const ShellExecChannels = {
   cliRun: 'shellExec:cliRun',

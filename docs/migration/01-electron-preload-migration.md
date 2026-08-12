@@ -6,7 +6,8 @@
 ## 一、背景与目标
 
 - 原 `src-utools/preload.js` 向 `window.preload` 挂 9 个模块 + axios 实例，其中 `inject.js` 是 uTools API 的薄封装
-- Electron 迁移后：**特权操作全部进 main 进程（IPC）**，纯函数留在 preload，`window.preload` 形状不变
+- Electron 迁移后：**特权操作进 main 进程（IPC）**，纯函数留在 preload，`window.preload` 形状不变
+- **例外：`net.downloadFileFromUrl` 保留在 preload**——下载需透传 `onDownloadProgress` 回调，而 IPC（结构化克隆）无法序列化函数，故由 preload 用 axios + node:fs 直接落盘（`sandbox: false` 下 Node 能力可用）
 - 已确认裁剪：db 无 `_rev` 冲突检测、无附件；`cBrowser` 暂为 `null`（用户自行实现）；删除 uTools 平台专有能力
 
 ## 二、进程职责划分
@@ -17,8 +18,8 @@ main 进程（特权操作）                        preload 进程（薄桥 + �
 shell / dialog / clipboard                  path（纯字符串函数，node:path）
 os（getPath 走 sendSync）                    iconv / crypto / zip（纯函数封装）
 display / notification                      axios.create({adapter:'http'}）
-fs（11 方法，异步 invoke）                   fs / net / shellExec / font（IPC 薄桥）
-net.downloadFileFromUrl                      inject.ts（IPC 桥接）
+fs（11 方法，异步 invoke）                   fs / shellExec / font（IPC 薄桥）
+net.downloadFileFromUrl（axios 下载 + 落盘）  inject.ts（IPC 桥接）
 shellExec（cliRun/jsRun，spawn + worker）
 font（系统字体枚举 + 资源库，431 行拆分 parser + index）
 db（lmdb，utools 兼容层）
@@ -47,7 +48,6 @@ sharp（metadata/crop/removeBackground）
 | display | `display:getPrimaryDisplay/.../desktopCaptureSources` | invoke |
 | notification | `notification:show` | send（fire-and-forget） |
 | fs | `fs:readDir/.../stat` | invoke（11 方法） |
-| net | `net:downloadFileFromUrl` | invoke（pathToHref 留在 preload） |
 | shellExec | `shellExec:cliRun/jsRun` | invoke |
 | font | `font:listFonts/.../readFont` | invoke（getAssetsDir/getFontCachePath 留在 preload） |
 | db | `db:get/put/remove/bulkDocs/allDocs` | invoke |

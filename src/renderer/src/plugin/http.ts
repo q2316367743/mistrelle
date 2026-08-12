@@ -152,7 +152,6 @@ export async function requestDownload(
   path: string
 ): Promise<void> {
   const _config = httpRequestToAxiosConfig(config)
-  console.log(_config)
   return window.preload.net.downloadFileFromUrl(_config, path)
 }
 

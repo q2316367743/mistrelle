@@ -3,7 +3,6 @@
  */
 import { registerShellIpc, registerDialogIpc, registerClipboardIpc, registerOsIpc, registerDisplayIpc, registerNotificationIpc } from './electronIpc'
 import { registerFsIpc } from './fsIpc'
-import { registerNetIpc } from './netIpc'
 import { registerShellExecIpc } from './shellExecIpc'
 import { registerFontIpc } from './fontIpc'
 import { registerDbIpc } from './dbIpc'
@@ -18,7 +17,6 @@ export function registerIpc(): void {
   registerDisplayIpc()
   registerNotificationIpc()
   registerFsIpc()
-  registerNetIpc()
   registerShellExecIpc()
   registerFontIpc()
   registerDbIpc()
