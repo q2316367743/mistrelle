@@ -1,0 +1,29 @@
+{
+  "$schema": "../node_modules/utools-api-types/resource/utools.schema.json",
+
+  "name": "mistrelle",
+  "title": "半窗烟雨",
+  "description": "半窗烟雨",
+  "version": "1.0.0",
+
+  "main": "dist/index.html",
+  "preload": "preload.js",
+  "logo": "public/logo.png",
+  "platform": ["win32", "darwin", "linux"],
+  "development": {
+    "main": "http://localhost:7743/"
+  },
+  "pluginSetting": {
+    "single": true,
+    "height": 0
+  },
+  "features": [
+    {
+      "code": "mistrelle",
+      "explain": "半窗烟雨",
+      "icon": "public/logo.png",
+      "platform": ["win32", "darwin", "linux"],
+      "cmds": ["半窗烟雨"]
+    }
+  ]
+}

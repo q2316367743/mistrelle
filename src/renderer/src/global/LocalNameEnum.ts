@@ -1,0 +1,28 @@
+export const LocalNameEnum = {
+  KEY_APP_COLLAPSED: '/key/app/collapsed',
+  KEY_AI_COMMON_MODEL: '/key/ai/common/model',
+  KEY_AI_WORKSPACE: '/key/ai/workspace',
+
+  KEY_AI_ASIDE_COLLAPSED: '/key/ai/aside/collapsed',
+  KEY_AI_ASIDE_WIDTH: '/key/ai/aside/width',
+
+  KEY_DESIGN_RIGHT_WIDTH: '/key/design/right/width',
+
+
+  SETTING_NETWORK: '/setting/network',
+  SETTING_ACCOUNT: '/setting/account',
+  SETTING_DEFAULT: '/setting/default',
+  SETTING_GLOBAL: '/setting/global',
+  SETTING_SECURE: '/setting/secure',
+  SETTING_ASSETS: '/setting/assets',
+
+  LIST_AI_AGENT: '/list/ai/group',
+  LIST_AI_DISCUSSION: '/list/ai/discussion',
+  LIST_AI_PROMPT: '/list/ai/prompt',
+  LIST_NOTE_TRACE: '/list/note/trace',
+  LIST_AI_WORKSPACE: '/list/ai/workspace',
+
+  ITEM_AI_DISCUSSION: (id: string) => `/item/ai/discussion/${id}`,
+  ITEM_AI_PROMPT: (id: string) => `/item/ai/prompt/${id}`,
+  ITEM_NOTE_TRACE: (id: string | number) => `/item/note/trace/${id}`
+}
