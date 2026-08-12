@@ -4,6 +4,7 @@
  * 方法签名与返回形态与原模块一致。
  */
 import { ipcRenderer } from 'electron'
+import {existsSync} from 'node:fs'
 import { FsChannels } from './channels'
 
 interface FileEntry {
@@ -32,7 +33,7 @@ export const fsApi = {
     const data = (await ipcRenderer.invoke(FsChannels.readBinaryFile, path)) as Uint8Array
     return toArrayBuffer(data)
   },
-  existsSync: (path: string): Promise<boolean> => ipcRenderer.invoke(FsChannels.existsSync, path),
+  existsSync: (path: string): boolean => existsSync(path),
   mkdir: (path: string, recursive = true): Promise<void> =>
     ipcRenderer.invoke(FsChannels.mkdir, path, recursive),
   rm: (path: string, options = { recursive: true, force: true }): Promise<void> =>
