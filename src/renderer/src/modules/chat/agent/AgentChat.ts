@@ -235,7 +235,8 @@ export class ToolChat {
   private buildTypePrompt(): string {
     if (this.isSubAgent) return ''
     const base = CHAT_TYPE_CONFIG[this.chatType].prompt(this.typeToolsContext())
-    if (this.chatType === 'design' && this.designStylePrompt) {
+    // 设计风格（design / ppt 创建后锁定）：附加在类型提示词之后
+    if ((this.chatType === 'design' || this.chatType === 'ppt') && this.designStylePrompt) {
       return [base, this.designStylePrompt].filter(Boolean).join('\n\n')
     }
     if (this.chatType !== 'writing') return base

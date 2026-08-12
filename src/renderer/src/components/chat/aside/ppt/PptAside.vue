@@ -64,11 +64,11 @@ import { MessageUtil } from '@/utils/modal'
 import { FolderOpenIcon, FileIcon, ImageIcon, MoreIcon, RefreshIcon } from 'tdesign-icons-vue-next'
 import type { DropdownProps } from 'tdesign-vue-next'
 import {
-  buildPptxBytes,
+  buildPptFileName,
   buildPptOutputsDir,
-  buildSlidesFileName,
-  getPptStore,
-  renderPptxToPngs
+  exportPptx,
+  exportPptxToPngs,
+  getPptStore
 } from '@/modules/ppt'
 import { PPT_SLIDE_SIZE } from '@/modules/ppt'
 import type { ChatStatus } from '@/modules/chat'
@@ -90,7 +90,7 @@ const props = withDefaults(
 
 const store = computed(() => getPptStore(props.sandbox ?? ''))
 
-const selected = ref<number | undefined>(undefined)
+const selected = ref<string | undefined>(undefined)
 const busy = ref(false)
 
 /** 聊天进行中（pending / streaming）：禁用手动切换 PPT，避免干扰 AI 作答 */
@@ -100,22 +100,22 @@ const emptyText = '请先让 AI 创建 PPT'
 
 const slideOptions = computed(() =>
   store.value.files.value.map((file) => ({
-    label: `版本 ${file.version}（${dayjs(file.updatedTime).format('MM-DD HH:mm')}）`,
-    value: file.version
+    label: `${file.id}（${dayjs(file.updatedTime).format('MM-DD HH:mm')}）`,
+    value: file.id
   }))
 )
 
 /** 文件列表刷新后，若当前已有打开的 PPT 则保持选中态 */
 const syncSelected = () => {
-  selected.value = store.value.current.value?.version
+  selected.value = store.value.current.value?.id
 }
 
 onMounted(async () => {
   await store.value.refreshFiles()
   const files = store.value.files.value
-  // 默认打开最新版本
+  // 默认打开第一个文件
   if (files.length && !store.value.current.value) {
-    await store.value.open(files[files.length - 1].version)
+    await store.value.open(files[0].id)
   }
   syncSelected()
 })
@@ -128,16 +128,16 @@ watch(
 
 // AI 通过 ppt_create / ppt_open / ppt_batch_edit 变更当前 PPT → 同步下拉选中
 watch(
-  () => store.value.current.value?.version,
-  (version) => {
-    selected.value = version
+  () => store.value.current.value?.id,
+  (id) => {
+    selected.value = id
   }
 )
 
-const handleSelect = (version: unknown) => {
-  const v = typeof version === 'number' ? version : undefined
+const handleSelect = (id: unknown) => {
+  const v = typeof id === 'string' ? id : undefined
   if (v == null) return
-  if (store.value.current.value?.version === v) return
+  if (store.value.current.value?.id === v) return
   void store.value.open(v)
 }
 
@@ -145,21 +145,20 @@ const handleRefresh = () => {
   void store.value.refreshFiles()
 }
 
-/** 导出当前 PPTX（用户选择保存路径） */
+/** 导出当前 PPTX（用户选择保存路径，主进程构建并落盘） */
 const handleExportPptx = async () => {
   const doc = store.value.current.value
   if (!doc) return
   busy.value = true
   try {
-    const bytes = await buildPptxBytes(doc.xml, PPT_SLIDE_SIZE)
-    const name = `slides-${doc.version}-${dayjs().format('YYYYMMDDHHmmss')}.pptx`
+    const name = `${doc.id}-${dayjs().format('YYYYMMDDHHmmss')}.pptx`
     const path = await window.preload.inject.dialog.save({
       title: '导出 PPTX',
       defaultPath: name,
       filters: [{ name: 'PPTX 演示文稿', extensions: ['pptx'] }]
     })
     if (!path) return
-    await window.preload.fs.writeBinaryFile(path, bytes)
+    await exportPptx(doc.xml, PPT_SLIDE_SIZE, path)
     MessageUtil.success('已导出 PPTX')
   } catch (e) {
     MessageUtil.error('导出失败', e)
@@ -168,24 +167,22 @@ const handleExportPptx = async () => {
   }
 }
 
-/** 导出当前页 PNG（用户选择保存路径） */
+/** 导出当前页 PNG（用户选择保存路径，主进程渲染并落盘） */
 const handleExportPng = async () => {
   const doc = store.value.current.value
   if (!doc) return
   busy.value = true
   try {
     const page = store.value.currentPage.value
-    const results = await renderPptxToPngs(doc.xml, PPT_SLIDE_SIZE, [page])
-    const result = results[0]
-    if (!result) throw new Error('当前页渲染失败')
-    const name = `slides-${doc.version}-page-${result.page}-${dayjs().format('YYYYMMDDHHmmss')}.png`
+    const name = `${doc.id}-page-${page}-${dayjs().format('YYYYMMDDHHmmss')}.png`
     const path = await window.preload.inject.dialog.save({
       title: '导出当前页 PNG',
       defaultPath: name,
       filters: [{ name: 'PNG 图片', extensions: ['png'] }]
     })
     if (!path) return
-    await window.preload.fs.writeBinaryFile(path, result.bytes)
+    const files = await exportPptxToPngs(doc.xml, PPT_SLIDE_SIZE, path, [page])
+    if (!files.length) throw new Error('当前页渲染失败')
     MessageUtil.success('已导出 PNG')
   } catch (e) {
     MessageUtil.error('导出失败', e)
@@ -200,10 +197,7 @@ const handleAction: DropdownProps['onClick'] = (data) => {
   else if (data.value === 'folder') {
     if (selected.value) {
       window.preload.inject.shell.showItemInFolder(
-        window.preload.path.join(
-          buildPptOutputsDir(props.sandbox ?? ''),
-          buildSlidesFileName(selected.value)
-        )
+        window.preload.path.join(buildPptOutputsDir(props.sandbox ?? ''), buildPptFileName(selected.value))
       )
     } else {
       void window.preload.inject.shell.openPath(buildPptOutputsDir(props.sandbox ?? ''))

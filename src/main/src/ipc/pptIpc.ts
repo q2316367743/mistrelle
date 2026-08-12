@@ -1,11 +1,11 @@
 /**
- * ppt IPC handler（main 进程）：POM XML → SVG / PPTX / PNG 渲染。
- * 渲染逻辑全部在 main 进程（POM 为 ESM-only + resvg wasm Node-only 加载），
- * 渲染进程只负责显示 SVG。
+ * ppt IPC handler（main 进程）：POM XML → SVG / PPTX / PNG。
+ * 渲染逻辑全部在 main 进程（POM 为 ESM-only + resvg wasm Node-only 加载）；
+ * 导出（PPTX / PNG）由 main 构建后**直接落盘**，渲染进程只负责传 (xml, 目标路径)。
  */
 import { ipcMain } from 'electron'
-import { PptChannels, PptRenderOptions, PptRenderPngOptions } from '~/channels'
-import { buildPptxBytes, renderPptxToPngs, renderPptxToSvgs } from '../ppt/pptRenderer'
+import { PptChannels, PptExportPngOptions, PptExportPptxOptions, PptRenderOptions } from '~/channels'
+import { exportPptxFile, exportPptxPngFiles, renderPptxToSvgs } from '../ppt/pptRenderer'
 
 export function registerPptIpc(): void {
   ipcMain.handle(
@@ -15,13 +15,14 @@ export function registerPptIpc(): void {
   )
 
   ipcMain.handle(
-    PptChannels.buildPptxBytes,
-    (_event, xml: string, options: PptRenderOptions): Promise<ArrayBuffer> =>
-      buildPptxBytes(xml, options)
+    PptChannels.exportPptx,
+    (_event, xml: string, options: PptExportPptxOptions): Promise<string> =>
+      exportPptxFile(xml, options, options.path)
   )
 
   ipcMain.handle(
-    PptChannels.renderPptxToPngs,
-    (_event, xml: string, options: PptRenderPngOptions) => renderPptxToPngs(xml, options, options.slides)
+    PptChannels.exportPptxToPngs,
+    (_event, xml: string, options: PptExportPngOptions): Promise<string[]> =>
+      exportPptxPngFiles(xml, options, options.path, options.slides)
   )
 }

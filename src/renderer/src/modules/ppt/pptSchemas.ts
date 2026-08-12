@@ -1,0 +1,63 @@
+/**
+ * PPT 元素 schema 校验与模型侧参数描述（TypeBox 单一源）。
+ * 节点结构定义见 pptElementSchemas.ts，本文件只做转换与运行时校验：
+ * - pptElementSchema / pptElementsSchema：喂给模型的 ToolProperty 参数描述
+ * - validatePptElement / validatePptElements / validatePptTheme：入参拦截（中文报错反馈模型自纠）
+ */
+import { collectErrors, toToolProperty } from '@/modules/tool/typeboxUtil'
+import type { ToolProperty } from '@/domain'
+import { pptElementSchemaT, pptElementVariants, pptElementsSchemaT } from './pptElementSchemas'
+
+/** 元素 schema（供模型了解 batch_edit 的 elements 元素结构） */
+export const pptElementSchema: ToolProperty = toToolProperty(pptElementSchemaT)
+
+/** 元素数组 schema（供模型了解 add_slide / batch_edit 的 elements 参数） */
+export const pptElementsSchema: ToolProperty = toToolProperty(pptElementsSchemaT)
+
+/** 可用元素类型清单（错误提示用） */
+const PPT_ELEMENT_TYPES = Object.keys(pptElementVariants)
+
+/**
+ * 校验单个元素：先按 type 判别到对应分支 schema（未知 type / 缺 type 给出明确提示），
+ * 再做精确字段校验（含 children 递归，递归内错误定位到子元素位置）。
+ */
+export const validatePptElement = (value: unknown): string[] => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return ['元素必须是 JSON 对象']
+  const type = (value as { type?: unknown }).type
+  if (typeof type !== 'string') {
+    return [`元素缺少 type 字段（可用：${PPT_ELEMENT_TYPES.join(' / ')}）`]
+  }
+  const variant = pptElementVariants[type]
+  if (!variant) {
+    return [`未知元素类型「${type}」（可用：${PPT_ELEMENT_TYPES.join(' / ')}）`]
+  }
+  return collectErrors(variant, value)
+}
+
+/** 校验元素数组（1..N，每元素按 type 判别精确校验） */
+export const validatePptElements = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return ['elements 必须是数组']
+  if (value.length === 0) {
+    return ['elements 不能为空：页面至少包含 1 个元素（根元素建议为 VStack / HStack 布局容器）']
+  }
+  const errors: string[] = []
+  value.forEach((element, index) => {
+    errors.push(...validatePptElement(element).map((message) => `第 ${index + 1} 个元素：${message}`))
+  })
+  return errors
+}
+
+/** 校验 Theme 令牌表：token 名合法 + 值 6 位 hex（# 可选） */
+export const validatePptTheme = (theme: unknown): string[] => {
+  if (!theme || typeof theme !== 'object' || Array.isArray(theme)) return ['theme 必须是对象（token 名 → 颜色）']
+  const errors: string[] = []
+  for (const [key, value] of Object.entries(theme)) {
+    if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(key)) {
+      errors.push(`theme 令牌名「${key}」非法（以字母开头，可含字母 / 数字 / _ / -）`)
+    }
+    if (typeof value !== 'string' || !/^#?[0-9a-fA-F]{6}$/.test(value)) {
+      errors.push(`theme 令牌「${key}」的颜色值「${String(value)}」非法（应为 6 位 hex，如 FFFFFF）`)
+    }
+  }
+  return errors
+}

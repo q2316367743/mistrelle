@@ -53,7 +53,7 @@ sharp（metadata/crop/removeBackground）
 | db | `db:get/put/remove/bulkDocs/allDocs` | invoke |
 | ffmpeg | `ffmpeg:run`（invoke→`{id}`）+ `ffmpeg:progress`/`ffmpeg:done`（事件推送）+ `ffmpeg:kill/quit`（send） | 混合 |
 | sharp | `sharp:metadata/crop/removeBackground` | invoke |
-| ppt | `ppt:renderPptxToSvgs`（XML→每页 SVG）/ `ppt:buildPptxBytes`（XML→PPTX 字节）/ `ppt:renderPptxToPngs`（XML→指定页 PNG） | invoke（POM 渲染在 main，`src/main/src/ppt/pptRenderer.ts`） |
+| ppt | `ppt:renderPptxToSvgs`（XML→每页 SVG）/ `ppt:exportPptx`（XML→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（XML→指定页 PNG 并落盘） | invoke（POM 渲染与导出落盘都在 main，`src/main/src/ppt/pptRenderer.ts`；渲染进程只传 xml + 目标路径，不经手字节） |
 
 ## 四、数据层
 

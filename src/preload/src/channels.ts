@@ -230,10 +230,10 @@ export interface SharpRemoveBackgroundResult {
 export const PptChannels = {
   /** POM XML → 每页 SVG 字符串数组（预览渲染） */
   renderPptxToSvgs: 'ppt:renderPptxToSvgs',
-  /** POM XML → PPTX 字节（导出 PPTX） */
-  buildPptxBytes: 'ppt:buildPptxBytes',
-  /** POM XML → 指定页 PNG 字节（导出 PNG） */
-  renderPptxToPngs: 'ppt:renderPptxToPngs'
+  /** POM XML → 构建 PPTX 并直接落盘（导出 PPTX；主进程完成，渲染进程不经手字节） */
+  exportPptx: 'ppt:exportPptx',
+  /** POM XML → 渲染指定页 PNG 并直接落盘（导出 PNG；单页为文件路径，多页为目录） */
+  exportPptxToPngs: 'ppt:exportPptxToPngs'
 } as const
 
 export interface PptRenderOptions {
@@ -241,12 +241,14 @@ export interface PptRenderOptions {
   h: number
 }
 
-export interface PptRenderPngOptions extends PptRenderOptions {
-  /** 1 起始页码，缺省导出全部页 */
-  slides?: number[]
+export interface PptExportPptxOptions extends PptRenderOptions {
+  /** PPTX 文件保存路径 */
+  path: string
 }
 
-export interface PptPngResult {
-  page: number
-  bytes: ArrayBuffer
+export interface PptExportPngOptions extends PptRenderOptions {
+  /** 单页导出为文件路径；多页导出为目录（每页写 page-{n}.png） */
+  path: string
+  /** 1 起始页码，缺省导出全部页 */
+  slides?: number[]
 }

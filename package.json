@@ -23,11 +23,11 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "@hirokisakabe/pom": "^10.3.0",
+    "@hirokisakabe/pom": "10.3.0",
     "axios": "1.15.2",
     "electron-updater": "^6.3.9",
     "lmdb": "^3.3.3",
-    "pptx-glimpse": "^3.2.8",
+    "pptx-glimpse": "3.2.8",
     "sharp": "^0.34.2"
   },
   "devDependencies": {

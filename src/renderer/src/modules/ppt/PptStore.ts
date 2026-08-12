@@ -1,26 +1,29 @@
 /**
  * PPT 响应式 store（按 sandboxDir 键控的全局单例，同 CanvasStore 模式）：
- * - 工具与侧边栏共享同一实例：AI 变更（写 outputs/slides-{version}.pom.xml）实时驱动渲染
+ * - 工具与侧边栏共享同一实例：AI 变更（写沙盒 outputs/{name}.pom.xml）实时驱动渲染
+ * - 文件模型：单一文件持续编辑（ppt_create 定文件名 + Theme，之后 addSlide / editSlide 原地写回，
+ *   不再产生版本文件）；文件内多个 <Slide> 即多页
  * - watch(current.xml) → 500ms 防抖 → 主进程渲染每页 SVG；失败保留旧图并记录错误
- * - batchEdit 基于 POM 的 parseXml / serializeXml（clientApi，环境无关），
- *   同批校验、任一失败整体回滚（校验失败不落盘即回滚）
+ * - 页面编辑链路：JSON 元素数组 → TypeBox 校验（pptSchemas）→ POMNode 组装 →
+ *   serializeXml 写回（round-trip 可 parse，已 POC 验证）
  */
 import { ref, watch } from 'vue'
 import { parseXml, serializeXml } from '@hirokisakabe/pom/clientApi'
 import type { POMNode } from '@hirokisakabe/pom/clientApi'
 import { renderPptxToSvgs } from './pptRender'
-import type { PptBatchOp, PptCurrentDoc, PptFileInfo, PptRenderState } from './pptTypes'
+import { validatePptElements, validatePptTheme } from './pptSchemas'
+import type { PptCurrentDoc, PptFileInfo, PptRenderState, PptTheme } from './pptTypes'
 import { PPT_SLIDE_SIZE } from './pptTypes'
 
-const SLIDES_FILE_REGEX = /^slides-(\d+)\.pom\.xml$/
+const PPT_FILE_REGEX = /^(.+)\.pom\.xml$/
 
-/** 解析版本文件名版本号，非 PPT 文件返回 null */
-export const parseSlidesVersion = (name: string): number | null => {
-  const match = SLIDES_FILE_REGEX.exec(name)
-  return match ? Number(match[1]) : null
+/** 从文件名解析 PPT 标识（id = 去扩展名的 name），非 PPT 文件返回 null */
+export const parsePptFile = (name: string): string | null => {
+  const match = PPT_FILE_REGEX.exec(name)
+  return match ? match[1] : null
 }
 
-export const buildSlidesFileName = (version: number): string => `slides-${version}.pom.xml`
+export const buildPptFileName = (name: string): string => `${name}.pom.xml`
 
 /** 输出目录：~/.mistrelle/workspace/{chatId}/outputs */
 export const buildPptOutputsDir = (sandboxDir: string): string =>
@@ -28,20 +31,63 @@ export const buildPptOutputsDir = (sandboxDir: string): string =>
 
 const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
-/** ppt_create 初始骨架：16:9 标题页（AI 后续经 batch_edit 续写内容页） */
-const buildCreateXml = (title: string): string => `<Slide>
-  <VStack w="100%" h="100%" padding="48" gap="24" alignItems="center" justifyContent="center" backgroundColor="F8F9FA">
-    <Text fontSize="48" bold="true" color="1F2937" text="${title}" />
-    <Text fontSize="24" color="6B7280" text="副标题或说明文字" />
-  </VStack>
-</Slide>`
+/** 空页占位：铺满画布的空白 VStack（addSlide 缺省内容） */
+const EMPTY_SLIDE_NODE: POMNode = {
+  type: 'vstack',
+  w: '100%',
+  h: '100%',
+  padding: 48,
+  children: []
+} as unknown as POMNode
 
-/** 下一个版本号（当前最大版本 + 1） */
-const nextVersionOf = (files: PptFileInfo[]): number =>
-  files.length ? Math.max(...files.map((f) => f.version)) + 1 : 1
+/**
+ * 元素数组 → 页面根节点（对齐 parseXml 对 <Slide> 多子元素的隐式 VStack 包裹语义）：
+ * 1 个元素直接用；多个元素包 {type:'vstack', children}。
+ */
+const toSlideNode = (elements: POMNode[]): POMNode =>
+  elements.length === 1 ? elements[0] : ({ type: 'vstack', children: elements } as POMNode)
+
+/** 构建主题声明：<Theme token="hex" ... />（无令牌时返回空串） */
+const buildThemeXml = (theme: PptTheme): string => {
+  const attrs = Object.entries(theme)
+    .map(([key, value]) => `${key}="${value.replace(/^#/, '')}"`)
+    .join(' ')
+  return attrs ? `<Theme ${attrs} />` : ''
+}
+
+/**
+ * 从文件头部提取 <Theme ... /> 声明。
+ * 注意：POM 的 parseXml 把 <Theme> 解析为色板（不保留为节点），serializeXml 写回会丢失它，
+ * 因此页面编辑写回时必须把 Theme 声明拼回文件头，保证 $token 引用持续有效。
+ */
+const extractThemeXml = (xml: string): string => {
+  const match = /^\s*<Theme\b[^>]*\/?>(?:<\/Theme>)?\s*/.exec(xml)
+  return match ? match[0].trim() : ''
+}
+
+/**
+ * 补全 Table 的 columns（POM 的 parseXml 对 rows="..." JSON 属性形式不会自动补 columns，
+ * 仅 <Tr> 子元素形式会；缺失时布局阶段 calcTableIntrinsicSize 报错）。
+ * 递归处理子树；列数 = 各行单元格数最大值（含 colspan）。
+ */
+const normalizeTableColumns = (node: POMNode): void => {
+  if (node.type === 'table') {
+    const rows = node.rows
+    if (node.columns === undefined && Array.isArray(rows) && rows.length > 0) {
+      const maxCells = Math.max(
+        ...rows.map((row) => row.cells?.reduce((sum, cell) => sum + (cell.colspan ?? 1), 0) ?? 0)
+      )
+      node.columns = Array.from({ length: maxCells }, () => ({}))
+    }
+  }
+  if ('children' in node && Array.isArray(node.children)) node.children.forEach(normalizeTableColumns)
+}
+
+/** 页面操作返回（error 或 success + 1 起始 slideId） */
+export type PptPageResult = { error: string } | { success: true; slideId: number; total: number }
 
 export class PptStore {
-  /** outputs/ 下的版本文件列表 */
+  /** outputs/ 下的 PPT 文件列表（id = 文件名） */
   readonly files = ref<PptFileInfo[]>([])
   /** 当前打开的文档（AI / 侧边栏共享，xml 变更驱动自动渲染） */
   readonly current = ref<PptCurrentDoc | null>(null)
@@ -63,7 +109,7 @@ export class PptStore {
     )
   }
 
-  /** 重新扫描 outputs/ 下的 slides 版本文件列表 */
+  /** 重新扫描 outputs/ 下的 PPT 文件列表 */
   async refreshFiles(): Promise<PptFileInfo[]> {
     const dir = buildPptOutputsDir(this.sandboxDir)
     if (!window.preload.fs.existsSync(dir)) {
@@ -74,22 +120,21 @@ export class PptStore {
     const infos: PptFileInfo[] = []
     for (const item of items) {
       if (!item.isFile) continue
-      const version = parseSlidesVersion(item.name)
-      if (version === null) continue
-      infos.push({ version, name: item.name, path: item.path, updatedTime: item.mtime })
+      const id = parsePptFile(item.name)
+      if (id === null) continue
+      infos.push({ id, name: item.name, path: item.path, updatedTime: item.mtime })
     }
-    // 按版本升序，稳定的 t-select 展示顺序
-    infos.sort((a, b) => a.version - b.version)
+    infos.sort((a, b) => a.name.localeCompare(b.name))
     this.files.value = infos
     return this.files.value
   }
 
-  /** 打开指定版本为当前文档（返回 null 表示版本不存在） */
-  async open(version: number): Promise<PptCurrentDoc | null> {
-    const path = window.preload.path.join(buildPptOutputsDir(this.sandboxDir), buildSlidesFileName(version))
+  /** 打开指定 PPT 为当前文档（返回 null 表示不存在） */
+  async open(id: string): Promise<PptCurrentDoc | null> {
+    const path = window.preload.path.join(buildPptOutputsDir(this.sandboxDir), buildPptFileName(id))
     if (!window.preload.fs.existsSync(path)) return null
     const xml = await window.preload.fs.readTextFile(path)
-    const doc: PptCurrentDoc = { version, name: `slides-${version}`, xml }
+    const doc: PptCurrentDoc = { id, name: buildPptFileName(id), xml }
     this.current.value = doc
     this.currentPage.value = 1
     await this.refreshFiles()
@@ -97,144 +142,122 @@ export class PptStore {
   }
 
   /**
-   * 读取指定版本（缺省当前版本）的 POM XML 文本，附渲染状态供 AI 自纠。
-   * 返回 null 表示版本不存在。
+   * 读取指定 PPT（缺省当前）的 POM XML，附渲染状态供 AI 自纠。
+   * slideId（1 起始）给定时只返回该页的 <Slide> 片段（聚焦单页编辑）。
+   * 返回 null 表示文件不存在；{ error } 表示解析失败。
    */
-  async read(version?: number): Promise<{
+  async read(
+    id?: string,
+    slideId?: number
+  ): Promise<{ error: string } | {
     content: string
-    version: number
+    id: string
+    page?: number
     renderState: PptRenderState
     renderError: string
   } | null> {
     const doc = this.current.value
-    const targetVersion = version ?? doc?.version
-    if (targetVersion == null) return null
-    const path = window.preload.path.join(
-      buildPptOutputsDir(this.sandboxDir),
-      buildSlidesFileName(targetVersion)
-    )
+    const targetId = id ?? doc?.id
+    if (!targetId) return null
+    const path = window.preload.path.join(buildPptOutputsDir(this.sandboxDir), buildPptFileName(targetId))
     if (!window.preload.fs.existsSync(path)) return null
     const content = await window.preload.fs.readTextFile(path)
+    let pageContent = content
+    let page: number | undefined
+    if (slideId != null) {
+      let pages: POMNode[]
+      try {
+        pages = parseXml(content)
+      } catch (err) {
+        return { error: `PPT XML 解析失败：${errorText(err)}` }
+      }
+      if (!Number.isInteger(slideId) || slideId < 1 || slideId > pages.length) {
+        return { error: `页码越界：${slideId}（当前共 ${pages.length} 页，从 1 开始）` }
+      }
+      pageContent = serializeXml([pages[slideId - 1]])
+      page = slideId
+    }
     return {
-      content,
-      version: targetVersion,
+      content: pageContent,
+      id: targetId,
+      ...(page != null ? { page } : {}),
       renderState: this.renderState.value,
       renderError: this.renderError.value
     }
   }
 
-  /** 创建新 PPT（自动分配 slides-{下一个版本号}）并设为当前文档 */
-  async create(input: { title?: string } = {}): Promise<PptCurrentDoc> {
+  /**
+   * 创建新 PPT：指定文件名（id）+ Theme 令牌，写 <Theme .../>（0 页）。
+   * 重名报错（不覆盖，AI 换名或先删除旧文件）。
+   */
+  async create(input: { name: string; theme?: PptTheme }): Promise<{ error: string } | { success: true; id: string; path: string }> {
+    const name = input.name?.trim()
+    if (!name) return { error: 'name 不能为空：请为 PPT 指定文件名（如「产品发布会」）' }
+    if (!/^[A-Za-z0-9\u4e00-\u9fa5_-]{1,60}$/.test(name)) {
+      return { error: `文件名「${name}」非法：1-60 字符，仅允许中文 / 字母 / 数字 / _ / -` }
+    }
+    const themeErrors = validatePptTheme(input.theme ?? {})
+    if (themeErrors.length) return { error: themeErrors.join('；') }
     await this.refreshFiles()
-    const version = nextVersionOf(this.files.value)
-    const doc: PptCurrentDoc = { version, name: `slides-${version}`, xml: buildCreateXml(input.title ?? '演示文稿') }
+    if (this.files.value.some((f) => f.id === name)) {
+      return { error: `已存在同名 PPT「${name}」，请换一个文件名，或先 ppt_delete 删除旧文件` }
+    }
+    const xml = buildThemeXml(input.theme ?? {})
+    const doc: PptCurrentDoc = { id: name, name: buildPptFileName(name), xml }
     await this.persist(doc)
     this.current.value = doc
     this.currentPage.value = 1
     await this.refreshFiles()
-    return doc
+    return { success: true, id: name, path: doc.name }
   }
 
-  /** 删除指定版本文件（删除的是当前文档时清空当前态） */
-  async delete(version: number): Promise<void> {
-    const path = window.preload.path.join(buildPptOutputsDir(this.sandboxDir), buildSlidesFileName(version))
+  /**
+   * 新增一页（Slide）到文件末尾，返回 1 起始索引。
+   * elements 缺省 / 为空 → 空白页（铺满画布的 VStack）；非空经 TypeBox 校验（任一非法整体拒绝）。
+   */
+  async addSlide(
+    id: string | undefined,
+    elements?: unknown[]
+  ): Promise<PptPageResult> {
+    return this.withPages(id, (pages) => {
+      const nodes = elements && elements.length > 0 ? this.prepareElements(elements) : [EMPTY_SLIDE_NODE]
+      pages.push(toSlideNode(nodes))
+      return { success: true, slideId: pages.length, total: pages.length }
+    })
+  }
+
+  /**
+   * 替换指定页（slideId 1 起始）内容为元素数组（整页覆盖）。
+   * 元素经 TypeBox 校验；任一非法或页码越界整体拒绝，不写文件。
+   */
+  async editSlide(
+    id: string | undefined,
+    slideId: number,
+    elements: unknown[]
+  ): Promise<PptPageResult> {
+    return this.withPages(id, (pages) => {
+      if (!Number.isInteger(slideId) || slideId < 1 || slideId > pages.length) {
+        return { error: `页码越界：${slideId}（当前共 ${pages.length} 页，从 1 开始）` }
+      }
+      const nodes = this.prepareElements(elements)
+      pages[slideId - 1] = toSlideNode(nodes)
+      return { success: true, slideId, total: pages.length }
+    })
+  }
+
+  /** 删除指定 PPT 文件（删除的是当前文档时清空当前态） */
+  async delete(id: string): Promise<void> {
+    const path = window.preload.path.join(buildPptOutputsDir(this.sandboxDir), buildPptFileName(id))
     if (window.preload.fs.existsSync(path)) {
       await window.preload.fs.rm(path)
     }
-    if (this.current.value?.version === version) {
+    if (this.current.value?.id === id) {
       this.current.value = null
       this.svgs.value = []
       this.renderState.value = 'idle'
       this.renderError.value = ''
     }
     await this.refreshFiles()
-  }
-
-  /**
-   * 批量编辑（slide 粒度）：两阶段 —— 先全量校验（片段 parseXml + 越界检查），
-   * 任一失败整体回滚（不落盘）；全部通过后 serializeXml 写回新版本文件。
-   * 索引基于「顺序执行时当前页数组」（op 间相互可见，与 canvas batch_edit 顺序语义一致）。
-   */
-  async batchEdit(
-    ops: PptBatchOp[]
-  ): Promise<{ error: string } | { success: true; version: number; name: string }> {
-    const doc = this.current.value
-    if (!doc) return { error: '当前没有打开的 PPT，请先 ppt_create 或 ppt_open' }
-    let pages: POMNode[]
-    try {
-      pages = parseXml(doc.xml)
-    } catch (err) {
-      return { error: `当前 PPT XML 解析失败：${errorText(err)}` }
-    }
-    // 阶段一：全部 xml 片段预解析校验（add 可多页；update/rewrite 必须恰好 1 页）
-    const prepared: { op: PptBatchOp; nodes: POMNode[] | null }[] = []
-    for (let i = 0; i < ops.length; i++) {
-      const op = ops[i]
-      if (op.op === 'add' || op.op === 'update' || op.op === 'rewrite') {
-        let nodes: POMNode[]
-        try {
-          nodes = parseXml(op.xml)
-        } catch (err) {
-          return { error: `第 ${i + 1} 个操作（${op.op}）的 XML 非法：${errorText(err)}` }
-        }
-        if (op.op !== 'add' && nodes.length !== 1) {
-          return {
-            error: `第 ${i + 1} 个操作（${op.op}）的 XML 片段必须恰好包含 1 页（<Slide>），实际 ${nodes.length} 页`
-          }
-        }
-        prepared.push({ op, nodes })
-      } else {
-        prepared.push({ op, nodes: null })
-      }
-    }
-    // 阶段二：顺序执行（索引基于当前数组；任一失败整体放弃，不落盘）
-    const next = [...pages]
-    for (let i = 0; i < prepared.length; i++) {
-      const { op } = prepared[i]
-      const outOfRange = (index: number): string =>
-        `第 ${i + 1} 个操作（${op.op}）的页码越界：${index}（当前共 ${next.length} 页）`
-      switch (op.op) {
-        case 'add': {
-          const at = op.at ?? next.length
-          if (at < 0 || at > next.length) return { error: outOfRange(at) }
-          next.splice(at, 0, ...(prepared[i].nodes as POMNode[]))
-          break
-        }
-        case 'update': {
-          if (op.index < 0 || op.index >= next.length) return { error: outOfRange(op.index) }
-          next[op.index] = (prepared[i].nodes as POMNode[])[0]
-          break
-        }
-        case 'remove': {
-          if (op.index < 0 || op.index >= next.length) return { error: outOfRange(op.index) }
-          next.splice(op.index, 1)
-          break
-        }
-        case 'move': {
-          if (op.from < 0 || op.from >= next.length || op.to < 0 || op.to >= next.length) {
-            return { error: `第 ${i + 1} 个操作（move）的页码越界：from ${op.from} / to ${op.to}（当前共 ${next.length} 页）` }
-          }
-          const [item] = next.splice(op.from, 1)
-          next.splice(op.to, 0, item)
-          break
-        }
-        case 'rewrite': {
-          const nodes = prepared[i].nodes as POMNode[]
-          if (nodes.length === 0) return { error: `第 ${i + 1} 个操作（rewrite）的 XML 为空` }
-          next.splice(0, next.length, ...nodes)
-          break
-        }
-      }
-    }
-    if (next.length === 0) return { error: '编辑后没有任何页面，请保留至少 1 页' }
-    const xml = serializeXml(next)
-    await this.refreshFiles()
-    const version = nextVersionOf(this.files.value)
-    const newDoc: PptCurrentDoc = { version, name: `slides-${version}`, xml }
-    await this.persist(newDoc)
-    this.current.value = newDoc
-    await this.refreshFiles()
-    return { success: true, version: newDoc.version, name: newDoc.name }
   }
 
   /** 定位到指定页（渲染器联动跳转；越界给错误反馈，AI 自纠） */
@@ -245,6 +268,68 @@ export class PptStore {
     }
     this.currentPage.value = page
     return { success: true }
+  }
+
+  // ─── 内部：页面读写（读文件 → 校验元素 → 应用 → serializeXml 写回） ──
+
+  /** 元素数组 → POMNode[]：TypeBox 校验（中文错误反馈），非法抛错 */
+  private prepareElements(elements: unknown[]): POMNode[] {
+    if (!Array.isArray(elements) || elements.length === 0) {
+      throw new Error('elements 不能为空：页面至少包含 1 个元素（根元素建议为 VStack / HStack 布局容器）')
+    }
+    const errors = validatePptElements(elements)
+    if (errors.length) {
+      throw new Error(`元素校验失败：${errors.join('；')}`)
+    }
+    const nodes = elements as POMNode[]
+    nodes.forEach(normalizeTableColumns)
+    return nodes
+  }
+
+  /**
+   * 页面操作公共链路：打开文件（pptId 缺省当前）→ parseXml → 应用操作 →
+   * serializeXml 写回（原地更新，不产生新版本）；操作抛错则整体拒绝。
+   */
+  private async withPages(id: string | undefined, apply: (pages: POMNode[]) => PptPageResult): Promise<PptPageResult> {
+    const doc = this.current.value
+    const targetId = id ?? doc?.id
+    if (!targetId) return { error: '未指定 PPT，且当前没有打开的 PPT（先 ppt_create 或 ppt_open）' }
+    const path = window.preload.path.join(buildPptOutputsDir(this.sandboxDir), buildPptFileName(targetId))
+    if (!window.preload.fs.existsSync(path)) {
+      return { error: `未找到 PPT「${targetId}」` }
+    }
+    let xml: string
+    try {
+      xml = await window.preload.fs.readTextFile(path)
+    } catch (err) {
+      return { error: `读取失败：${errorText(err)}` }
+    }
+    let pages: POMNode[]
+    try {
+      pages = parseXml(xml)
+    } catch (err) {
+      return { error: `PPT XML 解析失败：${errorText(err)}` }
+    }
+    let result: PptPageResult
+    try {
+      result = apply(pages)
+    } catch (err) {
+      return { error: errorText(err) }
+    }
+    if ('error' in result) return result
+    try {
+      // serializeXml 不保留 <Theme>（parseXml 已解析为色板），写回时拼回文件头的 Theme 声明
+      const themeXml = extractThemeXml(xml)
+      const newXml = themeXml ? `${themeXml}\n${serializeXml(pages)}` : serializeXml(pages)
+      await this.persist({ id: targetId, name: buildPptFileName(targetId), xml: newXml })
+      if (this.current.value?.id === targetId) {
+        // 原地更新当前文档（对象替换触发 watch 自动渲染）
+        this.current.value = { id: targetId, name: buildPptFileName(targetId), xml: newXml }
+      }
+    } catch (err) {
+      return { error: `写入失败：${errorText(err)}` }
+    }
+    return result
   }
 
   // ─── 内部：渲染 ──────────────────────────────────────
@@ -286,7 +371,7 @@ export class PptStore {
     if (!window.preload.fs.existsSync(dir)) {
       await window.preload.fs.mkdir(dir, true)
     }
-    const path = window.preload.path.join(dir, buildSlidesFileName(doc.version))
+    const path = window.preload.path.join(dir, buildPptFileName(doc.id))
     await window.preload.fs.writeTextFile(path, doc.xml)
   }
 }

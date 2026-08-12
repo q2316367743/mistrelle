@@ -49,8 +49,9 @@
 
 | 文档                                                            | 描述                                                                                                                               |
 |-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型（已实现）：POM 库调研（纯 JS+WASM、Node 22+、ESM-only、预览链路 XML→PPTX→SVG）、主进程渲染 + IPC、PptStore / ppt_* 工具契约 / 侧边栏 UI / 注册链路、实现记录与实测差异 |
-| [02-pom-xml-guide.md](./ppt/02-pom-xml-guide.md)                | POM XML 语法指南（`ppt_guidelines` 数据源）：文档结构 / Theme 色板 / 布局 / Text / Icon / Shape / Table / Chart / 其他节点 / 设计铁律 / batch_edit 片段规范 |
+| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型（已实现，第二版契约）：POM 库调研、主进程渲染 + IPC、单一文件持续编辑（{name}.pom.xml）+ 页面元素 JSON/TypeBox 校验、ppt_* 工具契约 / 侧边栏 UI / 注册链路、实现记录与实测差异 |
+| [02-pom-xml-guide.md](./ppt/02-pom-xml-guide.md)                | POM XML 语法速查（`ppt_guidelines` 数据源）：文档结构 / Theme 色板 / 布局 / 常用节点 / 设计铁律 / 编辑规范 |
+| [03-ppt-experience-guides.md](./ppt/03-ppt-experience-guides.md) | POM 经验指南（官方三文档转写，`ppt_guidelines` 数据源）：layout 布局系统与页面模式 / nodes 20 种节点速查 / styling 配色字体样式最佳实践 |
 
 ### chat/ —— 对话
 

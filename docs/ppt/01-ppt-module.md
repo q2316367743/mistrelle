@@ -93,7 +93,7 @@ pom XML → buildPptx() → PPTX 字节 → convertPptxToSvg()（pptx-glimpse �
 ### 3.3 推荐架构（升级后）
 
 ```
-AI (ppt_* 工具) ──写──▶ outputs/slides-{version}.pom.xml
+AI (ppt_* 工具) ──写──▶ outputs/{name}.pom.xml（单一文件持续编辑，多 <Slide> 即多页）
         │ watch PptStore.current
         ▼
 Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字节)   ← 零补丁直跑 POM + pptx-glimpse
@@ -103,6 +103,7 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 ```
 
 - **生成 + 转换全在 Node 侧**（一次调用返回 SVG 数组），渲染进程只负责显示 —— 与 pom-cli 官方 preview 的职责拆分完全一致，icon 等全部节点可用。
+- **导出（PPTX / PNG）也在主进程构建并直接落盘**：渲染进程只传 `(xml, 目标路径)`，不经手字节数组（避免主进程 → 渲染进程 → 主进程往返）。
 - 备选：Node 侧只 `buildPptx` 返回 pptx 字节，渲染进程用 pptx-glimpse 的 `browser` 构建转 SVG（官方支持）—— 把渲染重活放渲染进程、可做渐进式预览；代价是渲染进程要多管理 wasm 初始化与字体 buffer。
 - 第一版选「全 Node 侧」，渲染进程零新增依赖。
 - 字体：POM 内置 Noto Sans JP base64 字体（`calcYogaLayout/fonts/`）作默认；中文可显示但字形偏日式，后续可映射系统字体（参考 pom-cli `glimpse.js` 的 `EXTRA_FONT_MAPPING` / `resolveBundledFontsDir`）。
@@ -110,55 +111,51 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 ## 4. 数据存储与状态（仿 design 的 CanvasStore）
 
 - `src/modules/ppt/PptStore.ts`：按 sandboxDir 键控的全局单例（`getPptStore(sandboxDir)`，同 `CanvasStore` 模式）。
-- 文件：`outputs/slides-{version}.pom.xml`（版本化，正则 `^slides-(\d+)\.pom\.xml$`）。
+- 文件：`outputs/{name}.pom.xml`（**单一文件持续编辑**，AI 指定文件名；正则 `^(.+)\.pom\.xml$`；编辑原地写回，不产生版本文件）。
 - 状态：
-  - `files`：版本文件列表（version / name / path / updatedTime）
-  - `current`：当前打开的文档 `{ version, xml, name }`
+  - `files`：文件列表（id / name / path / updatedTime，id = 文件名）
+  - `current`：当前打开的文档 `{ id, name, xml }`
   - `currentPage`：当前定位页（`ppt_select` 驱动，渲染器联动跳转）
   - `svgs`：渲染缓存（`string[]`，每页一个 SVG）+ `renderState: 'idle' | 'rendering' | 'error'`
-- 自动渲染：`watch(current.xml)` → 防抖 ~500ms → Node 侧渲染 → 更新 `svgs`；渲染失败保留旧图并 console 报错（AI 可通过工具读错误修正）。
+- 自动渲染：`watch(current.xml)` → 防抖 ~500ms → Node 侧渲染 → 更新 `svgs`；渲染失败保留旧图并记录 `renderError`（AI 经 `ppt_read` 读取修正）。
 
-## 5. 工具契约（ppt_*，参考 canvas 工具形态）
+## 5. 工具契约（ppt_*，第二版：单一文件持续编辑）
 
 文件：`src/modules/tool/components/ppt/pptTools.ts`（内部工具，全部 `registerToolPolicy → 'allow'`，仅操作沙盒 outputs/）。
 
+**契约模型**：一个 PPT = 一个文件（`outputs/{name}.pom.xml`，AI 指定文件名）。`ppt_create` 定文件名 + `<Theme>` 色板（0 页）→ `ppt_add_slide` 逐页添加 → `ppt_batch_edit` 编辑页内元素；后续编辑**原地写回**，不产生版本文件（用户要新版本时再 create 新文件）。一个文件的多个 `<Slide>` 页面对应 canvas 的「一组图片」。
+
 | 工具 | 参数 | 说明 |
 |---|---|---|
-| `ppt_list` | - | 列出沙盒 outputs/ 下 slides 版本文件 |
-| `ppt_read` | `version?` | 读取当前（或缺省最新）版本的 pom xml |
-| `ppt_create` | `title?` | 创建新 PPT（生成初始 XML 骨架） |
-| `ppt_open` | `version` | 打开指定版本（设置 current，驱动侧边栏/渲染器切换） |
-| `ppt_select` | `page: number` | 打开指定页面（设置 currentPage，渲染器跳转；越界给错误反馈） |
-| `ppt_delete` | `version` | 删除版本 |
-| `ppt_batch_edit` | `ops: PptBatchOp[]` | 批量编辑（slide 粒度，见下） |
-| `ppt_export_pptx` | `path?` | 导出 PPTX（缺省写沙盒 outputs/） |
-| `ppt_export_png` | `path?`, `page?` | 导出 PNG（缺省写沙盒 outputs/，`page` 缺省导出全部页） |
-| `ppt_guidelines` | `topic` | 按 topic 读取 POM XML 语法指南（`docs/ppt/02-pom-xml-guide.md`） |
+| `ppt_create` | `name`（必填）、`theme?`（token→颜色对象） | 创建文件（含 `<Theme/>`，0 页），返回文件标识；重名报错 |
+| `ppt_add_slide` | `pptId?`、`elements?` | 文件末尾加页（缺省空白页），返回 **1 起始**页索引 |
+| `ppt_batch_edit` | `pptId?`、`slideId`（1 起始）、`elements`（JSON 元素数组） | 替换指定页内容（整页覆盖） |
+| `ppt_list` | - | 列出沙盒 outputs/ 下 PPT 文件 |
+| `ppt_open` | `pptId` | 打开指定文件为当前（驱动侧边栏/渲染器切换） |
+| `ppt_read` | `pptId?`、`slideId?` | 读文件全文（或指定页 `<Slide>` 片段），附渲染状态/错误 |
+| `ppt_select` | `page: number`（1 起始） | 预览定位（设置 currentPage，渲染器跳转；越界给错误反馈） |
+| `ppt_delete` | `pptId` | 删除文件 |
+| `ppt_export_pptx` | `pptId?`、`path?` | 导出 PPTX（缺省写沙盒 outputs/） |
+| `ppt_export_png` | `pptId?`、`path?`、`page?` | 导出 PNG（缺省写沙盒 outputs/，`page` 缺省导出全部页） |
+| `ppt_guidelines` | `topic` | 按 topic 读取经验指南（layout / nodes / styling / pom-xml / workflow，见 03 文档） |
 
-### 5.1 `ppt_batch_edit` 的 ops 定义（slide 粒度，对齐 canvas_batch_edit 的「批量操作数组 + 校验」精神）
+### 5.1 `ppt_batch_edit` 的元素数组规范（JSON 节点，TypeBox 严格校验）
 
-```ts
-type PptBatchOp =
-  | { op: 'add'; at?: number; xml: string }        // 插入新页（缺省追加到末尾）
-  | { op: 'update'; index: number; xml: string }   // 替换指定页
-  | { op: 'remove'; index: number }                // 删除页
-  | { op: 'move'; from: number; to: number }       // 调整页序
-  | { op: 'rewrite'; xml: string }                 // 全量重写（兜底）
-```
-
-- 实现：`parseXml(xml)` 解析为 slide 列表 → 按 index 定位 → apply ops（**同批校验**，任一失败整体回滚）→ `serializeXml` 写回新版本文件。
-- 每个 `xml` 片段用 `parseXml` 校验，`DiagnosticsError` 的完整错误文本反馈给 AI 自行修正。
-- 与 canvas 差异：canvas 是节点树粒度的增删改查；PPT 是**页面式文档**，按 slide 粒度编辑最自然（AI 只需重写目标页而非整个文档），`rewrite` 兜底全量。
+- `elements` 为 **JSON 节点数组**（非 XML 字符串）：每个元素 `{ type, 属性..., children? }`，与 POM 规范一致。
+- **TypeBox 严格校验**（`pptSchemas.ts`，单一数据源同时喂给模型参数描述）：type 枚举 20 种、`additionalProperties: false` 拒绝未知字段、children 递归；非法整批拒绝并返回中文错误文本反馈 AI 自纠。
+- **页面根元素必须是 VStack / HStack 布局容器**（flexbox 先布局后内容）：1 个元素直接用；多个元素隐式包 VStack（对齐 parseXml 对 `<Slide>` 多子元素的语义）。
+- 实现链路：`parseXml(xml)` → pages（POMNode[]）→ TypeBox 校验元素 → 组装 slide 节点 → `serializeXml(pages)` 写回（round-trip 可 parse）。
+- 与 canvas 差异：canvas 是节点树粒度的增删改查（版本化文件）；PPT 是**页面式文档**，一个文件持续编辑，按页（slideId，1 起始）整页替换最自然。
 
 ## 6. UI 设计（侧边栏，完全仿设计创意）
 
 - `src/components/chat/aside/ppt/PptAside.vue`（仿 `DesignAside.vue`）：
   - 顶部：t-select 选择 slides 文件（聊天进行中 disabled）+ 刷新 + 下拉菜单（导出 PPTX / 导出 PNG / 文件夹中显示）
 - `src/components/chat/aside/ppt/PptRenderer.vue`：
-  - SVG 页面列表 + 上一页/下一页 + 缩放（t-slider）+ 缩略图导航（t-popup 悬停预览）
-  - `currentPage` 变更自动滚动定位到对应页
+  - 全屏（fullscreen）：左侧缩略图栏 + 右侧当前页大图（WPS 左右结构，点击 / hover 预览）；非全屏窄侧边栏隐藏缩略图
+  - 顶部页码拖拽条（t-slider 切页）+ 页码指示；`currentPage` 变更自动滚动定位缩略图
   - SVG 用 `data:image/svg+xml` 经 `<img>` 渲染（**杜绝 v-html 脚本注入**）
-- 导出：`window.preload.fs.writeBinaryFile` 写沙盒 / 用户选择路径。
+- 导出：**主进程构建并直接落盘**（渲染进程只传目标路径，不经手字节）——`window.preload.ppt.exportPptx` / `exportPptxToPngs` 写沙盒 / 用户选择路径。
 
 ## 7. 注册链路与改动文件清单
 
@@ -214,12 +211,12 @@ type PptBatchOp =
 |---|---|
 | 依赖 | `@hirokisakabe/pom@10.3.0` + `pptx-glimpse@3.2.8`（均 `dependencies`，主进程 externalize 后打包进 asar） |
 | 主进程渲染 | `src/main/src/ppt/pptRenderer.ts`（buildPptx → SVG / PPTX 字节 / PNG）+ `src/main/src/ipc/pptIpc.ts` |
-| IPC | `PptChannels`：`ppt:renderPptxToSvgs` / `ppt:buildPptxBytes` / `ppt:renderPptxToPngs`（preload `window.preload.ppt`） |
+| IPC | `PptChannels`：`ppt:renderPptxToSvgs`（XML→每页 SVG）/ `ppt:exportPptx`（XML→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（XML→指定页 PNG 并落盘，preload `window.preload.ppt`） |
 | 渲染进程 | `src/renderer/src/modules/ppt/`：`PptStore.ts`（500ms 防抖自动渲染）/ `pptTypes.ts` / `pptRender.ts` / `pptPrompt.ts` / `pptGuidelines.ts` |
 | 工具 | `src/renderer/src/modules/tool/components/ppt/pptTools.ts`（10 个 ppt_* 工具 + 策略：全 allow，导出工具走 `isPathUnder` 路径感知审批） |
 | UI | `src/components/chat/aside/ppt/PptAside.vue` + `PptRenderer.vue`（SVG `<img>` 渲染、翻页 / 缩放 / 缩略图导航 / 自动滚动定位） |
 | 注册 | `chatType.ts`（ChatType + CHAT_TYPE_OPTIONS，design 后插入，图标 `SlideshowIcon`）/ `ChatTypeConfig.ts` / `LChatAside.vue` / `LChatEngine.vue` / `SUB_AGENT_ALLOW`（ppt 无子 Agent，空数组） |
-| 指南 | `docs/ppt/02-pom-xml-guide.md`（= `src/renderer/src/modules/ppt/guidelines/pom-xml-guide.md`，`ppt_guidelines` 经 `?raw` 读取） |
+| 指南 | `docs/ppt/02-pom-xml-guide.md`（= `src/renderer/src/modules/ppt/guidelines/pom-xml.md`）+ `docs/ppt/03-ppt-experience-guides.md`（layout / nodes / styling 经验指南，`ppt_guidelines` 经 `?raw` 读取） |
 
 ### 12.2 实测差异（相对调研结论）
 
@@ -229,13 +226,26 @@ type PptBatchOp =
 3. **`parseXml` 返回「页列表」**：顶层 `<Slide>` 解析为 POMNode 数组（单子元素直接返回该节点，多子元素隐式包 `{type:'vstack'}`）；
    `serializeXml` 输出顶层即 `<Slide>`（round-trip 可 parse）——`ppt_batch_edit` 的「解析 → 操作 → 序列化写回」由此实现。
 4. **Table 无 `data` / `header*` 属性**：用子元素 `<Tr><Td .../></Tr>`（`Td` 文字色属性为 `color`，非 `textColor`）；Chart 用 `<ChartSeries><ChartDataPoint label value/></ChartSeries>` 子元素（JSON 属性形式亦可，但需 `&quot;` 转义）。
-5. **Theme round-trip 内联**：`$token` 在 parse 时解析为 hex 实色，`serializeXml` 写回后 `<Theme>` 声明消失（视觉等价）——已写入指南第 2 条提示 AI。
+5. **Theme round-trip 处理**：POM 的 `parseXml` 把 `<Theme>` 解析为色板（**不保留为节点**），`serializeXml` 写回会丢失它——`PptStore.withPages` 写回时用 `extractThemeXml` 从原文件提取 Theme 声明并**拼回文件头**（`<Theme/>` 持续有效，新提交元素的 `$token` 引用保留）；但**未被编辑的页**经 parse 写回时其 `$token` 会内联为实色（视觉等价），已写入指南提示 AI。
 6. **ChatService.ts 无需改动**：`aiChatSandbox` 已对所有聊天类型统一预建 `outputs/`，满足 ppt 需求。
 7. **PNG 导出**：直接用 `pptx-glimpse` 的 `convertPptxToPng`（含 resvg），无需自接 resvg-wasm。
 8. **图标**：`SlideshowIcon` 在 tdesign 确认存在；`FilePptIcon` 不存在（导出 PPTX 菜单用 `FileIcon`）。
+
+### 12.4 第二版契约调整（2026-08，用户反馈后重构）
+
+第一版参考 canvas 的「版本化文件 + slide 粒度 ops」，不符合 PPT 实际使用（create 后通常持续编辑同一文件；一个文件多页 = canvas 的一组图片）。重构为：
+
+1. **单一文件持续编辑**：`outputs/{name}.pom.xml`（AI 指定文件名），编辑原地写回，无版本文件；「用户要第二个版本」时再 `ppt_create` 新文件。
+2. **页面元素 JSON 编辑**：`ppt_batch_edit(pptId?, slideId, elements)` —— `elements` 为 **JSON 节点数组**（非 XML 字符串），`@sinclair/typebox` 严格校验（`pptElementSchemas.ts`，20 种节点 type 枚举 + `additionalProperties: false` + children 递归），校验 schema 同时喂给模型参数描述（单一数据源，仿 canvas 的 canvasSchemas 模式）。
+3. **`ppt_add_slide`** 替代原 ops 的 add/remove/move/rewrite：加页 → 编辑页（整页替换）两步走，slideId **1 起始**（与 UI 页码一致）。
+4. **TypeBox 工具提取**：`toToolProperty` / `collectErrors` 提取到 `src/renderer/src/modules/tool/typeboxUtil.ts`（canvas / ppt 共用），canvasSchemas 行为不变。
+5. **经验指南**：基于 POM 官方三文档（nodes / layout-system / styling-guide）转写为经验提示词（layout.md / nodes.md / styling.md），`ppt_guidelines` topics 扩展为 layout / nodes / styling / pom-xml / workflow。
+6. 提示词强化：**页面根元素必须是 VStack / HStack 布局容器**（flexbox 先布局后内容）；字号分级按官方规范（标题 28-40 / 小标题 18-24 / 正文 13-16 / 注释 10-12）。
+7. **设计风格支持**（与 design 同源）：新建 PPT 会话可选设计风格（PageNew 开放选择），风格在创建后锁定，水合时经 `buildDesignStylePrompt` 注入稳定 system 前缀；PPT 不接生图，跳过「正向/反向提示词」段（`withVisualPrompt: false`），只注入配色方案 / 字体规范 / 布局约束——AI 创建 PPT 时按风格色板写 `<Theme>`、按风格字体排版。
 
 ### 12.3 已知限制（第一版范围，与 §8 一致）
 
 - SVG 经 `<img>` + data URI 渲染，无元素级点击交互；图片仅 base64 / 沙盒本地文件；无 ppt 型子 Agent。
 - 渲染失败保留旧图，错误文本记录在 `PptStore.renderError`，AI 经 `ppt_read` 返回值读取自纠。
 - 中文默认用 POM 内置 Noto Sans JP（字形偏日式），后续可映射系统字体（参考 pom-cli `EXTRA_FONT_MAPPING`）。
+- JSON 元素暂不支持内联 runs（`<B>/<Span>` 等装饰标签），复杂装饰建议用纯文本 + 属性表达。

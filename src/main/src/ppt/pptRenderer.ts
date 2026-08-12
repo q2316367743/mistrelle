@@ -1,10 +1,14 @@
 /**
- * PPT 渲染核心（主进程）：POM XML → PPTX 字节 → 每页 SVG / PNG。
+ * PPT 渲染核心（主进程）：POM XML → 每页 SVG / 导出 PPTX / PNG。
  *
  * POM 为 ESM-only（exports 无 require 条件），CJS 主进程只能动态 import() 加载；
  * 首次调用后缓存 promise，避免反复解析。POC 已验证该链路（含 Icon / Chart / 中文）。
+ * 导出（PPTX / PNG）在**主进程内构建并直接落盘**，渲染进程只传 (xml, 目标路径)，
+ * 不经手字节数组（避免主进程 → 渲染进程 → 主进程的往返）。
  */
 import type { Diagnostic } from '@hirokisakabe/pom'
+import { writeFile, mkdir } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 
 let pomModule: Promise<typeof import('@hirokisakabe/pom')> | null = null
 const loadPom = (): Promise<typeof import('@hirokisakabe/pom')> =>
@@ -39,32 +43,43 @@ export const renderPptxToSvgs = async (xml: string, size: { w: number; h: number
   return svgs
 }
 
-/** 构建 PPTX 字节（导出 PPTX 用，返回 ArrayBuffer 走 IPC） */
-export const buildPptxBytes = async (xml: string, size: { w: number; h: number }): Promise<ArrayBuffer> => {
-  const { buildPptx } = await loadPom()
-  const { pptx, diagnostics } = await buildPptx(xml, size)
-  const errorText = collectErrorText(diagnostics)
-  const buf = await pptx.write({ outputType: 'arraybuffer' })
-  if (errorText) console.warn('[ppt] 构建诊断提示：', errorText)
-  return buf
-}
-
-/**
- * 渲染指定页（1 起始，缺省全部）为 PNG 字节（导出 PNG 用）。
- * 返回按页码升序的 { page, bytes } 列表。
- */
-export const renderPptxToPngs = async (
+/** 渲染指定页（1 起始，缺省全部）为 PNG 并落盘（导出 PNG 用）：
+ *  - 单页（slides 长度 1）：targetPath 为文件路径
+ *  - 多页：targetPath 为目录，每页写 page-{n}.png
+ * 返回已写入的文件路径列表。 */
+export const exportPptxPngFiles = async (
   xml: string,
   size: { w: number; h: number },
+  targetPath: string,
   slides?: number[]
-): Promise<{ page: number; bytes: ArrayBuffer }[]> => {
+): Promise<string[]> => {
   const { buildPptx } = await loadPom()
   const { convertPptxToPng } = await loadGlimpse()
   const { pptx } = await buildPptx(xml, size)
   const buf = await pptx.write({ outputType: 'nodebuffer' })
   const report = await convertPptxToPng(buf, { width: size.w, slides })
-  return report.slides.map((s) => ({
-    page: s.slideNumber,
-    bytes: s.png.buffer.slice(s.png.byteOffset, s.png.byteOffset + s.png.byteLength) as ArrayBuffer
-  }))
+  const files: string[] = []
+  for (const s of report.slides) {
+    const file = slides != null && slides.length === 1 ? targetPath : join(targetPath, `page-${s.slideNumber}.png`)
+    await mkdir(dirname(file), { recursive: true })
+    await writeFile(file, s.png)
+    files.push(file)
+  }
+  return files
+}
+
+/** 构建 PPTX 并落盘（导出 PPTX 用），返回文件路径 */
+export const exportPptxFile = async (
+  xml: string,
+  size: { w: number; h: number },
+  filePath: string
+): Promise<string> => {
+  const { buildPptx } = await loadPom()
+  const { pptx, diagnostics } = await buildPptx(xml, size)
+  const errorText = collectErrorText(diagnostics)
+  const buf = await pptx.write({ outputType: 'nodebuffer' })
+  await mkdir(dirname(filePath), { recursive: true })
+  await writeFile(filePath, buf)
+  if (errorText) console.warn('[ppt] 构建诊断提示：', errorText)
+  return filePath
 }

@@ -2,11 +2,11 @@
 declare interface PptApi {
   /** POM XML → 每页 SVG 字符串数组（预览渲染） */
   renderPptxToSvgs(xml: string, options: { w: number; h: number }): Promise<string[]>
-  /** POM XML → PPTX 字节（导出 PPTX） */
-  buildPptxBytes(xml: string, options: { w: number; h: number }): Promise<ArrayBuffer>
-  /** POM XML → 指定页 PNG 字节（导出 PNG，缺省全部页） */
-  renderPptxToPngs(
+  /** POM XML → 构建 PPTX 并落盘（主进程完成），返回文件路径 */
+  exportPptx(xml: string, options: { w: number; h: number; path: string }): Promise<string>
+  /** POM XML → 渲染指定页 PNG 并落盘（单页为文件路径，多页为目录），返回文件路径列表 */
+  exportPptxToPngs(
     xml: string,
-    options: { w: number; h: number; slides?: number[] }
-  ): Promise<{ page: number; bytes: ArrayBuffer }[]>
+    options: { w: number; h: number; path: string; slides?: number[] }
+  ): Promise<string[]>
 }

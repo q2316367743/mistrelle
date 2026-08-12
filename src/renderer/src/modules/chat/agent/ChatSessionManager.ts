@@ -121,12 +121,17 @@ export class ChatSession {
       // 旧数据无 writingScene 字段时回退 article（历史 free 数据一并并入文章创作）
       this.writingScene.value = content.writingScene ?? 'article'
       this.chat.setWritingScene(this.writingScene.value)
-      // 设计风格（design 类型创建后锁定）：读一次完整内容并构建稳定提示词注入引擎，
+      // 设计风格（design / ppt 类型创建后锁定）：读一次完整内容并构建稳定提示词注入引擎，
       // 风格锁定后不再重复读盘；风格文件已删除时跳过注入。
+      // ppt 不接生图：跳过「正向/反向提示词」段，只保留配色 / 字体 / 布局约束。
       this.designStyleId.value = content.designStyleId ?? ''
       if (this.designStyleId.value) {
         const style = await useDesignStyleStore().getDetail(this.designStyleId.value)
-        if (style) this.chat.setDesignStylePrompt(buildDesignStylePrompt(style))
+        if (style) {
+          this.chat.setDesignStylePrompt(
+            buildDesignStylePrompt(style, { withVisualPrompt: this.type.value !== 'ppt' })
+          )
+        }
       }
     }
     // 常驻持久化：watcher 在水合之后建立，避免 immediate 用空消息覆盖含 draft 的存储文件

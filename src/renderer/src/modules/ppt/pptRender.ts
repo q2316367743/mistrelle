@@ -1,15 +1,8 @@
 /**
- * PPT 渲染封装（渲染进程侧）：调用 preload 桥触发主进程渲染。
- * 渲染逻辑全部在主进程（POM 为 ESM-only + resvg wasm Node-only 加载），
- * 渲染进程只负责显示 SVG / 导出字节落盘。
+ * PPT 渲染封装（渲染进程侧）：调用 preload 桥触发主进程渲染 / 导出。
+ * 渲染与导出全部在主进程完成（POM 为 ESM-only + resvg wasm Node-only 加载），
+ * 渲染进程只负责显示 SVG 与传 (xml, 目标路径)，不经手导出字节。
  */
-
-/** PNG 导出结果（主进程按页返回字节） */
-export interface PptPngResult {
-  page: number
-  bytes: ArrayBuffer
-}
-
 /** 清理 Electron invoke 错误的包装前缀，保留原始错误文本（如 POM 的 ParseXmlError 列表） */
 const toReadableError = (err: unknown): string => {
   const message = err instanceof Error ? err.message : String(err)
@@ -28,26 +21,28 @@ export const renderPptxToSvgs = async (
   }
 }
 
-/** 构建 PPTX 字节（导出 PPTX 用） */
-export const buildPptxBytes = async (
+/** 构建 PPTX 并落盘（导出 PPTX），返回文件路径 */
+export const exportPptx = async (
   xml: string,
-  size: { w: number; h: number }
-): Promise<ArrayBuffer> => {
+  size: { w: number; h: number },
+  path: string
+): Promise<string> => {
   try {
-    return await window.preload.ppt.buildPptxBytes(xml, size)
+    return await window.preload.ppt.exportPptx(xml, { ...size, path })
   } catch (err) {
     throw new Error(toReadableError(err))
   }
 }
 
-/** 渲染指定页（1 起始，缺省全部）为 PNG 字节（导出 PNG 用） */
-export const renderPptxToPngs = async (
+/** 渲染指定页 PNG 并落盘（单页 path 为文件，多页 path 为目录），返回文件路径列表 */
+export const exportPptxToPngs = async (
   xml: string,
   size: { w: number; h: number },
+  path: string,
   slides?: number[]
-): Promise<PptPngResult[]> => {
+): Promise<string[]> => {
   try {
-    return await window.preload.ppt.renderPptxToPngs(xml, { ...size, slides })
+    return await window.preload.ppt.exportPptxToPngs(xml, { ...size, path, slides })
   } catch (err) {
     throw new Error(toReadableError(err))
   }

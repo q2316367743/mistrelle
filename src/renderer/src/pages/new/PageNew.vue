@@ -14,7 +14,7 @@
           <segmented-control v-model="scene" :options="sceneOptions" class="page-new__scene" />
           <div class="page-new__type-desc">{{ currentScene?.description }}</div>
         </template>
-        <template v-if="type === 'design'">
+        <template v-if="type === 'design' || type === 'ppt'">
           <t-select
             v-model="designStyleId"
             clearable
@@ -86,7 +86,7 @@ const handleSend = async (message: ChatRequestParams) => {
 }
 
 watch(type, (val) => {
-  if (val !== 'design') designStyleId.value = ''
+  if (val !== 'design' && val !== 'ppt') designStyleId.value = ''
 })
 
 watch(

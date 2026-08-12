@@ -1,13 +1,13 @@
 /**
  * PPT 工具集（ppt_*，内部工具，全部仅操作当前聊天沙盒 outputs/）：
- * 管理 slides-{version}.pom.xml 版本文件、按页批量编辑、导出 PPTX / PNG、读取语法指南。
+ * 契约模型 = 单一文件持续编辑：ppt_create 定文件名 + Theme → ppt_add_slide 加页 →
+ * ppt_batch_edit 编辑页内元素（JSON 元素数组，TypeBox 严格校验，与 POM 规范一致）。
  */
-import type { ToolFunction, ToolProperty } from '@/domain'
+import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
 import { isPathUnder } from '@/utils/sandbox'
-import { buildPptxBytes, buildPptOutputsDir, getPptStore, renderPptxToPngs } from '@/modules/ppt'
-import type { PptBatchOp } from '@/modules/ppt'
-import { PPT_GUIDELINE_TOPICS, PPT_GUIDELINES, PPT_SLIDE_SIZE } from '@/modules/ppt'
+import { buildPptOutputsDir, exportPptx, exportPptxToPngs, getPptStore } from '@/modules/ppt'
+import { PPT_GUIDELINE_TOPICS, PPT_GUIDELINES, PPT_SLIDE_SIZE, pptElementSchema } from '@/modules/ppt'
 import type { ChatTypeToolContext } from '@/modules/chat/chatType'
 
 const ctxError = (): never => {
@@ -16,133 +16,138 @@ const ctxError = (): never => {
 
 const storeOf = (ctx: ChatTypeToolContext) => getPptStore(ctx.getSandboxDir() || ctxError())
 
-/** ppt_batch_edit 的 ops 联合类型 JSON Schema（oneOf 区分五种操作） */
-const pptBatchOpSchema: ToolProperty = {
-  type: 'object',
-  description: 'PPT 批量编辑操作：add（插入页）/ update（替换页）/ remove（删除页）/ move（调整页序）/ rewrite（全量重写）',
-  oneOf: [
-    {
-      type: 'object',
-      description: '插入新页（at 缺省追加到末尾）',
-      properties: {
-        op: { type: 'string', description: '操作类型', const: 'add' },
-        at: { type: 'number', description: '插入位置（0 起始，缺省追加到末尾）' },
-        xml: { type: 'string', description: '新页 XML，必须是完整 <Slide>...</Slide>（可含多个 <Slide>）' }
-      },
-      required: ['op', 'xml']
-    },
-    {
-      type: 'object',
-      description: '替换指定页',
-      properties: {
-        op: { type: 'string', description: '操作类型', const: 'update' },
-        index: { type: 'number', description: '要替换的页码（0 起始）' },
-        xml: { type: 'string', description: '替换页 XML，必须恰好 1 个 <Slide>' }
-      },
-      required: ['op', 'index', 'xml']
-    },
-    {
-      type: 'object',
-      description: '删除指定页',
-      properties: {
-        op: { type: 'string', description: '操作类型', const: 'remove' },
-        index: { type: 'number', description: '要删除的页码（0 起始）' }
-      },
-      required: ['op', 'index']
-    },
-    {
-      type: 'object',
-      description: '调整页序',
-      properties: {
-        op: { type: 'string', description: '操作类型', const: 'move' },
-        from: { type: 'number', description: '移动来源页码（0 起始）' },
-        to: { type: 'number', description: '移动目标页码（0 起始）' }
-      },
-      required: ['op', 'from', 'to']
-    },
-    {
-      type: 'object',
-      description: '全量重写',
-      properties: {
-        op: { type: 'string', description: '操作类型', const: 'rewrite' },
-        xml: { type: 'string', description: '全量重写的完整 POM XML（可含 <Theme> 与多个 <Slide>）' }
-      },
-      required: ['op', 'xml']
-    }
-  ]
-} as const
-
 /** 返回 PPT 工具实例（按 chat sandboxDir 绑定），供 ChatTypeConfig 场景级注入 */
 export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
   const store = () => storeOf(ctx)
 
   return [
     {
+      name: 'ppt_create',
+      label: '创建 PPT',
+      description:
+        '创建新 PPT 文件：指定文件名（id）+ 全局主题色板（<Theme> 令牌），返回文件标识。创建后为 0 页，用 ppt_add_slide 逐页添加；后续编辑都在这个文件上原地进行',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            description: '文件名（作为文件标识，如「产品发布会」；1-60 字符，中文 / 字母 / 数字 / _ / -）'
+          },
+          theme: {
+            type: 'object',
+            description:
+              '全局主题色板（<Theme> 令牌）：token 名 → 6 位 hex 颜色（如 { "surface": "0F172A", "accent": "38BDF8", "textMain": "F8FAFC" }），后续所有颜色属性可用 $token 引用'
+          }
+        },
+        required: ['name']
+      },
+      internal: true,
+      risk: 'safe',
+      handler: async (...params: unknown[]) => {
+        const { name, theme } = params[0] as { name?: string; theme?: Record<string, string> }
+        return store().create({ name: name ?? '', theme })
+      }
+    },
+    {
+      name: 'ppt_add_slide',
+      label: '新增页面',
+      description:
+        '在 PPT 文件末尾新增一页（<Slide>），返回 1 起始的页索引。elements 为页面元素数组（JSON 节点，与 POM 规范一致），缺省生成空白页；页面根元素必须是 VStack / HStack 布局容器',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（缺省使用当前打开的 PPT）' },
+          elements: {
+            type: 'array',
+            items: pptElementSchema,
+            description: '页面元素数组（每个元素是 POM 节点；根元素必须用 VStack / HStack 布局容器）'
+          }
+        }
+      },
+      internal: true,
+      risk: 'safe',
+      handler: async (...params: unknown[]) => {
+        const { pptId, elements } = params[0] as { pptId?: string; elements?: unknown[] }
+        return store().addSlide(pptId, elements)
+      }
+    },
+    {
+      name: 'ppt_batch_edit',
+      label: '编辑页面元素',
+      description:
+        '核心编辑工具：替换指定页（slideId 从 1 开始）的内容为元素数组（整页覆盖）。元素为 JSON 节点（type + 属性 + children，规范与 POM 一致，经严格校验；任一非法整批拒绝）。页面根元素必须是 VStack / HStack 布局容器（flexbox 先布局后内容），不要散落裸 Text / Shape',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（缺省使用当前打开的 PPT）' },
+          slideId: { type: 'number', description: '目标页码（1 起始，ppt_read / ppt_add_slide 获取）' },
+          elements: {
+            type: 'array',
+            items: pptElementSchema,
+            description: '该页全部元素（JSON 节点数组，整页替换；根元素必须用 VStack / HStack 布局容器）'
+          }
+        },
+        required: ['slideId', 'elements']
+      },
+      internal: true,
+      risk: 'sensitive',
+      handler: async (...params: unknown[]) => {
+        const { pptId, slideId, elements } = params[0] as { pptId?: string; slideId: number; elements?: unknown[] }
+        return store().editSlide(pptId, slideId, elements ?? [])
+      }
+    },
+    {
       name: 'ppt_list',
       label: '列出 PPT',
-      description: '列出当前聊天 outputs/ 下全部 PPT 版本文件（slides-{version}.pom.xml），含版本号与更新时间',
+      description: '列出当前聊天 outputs/ 下全部 PPT 文件（{name}.pom.xml），含文件标识与更新时间',
       parameters: { type: 'object', properties: {} },
       internal: true,
       risk: 'safe',
       handler: async () => store().refreshFiles()
     },
     {
-      name: 'ppt_read',
-      label: '读取 PPT XML',
-      description:
-        '读取指定版本（缺省当前版本）PPT 的完整 POM XML 内容，供分析 / 编辑；同时返回渲染状态与最近渲染错误（有错先修正再编辑）',
+      name: 'ppt_open',
+      label: '打开 PPT',
+      description: '打开指定 PPT 为当前文档，后续缺省 pptId 的操作都作用于它，侧边栏预览同步切换',
       parameters: {
         type: 'object',
-        properties: { version: { type: 'number', description: '版本号（ppt_list 获取，缺省读取当前版本）' } }
+        properties: { pptId: { type: 'string', description: 'PPT 文件标识（ppt_list 获取）' } },
+        required: ['pptId']
       },
       internal: true,
       risk: 'safe',
       handler: async (...params: unknown[]) => {
-        const { version } = params[0] as { version?: number }
-        const result = await store().read(version)
-        if (!result) return { error: '未找到该版本 PPT（或当前未打开任何 PPT）' }
+        const { pptId } = params[0] as { pptId: string }
+        const doc = await store().open(pptId)
+        if (!doc) return { error: `未找到 PPT「${pptId}」` }
+        return { success: true, id: doc.id }
+      }
+    },
+    {
+      name: 'ppt_read',
+      label: '读取 PPT',
+      description:
+        '读取指定 PPT（缺省当前）的 POM XML：不给 slideId 返回全文（含 Theme 与全部 <Slide>），给 slideId 只返回该页片段；同时返回渲染状态与最近渲染错误（有错先修正再编辑）',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（缺省当前打开的 PPT）' },
+          slideId: { type: 'number', description: '页码（1 起始，缺省返回全文）' }
+        }
+      },
+      internal: true,
+      risk: 'safe',
+      handler: async (...params: unknown[]) => {
+        const { pptId, slideId } = params[0] as { pptId?: string; slideId?: number }
+        const result = await store().read(pptId, slideId)
+        if (result === null) return { error: '未找到该 PPT（或当前未打开任何 PPT）' }
         return result
       }
     },
     {
-      name: 'ppt_create',
-      label: '创建 PPT',
-      description:
-        '创建新 PPT（自动生成 16:9 标题页骨架，版本号自动分配）并设为当前文档，返回版本号。之后用 ppt_batch_edit 续写内容页',
-      parameters: {
-        type: 'object',
-        properties: { title: { type: 'string', description: '演示文稿标题（可选，默认「演示文稿」）' } }
-      },
-      internal: true,
-      risk: 'safe',
-      handler: async (...params: unknown[]) => {
-        const { title } = params[0] as { title?: string }
-        const doc = await store().create({ title })
-        return { success: true, version: doc.version, name: doc.name, note: '初始标题页已生成，请用 ppt_batch_edit 编辑内容' }
-      }
-    },
-    {
-      name: 'ppt_open',
-      label: '打开 PPT',
-      description: '打开指定版本为当前文档，后续 batch_edit 等操作都作用于它，侧边栏预览同步切换',
-      parameters: {
-        type: 'object',
-        properties: { version: { type: 'number', description: '版本号（ppt_list 获取）' } },
-        required: ['version']
-      },
-      internal: true,
-      risk: 'safe',
-      handler: async (...params: unknown[]) => {
-        const { version } = params[0] as { version: number }
-        const doc = await store().open(version)
-        if (!doc) return { error: `未找到版本 slides-${version}` }
-        return { success: true, version: doc.version }
-      }
-    },
-    {
       name: 'ppt_select',
-      label: '定位页面',
-      description: '将侧边栏预览定位到指定页（页码从 1 开始），与用户浏览视角联动',
+      label: '定位预览页',
+      description: '将侧边栏预览定位到指定页（页码从 1 开始），与用户浏览视角联动；不影响文件内容',
       parameters: {
         type: 'object',
         properties: { page: { type: 'number', description: '目标页码（1 起始）' } },
@@ -158,68 +163,44 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
     {
       name: 'ppt_delete',
       label: '删除 PPT',
-      description: '删除指定版本 PPT 文件',
+      description: '删除指定 PPT 文件（不可恢复）',
       parameters: {
         type: 'object',
-        properties: { version: { type: 'number', description: '版本号（ppt_list 获取）' } },
-        required: ['version']
+        properties: { pptId: { type: 'string', description: 'PPT 文件标识（ppt_list 获取）' } },
+        required: ['pptId']
       },
       internal: true,
       risk: 'dangerous',
       handler: async (...params: unknown[]) => {
-        const { version } = params[0] as { version: number }
-        await store().delete(version)
+        const { pptId } = params[0] as { pptId: string }
+        await store().delete(pptId)
         return { success: true }
-      }
-    },
-    {
-      name: 'ppt_batch_edit',
-      label: '批量编辑 PPT',
-      description:
-        '核心编辑工具：按页批量操作（add / update / remove / move / rewrite）。所有 xml 片段必须先经语法校验（任一失败整批回滚，不产生新版本）；索引为当前页序（0 起始，op 间顺序可见）。编辑成功生成新版本并自动渲染侧边栏',
-      parameters: {
-        type: 'object',
-        properties: {
-          ops: {
-            type: 'array',
-            items: pptBatchOpSchema,
-            description: '按顺序执行的操作列表'
-          }
-        },
-        required: ['ops']
-      },
-      internal: true,
-      risk: 'sensitive',
-      handler: async (...params: unknown[]) => {
-        const { ops } = params[0] as { ops?: PptBatchOp[] }
-        if (!ops?.length) return { error: 'ops 不能为空' }
-        return store().batchEdit(ops)
       }
     },
     {
       name: 'ppt_export_pptx',
       label: '导出 PPTX',
       description:
-        '将当前 PPT 构建为可编辑 PPTX 文件，返回保存路径。缺省保存到沙盒 outputs/；也可指定外部路径（需用户确认）',
+        '将指定 PPT（缺省当前）构建为可编辑 PPTX 文件，返回保存路径。缺省保存到沙盒 outputs/；也可指定外部路径（需用户确认）',
       parameters: {
         type: 'object',
         properties: {
-          path: { type: 'string', description: 'PPTX 保存路径（缺省沙盒 outputs/slides-{version}.pptx）' }
+          pptId: { type: 'string', description: 'PPT 文件标识（缺省当前打开的 PPT）' },
+          path: { type: 'string', description: 'PPTX 保存路径（缺省沙盒 outputs/{name}.pptx）' }
         }
       },
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const { path } = params[0] as { path?: string }
+        const { pptId, path } = params[0] as { pptId?: string; path?: string }
         const sandboxDir = ctx.getSandboxDir() || ctxError()
-        const doc = store().current.value
-        if (!doc) return { error: '当前没有打开的 PPT，请先 ppt_create 或 ppt_open' }
-        const target = path || window.preload.path.join(buildPptOutputsDir(sandboxDir), `slides-${doc.version}.pptx`)
+        const doc = await store().read(pptId)
+        if (doc === null) return { error: '未找到该 PPT（或当前未打开任何 PPT）' }
+        if ('error' in doc) return { error: doc.error }
+        const target = path || window.preload.path.join(buildPptOutputsDir(sandboxDir), `${doc.id}.pptx`)
         try {
-          const bytes = await buildPptxBytes(doc.xml, PPT_SLIDE_SIZE)
-          await window.preload.fs.mkdir(window.preload.path.dirname(target), true)
-          await window.preload.fs.writeBinaryFile(target, bytes)
-          return { success: true, path: target }
+          const filePath = await exportPptx(doc.content, PPT_SLIDE_SIZE, target)
+          return { success: true, path: filePath }
         } catch (err) {
           return { error: `PPTX 导出失败：${err instanceof Error ? err.message : String(err)}` }
         }
@@ -229,10 +210,11 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_export_png',
       label: '导出 PNG',
       description:
-        '将当前 PPT 渲染为 PNG 图片。page 缺省导出全部页（多页时 path 为目录，缺省沙盒 outputs/，每页一个文件）；指定 page 导出单页（path 为文件路径）',
+        '将指定 PPT（缺省当前）渲染为 PNG 图片。page 缺省导出全部页（多页时 path 为目录，缺省沙盒 outputs/，每页一个文件）；指定 page 导出单页（path 为文件路径）',
       parameters: {
         type: 'object',
         properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（缺省当前打开的 PPT）' },
           path: { type: 'string', description: '保存路径：单页导出为文件路径，多页导出为目录（缺省沙盒 outputs/）' },
           page: { type: 'number', description: '页码（1 起始，缺省导出全部页）' }
         }
@@ -240,22 +222,19 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const { path, page } = params[0] as { path?: string; page?: number }
+        const { pptId, path, page } = params[0] as { pptId?: string; path?: string; page?: number }
         const sandboxDir = ctx.getSandboxDir() || ctxError()
-        const doc = store().current.value
-        if (!doc) return { error: '当前没有打开的 PPT，请先 ppt_create 或 ppt_open' }
+        const doc = await store().read(pptId)
+        if (doc === null) return { error: '未找到该 PPT（或当前未打开任何 PPT）' }
+        if ('error' in doc) return { error: doc.error }
         try {
-          const results = await renderPptxToPngs(doc.xml, PPT_SLIDE_SIZE, page != null ? [page] : undefined)
-          if (!results.length) return { error: `未找到可导出的页面（page: ${page}）` }
-          const files: string[] = []
-          for (const result of results) {
-            const target = page != null
-              ? (path ?? window.preload.path.join(buildPptOutputsDir(sandboxDir), `slides-${doc.version}-page-${result.page}.png`))
-              : window.preload.path.join(path || buildPptOutputsDir(sandboxDir), `slides-${doc.version}-page-${result.page}.png`)
-            await window.preload.fs.mkdir(window.preload.path.dirname(target), true)
-            await window.preload.fs.writeBinaryFile(target, result.bytes)
-            files.push(target)
-          }
+          // 单页导出：path 为文件路径；多页导出：path 为目录（每页 page-{n}.png）
+          const target =
+            page != null
+              ? (path ?? window.preload.path.join(buildPptOutputsDir(sandboxDir), `${doc.id}-page-${page}.png`))
+              : (path || buildPptOutputsDir(sandboxDir))
+          const files = await exportPptxToPngs(doc.content, PPT_SLIDE_SIZE, target, page != null ? [page] : undefined)
+          if (!files.length) return { error: `未找到可导出的页面（page: ${page}）` }
           return { success: true, files }
         } catch (err) {
           return { error: `PNG 导出失败：${err instanceof Error ? err.message : String(err)}` }
@@ -266,13 +245,13 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_guidelines',
       label: '获取 PPT 指南',
       description:
-        '获取内置 POM XML 语法指南 / 工作流（按需加载，避免全部塞进提示词）。做 PPT 前先读 workflow，语法不确定先读 pom-xml',
+        '获取内置 POM 经验指南（按需加载，避免全部塞进提示词）。做 PPT 前先读 workflow 与 layout；元素属性不确定读 nodes；配色与样式读 styling；语法速查读 pom-xml',
       parameters: {
         type: 'object',
         properties: {
           topic: {
             type: 'string',
-            description: `pom-xml（节点语法与铁律）/ workflow（端到端工作流）（${PPT_GUIDELINE_TOPICS.join(' / ')}）`
+            description: `layout（布局系统与页面模式）/ nodes（20 种节点属性速查）/ styling（配色 / 字体 / 样式）/ pom-xml（语法速查）/ workflow（端到端工作流）（${PPT_GUIDELINE_TOPICS.join(' / ')}）`
           }
         },
         required: ['topic']
@@ -293,13 +272,14 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
 
 /** PPT 工具完整清单（单一数据源：工具工厂与安全策略注册共用） */
 export const PPT_TOOL_NAMES = [
-  'ppt_list',
-  'ppt_read',
   'ppt_create',
+  'ppt_add_slide',
+  'ppt_batch_edit',
+  'ppt_list',
   'ppt_open',
+  'ppt_read',
   'ppt_select',
   'ppt_delete',
-  'ppt_batch_edit',
   'ppt_export_pptx',
   'ppt_export_png',
   'ppt_guidelines'
@@ -319,20 +299,18 @@ for (const name of PPT_TOOL_NAMES) {
   })
 }
 
+const exportPathPolicy = (_tool: unknown, args: Record<string, unknown>, ctx: { sandboxDir: string; workspace: string }) => {
+  const path = args.path
+  if (typeof path !== 'string' || !path) return 'allow'
+  return isPathUnder(path, ctx.sandboxDir) || isPathUnder(path, ctx.workspace) ? 'allow' : 'ask'
+}
+
 registerToolPolicy({
   name: 'ppt_export_pptx',
-  resolve(_tool, args, ctx) {
-    const path = args.path
-    if (typeof path !== 'string' || !path) return 'allow'
-    return isPathUnder(path, ctx.sandboxDir) || isPathUnder(path, ctx.workspace) ? 'allow' : 'ask'
-  }
+  resolve: exportPathPolicy
 })
 
 registerToolPolicy({
   name: 'ppt_export_png',
-  resolve(_tool, args, ctx) {
-    const path = args.path
-    if (typeof path !== 'string' || !path) return 'allow'
-    return isPathUnder(path, ctx.sandboxDir) || isPathUnder(path, ctx.workspace) ? 'allow' : 'ask'
-  }
+  resolve: exportPathPolicy
 })

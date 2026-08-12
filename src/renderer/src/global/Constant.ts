@@ -86,13 +86,13 @@ export const getModelPath = () => window.preload.path.join(dataFolder, 'model.js
 export const ASIDE_PADDING_LEFT = 156
 
 // 单个工具结果的最大字节数，超出则截断，避免超大输出撑爆上下文窗口
-export const MAX_TOOL_RESULT_BYTES = 32 * 1024
+export const MAX_TOOL_RESULT_BYTES = 128 * 1024
 
 // 模型未配置上下文窗口（AiModel.context）时的兜底值，用于 token 占用百分比展示
 export const DEFAULT_CONTEXT_WINDOW = 192_000
 
 // 单轮对话内 agent loop 允许的最大工具迭代次数，避免模型持续调用工具造成死循环
-export const MAX_AGENT_STEPS = 50
+export const MAX_AGENT_STEPS = 75
 
 // 子 Agent 独立步数预算：其上下文与主 Agent 隔离，复杂调研需要更多步数才能收尾
-export const MAX_SUB_AGENT_STEPS = 75
+export const MAX_SUB_AGENT_STEPS = 100
