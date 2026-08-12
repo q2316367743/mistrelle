@@ -55,7 +55,7 @@
         </t-dropdown-menu>
       </t-dropdown>
     </div>
-    <ppt-renderer class="ppt-aside__renderer" :sandbox="sandbox" />
+    <ppt-renderer class="ppt-aside__renderer" :sandbox="sandbox" :fullscreen="fullscreen" />
   </div>
 </template>
 <script lang="ts" setup>

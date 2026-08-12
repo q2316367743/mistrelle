@@ -7,41 +7,14 @@
       :message="store.renderError.value"
     />
     <div v-if="!store.current.value" class="ppt-renderer__empty">暂无 PPT，请先让 AI 创建</div>
-    <template v-else>
-      <div class="ppt-renderer__toolbar">
-        <t-button variant="text" shape="square" :disabled="page <= 1" @click="page--">
-          <template #icon><chevron-left-icon /></template>
-        </t-button>
-        <span class="ppt-renderer__page">{{ page }} / {{ total }}</span>
-        <t-button
-          variant="text"
-          shape="square"
-          :disabled="page >= total"
-          @click="page++"
-        >
-          <template #icon><chevron-right-icon /></template>
-        </t-button>
-        <t-slider v-model="scale" :min="20" :max="200" class="ppt-renderer__scale" />
-        <span class="ppt-renderer__scale-label">{{ scale }}%</span>
-      </div>
-      <div class="ppt-renderer__viewport">
-        <div v-if="store.renderState.value === 'rendering'" class="ppt-renderer__loading">
-          渲染中…
-        </div>
-        <img
-          v-else-if="currentSvg"
-          :src="currentSvg"
-          class="ppt-renderer__img"
-          :style="{ width: `${scale}%` }"
-          alt="幻灯片"
-        />
-      </div>
-      <div class="ppt-renderer__thumbs">
+    <div v-else class="ppt-renderer__body">
+      <!-- 左侧：缩略图列表（仅全屏显示；非全屏窄侧边栏隐藏，避免挤占主内容） -->
+      <div v-if="fullscreen" class="ppt-renderer__thumbs">
         <t-popup
           v-for="(svg, index) in store.svgs.value"
           :key="index"
           trigger="hover"
-          placement="top"
+          placement="right"
           :overlay-style="{ padding: 0 }"
         >
           <template #content>
@@ -58,19 +31,46 @@
           </div>
         </t-popup>
       </div>
-    </template>
+      <!-- 右侧：主内容（页码拖拽条 + 当前页大图） -->
+      <div class="ppt-renderer__main">
+        <div class="ppt-renderer__toolbar">
+          <span class="ppt-renderer__page">{{ page }} / {{ total }}</span>
+          <t-slider
+            v-model="page"
+            :min="1"
+            :max="sliderMax"
+            :step="1"
+            class="ppt-renderer__slider"
+            :disabled="total < 1"
+          />
+        </div>
+        <div class="ppt-renderer__viewport">
+          <div v-if="store.renderState.value === 'rendering'" class="ppt-renderer__loading">
+            渲染中…
+          </div>
+          <img
+            v-else-if="currentSvg"
+            :src="currentSvg"
+            class="ppt-renderer__img"
+            alt="幻灯片"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { getPptStore } from '@/modules/ppt'
-import { ChevronLeftIcon, ChevronRightIcon } from 'tdesign-icons-vue-next'
 
 const props = withDefaults(
   defineProps<{
     sandbox?: string
+    /** 全屏：显示左侧缩略图栏（WPS 左右结构）；非全屏窄侧边栏隐藏 */
+    fullscreen?: boolean
   }>(),
   {
-    sandbox: ''
+    sandbox: '',
+    fullscreen: false
   }
 )
 
@@ -81,15 +81,14 @@ const page = computed({
   get: () => store.value.currentPage.value,
   set: (value) => {
     store.value.currentPage.value = value
-    // 翻页后滚动缩略图导航到可视区
-    nextTick(() => {
-      thumbRefs.value[value - 1]?.scrollIntoView({ block: 'nearest' })
-    })
+    scrollThumb(value)
   }
 })
 
 const total = computed(() => store.value.svgs.value.length)
-const scale = ref(100)
+
+/** 页码拖拽条上界（无页时仍可渲染，禁用交互） */
+const sliderMax = computed(() => Math.max(1, total.value))
 
 const thumbRefs = ref<HTMLElement[]>([])
 
@@ -106,13 +105,18 @@ const goto = (value: number) => {
 
 const toDataUrl = (svg: string): string => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 
+/** 左侧缩略图导航滚动定位到当前页 */
+const scrollThumb = (value: number) => {
+  nextTick(() => {
+    thumbRefs.value[value - 1]?.scrollIntoView({ block: 'nearest' })
+  })
+}
+
 // AI 经 ppt_select 变更 currentPage → 同步滚动缩略图导航
 watch(
   () => store.value.currentPage.value,
   (value) => {
-    if (value >= 1) {
-      nextTick(() => thumbRefs.value[value - 1]?.scrollIntoView({ block: 'nearest' }))
-    }
+    if (value >= 1) scrollThumb(value)
   }
 )
 </script>
@@ -138,77 +142,27 @@ watch(
     font-size: var(--td-font-size-body-small);
   }
 
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
-  &__page {
-    min-width: 52px;
-    text-align: center;
-    color: var(--td-text-color-secondary);
-    font-size: var(--td-font-size-body-small);
-    white-space: nowrap;
-  }
-
-  &__scale {
-    flex: 1;
-    min-width: 0;
-    margin: 0 4px;
-  }
-
-  &__scale-label {
-    width: 44px;
-    color: var(--td-text-color-secondary);
-    font-size: var(--td-font-size-body-small);
-    white-space: nowrap;
-  }
-
-  &__viewport {
+  &__body {
     flex: 1;
     min-height: 0;
-    overflow: auto;
     display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    background: var(--td-bg-color-component);
-    border-radius: var(--td-radius-medium);
-    position: relative;
-  }
-
-  &__loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--td-text-color-placeholder);
-    font-size: var(--td-font-size-body-small);
-  }
-
-  &__img {
-    display: block;
-    max-width: 100%;
-    box-shadow: var(--td-shadow-2);
-    border-radius: var(--td-radius-small);
-    background: #fff;
+    gap: 8px;
   }
 
   &__thumbs {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 2px;
+    width: 96px;
     flex-shrink: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 2px;
   }
 
   &__thumb {
     position: relative;
-    width: 64px;
-    height: 40px;
     flex-shrink: 0;
+    aspect-ratio: 16 / 9;
     border: 1px solid var(--td-border-level-1-color);
     border-radius: var(--td-radius-small);
     overflow: hidden;
@@ -244,6 +198,65 @@ watch(
     width: 320px;
     border-radius: var(--td-radius-small);
     box-shadow: var(--td-shadow-2);
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-right: 8px;
+  }
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__page {
+    min-width: 52px;
+    text-align: center;
+    color: var(--td-text-color-secondary);
+    font-size: var(--td-font-size-body-small);
+    white-space: nowrap;
+  }
+
+  &__slider {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__viewport {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--td-bg-color-component);
+    border-radius: var(--td-radius-medium);
+    position: relative;
+  }
+
+  &__loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--td-text-color-placeholder);
+    font-size: var(--td-font-size-body-small);
+  }
+
+  &__img {
+    display: block;
+    max-width: 100%;
+    box-shadow: var(--td-shadow-2);
+    border-radius: var(--td-radius-small);
+    background: #fff;
   }
 }
 </style>
