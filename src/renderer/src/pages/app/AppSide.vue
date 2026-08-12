@@ -74,10 +74,6 @@
 
         <t-divider size="1px" />
 
-        <t-radio-group v-model="active" variant="primary-filled">
-          <t-radio-button value="agent" class="w-100px flex justify-center"> 任务 </t-radio-button>
-        </t-radio-group>
-
         <ChatList v-if="active === 'agent'" />
       </nav>
     </div>

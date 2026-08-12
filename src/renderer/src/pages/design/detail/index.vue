@@ -1,8 +1,8 @@
 <template>
-  <page-layout pl="40px">
+  <page-layout :pl="`${ASIDE_PADDING_LEFT - 40}px`">
     <template #title>
       <div class="flex gap-8px items-center">
-        <t-button theme="default" variant="text" shape="square" @click="goList">
+        <t-button theme="default" variant="text" shape="square" class="detail-btn" @click="goList">
           <template #icon><chevron-left-icon /></template>
         </t-button>
         <div>{{ style?.name || '设计风格详情' }}</div>
@@ -104,6 +104,7 @@ import { useDesignStyleStore } from '@/store'
 import { openDesignStylePut } from '@/pages/design/list/modals/DesignStylePutDialog'
 import StylePaletteBlock from './components/StylePaletteBlock.vue'
 import StyleTypographyBlock from './components/StyleTypographyBlock.vue'
+import { ASIDE_PADDING_LEFT } from '@/global/Constant'
 
 const route = useRoute()
 const router = useRouter()
@@ -241,5 +242,9 @@ const handleEdit = async () => {
   align-items: center;
   justify-content: center;
   min-height: 400px;
+}
+.detail-btn {
+  z-index: 60;
+  -webkit-app-region: no-drag;
 }
 </style>
