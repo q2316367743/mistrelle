@@ -3,7 +3,12 @@ import type { BrowserWindowConstructorOptions } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpc } from '$/ipc/registerIpc'
+import { registerLocalSchemes, registerLocalProtocol } from '$/protocol'
 import icon from '../../resources/logo.png?asset'
+
+// 在 app ready 之前注册 mistrelle:// 为特权 scheme（渲染层经自定义协议加载本地字体 / 图片，
+// 规避 dev 下 http 页面加载 file:// 被 Chromium 拦截）
+registerLocalSchemes()
 
 const WINDOW_BACKGROUND = '#F4F4F4'
 
@@ -92,6 +97,9 @@ app.whenReady().then(() => {
 
   // 注册全部业务 IPC（shell/dialog/clipboard/os/display/notification/fs/net/shellExec/font/db/ffmpeg/sharp）
   registerIpc()
+
+  // 注册 mistrelle:// 协议处理（依赖 registerLocalSchemes 已就绪）
+  registerLocalProtocol()
 
   createWindow()
 

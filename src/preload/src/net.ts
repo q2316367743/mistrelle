@@ -1,10 +1,10 @@
 /**
  * net 桥（preload）：原 src-utools/src/net.js 的迁移拆分。
  * - downloadFileFromUrl：网络 + 落盘，迁入 main（netIpc.ts）
- * - pathToHref：纯函数（node:url），留在 preload 同步实现
+ * - pathToHref：纯函数（路径 → mistrelle:// URL），留在 preload 同步实现
  */
 import { ipcRenderer } from 'electron'
-import { pathToFileURL } from 'node:url'
+import { resolve } from 'node:path'
 import { NetChannels } from './channels'
 
 export const netApi = {
@@ -16,6 +16,6 @@ export const netApi = {
   downloadFileFromUrl: (config: Record<string, unknown>, path: string): Promise<void> =>
     ipcRenderer.invoke(NetChannels.downloadFileFromUrl, config, path),
 
-  /** 将路径转换为 href */
-  pathToHref: (path: string): string => pathToFileURL(path).href
+  /** 将绝对路径转换为 mistrelle:// URL（渲染层经自定义协议加载本地资源；dev 下 file:// 会被 Chromium 拦截） */
+  pathToHref: (path: string): string => `mistrelle://local/${encodeURIComponent(resolve(path))}`
 }

@@ -1,10 +1,10 @@
 /**
  * 字体 FontFace 注册器：把 library / online 字体加载进 document.fonts 的统一实现（供画布渲染层与预览层共用）。
  *
- * - 用 FontFace 的 URL 源 new FontFace(name, url("pathToHref(path)")) 让浏览器按 file:// 异步加载，
- *   不经 IPC 读整包字节进渲染进程（浏览器自带缓存）。
+ * - 用 FontFace 的 URL 源 new FontFace(name, url("pathToHref(path)")) 让浏览器按 mistrelle:// 异步加载，
+ *   不经 IPC 读整包字节进渲染进程（浏览器自带缓存）。mistrelle:// 为 main 进程注册的自定义协议，读盘返回。
  * - 注册进 document.fonts 的 FontFace 不会自动释放（画布/组件销毁也不释放），因此按最近使用（LRU）
- *   设上限，超限即 document.fonts.delete 淘汰最久未用者；字体源是 file:// 可随时按需重载，淘汰安全。
+ *   设上限，超限即 document.fonts.delete 淘汰最久未用者；字体源经自定义协议可随时按需重载，淘汰安全。
  * - ensure 幂等：已注册则刷新 lastUsed 直接返回；加载中并发去重。
  *
  * 每个调用方（createFontFaceRegistry(maxFaces)）持有独立实例：独立上限、独立 clear（如预览页刷新时
