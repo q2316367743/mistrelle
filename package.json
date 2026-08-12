@@ -23,6 +23,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "axios": "1.15.2",
     "electron-updater": "^6.3.9",
     "lmdb": "^3.3.3",
     "sharp": "^0.34.2"
@@ -53,7 +54,6 @@
     "@vueuse/integrations": "^10.11.1",
     "@ztools-center/ztools-api-types": "^1.0.3",
     "adm-zip": "^0.6.0",
-    "axios": "1.15.2",
     "dayjs": "^1.11.14",
     "electron": "^39.2.6",
     "electron-builder": "^26.0.12",

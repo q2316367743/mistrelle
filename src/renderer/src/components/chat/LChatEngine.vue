@@ -82,7 +82,7 @@ import RChatList from './RChatList.vue'
 import LChatSender from './sender/LChatSender.vue'
 import LChatAside from './aside/LChatAside.vue'
 import { useChatSession } from './useChatSession'
-import { collapsed } from '@/global/BeanFactory'
+import { collapsed, toggleCollapsed } from '@/global/BeanFactory'
 import { useBoolState, useUtoolsKvStorage } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import AsideRightIcon from '@/assets/icons/AsideRightIcon.vue'
@@ -183,7 +183,10 @@ onBeforeUnmount(() => {
 watch(
   asideType,
   (type) => {
-    if (['design', 'writing'].includes(type)) aside.value = true
+    if (['design', 'writing'].includes(type)) {
+      aside.value = true
+      toggleCollapsed(true)
+    }
   },
   { immediate: true }
 )

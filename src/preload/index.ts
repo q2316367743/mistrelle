@@ -23,7 +23,7 @@ const preload = {
   zip: zipApi,
   shellExec: shellExecApi,
   font: fontApi,
-  axios: axios.create({ adapter: 'http' })
+  axios: axios.create({ adapter: axios.getAdapter('http') })
 }
 
 if (process.contextIsolated) {
