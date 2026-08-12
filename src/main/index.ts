@@ -4,7 +4,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpc } from '$/ipc/registerIpc'
 import { registerLocalSchemes, registerLocalProtocol } from '$/protocol'
-import icon from '../../resources/logo.png?asset'
+import icon from '../../resources/icon.png?asset'
 
 // 在 app ready 之前注册 mistrelle:// 为特权 scheme（渲染层经自定义协议加载本地字体 / 图片，
 // 规避 dev 下 http 页面加载 file:// 被 Chromium 拦截）
@@ -22,6 +22,9 @@ function windowOptions(): BrowserWindowConstructorOptions {
   > = {
     darwin: {
       titleBarStyle: 'hiddenInset',
+      // hiddenInset 默认交通灯位置 (12, 11)；显式指定后 Electron 源码中会优先于默认值，
+      // 借此将按钮整体下移 8px（y 11 -> 19）
+      trafficLightPosition: { x: 8, y: 15 },
       vibrancy: 'under-window',
       visualEffectState: 'active',
       backgroundColor: '#00000000'

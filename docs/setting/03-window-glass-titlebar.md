@@ -10,7 +10,7 @@
 
 | 平台    | 标题栏                                       | 毛玻璃                                  | 背景色            |
 |---------|----------------------------------------------|-----------------------------------------|-------------------|
-| darwin  | `titleBarStyle: 'hiddenInset'`（保留交通灯） | `vibrancy: 'under-window'` + `visualEffectState: 'active'` | `#00000000`（透明，露出 vibrancy） |
+| darwin  | `titleBarStyle: 'hiddenInset'` + `trafficLightPosition: { x: 12, y: 19 }`（保留交通灯，默认位 `(12, 11)`，下移 8px） | `vibrancy: 'under-window'` + `visualEffectState: 'active'` | `#00000000`（透明，露出 vibrancy） |
 | win32   | `titleBarStyle: 'hidden'` + `titleBarOverlay`（原生控制按钮，色 `#F4F4F4` 高 40） | `backgroundMaterial: 'acrylic'` | `#00000000`（透明，acrylic 才可见） |
 | linux   | `titleBarStyle: 'hidden'` + `titleBarOverlay` | 无（无毛玻璃能力）                    | `#F4F4F4`（实色） |
 
@@ -27,6 +27,7 @@
 
 - `WINDOW_BACKGROUND = '#F4F4F4'`：页面背景基准色，与渲染层 `theme.less` 亮色页面背景一致；改动页面背景色时需同步此常量及 `titleBarOverlay.color`。
 - `platformOptions` 以 `NodeJS.Platform` 为键（`darwin` / `win32` / `linux`），兜底 `{ backgroundColor: WINDOW_BACKGROUND }`。
+- `trafficLightPosition`（darwin）：指定后 Electron 源码 `native_window_mac.mm` 中会**优先于** `hiddenInset` 默认位 `(12, 11)`，故可保留 `hiddenInset` 再自定义交通灯位置（当前为 `(12, 19)`，即下移 8px）。
 
 ## 注意事项
 
