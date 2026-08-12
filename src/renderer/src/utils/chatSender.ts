@@ -18,7 +18,7 @@ export const formatSkillDescription = (skill: LocalSkill) =>
 export const loadChatFiles = async (rootDir: string): Promise<ChatFileRef[]> => {
   const result: ChatFileRef[] = []
   const walk = async (dir: string, relative: string) => {
-    if (!window.preload.fs.existsSync(dir)) return
+    if (!(await window.preload.fs.existsSync(dir))) return
     const items = await window.preload.fs.readDir(dir)
     for (const item of items) {
       const fullPath = window.preload.path.join(dir, item.name)
@@ -109,12 +109,12 @@ export const copyToInputs = async (filePath: string, sandboxDir: string): Promis
   const inputsDir = window.preload.path.join(sandboxDir, 'inputs')
   const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'file'
   let dest = window.preload.path.join(inputsDir, name)
-  if (window.preload.fs.existsSync(dest)) {
+  if (await window.preload.fs.existsSync(dest)) {
     const extIdx = name.lastIndexOf('.')
     const base = extIdx > 0 ? name.slice(0, extIdx) : name
     const ext = extIdx > 0 ? name.slice(extIdx) : ''
     let i = 1
-    while (window.preload.fs.existsSync(dest)) {
+    while (await window.preload.fs.existsSync(dest)) {
       dest = window.preload.path.join(inputsDir, `${base}_${i}${ext}`)
       i++
     }

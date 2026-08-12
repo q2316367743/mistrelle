@@ -45,7 +45,12 @@ Selector targeting: optionally pass a CSS selector to extract only a specific bl
         selector?: string
       }
 
-      let browser = window.preload.inject.cBrowser.hide().goto(url).wait(waitMs)
+      const cBrowser = window.preload.inject.cBrowser
+      if (!cBrowser) {
+        return { error: '浏览器渲染能力未就绪（Electron 迁移中，待实现）' }
+      }
+
+      let browser = cBrowser.hide().goto(url).wait(waitMs)
 
       if (mode === 'html') {
         browser = browser.evaluate(extractHtml, selector)

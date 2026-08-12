@@ -60,9 +60,13 @@ import { computed, nextTick, ref } from 'vue'
 import { ChatContent, ChatLoading, ChatMessage } from '@tdesign-vue-next/chat'
 import type { AiDiscussion, AiGroupChat, AiGroupChatMessage } from '@/entity/ai'
 import { useAiAgentStore } from '@/store'
-import { getUserProfile } from '@/utils/native/NativeUtil'
+import { getUserProfile, type UserProfile } from '@/utils/native/NativeUtil'
 
-const userProfile = getUserProfile()
+// Electron 迁移：getUserProfile 已异步化，先给默认头像，加载完成后更新
+const userProfile = ref<UserProfile>({ avatar: './logo.png', nickname: '用户', type: 'user' })
+onMounted(async () => {
+  userProfile.value = await getUserProfile()
+})
 
 const props = defineProps<{
   chat?: AiGroupChat

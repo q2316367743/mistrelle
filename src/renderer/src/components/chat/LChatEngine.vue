@@ -58,7 +58,7 @@
       <div class="l-chat-tool__title">
         <span class="ellipsis" :title="chatName">{{ chatName }}</span>
       </div>
-      <div class="ml-auto flex gap-8px">
+      <div class="ml-auto flex gap-8px chat-operator">
         <todo-progress-button :todos="instance.todos.value" />
         <t-button theme="default" variant="text" shape="square" @click="toggleFullscreen()">
           <template #icon>
@@ -76,7 +76,6 @@
   </t-layout>
 </template>
 <script lang="ts" setup>
-import type { ChatType } from '@/modules/chat'
 import SubAgentTabs from '@/components/chat/SubAgentTabs.vue'
 import TodoProgressButton from '@/components/chat/TodoProgressButton.vue'
 import RChatList from './RChatList.vue'
@@ -88,6 +87,7 @@ import { useBoolState, useUtoolsKvStorage } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import AsideRightIcon from '@/assets/icons/AsideRightIcon.vue'
 import { Fullscreen1Icon, FullscreenExit1Icon } from 'tdesign-icons-vue-next'
+import { ASIDE_PADDING_LEFT } from '@/global/Constant'
 
 const props = withDefaults(
   defineProps<{
@@ -148,15 +148,8 @@ const {
   messages,
   status,
   workspace,
-  mode,
-  agentId,
-  chatType,
   writingScene,
   sandboxDir,
-  senderRef,
-  modelValue,
-  thinking,
-  effort,
   initialState,
   tokenUsage,
   handleSend,
@@ -194,6 +187,8 @@ watch(
   },
   { immediate: true }
 )
+
+const paddingLeft = computed(() => `${ASIDE_PADDING_LEFT}px`)
 </script>
 <style scoped lang="less">
 .l-chat-tool {
@@ -201,6 +196,7 @@ watch(
   overflow: hidden;
   height: v-bind(height);
   padding: 48px 8px 16px;
+  z-index: 52;
 
   &__content {
     display: flex;
@@ -231,7 +227,7 @@ watch(
     flex-shrink: 0;
 
     &.collapsed {
-      padding-left: 88px;
+      padding-left: v-bind(paddingLeft);
     }
   }
   &__title {
@@ -268,5 +264,10 @@ watch(
     cursor: col-resize;
     z-index: 10;
   }
+}
+
+.chat-operator {
+  z-index: 53;
+  -webkit-app-region: no-drag;
 }
 </style>

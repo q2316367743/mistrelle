@@ -1,5 +1,9 @@
 import { ToolFunction } from '@/domain'
 
+/**
+ * 截图 / 取色工具（Electron 迁移后暂不可用）。
+ * inject.screen 已随 utools 平台能力移除，保留工具位并返回友好错误。
+ */
 export const injectScreenTools: ToolFunction[] = [
   {
     name: 'screen_capture',
@@ -11,11 +15,7 @@ export const injectScreenTools: ToolFunction[] = [
     },
     risk: 'sensitive',
     handler: async () => {
-      return new Promise((resolve) => {
-        window.preload.inject.screen.capture((imgBase64: string) => {
-          resolve({ image: imgBase64 })
-        })
-      })
+      return { error: '当前环境不支持屏幕截图（Electron 迁移中，待实现）' }
     },
   },
   {
@@ -28,11 +28,7 @@ export const injectScreenTools: ToolFunction[] = [
     },
     risk: 'sensitive',
     handler: async () => {
-      return new Promise((resolve) => {
-        window.preload.inject.screen.colorPick((color) => {
-          resolve({ hex: color.hex, rgb: color.rgb })
-        })
-      })
+      return { error: '当前环境不支持屏幕取色（Electron 迁移中，待实现）' }
     },
   },
 ]

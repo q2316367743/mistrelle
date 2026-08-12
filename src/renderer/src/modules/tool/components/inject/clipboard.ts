@@ -29,7 +29,7 @@ export const injectClipboardTools: ToolFunction[] = [
     risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { text } = params[0] as { text: string }
-      const ok = window.preload.inject.clipboard.copyText(text)
+      const ok = await window.preload.inject.clipboard.copyText(text)
       return { success: ok }
     },
   },

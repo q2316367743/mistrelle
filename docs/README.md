@@ -16,6 +16,12 @@
 |----------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
 | [01-shell-exec.md](./plugin/01-shell-exec.md)                 | shell 执行插件：cliRun / jsRun 双层超时保障（底层 kill + 前端 IPC 挂起兜底）、超时契约与兼容性   |
 
+### migration/ —— 平台迁移
+
+| 文档                                                                           | 描述                                                                                                                                                     |
+|--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 首次远程下载、sharp 移植、renderer 异步化适配清单 |
+
 ### subscribe/ —— 订阅
 
 | 文档                                                                  | 描述                                                                                                        |
@@ -62,6 +68,7 @@
 |--------------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | [01-ai-model-fetch.md](./setting/01-ai-model-fetch.md) | AI 设置「从接口获取模型」抽屉：`FetchModelsDrawer` 命令式外壳 + `FetchModelsContent` 内容组件；内置模型上下文表（`aiModelPresets.ts`）自动维护 `context` / `output` |
 | [02-ai-model-store.md](./setting/02-ai-model-store.md) | AI 模型配置存储：`~/.mistrelle/model.json`（`ModelService` 读写 + `SettingAiStore` 契约）     |
+| [03-window-glass-titlebar.md](./setting/03-window-glass-titlebar.md) | 窗口配置：三平台隐藏标题栏（macOS hiddenInset / 其他 titleBarOverlay）+ 系统级毛玻璃（vibrancy / acrylic）；毛玻璃需透明背景才可见 |
 
 ### subagent/ —— 子 Agent
 

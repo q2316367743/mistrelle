@@ -100,11 +100,14 @@ export interface SettingSecure {
  * - Linux / 其他：无约定，返回空串回退 PATH 查找
  */
 export function getDefaultEgoBrowserPath(): string {
+  // Electron 迁移：os.isMacOS/isWindows 已异步化，此处为 computed 同步消费，
+  // 改用 navigator.platform 做同步平台推断（仅用于默认路径，Chromium 下可靠）
+  const platform = navigator.platform
   const { os } = window.preload.inject
-  if (os.isMacOS()) {
+  if (platform.includes('Mac')) {
     return window.preload.path.join(os.getPath('home'), '.local', 'bin', 'ego-browser')
   }
-  if (os.isWindows()) {
+  if (platform.includes('Win')) {
     const localAppData = window.preload.path.dirname(os.getPath('temp'))
     return window.preload.path.join(localAppData, 'ego-lite', 'Application', 'ego-browser.exe')
   }

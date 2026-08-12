@@ -192,7 +192,8 @@ const handleCopy = async () => {
   try {
     const blob = await exportCanvasPng(doc)
     const dataUrl = await blobToBase64(blob)
-    if (window.preload.inject.clipboard.copyImage(dataUrl)) {
+    const ok = await window.preload.inject.clipboard.copyImage(dataUrl)
+    if (ok) {
       MessageUtil.success('已复制到剪贴板')
     } else {
       MessageUtil.error('复制失败')
@@ -212,7 +213,7 @@ const handleDownload = async () => {
   try {
     const blob = await exportCanvasPng(doc)
     const name = `${doc.title || doc.name || 'canvas'}-${dayjs().format('YYYYMMDDHHmmss')}.png`
-    const path = window.preload.inject.dialog.save({
+    const path = await window.preload.inject.dialog.save({
       title: '保存画布图片',
       defaultPath: name,
       filters: [{ name: 'PNG 图片', extensions: ['png'] }]

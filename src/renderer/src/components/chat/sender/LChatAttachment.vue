@@ -518,8 +518,8 @@ const selectMode = (res: AiChatMode) => {
   keyword.value = ''
 }
 
-const selectRefFile = () => {
-  const paths = window.preload.inject.dialog.open({ properties: ['openFile'] })
+const selectRefFile = async () => {
+  const paths = await window.preload.inject.dialog.open({ properties: ['openFile'] })
   if (!paths || paths.length === 0) return
   const filePath = paths[0]
   const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'file'

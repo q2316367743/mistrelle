@@ -105,7 +105,7 @@ export class NovelStore {
    */
   async refresh(): Promise<NovelProject> {
     const path = buildProjectPath(this.root)
-    if (window.preload.fs.existsSync(path)) {
+    if (await window.preload.fs.existsSync(path)) {
       try {
         const parsed = JSON.parse(await window.preload.fs.readTextFile(path)) as NovelProject
         if (parsed && Array.isArray(parsed.novels)) {
@@ -180,7 +180,7 @@ export class NovelStore {
     project.novels.splice(index, 1)
     await this.persist(project)
     const dir = buildNovelDir(this.root, id)
-    if (window.preload.fs.existsSync(dir)) {
+    if (await window.preload.fs.existsSync(dir)) {
       await window.preload.fs.rm(dir)
     }
   }
@@ -189,7 +189,7 @@ export class NovelStore {
   async readNovelFile(id: string, file: string): Promise<string> {
     await this.refresh()
     const filePath = buildNovelFilePath(this.root, id, file)
-    if (!window.preload.fs.existsSync(filePath)) return ''
+    if (!(await window.preload.fs.existsSync(filePath))) return ''
     return window.preload.fs.readTextFile(filePath)
   }
 
@@ -219,7 +219,7 @@ export class NovelStore {
   async upsertCharacter(id: string, name: string, content: string): Promise<string> {
     await this.refresh()
     const filePath = buildNovelFilePath(this.root, id, NOVEL_FILES.characters)
-    const existing = window.preload.fs.existsSync(filePath)
+    const existing = await window.preload.fs.existsSync(filePath)
       ? await window.preload.fs.readTextFile(filePath)
       : ''
     const heading = `## ${name}`
@@ -233,7 +233,7 @@ export class NovelStore {
 
   private async persist(project: NovelProject): Promise<void> {
     project.updatedTime = Date.now()
-    if (!window.preload.fs.existsSync(this.root)) {
+    if (!(await window.preload.fs.existsSync(this.root))) {
       await window.preload.fs.mkdir(this.root, true)
     }
     await window.preload.fs.writeTextFile(buildProjectPath(this.root), JSON.stringify(project))

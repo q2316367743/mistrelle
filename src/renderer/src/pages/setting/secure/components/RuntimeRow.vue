@@ -34,8 +34,8 @@ const emit = defineEmits<{
 /**
  * 调用原生文件选择对话框，将选中的可执行文件路径写回对应运行时字段
  */
-const pickPath = () => {
-  const res = window.preload.inject.dialog.open({
+const pickPath = async () => {
+  const res = await window.preload.inject.dialog.open({
     title: `选择 ${props.name} 可执行文件`,
     properties: ['openFile'],
     defaultPath: props.modelValue || undefined

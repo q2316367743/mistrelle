@@ -44,7 +44,7 @@ export class ArticleStore {
    */
   async refresh(): Promise<ArticleProject> {
     const path = buildProjectPath(this.root)
-    if (window.preload.fs.existsSync(path)) {
+    if (await window.preload.fs.existsSync(path)) {
       try {
         const parsed = JSON.parse(await window.preload.fs.readTextFile(path)) as ArticleProject
         if (parsed && Array.isArray(parsed.articles)) {
@@ -117,7 +117,7 @@ export class ArticleStore {
     await this.persist(project)
     if (removed) {
       const filePath = buildArticleFilePath(this.root, removed.id)
-      if (window.preload.fs.existsSync(filePath)) {
+      if (await window.preload.fs.existsSync(filePath)) {
         await window.preload.fs.rm(filePath)
       }
     }
@@ -129,7 +129,7 @@ export class ArticleStore {
     const item = project.articles.find((a) => a.id === id)
     if (!item) throw new Error(`未找到文章 ${id}，可用 article_list 获取 id`)
     const filePath = window.preload.path.join(this.root, item.file)
-    if (!window.preload.fs.existsSync(filePath)) {
+    if (!(await window.preload.fs.existsSync(filePath))) {
       throw new Error(`文章正文文件不存在：${filePath}`)
     }
     return window.preload.fs.readTextFile(filePath)
@@ -149,7 +149,7 @@ export class ArticleStore {
 
   private async persist(project: ArticleProject): Promise<void> {
     project.updatedTime = Date.now()
-    if (!window.preload.fs.existsSync(this.root)) {
+    if (!(await window.preload.fs.existsSync(this.root))) {
       await window.preload.fs.mkdir(this.root, true)
     }
     await window.preload.fs.writeTextFile(buildProjectPath(this.root), JSON.stringify(project))

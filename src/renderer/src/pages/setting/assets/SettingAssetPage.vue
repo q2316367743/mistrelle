@@ -191,7 +191,7 @@ const openFolder = () => {
 }
 
 const addFont = async () => {
-  const files = window.preload.inject.dialog.open({
+  const files = await window.preload.inject.dialog.open({
     title: '选择字体文件',
     filters: [{ name: '字体文件', extensions: ['ttf', 'otf', 'woff', 'woff2', 'ttc', 'otc'] }],
     properties: ['openFile', 'multiSelections']

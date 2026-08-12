@@ -71,8 +71,8 @@ const active = computed(() => !!workspace.value)
 const clearWorkspace = () => {
   workspace.value = ''
 }
-const selectWorkspace = () => {
-  const paths = window.preload.inject.dialog.open({ properties: ['openDirectory'] })
+const selectWorkspace = async () => {
+  const paths = await window.preload.inject.dialog.open({ properties: ['openDirectory'] })
   if (!paths || paths.length === 0) return
   workspace.value = paths[0]
   if (paths[0] && !history.value.includes(paths[0])) {

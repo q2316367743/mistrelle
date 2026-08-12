@@ -133,7 +133,7 @@ export const fileTools: ToolFunction[] = [
     risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { path } = params[0] as { path: string }
-      const exists = window.preload.fs.existsSync(path)
+      const exists = await window.preload.fs.existsSync(path)
       return { exists }
     }
   },

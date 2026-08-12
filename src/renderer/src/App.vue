@@ -1,5 +1,6 @@
 <template>
   <t-layout class="main">
+    <div class="window-drag-region"></div>
     <app-side />
     <t-content class="main-container">
       <router-view />
@@ -46,11 +47,6 @@ const showChatAdd = computed(() => {
   return true
 })
 
-window.preload.inject.onPluginEnter((action) => {
-  // 对关键字进行处理
-  console.log(action)
-})
-
 onMounted(() => {
   console.log(`插件已启动:
 程序目录：${appData}
@@ -89,12 +85,23 @@ onMounted(() => {
   }
 }
 
+.window-drag-region {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  z-index: 52;
+  -webkit-app-region: drag;
+}
+
 .common-operator {
   position: fixed;
   top: 8px;
-  left: 8px;
-  z-index: 51;
+  left: 76px;
+  z-index: 60;
   display: flex;
   gap: 8px;
+  -webkit-app-region: no-drag;
 }
 </style>

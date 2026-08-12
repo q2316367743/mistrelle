@@ -16,15 +16,15 @@ export const skillHubInstall = async (
   const join = window.preload.path.join
   const targetDir = join(agent.path, slug)
 
-  if (window.preload.fs.existsSync(targetDir) && !options?.overwrite) {
+  if (await window.preload.fs.existsSync(targetDir) && !options?.overwrite) {
     throw new Error(`目录 ${slug} 已存在，请先删除或选择覆盖`)
   }
 
-  if (!window.preload.fs.existsSync(agent.path)) {
+  if (!(await window.preload.fs.existsSync(agent.path))) {
     await window.preload.fs.mkdir(agent.path)
   }
 
-  if (window.preload.fs.existsSync(targetDir)) {
+  if (await window.preload.fs.existsSync(targetDir)) {
     await window.preload.fs.rm(targetDir)
   }
 
@@ -37,7 +37,7 @@ export const skillHubInstall = async (
     await apiV1Download(slug, zipPath, options?.onDownloadProgress)
     await window.preload.zip.extract(zipPath, targetDir)
   } finally {
-    if (window.preload.fs.existsSync(zipPath)) {
+    if (await window.preload.fs.existsSync(zipPath)) {
       await window.preload.fs.rm(zipPath)
     }
   }

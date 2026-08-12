@@ -101,7 +101,7 @@ export const exportArticleZip = async (
 ): Promise<ExportArticleZipResult> => {
   const { root, articleFile, targetZip, name } = options
   const srcMd = window.preload.path.join(root, articleFile)
-  if (!window.preload.fs.existsSync(srcMd)) {
+  if (!(await window.preload.fs.existsSync(srcMd))) {
     throw new Error(`文章文件不存在：${srcMd}`)
   }
   const mdDir = window.preload.path.dirname(srcMd)
@@ -123,7 +123,7 @@ export const exportArticleZip = async (
     await window.preload.fs.mkdir(stagedAssets)
     let count = 0
     for (const ref of refs) {
-      if (!window.preload.fs.existsSync(ref.absPath)) continue
+      if (!(await window.preload.fs.existsSync(ref.absPath))) continue
       if (!relToRoot(root, ref.absPath)) continue
       await window.preload.fs.copyFile(
         ref.absPath,

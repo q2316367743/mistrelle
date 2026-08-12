@@ -82,7 +82,7 @@ const findNode = (nodes: CanvasNode[], id: string): CanvasNode | null => {
 }
 
 /** 双击画布元素：把「画布版本 + 节点 id」注入到聊天输入框，让 AI 能 canvas_open(version) 定位并修改 */
-const handleDoubleTap = (event: { target?: CanvasTapTarget | null }) => {
+const handleDoubleTap = async (event: { target?: CanvasTapTarget | null }) => {
   let el = event.target
   while (el && !el.id) el = el.parent ?? null
   if (!el?.id) return
@@ -96,7 +96,8 @@ const handleDoubleTap = (event: { target?: CanvasTapTarget | null }) => {
     return
   }
   // 无输入框桥接时降级为复制节点 id（保留原能力）
-  if (window.preload.inject.clipboard.copyText(el.id)) {
+  const ok = await window.preload.inject.clipboard.copyText(el.id)
+  if (ok) {
     MessageUtil.success(`已复制元素 id：${el.id}`)
   } else {
     MessageUtil.error('复制失败')

@@ -144,9 +144,14 @@ Supported step types:
         options?: Record<string, any>
       }
 
+      const cBrowser = window.preload.inject.cBrowser
+      if (!cBrowser) {
+        return { error: '浏览器自动化能力未就绪（Electron 迁移中，待实现）' }
+      }
+
       const wantsVisible = steps.some((s) => s.type === 'show') || options?.show === true
 
-      let browser = window.preload.inject.cBrowser
+      let browser: InjectCBrowser = cBrowser
 
       if (!wantsVisible) {
         browser = browser.hide()

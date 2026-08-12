@@ -174,7 +174,7 @@ const buildSkillMd = (name: string, description: string, body: string) => {
  */
 const readSkillMetaVersion = async (dirPath: string): Promise<string | undefined> => {
   const metaPath = window.preload.path.join(dirPath, '_meta.json')
-  if (!window.preload.fs.existsSync(metaPath)) return undefined
+  if (!(await window.preload.fs.existsSync(metaPath))) return undefined
   try {
     const meta = JSON.parse(await window.preload.fs.readTextFile(metaPath))
     return typeof meta?.version === 'string' ? meta.version : undefined
@@ -184,7 +184,7 @@ const readSkillMetaVersion = async (dirPath: string): Promise<string | undefined
 }
 
 const listAgentSkills = async (agent: SkillAgent): Promise<Array<LocalSkill>> => {
-  if (!window.preload.fs.existsSync(agent.path)) return []
+  if (!(await window.preload.fs.existsSync(agent.path))) return []
   const items = await window.preload.fs.readDir(agent.path)
   const list: Array<LocalSkill> = []
   for (const item of items) {
@@ -192,7 +192,7 @@ const listAgentSkills = async (agent: SkillAgent): Promise<Array<LocalSkill>> =>
     let name = item.name
     let description = ''
     const filePath = buildSkillFilePath(agent, item.name)
-    if (window.preload.fs.existsSync(filePath)) {
+    if (await window.preload.fs.existsSync(filePath)) {
       const meta = parseSkillMd(await window.preload.fs.readTextFile(filePath))
       name = meta.name || item.name
       description = meta.description
@@ -239,7 +239,7 @@ export const localSkillList = async (agentKey?: string, forceRefresh = false): P
  */
 export const localSkillCreate = async (agent: SkillAgent, form: LocalSkillForm) => {
   const dir = buildSkillDirPath(agent, form.dirName)
-  if (window.preload.fs.existsSync(dir)) {
+  if (await window.preload.fs.existsSync(dir)) {
     throw new Error(`目录 ${form.dirName} 已存在`)
   }
   await window.preload.fs.mkdir(dir)
@@ -256,7 +256,7 @@ export const localSkillCreate = async (agent: SkillAgent, form: LocalSkillForm) 
 export const localSkillUpdate = async (skill: LocalSkill, form: LocalSkillForm) => {
   const filePath = window.preload.path.join(skill.path, SKILL_FILE)
   let body = ''
-  if (window.preload.fs.existsSync(filePath)) {
+  if (await window.preload.fs.existsSync(filePath)) {
     body = parseSkillMd(await window.preload.fs.readTextFile(filePath)).body
   }
   await window.preload.fs.writeTextFile(filePath, buildSkillMd(form.name, form.description, body))
@@ -276,7 +276,7 @@ export const localSkillRemove = async (skill: LocalSkill) => {
  */
 export const localSkillContentGet = async (skill: LocalSkill): Promise<string> => {
   const filePath = window.preload.path.join(skill.path, SKILL_FILE)
-  if (window.preload.fs.existsSync(filePath)) {
+  if (await window.preload.fs.existsSync(filePath)) {
     return window.preload.fs.readTextFile(filePath)
   }
   return buildSkillMd(skill.name, skill.description, `# ${skill.name}\n`)
@@ -296,7 +296,7 @@ export const localSkillFiles = async (skill: LocalSkill): Promise<Array<LocalSki
   const ignoreDirs = new Set(useSettingDefaultStore().state.skillIgnoreDirs)
   const result: Array<LocalSkillFile> = []
   const walk = async (dir: string, relative: string) => {
-    if (!window.preload.fs.existsSync(dir)) return
+    if (!(await window.preload.fs.existsSync(dir))) return
     const items = await window.preload.fs.readDir(dir)
     for (const item of items) {
       const full = window.preload.path.join(dir, item.name)

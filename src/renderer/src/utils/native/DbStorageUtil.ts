@@ -229,24 +229,3 @@ export async function removeMultiByAsync(key: string, ignoreError: boolean = fal
     await removeOneByAsync(item._id, ignoreError)
   }
 }
-
-// --------------------------------------- 附件 ---------------------------------------
-
-/**
- * 存储附件到新文档
- * @param docId 文档ID
- * @param attachment 附件 buffer
- * @return url
- */
-export async function postAttachment(docId: string, attachment: Blob | File): Promise<string> {
-  const buffer = await attachment.arrayBuffer()
-  const res = await window.preload.inject.db.promises.postAttachment(
-    docId,
-    new Uint8Array(buffer),
-    'application/octet-stream'
-  )
-  if (res.error) {
-    return Promise.reject(res.message)
-  }
-  return Promise.resolve('attachment:' + docId)
-}

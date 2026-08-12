@@ -1,21 +1,59 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import type { BrowserWindowConstructorOptions } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { registerIpc } from '$/ipc/registerIpc'
 import icon from '../../resources/logo.png?asset'
 
-function createWindow(): void {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+const WINDOW_BACKGROUND = '#F4F4F4'
+
+function windowOptions(): BrowserWindowConstructorOptions {
+  // 标题栏与背景同色 + 背景高斯模糊，按平台差异配置：
+  // - darwin：hiddenInset 隐藏标题栏（保留交通灯）+ vibrancy 系统毛玻璃 + 透明背景
+  // - win32 ：hidden + titleBarOverlay（原生控制按钮）+ acrylic 毛玻璃 + 透明背景让其生效
+  // - linux ：hidden + titleBarOverlay + 实色背景（无毛玻璃能力）
+  const platformOptions: Partial<
+    Record<NodeJS.Platform, Partial<BrowserWindowConstructorOptions>>
+  > = {
+    darwin: {
+      titleBarStyle: 'hiddenInset',
+      vibrancy: 'under-window',
+      visualEffectState: 'active',
+      backgroundColor: '#00000000'
+    },
+    win32: {
+      titleBarStyle: 'hidden',
+      titleBarOverlay: { color: WINDOW_BACKGROUND, symbolColor: '#000000', height: 40 },
+      backgroundMaterial: 'acrylic',
+      backgroundColor: '#00000000'
+    },
+    linux: {
+      titleBarStyle: 'hidden',
+      titleBarOverlay: { color: WINDOW_BACKGROUND, symbolColor: '#000000', height: 40 },
+      backgroundColor: WINDOW_BACKGROUND
+    }
+  }
+
+  return {
+    width: 1200,
+    height: 800,
+    minWidth: 960,
+    minHeight: 600,
     show: false,
     autoHideMenuBar: true,
+    ...(platformOptions[process.platform] ?? { backgroundColor: WINDOW_BACKGROUND }),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      nodeIntegration: true
     }
-  })
+  }
+}
+
+function createWindow(): void {
+  // Create the browser window.
+  const mainWindow = new BrowserWindow(windowOptions())
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
@@ -52,6 +90,9 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  // 注册全部业务 IPC（shell/dialog/clipboard/os/display/notification/fs/net/shellExec/font/db/ffmpeg/sharp）
+  registerIpc()
+
   createWindow()
 
   app.on('activate', function () {
@@ -65,9 +106,12 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  // if (process.platform !== 'darwin') {
+  //   app.quit()
+  // }
+  // 获取全部的窗口
+  const windows = BrowserWindow.getAllWindows()
+  if (windows.length === 0) app.quit()
 })
 
 // In this file you can include the rest of your app's specific main process

@@ -24,7 +24,7 @@ const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ic
 /** 「图片」命令：文件选择器选本地图片 → 拷入 assets 目录 → 插入相对路径节点 */
 const insertImageFromDisk = async (options: ArticleSlashOptions, editor: Editor) => {
   if (!options.assetsDir || !options.baseDir) return
-  const paths = window.preload.inject.dialog.open({
+  const paths = await window.preload.inject.dialog.open({
     title: '选择图片',
     properties: ['openFile'],
     filters: [{ name: '图片', extensions: IMAGE_EXTENSIONS }]

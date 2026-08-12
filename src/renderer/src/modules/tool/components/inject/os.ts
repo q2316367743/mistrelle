@@ -11,16 +11,27 @@ export const injectOsTools: ToolFunction[] = [
     },
     handler: async () => {
       const inject = window.preload.inject
+      const [isMacOS, isWindows, isLinux, isDarkMode, isDev, appName, appVersion, nativeId] =
+        await Promise.all([
+          inject.os.isMacOS(),
+          inject.os.isWindows(),
+          inject.os.isLinux(),
+          inject.os.isDarkColors(),
+          inject.os.isDev(),
+          inject.os.getAppName(),
+          inject.os.getAppVersion(),
+          inject.os.getNativeId()
+        ])
       return {
         platform: inject.getPlatform(),
-        isMacOS: inject.os.isMacOS(),
-        isWindows: inject.os.isWindows(),
-        isLinux: inject.os.isLinux(),
-        isDarkMode: inject.os.isDarkColors(),
-        isDev: inject.os.isDev(),
-        appName: inject.os.getAppName(),
-        appVersion: inject.os.getAppVersion(),
-        nativeId: inject.os.getNativeId(),
+        isMacOS,
+        isWindows,
+        isLinux,
+        isDarkMode,
+        isDev,
+        appName,
+        appVersion,
+        nativeId,
       }
     },
   },

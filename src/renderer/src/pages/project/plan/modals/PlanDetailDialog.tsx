@@ -168,7 +168,7 @@ export const openPlanDetailDialog = (params: PlanDetailDialogParams) => {
 
   // 附件：调起系统选择框 → copyFile → 追加 'attachment' 日志
   const handleAddAttachment = async () => {
-    const paths = window.preload.inject.dialog.open({
+    const paths = await window.preload.inject.dialog.open({
       title: '选择文件',
       properties: ['openFile', 'multiSelections']
     })

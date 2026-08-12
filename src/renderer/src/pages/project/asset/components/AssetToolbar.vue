@@ -100,14 +100,14 @@ const splitName = (p: string) => p.split('/').pop() || p.split('\\').pop() || 'f
 /**
  * 在目标目录下生成不冲突的最终路径：同名时追加 (n)
  */
-const uniquePath = (baseDir: string, name: string): string => {
+const uniquePath = async (baseDir: string, name: string): Promise<string> => {
   let dest = window.preload.path.join(baseDir, name)
-  if (!window.preload.fs.existsSync(dest)) return dest
+  if (!(await window.preload.fs.existsSync(dest))) return dest
   const extIdx = name.lastIndexOf('.')
   const stem = extIdx > 0 ? name.slice(0, extIdx) : name
   const ext = extIdx > 0 ? name.slice(extIdx) : ''
   let i = 1
-  while (window.preload.fs.existsSync(dest)) {
+  while (await window.preload.fs.existsSync(dest)) {
     dest = window.preload.path.join(baseDir, `${stem} (${i})${ext}`)
     i++
   }
@@ -118,18 +118,18 @@ const copyDirRecursive = async (srcDir: string, targetDir: string) => {
   const items = await window.preload.fs.readDir(srcDir)
   for (const item of items) {
     if (item.isDirectory) {
-      const subDir = uniquePath(targetDir, item.name)
+      const subDir = await uniquePath(targetDir, item.name)
       await window.preload.fs.mkdir(subDir)
       await copyDirRecursive(item.path, subDir)
     } else if (item.isFile) {
-      const dest = uniquePath(targetDir, item.name)
+      const dest = await uniquePath(targetDir, item.name)
       await window.preload.fs.copyFile(item.path, dest)
     }
   }
 }
 
 const handleUploadFile = async () => {
-  const paths = window.preload.inject.dialog.open({
+  const paths = await window.preload.inject.dialog.open({
     title: '选择文件',
     properties: ['openFile', 'multiSelections']
   })
@@ -137,7 +137,7 @@ const handleUploadFile = async () => {
   try {
     const target = props.currentDir
     for (const p of paths) {
-      const dest = uniquePath(target, splitName(p))
+      const dest = await uniquePath(target, splitName(p))
       await window.preload.fs.copyFile(p, dest)
     }
     MessageUtil.success(`已上传 ${paths.length} 个文件`)
@@ -148,7 +148,7 @@ const handleUploadFile = async () => {
 }
 
 const handleUploadDir = async () => {
-  const paths = window.preload.inject.dialog.open({
+  const paths = await window.preload.inject.dialog.open({
     title: '选择文件夹',
     properties: ['openDirectory']
   })
@@ -156,7 +156,7 @@ const handleUploadDir = async () => {
   try {
     const target = props.currentDir
     for (const p of paths) {
-      const destDir = uniquePath(target, splitName(p))
+      const destDir = await uniquePath(target, splitName(p))
       await window.preload.fs.mkdir(destDir)
       await copyDirRecursive(p, destDir)
     }

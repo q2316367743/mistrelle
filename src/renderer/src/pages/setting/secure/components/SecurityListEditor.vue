@@ -108,8 +108,8 @@ const isDefault = (item: string) => props.defaultList.includes(item)
 /**
  * 调用原生文件选择对话框，将选中结果追加到列表（自动去重）
  */
-const pickItems = () => {
-  const res = window.preload.inject.dialog.open({
+const pickItems = async () => {
+  const res = await window.preload.inject.dialog.open({
     title: props.pickerTitle,
     properties: props.pickerProperties,
     defaultPath: props.modelValue[props.modelValue.length - 1] || undefined

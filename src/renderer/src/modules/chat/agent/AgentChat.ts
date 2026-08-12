@@ -274,7 +274,7 @@ export class ToolChat {
     const sections: string[] = []
     for (const fileName of settingFiles) {
       const filePath = window.preload.path.join(this.workspace, fileName)
-      if (!window.preload.fs.existsSync(filePath)) continue
+      if (!(await window.preload.fs.existsSync(filePath))) continue
       try {
         const content = await window.preload.fs.readTextFile(filePath)
         if (content.trim()) sections.push(`### ${fileName}\n\n${content.trim()}`)

@@ -179,8 +179,8 @@ const handleNameClick = (row: FileItem) => {
 const openWith = (row: FileItem) => window.preload.inject.shell.openPath(row.path)
 const showInFolder = (row: FileItem) => window.preload.inject.shell.showItemInFolder(row.path)
 
-const copyToClipboard = (row: FileItem) => {
-  const ok = window.preload.inject.clipboard.copyFile(row.path)
+const copyToClipboard = async (row: FileItem) => {
+  const ok = await window.preload.inject.clipboard.copyFile(row.path)
   MessageUtil[ok ? 'success' : 'error'](ok ? '已复制到剪贴板' : '复制失败')
 }
 

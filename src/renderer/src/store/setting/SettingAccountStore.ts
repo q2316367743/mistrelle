@@ -16,7 +16,7 @@ export const useSettingAccountStore = defineStore('setting:account', () => {
       state.value = res.record
       rev.value = res.rev
     } else {
-      const user = window.preload.inject.os.getUser()
+      const user = await window.preload.inject.os.getUser()
       if (user) {
         state.value.avatar = user.avatar
         state.value.nickname = user.nickname

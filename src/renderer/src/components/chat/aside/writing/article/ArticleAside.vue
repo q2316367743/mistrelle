@@ -213,7 +213,7 @@ const handleRefresh = () => {
 const handleExport = async () => {
   if (!activeArticle.value || exporting.value) return
   const article = activeArticle.value
-  let zipPath = window.preload.inject.dialog.save({
+  let zipPath = await window.preload.inject.dialog.save({
     defaultPath: `${article.title || article.id}.zip`,
     filters: [{ name: 'ZIP 压缩包', extensions: ['zip'] }]
   })

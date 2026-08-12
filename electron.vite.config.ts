@@ -1,6 +1,6 @@
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
-import { defineConfig } from 'vite'
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { resolve } from 'path'
 import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
@@ -10,8 +10,24 @@ import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 import { visualizer } from 'rollup-plugin-visualizer' // 引入插件
 
 export default defineConfig({
-  main: {},
-  preload: {},
+  main: {
+    plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        $: resolve('src/main/src'),
+        '~': resolve('src/preload/src')
+      }
+    }
+  },
+  preload: {
+    plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '~': resolve('src/preload/src'),
+        $: resolve('src/main/src')
+      }
+    }
+  },
   renderer: {
     resolve: {
       alias: {

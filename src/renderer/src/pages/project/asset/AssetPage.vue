@@ -101,8 +101,8 @@ const handleBreadcrumbClick = (path: string) => {
 
 const reload = () => {
   assetContext.refresh()
-    .then(() => {
-      if (!window.preload.fs.existsSync(currentDir.value)) {
+    .then(async () => {
+      if (!(await window.preload.fs.existsSync(currentDir.value))) {
         currentDir.value = rootDir.value
       }
     })

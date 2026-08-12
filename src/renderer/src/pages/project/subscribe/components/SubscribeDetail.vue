@@ -87,7 +87,7 @@ import {
   subscribeSummarize,
   subscribeTranscribe
 } from '@/modules/subscribe'
-import { subscribeFileHref, subscribeMediaExists } from '@/modules/subscribe'
+import { subscribeFileHref } from '@/modules/subscribe'
 import { SUBSCRIBE_STATUS_META } from '@/modules/subscribe'
 import { MessageUtil } from '@/utils/modal'
 
@@ -121,16 +121,19 @@ const summaryPath = computed(() =>
   buildSubscribeMediaPath(props.projectId, props.blogger.id, props.item.id, 'summary.md')
 )
 
-const hasVideo = computed(() => subscribeMediaExists(props.projectId, props.blogger.id, props.item.id, 'video.mp4'))
-const hasAudio = computed(() => subscribeMediaExists(props.projectId, props.blogger.id, props.item.id, 'audio.mp3'))
+const hasVideo = ref(false)
+const hasAudio = ref(false)
 const videoHref = computed(() => (hasVideo.value ? subscribeFileHref(videoPath.value) : ''))
 const audioHref = computed(() => (hasAudio.value ? subscribeFileHref(audioPath.value) : ''))
 
 const loadContent = async () => {
-  summaryContent.value = window.preload.fs.existsSync(summaryPath.value)
+  // Electron 迁移：fs.existsSync 已异步化，媒体存在性随内容一起加载
+  hasVideo.value = await window.preload.fs.existsSync(videoPath.value)
+  hasAudio.value = await window.preload.fs.existsSync(audioPath.value)
+  summaryContent.value = await window.preload.fs.existsSync(summaryPath.value)
     ? await window.preload.fs.readTextFile(summaryPath.value)
     : ''
-  textContent.value = window.preload.fs.existsSync(textPath.value)
+  textContent.value = await window.preload.fs.existsSync(textPath.value)
     ? await window.preload.fs.readTextFile(textPath.value)
     : ''
 }

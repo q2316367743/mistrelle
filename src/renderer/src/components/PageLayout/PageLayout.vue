@@ -19,12 +19,13 @@
 </template>
 <script lang="ts" setup>
 import { collapsed } from '@/global/BeanFactory'
+import { ASIDE_PADDING_LEFT } from '@/global/Constant'
 
 defineProps({
   title: String,
   pl: {
     type: String,
-    default: '88px'
+    default: `${ASIDE_PADDING_LEFT}px`
   }
 })
 const slots = defineSlots()
@@ -60,6 +61,11 @@ const slots = defineSlots()
       align-items: center;
       font-size: 20px;
       font-weight: 600;
+    }
+
+    &__right {
+      z-index: 53;
+      -webkit-app-region: no-drag;
     }
   }
 

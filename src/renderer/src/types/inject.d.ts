@@ -1,96 +1,26 @@
-interface InjectAiModel {
-  id: string
-  label: string
-  description: string
-  icon: string
-  cost: number
-}
+/**
+ * window.preload.inject 契约（Electron 迁移版）。
+ *
+ * 与原 utools 版本的差异：
+ * - 删除平台专有能力：window / browser / input / simulate / feature / purchase / redirect / screen / ai / team
+ * - 删除事件钩子：onPluginEnter / onPluginOut / onPluginDetach / onDbPull / onMainPush / outPlugin /
+ *   readCurrentFolderPath / readCurrentBrowserUrl
+ * - 除 os.getPath（Constant.ts 模块级同步初始化依赖）外，全部方法异步（Promise）
+ * - db 简化：无 _rev 冲突检测、无附件（postAttachment / getAttachment / getAttachmentType 已删除）
+ * - cBrowser 暂为 null（浏览器自动化能力待实现）
+ */
 
-interface InjectAiMessage {
-  role: 'system' | 'user' | 'assistant'
-  content?: string
-  reasoning_content?: string
-}
-
-interface InjectAiTool {
-  type: 'function'
-  function?: {
-    name: string
-    description: string
-    parameters: Record<string, any>
-    required?: string[]
-  }
-}
-
-interface InjectAiOption {
-  model?: string
-  messages: InjectAiMessage[]
-  tools?: InjectAiTool[]
-}
-
-interface InjectAiResult<T> extends Promise<T> {
-  abort(): void
-}
-
-type InjectDbDoc<T extends Record<string, any> = Record<string, any>> = {
-  _id: string
-  _rev?: string
-} & T
-
-interface InjectDbReturn {
-  id: string
-  rev?: string
-  ok?: boolean
-  error?: boolean
-  name?: string
-  message?: string
-}
-
-interface InjectFfmpegProgress {
-  bitrate: string
-  fps: number
-  frame: number
-  percent?: number
-  q: number | string
-  size: string
-  speed: string
-  time: string
-}
-
-interface InjectFfmpegPromise extends Promise<void> {
-  kill(): void
-  quit(): void
-}
-
-interface InjectMainPushResult {
-  icon?: string
-  text: string
-  title?: string
-}
-
-interface InjectPluginFeature {
-  code: string
-  explain?: string
-  platform?: 'darwin' | 'win32' | 'linux' | Array<'darwin' | 'win32' | 'linux'>
-  icon?: string
-  cmds: (
-    | string
-    | {
-        type: 'img' | 'files' | 'regex' | 'over' | 'window'
-        label: string
-      }
-  )[]
-  mainHide?: boolean
-  mainPush?: boolean
-}
+// ── shell ──────────────────────────────────────────────────
 
 interface InjectShell {
   openExternal(url: string): void
-  openPath(fullPath: string): void
+  openPath(fullPath: string): Promise<void>
   trashItem(filename: string): Promise<void>
   showItemInFolder(fullPath: string): void
   beep(): void
 }
+
+// ── dialog ─────────────────────────────────────────────────
 
 interface InjectDialog {
   open(options?: {
@@ -111,7 +41,7 @@ interface InjectDialog {
     >
     message?: string
     securityScopedBookmarks?: boolean
-  }): string[] | undefined
+  }): Promise<string[] | undefined>
 
   save(options?: {
     title?: string
@@ -129,30 +59,36 @@ interface InjectDialog {
       | 'dontAddToRecent'
     >
     securityScopedBookmarks?: boolean
-  }): string | undefined
+  }): Promise<string | undefined>
 }
+
+// ── clipboard ──────────────────────────────────────────────
 
 interface InjectClipboard {
-  copyText(text: string): boolean
-  copyFile(file: string | string[]): boolean
-  copyImage(img: string | Uint8Array): boolean
-  getCopyedFiles(): { isFile: boolean; isDirectory: boolean; name: string; path: string }[]
+  copyText(text: string): Promise<boolean>
+  copyFile(file: string | string[]): Promise<boolean>
+  copyImage(img: string | Uint8Array): Promise<boolean>
+  getCopyedFiles(): Promise<{ isFile: boolean; isDirectory: boolean; name: string; path: string }[]>
 }
 
+// ── os ─────────────────────────────────────────────────────
+
 interface InjectOs {
-  isDarkColors(): boolean
-  isMacOS(): boolean
-  isWindows(): boolean
-  isLinux(): boolean
-  isDev(): boolean
+  isDarkColors(): Promise<boolean>
+  isMacOS(): Promise<boolean>
+  isWindows(): Promise<boolean>
+  isLinux(): Promise<boolean>
+  isDev(): Promise<boolean>
   /**
-   * 获取当前登录用户信息。
-   * @platform ZTools 不支持，返回 null
+   * 获取当前登录用户信息。Electron 无 utools 用户体系，恒返回 null。
    */
-  getUser(): { avatar: string; nickname: string; type: string } | null
-  getNativeId(): string
-  getAppVersion(): string
-  getAppName(): string
+  getUser(): Promise<{ avatar: string; nickname: string; type: string } | null>
+  getNativeId(): Promise<string | null>
+  getAppVersion(): Promise<string>
+  getAppName(): Promise<string>
+  /**
+   * 唯一同步方法（sendSync）：Constant.ts 在模块级同步初始化中依赖。
+   */
   getPath(
     name:
       | 'home'
@@ -171,12 +107,14 @@ interface InjectOs {
       | 'logs'
       | 'pepperFlashSystemPlugin'
   ): string
-  getFileIcon(filePath: string): string
-  getCursorScreenPoint(): { x: number; y: number }
+  getFileIcon(filePath: string): Promise<string>
+  getCursorScreenPoint(): Promise<{ x: number; y: number }>
 }
 
+// ── display ────────────────────────────────────────────────
+
 interface InjectDisplay {
-  getPrimaryDisplay(): {
+  getPrimaryDisplay(): Promise<{
     id: number
     internal: boolean
     monochrome: boolean
@@ -191,248 +129,106 @@ interface InjectDisplay {
     workArea: { width: number; height: number }
     workAreaSize: { width: number; height: number }
     bounds: { x: number; y: number; width: number; height: number }
-  }
+  }>
 
-  getAllDisplays(): {
+  getAllDisplays(): Promise<
+    {
+      id: number
+      internal: boolean
+      monochrome: boolean
+      rotation: number
+      scaleFactor: number
+      touchSupport: 'available' | 'unavailable' | 'unknown'
+      accelerometerSupport: 'available' | 'unavailable' | 'unknown'
+      colorDepth: number
+      colorSpace: string
+      depthPerComponent: number
+      size: { width: number; height: number }
+      workArea: { width: number; height: number }
+      workAreaSize: { width: number; height: number }
+      bounds: { x: number; y: number; width: number; height: number }
+    }[]
+  >
+
+  getDisplayNearestPoint(point: { x: number; y: number }): Promise<{
     id: number
+    bounds: { x: number; y: number; width: number; height: number }
+    size: { width: number; height: number }
+    workArea: { x: number; y: number; width: number; height: number }
+    workAreaSize: { x: number; y: number; width: number; height: number }
+    scaleFactor: number
+    rotation: number
     internal: boolean
-    monochrome: boolean
-    rotation: number
-    scaleFactor: number
-    touchSupport: 'available' | 'unavailable' | 'unknown'
-    accelerometerSupport: 'available' | 'unavailable' | 'unknown'
-    colorDepth: number
-    colorSpace: string
-    depthPerComponent: number
-    size: { width: number; height: number }
-    workArea: { width: number; height: number }
-    workAreaSize: { width: number; height: number }
-    bounds: { x: number; y: number; width: number; height: number }
-  }[]
+  }>
 
-  getDisplayNearestPoint(point: { x: number; y: number }): {
+  getDisplayMatching(rect: { x: number; y: number; width: number; height: number }): Promise<{
     id: number
     bounds: { x: number; y: number; width: number; height: number }
     size: { width: number; height: number }
-    workArea: { width: number; height: number }
-    workAreaSize: { width: number; height: number }
+    workArea: { x: number; y: number; width: number; height: number }
+    workAreaSize: { x: number; y: number; width: number; height: number }
     scaleFactor: number
     rotation: number
-    internal: boolean
-  }
+  }>
 
-  getDisplayMatching(rect: { x: number; y: number; width: number; height: number }): {
-    id: number
-    bounds: { x: number; y: number; width: number; height: number }
-    size: { width: number; height: number }
-    workArea: { width: number; height: number }
-    workAreaSize: { width: number; height: number }
-    scaleFactor: number
-    rotation: number
-  }
-
-  screenToDipPoint(point: { x: number; y: number }): { x: number; y: number }
-  dipToScreenPoint(point: { x: number; y: number }): { x: number; y: number }
-  screenToDipRect(rect: { x: number; y: number; width: number; height: number }): {
+  screenToDipPoint(point: { x: number; y: number }): Promise<{ x: number; y: number }>
+  dipToScreenPoint(point: { x: number; y: number }): Promise<{ x: number; y: number }>
+  screenToDipRect(rect: { x: number; y: number; width: number; height: number }): Promise<{
     x: number
     y: number
     width: number
     height: number
-  }
-  dipToScreenRect(rect: { x: number; y: number; width: number; height: number }): {
+  }>
+  dipToScreenRect(rect: { x: number; y: number; width: number; height: number }): Promise<{
     x: number
     y: number
     width: number
     height: number
-  }
+  }>
   desktopCaptureSources(options: {
     types: string[]
     thumbnailSize?: { width: number; height: number }
     fetchWindowIcons?: boolean
   }): Promise<{
-    appIcon: Record<string, any>
+    appIcon?: string
     display_id: string
     id: string
     name: string
-    thumbnail: Record<string, any>
-  }>
+    thumbnail: string
+  }[]>
 }
 
-interface InjectWindow {
-  hideMainWindow(isRestorePreWindow?: boolean): boolean
-  showMainWindow(): boolean
-  setExpendHeight(height: number): boolean
-  getWindowType(): 'main' | 'detach' | 'browser'
-  hideMainWindowTypeString(str: string): void
-  hideMainWindowPasteFile(file: string | string[]): void
-  hideMainWindowPasteImage(img: string | Uint8Array): void
-  hideMainWindowPasteText(text: string): void
-  startDrag(file: string | string[]): void
-}
-
-interface InjectBrowser {
-  createBrowserWindow(
-    url: string,
-    options: {
-      title?: string
-      width?: number
-      height?: number
-      x?: number
-      y?: number
-      minWidth?: number
-      minHeight?: number
-      maxWidth?: number
-      maxHeight?: number
-      resizable?: boolean
-      movable?: boolean
-      minimizable?: boolean
-      maximizable?: boolean
-      closable?: boolean
-      alwaysOnTop?: boolean
-      fullscreen?: boolean
-      fullscreenable?: boolean
-      skipTaskbar?: boolean
-      frame?: boolean
-      transparent?: boolean
-      backgroundColor?: string
-      hasShadow?: boolean
-      titleBarStyle?: 'default' | 'hidden' | 'hiddenInset' | 'customButtonsOnHover'
-      thickFrame?: boolean
-      vibrancy?: string
-      zoomToPageWidth?: boolean
-      webPreferences?: {
-        preload?: string
-        nodeIntegration?: boolean
-        contextIsolation?: boolean
-        enableRemoteModule?: boolean
-      }
-    },
-    callback?: () => void
-  ): {
-    id: number
-    close(): void
-    focus(): void
-    blur(): void
-    isFocused(): boolean
-    isDestroyed(): boolean
-    show(): void
-    hide(): void
-    setSize(width: number, height: number): void
-    setPosition(x: number, y: number): void
-    reload(): void
-    loadURL(url: string): void
-    on(event: string, callback: (...args: any[]) => void): void
-  }
-
-  sendToParent(channel: string, ...params: any[]): void
-  findInPage(
-    text: string,
-    options?: {
-      forward?: boolean
-      findNext?: boolean
-      matchCase?: boolean
-      wordStart?: boolean
-      medialCapitalAsWordStart?: boolean
-    }
-  ): void
-  stopFindInPage(action: 'clearSelection' | 'keepSelection' | 'activateSelection'): void
-}
-
-interface InjectInput {
-  setSubInput(
-    onChange: (input: { text: string }) => void,
-    placeholder?: string,
-    isFocus?: boolean
-  ): boolean
-  removeSubInput(): boolean
-  setSubInputValue(value: string): boolean
-  subInputFocus(): boolean
-  subInputSelect(): boolean
-  subInputBlur(): boolean
-}
-
-interface InjectSimulate {
-  keyboardTap(
-    key: string,
-    ...modifier: ('control' | 'ctrl' | 'shift' | 'option' | 'alt' | 'command' | 'super')[]
-  ): void
-  mouseClick(x?: number, y?: number): void
-  mouseRightClick(x?: number, y?: number): void
-  mouseDoubleClick(x?: number, y?: number): void
-  mouseMove(x: number, y: number): void
-}
+// ── notification ───────────────────────────────────────────
 
 interface InjectNotification {
   show(body: string, featureName?: string): void
 }
 
-interface InjectFeature {
-  set(feature: InjectPluginFeature): boolean
-  remove(code: string): boolean
-  get(codes?: string[]): InjectPluginFeature[]
+// ── ffmpeg ─────────────────────────────────────────────────
+
+interface InjectFfmpegProgress {
+  bitrate?: string
+  fps?: number
+  frame?: number
+  percent?: number
+  q?: number | string
+  size?: string
+  speed?: string
+  time?: string
 }
 
-interface InjectPurchase {
-  open(
-    options: {
-      goodsId: string
-      outOrderId?: string
-      attach?: string
-    },
-    callback?: () => void
-  ): void
-
-  pay(
-    options: {
-      goodsId: string
-      outOrderId?: string
-      attach?: string
-    },
-    callback?: () => void
-  ): void
-
-  getPayments(): Promise<
-    {
-      order_id: string
-      total_fee: number
-      body: string
-      attach: string
-      goods_id: string
-      out_order_id: string
-      paid_at: string
-    }[]
-  >
-
-  isPurchased(): boolean
-  getServerToken(): Promise<{ token: string; expiredAt: number }>
-}
-
-interface InjectRedirect {
-  to(
-    label: string | string[],
-    payload: string | { type: 'text' | 'img' | 'files'; data: any }
-  ): boolean
-  hotKeySetting(cmdLabel: string, autocopy?: boolean): void
-  aiModelsSetting(): void
-}
-
-interface InjectScreen {
-  colorPick(callback: (color: { hex: string; rgb: string }) => void): void
-  capture(callback: (imgBase64: string) => void): void
-}
-
-interface InjectAi {
-  allModels(): Promise<InjectAiModel[]>
-  chat(
-    option: InjectAiOption,
-    streamCallback: (chunk: InjectAiMessage) => void
-  ): InjectAiResult<void>
-  chat(option: InjectAiOption): InjectAiResult<InjectAiMessage>
+interface InjectFfmpegPromise extends Promise<void> {
+  /** 强制终止进程 */
+  kill(): void
+  /** 优雅退出（向 stdin 发送 q） */
+  quit(): void
 }
 
 interface InjectFfmpeg {
   run(args: string[], onProgress?: (progress: InjectFfmpegProgress) => void): InjectFfmpegPromise
 }
+
+// ── sharp ──────────────────────────────────────────────────
 
 interface InjectSharpRegion {
   left: number
@@ -442,17 +238,14 @@ interface InjectSharpRegion {
 }
 
 interface InjectSharpCropResult {
-  width: number
-  height: number
-  format?: string
-  size?: number
+  width?: number
+  height?: number
 }
 
 interface InjectSharpMetadata {
   width?: number
   height?: number
   format?: string
-  size?: number
   space?: string
   channels?: number
 }
@@ -487,59 +280,43 @@ interface InjectSharp {
   ): Promise<InjectSharpRemoveBackgroundResult>
 }
 
+// ── db（简化版：无 _rev、无附件） ──────────────────────────
+
+/** 文档：_id 必填，其余字段（含 value）随调用方任意（保持与 utools 一致的结构化文档语义） */
+type InjectDbDoc<T extends Record<string, any> = Record<string, any>> = {
+  _id: string
+  /** 兼容字段：Electron 实现忽略，put 直接覆盖 */
+  _rev?: string
+} & T
+
+interface InjectDbReturn {
+  ok?: boolean
+  id?: string
+  rev?: string
+  error?: boolean
+  name?: string
+  message?: string
+}
+
 interface InjectDbPromises {
+  /** 直接覆盖（无冲突检测），返回 { ok, id } */
   put(doc: InjectDbDoc): Promise<InjectDbReturn>
   get<T extends Record<string, any> = Record<string, any>>(
     id: string
   ): Promise<InjectDbDoc<T> | null>
   remove(doc: string | InjectDbDoc): Promise<InjectDbReturn>
   bulkDocs(docs: InjectDbDoc[]): Promise<InjectDbReturn[]>
+  /** key 为字符串时前缀匹配，数组时精确批量 */
   allDocs<T extends Record<string, any> = Record<string, any>>(
-    key?: string
+    key?: string | string[]
   ): Promise<InjectDbDoc<T>[]>
-  postAttachment(docId: string, attachment: Uint8Array, type: string): Promise<InjectDbReturn>
-  getAttachment(docId: string): Promise<Uint8Array | null>
-  getAttachmentType(docId: string): Promise<string | null>
-  replicateStateFromCloud(): Promise<null | 0 | 1>
 }
 
 interface InjectDb {
-  put(doc: InjectDbDoc): InjectDbReturn
-  get<T extends Record<string, any> = Record<string, any>>(id: string): InjectDbDoc<T> | null
-  remove(doc: string | InjectDbDoc): InjectDbReturn
-  bulkDocs(docs: InjectDbDoc[]): InjectDbReturn[]
-  allDocs<T extends Record<string, any> = Record<string, any>>(key?: string): InjectDbDoc<T>[]
-  postAttachment(docId: string, attachment: Uint8Array, type: string): InjectDbReturn
-  getAttachment(docId: string): Uint8Array | null
-  getAttachmentType(docId: string): string | null
-  replicateStateFromCloud(): null | 0 | 1
   promises: InjectDbPromises
 }
 
-interface InjectDbStorage {
-  setItem(key: string, value: any): void
-  getItem<T = any>(key: string): T
-  removeItem(key: string): void
-}
-
-interface InjectDbCryptoStorage {
-  setItem(key: string, value: any): void
-  getItem<T = any>(key: string): T
-  removeItem(key: string): void
-}
-
-interface InjectTeam {
-  info(): {
-    teamId: string
-    teamName: string
-    teamLogo: string
-    userId: string
-    userName: string
-    userAvatar: string
-  }
-  preset<T = any>(key: string): T
-  allPresets(): Promise<{ key: string; value: any }[]>
-}
+// ── cBrowser（暂未实现） ───────────────────────────────────
 
 interface CookieFilter {
   url?: string
@@ -552,99 +329,57 @@ interface CookieFilter {
 }
 
 /**
- * 浏览器自动化 API（uTools uBrowser / ZTools zBrowser 的兼容层）
- *
- * 链式调用，所有中间方法返回 this，最终通过 run() 执行并返回 Promise
+ * 浏览器自动化 API（uTools uBrowser 兼容层，Electron 迁移后暂未实现）。
+ * 链式调用，所有中间方法返回 this，最终通过 run() 执行并返回 Promise。
  */
 interface InjectCBrowser {
   useragent(userAgent: string): this
-  /**
-   * 前往指定地址
-   * @param url 链接地址，支持 http 或 file 协议
-   * @param headers 请求头参数
-   * @param timeout 加载超时，默认 60000 ms
-   */
   goto(url: string, headers?: { Referer: string; userAgent: string }, timeout?: number): this
   viewport(width: number, height: number): this
   hide(): this
   show(): this
-  /** 注入样式 */
   css(css: string): this
-  /** 键盘按键 */
   press(key: string, ...modifier: ('ctrl' | 'shift' | 'alt' | 'meta')[]): this
-  /**
-   * 粘贴
-   * @param text 图片 base64 编码字符串时粘贴图片，为空只执行粘贴动作
-   */
   paste(text?: string): this
-  /**
-   * 页面截图
-   * @param arg 字符串为 CSS 选择器，对象为截图区域，空为截取整个窗口
-   * @param savePath 保存路径，默认临时目录
-   */
-  screenshot(arg: string | { x: number; y: number; width: number; height: number }, savePath?: string): this
-  /** 转为 markdown 文本 */
+  screenshot(
+    arg: string | { x: number; y: number; width: number; height: number },
+    savePath?: string
+  ): this
   markdown(selector?: string): this
-  /** 保存为 PDF */
-  pdf(options?: { marginsType: 0 | 1 | 2; pageSize: 'A3' | 'A4' | 'A5' | 'Legal' | 'Letter' | 'Tabloid' | { width: number; height: number } }, savePath?: string): this
-  /** 模拟设备 */
+  pdf(
+    options?: {
+      marginsType: 0 | 1 | 2
+      pageSize: 'A3' | 'A4' | 'A5' | 'Legal' | 'Letter' | 'Tabloid' | { width: number; height: number }
+    },
+    savePath?: string
+  ): this
   device(arg: { size: { width: number; height: number }; useragent: string }): this
-  /** 获取 cookie，name 为空时获取当前 url 全部 cookie */
   cookies(name?: string): this
-  /** 按条件获取 cookie */
   cookies(filter: CookieFilter): this
-  /** 设置单个 cookie */
   setCookies(name: string, value: string): this
-  /** 批量设置 cookie */
   setCookies(cookies: { name: string; value: string }[]): this
-  /** 删除 cookie */
   removeCookies(name: string): this
-  /** 清空 cookie */
   clearCookies(url?: string): this
-  /** 打开开发者工具 */
   devTools(mode?: 'right' | 'bottom' | 'undocked' | 'detach'): this
-  /** 在目标页面中执行 JS 并获取结果 */
   evaluate<T extends any[]>(func: (...params: T) => any, ...params: T): this
-  /** 等待指定毫秒 */
   wait(ms: number): this
-  /** 等待元素出现 */
   wait(selector: string, timeout?: number): this
-  /** 等待 JS 函数返回 true */
   wait<T extends any[]>(func: (...params: T) => boolean, timeout?: number, ...params: T): this
-  /** 当元素存在时执行，直到碰到 end */
   when(selector: string): this
-  /** 当 JS 函数返回 true 时执行，直到碰到 end */
   when<T extends any[]>(func: (...params: T) => boolean, ...params: T): this
-  /** 配合 when 使用，结束 when 块 */
   end(): this
-  /** 单击元素 */
   click(selector: string): this
-  /** 元素触发按下鼠标左键 */
   mousedown(selector: string): this
-  /** 元素触发释放鼠标左键 */
   mouseup(selector: string): this
-  /** 赋值 file input */
   file(selector: string, payload: string | string[] | Uint8Array): this
-  /** input/textarea/select 赋值并触发 input/change 事件 */
   value(selector: string, value: string): this
-  /** checkbox/radio 选中或取消选中 */
   check(selector: string, checked: boolean): this
-  /** 元素获得焦点 */
   focus(selector: string): this
-  /** 滚动到元素位置 */
   scroll(selector: string): this
-  /** Y 轴滚动 */
   scroll(y: number): this
-  /** X 轴和 Y 轴滚动 */
   scroll(x: number, y: number): this
-  /** 下载文件 */
   download(url: string, savePath?: string): this
-  /** 下载文件（通过函数生成 url） */
   download(func: (...params: any[]) => string, savePath: string | null, ...params: any[]): this
-  /**
-   * 启动 ubrowser 运行，运行结束后隐藏窗口自动销毁
-   * @platform ZTools 部分参数可能不支持
-   */
   run<T = any>(options?: {
     show?: boolean
     width?: number
@@ -675,69 +410,29 @@ interface InjectCBrowser {
     titleBarStyle?: string
     thickFrame?: boolean
   }): Promise<T>
-  /** 在闲置的 ubrowser 实例上运行 */
   run<T = any>(ubrowserId: number): Promise<T>
 }
 
+// ── 汇总 ───────────────────────────────────────────────────
+
 interface InjectApi {
-  getPlatform(): 'ZTools' | 'utools' | 'browser'
+  /**
+   * 当前平台恒为 'electron'；保留 utools / ZTools 联合类型以兼容历史平台分支代码
+   * （Electron 下这些分支不执行，但代码保留）
+   */
+  getPlatform(): 'electron' | 'ZTools' | 'utools' | 'browser'
 
   shell: InjectShell
   dialog: InjectDialog
   clipboard: InjectClipboard
   os: InjectOs
   display: InjectDisplay
-  window: InjectWindow
-  browser: InjectBrowser
-  cBrowser: InjectCBrowser
-  input: InjectInput
-  simulate: InjectSimulate
   notification: InjectNotification
-  feature: InjectFeature
-  purchase: InjectPurchase
-  redirect: InjectRedirect
-  screen: InjectScreen
-  ai: InjectAi
+
+  /** 浏览器自动化能力：Electron 迁移后暂为 null（待实现） */
+  cBrowser: InjectCBrowser | null
+
   ffmpeg: InjectFfmpeg
-  /** uTools 内置 Sharp；ZTools / browser 环境可能缺失（undefined） */
   sharp?: InjectSharp
   db: InjectDb
-  dbStorage: InjectDbStorage
-  dbCryptoStorage: InjectDbCryptoStorage
-  team: InjectTeam
-
-  onPluginEnter<T = any, L = any>(
-    callback: (action: {
-      code: string
-      type: string
-      payload: T
-      option: L
-      from?: 'main' | 'panel' | 'hotkey' | 'redirect'
-    }) => void
-  ): void
-
-  onPluginOut(callback: (processExit: boolean) => void): void
-  onPluginDetach(callback: () => void): void
-
-  onDbPull<T extends Record<string, any> = Record<string, any>>(
-    callback: (docs: InjectDbDoc<T>[]) => void
-  ): void
-
-  onMainPush<T = any>(
-    callback: (action: {
-      code: string
-      type: string
-      payload: T
-    }) => InjectMainPushResult[] | Promise<InjectMainPushResult[]>,
-    selectCallback: (action: {
-      code: string
-      type: string
-      payload: any
-      option: InjectMainPushResult
-    }) => void
-  ): void
-
-  outPlugin(isKill?: boolean): boolean
-  readCurrentFolderPath(): Promise<string>
-  readCurrentBrowserUrl(): Promise<string>
 }

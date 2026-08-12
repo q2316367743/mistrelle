@@ -1,19 +1,19 @@
-export function isDarkColors(): boolean {
+export async function isDarkColors(): Promise<boolean> {
   return window.preload.inject.os.isDarkColors()
 }
 
-interface UserProfile {
+export interface UserProfile {
   avatar: string
   nickname: string
   // 是否是会员
   type: 'member' | 'user'
 }
 
-export const getUserProfile = (): UserProfile => {
+export const getUserProfile = async (): Promise<UserProfile> => {
   if (window.preload.inject.getPlatform() === 'ZTools') {
     return { avatar: './logo.png', nickname: '用户', type: 'user' }
   }
-  const user = window.preload.inject.os.getUser()
+  const user = await window.preload.inject.os.getUser()
   return {
     avatar: user?.avatar || './logo.png',
     nickname: user?.nickname || '用户',
