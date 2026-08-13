@@ -15,7 +15,7 @@ export const pptElementSchema: ToolProperty = toToolProperty(pptElementSchemaT)
 /** 元素数组 schema（供模型了解 add_slide / batch_edit 的 elements 参数） */
 export const pptElementsSchema: ToolProperty = toToolProperty(pptElementsSchemaT)
 
-/** ppt_edit_element 的 patch 参数 schema：attr 合并 / text 覆盖 / child 替换（任意组合） */
+/** update / copy.overrides 的 patch 参数 schema：attr 合并 / text 覆盖 / child 替换（任意组合） */
 export const pptElementPatchSchemaT = Type.Object(
   {
     attr: Type.Optional(
@@ -87,5 +87,119 @@ export const validatePptTheme = (theme: unknown): string[] => {
       )
     }
   }
+  return errors
+}
+
+// ── 批量操作 schema（ppt_batch_edit 用；op 判别联合，仿 canvas canvasSchemas.batchOpSchemaT） ──
+
+const insertOpSchemaT = Type.Object(
+  {
+    op: Type.Literal('insert'),
+    as: Type.Optional(
+      Type.String({ description: '绑定名：同批内后续 op 用 parent:"@绑定名" 引用刚插入的节点' })
+    ),
+    parent: Type.String({
+      description: '父位置："root"（页根）或容器节点 id 或 "@绑定名"'
+    }),
+    node: pptElementSchemaT
+  },
+  { additionalProperties: false, description: '插入元素到页根或容器子元素' }
+)
+
+const copyOpSchemaT = Type.Object(
+  {
+    op: Type.Literal('copy'),
+    as: Type.Optional(Type.String({ description: '绑定名' })),
+    id: Type.String({
+      description: '被复制节点 id（本页内；可用 "@绑定名" 引用同批刚创建的节点）'
+    }),
+    parent: Type.String({ description: '目标父位置："root" 或容器节点 id 或 "@绑定名"' }),
+    overrides: Type.Optional(
+      pptElementPatchSchemaT
+    )
+  },
+  { additionalProperties: false, description: '深拷贝节点到目标父（子树 id 重新生成）' }
+)
+
+const updateOpSchemaT = Type.Object(
+  {
+    op: Type.Literal('update'),
+    id: Type.String({
+      description: '目标节点 id（本页内，ppt_get_nodes 获取；可用 "@绑定名" 引用同批刚创建的节点）'
+    }),
+    patch: pptElementPatchSchemaT
+  },
+  { additionalProperties: false, description: '按节点 id 精准编辑（attr 合并 / text 覆盖 / child 替换）' }
+)
+
+const moveOpSchemaT = Type.Object(
+  {
+    op: Type.Literal('move'),
+    id: Type.String({ description: '被移动节点 id（可用 "@绑定名" 引用同批刚创建的节点）' }),
+    parent: Type.Optional(
+      Type.String({ description: '新父位置："root" 或容器节点 id 或 "@绑定名"；缺省保持原父' })
+    ),
+    index: Type.Optional(Type.Number({ description: '兄弟节点中的位置索引，缺省放末尾' }))
+  },
+  { additionalProperties: false, description: '移动 / 重排节点（可跨容器）' }
+)
+
+const deleteOpSchemaT = Type.Object(
+  {
+    op: Type.Literal('delete'),
+    id: Type.String({
+      description: '目标节点 id（含子树一并删除；可用 "@绑定名" 引用同批刚创建的节点）'
+    })
+  },
+  { additionalProperties: false, description: '删除节点（含子树）' }
+)
+
+/** 批量操作单条 schema（op 判别联合） */
+export const pptBatchOpSchemaT = Type.Union(
+  [insertOpSchemaT, copyOpSchemaT, updateOpSchemaT, moveOpSchemaT, deleteOpSchemaT],
+  { description: '批量编辑操作（insert / copy / update / move / delete）' }
+)
+
+/** 批量操作数组 schema：≤15 个/批（元素过多 AI 生成的 JSON 容易出错） */
+export const pptBatchOpsSchemaT = Type.Array(pptBatchOpSchemaT, {
+  maxItems: 15,
+  description: '批量操作列表（1-15 个，按顺序执行；insert / copy 可用 as 绑定名供后续 op 引用）'
+})
+
+const opSchemaMap = {
+  insert: insertOpSchemaT,
+  copy: copyOpSchemaT,
+  update: updateOpSchemaT,
+  move: moveOpSchemaT,
+  delete: deleteOpSchemaT
+} as const
+
+/** 批量操作单条 schema（喂给模型的 ToolProperty 参数描述） */
+export const pptBatchOpSchema: ToolProperty = toToolProperty(pptBatchOpSchemaT)
+
+/** 批量操作数组 schema（喂给模型的 ToolProperty 参数描述） */
+export const pptBatchOpsSchema: ToolProperty = toToolProperty(pptBatchOpsSchemaT)
+
+/** 校验单个批量操作（按 op 判别到对应子 schema，精确中文错误） */
+export const validatePptBatchOp = (op: unknown): string[] => {
+  if (!op || typeof op !== 'object' || Array.isArray(op)) return ['操作必须是 JSON 对象']
+  const opName = (op as { op?: unknown }).op
+  if (typeof opName !== 'string') return ['缺少 op 字段']
+  const variant = opSchemaMap[opName as keyof typeof opSchemaMap]
+  if (!variant) return [`op 必须是 insert / copy / update / move / delete 之一，收到 ${opName}`]
+  return collectErrors(variant, op)
+}
+
+/** 校验批量操作数组：必须是数组、1-15 个、逐条精确校验 */
+export const validatePptBatchOps = (ops: unknown): string[] => {
+  if (!Array.isArray(ops)) return ['operations 必须是数组']
+  if (ops.length === 0) return ['operations 不能为空：至少 1 个操作']
+  if (ops.length > 15) {
+    return ['operations 超过上限：每批最多 15 个操作（元素过多 AI 生成的 JSON 容易出错，请分批处理）']
+  }
+  const errors: string[] = []
+  ops.forEach((op, index) => {
+    errors.push(...validatePptBatchOp(op).map((message) => `第 ${index + 1} 个操作：${message}`))
+  })
   return errors
 }

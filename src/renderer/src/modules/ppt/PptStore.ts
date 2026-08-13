@@ -1,17 +1,20 @@
 /**
  * PPT 响应式 store（按 sandboxDir 键控的全局单例，同 CanvasStore 模式）：
  * - 工具与侧边栏共享同一实例：AI 变更（写沙盒 outputs/{name}.ppt.json）实时驱动渲染
- * - 文件模型：单一文件持续编辑（ppt_create 定文件名 + Theme，之后 addSlide / editSlide 原地写回，
- *   不再产生版本文件）；文件内 slide 数组即多页
+ * - 文件模型：单一文件持续编辑（ppt_create 定文件名 + Theme + 初始页数，之后 addSlide / batchEdit
+ *   原地写回，不再产生版本文件）；文件内 slide 数组即多页（每页为空数组或元素数组）
  * - 全程 JSON（SlideNode），渲染进程不涉及 xml：watch(current.json) → 500ms 防抖 →
  *   主进程 jsonToPomXml → buildPptx 渲染每页 SVG；失败保留旧图并记录错误
- * - 页面编辑链路：SlideNode 数组 → TypeBox 校验（pptSchemas）→ 原地写回（JSON 存储）
+ * - 页面编辑链路：ppt_batch_edit 批量操作（insert / copy / update / move / delete，仿 canvas，
+ *   单操作容错）→ TypeBox 校验（pptSchemas）→ 原地写回（JSON 存储）
  */
 import { ref, watch } from 'vue'
 import { renderPptxToSvgs } from './pptRender'
-import { validatePptElements, validatePptTheme } from './pptSchemas'
-import { ensureNodeIds, findNodeById, validateNodeTree } from './pptNodeId'
-import type { PptElementPatch, PptNodeInfo } from './pptNodeId'
+import { validatePptTheme } from './pptSchemas'
+import { collectPageNodes, ensureNodeIds, filterNodesByIds } from './pptNodeId'
+import type { PptNodeInfo } from './pptNodeId'
+import { executePptBatchOps } from './pptBatchOps'
+import { buildPptFileName, buildPptOutputsDir, errorText, parseDoc, parsePptFile } from './pptFile'
 import type {
   PptCurrentDoc,
   PptFileInfo,
@@ -23,83 +26,22 @@ import type {
 import { PPT_SLIDE_SIZE } from './pptTypes'
 import { cloneDeep } from 'es-toolkit'
 
-const PPT_FILE_REGEX = /^(.+)\.ppt\.json$/
-
-/** 从文件名解析 PPT 标识（id = 去扩展名的 name），非 PPT 文件返回 null */
-export const parsePptFile = (name: string): string | null => {
-  const match = PPT_FILE_REGEX.exec(name)
-  return match ? match[1] : null
-}
-
-export const buildPptFileName = (name: string): string => `${name}.ppt.json`
-
-/** 输出目录：~/.mistrelle/workspace/{chatId}/outputs */
-export const buildPptOutputsDir = (sandboxDir: string): string =>
-  window.preload.path.join(sandboxDir, 'outputs')
-
-const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
-
-/** 空页占位：铺满画布的空白 VStack（addSlide 缺省内容） */
-const EMPTY_SLIDE_NODE: SlideNode = {
-  tag: 'VStack',
-  attr: { w: '100%', h: '100%', padding: '48' },
-  child: []
-}
-
-/**
- * 解析文件文本为 PptJsonDoc（JSON.parse + 轻量结构校验）。
- * slide 每页必须是元素数组；深层节点结构由 TypeBox 校验保证。
- */
-const parseDoc = (text: string): { error: string } | { doc: PptJsonDoc } => {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch (err) {
-    return { error: `PPT JSON 解析失败：${errorText(err)}` }
-  }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return { error: 'PPT JSON 结构非法：根节点应为对象' }
-  }
-  const doc = parsed as { name?: unknown; slide?: unknown }
-  if (typeof doc.name !== 'string') return { error: 'PPT JSON 结构非法：缺少 name 字段' }
-  if (!Array.isArray(doc.slide) || doc.slide.some((page) => !Array.isArray(page))) {
-    return { error: 'PPT JSON 结构非法：slide 应为数组，且每页为元素数组' }
-  }
-  return { doc: parsed as PptJsonDoc }
-}
-
-/**
- * attr 值规范化：schema 允许 string / number / boolean（AI 友好），
- * 落盘前统一转为字符串（存储契约 attr: Record<string, string>）。递归处理子树。
- */
-const normalizeAttrValues = (node: SlideNode): void => {
-  for (const [key, value] of Object.entries(node.attr)) {
-    if (typeof value !== 'string') node.attr[key] = String(value)
-  }
-  if (Array.isArray(node.child)) node.child.forEach(normalizeAttrValues)
-}
-
 /** 页面操作返回（error 或 success + 1 起始 slideId；nodes 为受影响页全部节点摘要，供 AI 引用 id） */
 export type PptPageResult =
   | { error: string }
-  | { success: true; slideId: number; total: number; nodes?: PptNodeInfo[]; node?: PptNodeInfo }
+  | { success: true; slideId: number; total: number; nodes?: PptNodeInfo[] }
 
-/** 深遍历页内节点 → 摘要数组（id + tag + 文本，AI 引用节点用；仅收录带顶层 id 的节点） */
-const collectPageNodes = (page: SlideNode[]): PptNodeInfo[] => {
-  const infos: PptNodeInfo[] = []
-  const walk = (node: SlideNode) => {
-    if (node.id) {
-      infos.push({
-        id: node.id,
-        tag: node.tag,
-        text: typeof node.child === 'string' ? node.child : ''
-      })
+/** ppt_batch_edit 返回：单操作容错，results 内联每个 op 的结果 / 错误 */
+export type PptBatchEditResult =
+  | { error: string }
+  | {
+      success: true
+      slideId: number
+      total: number
+      results: unknown[]
+      potentialIssues: string[]
+      nodes?: PptNodeInfo[]
     }
-    if (Array.isArray(node.child)) node.child.forEach(walk)
-  }
-  page.forEach(walk)
-  return infos
-}
 
 export class PptStore {
   /** outputs/ 下的 PPT 文件列表（id = 文件名） */
@@ -111,7 +53,7 @@ export class PptStore {
   /** 渲染缓存：每页一个 SVG 字符串 */
   readonly svgs = ref<string[]>([])
   readonly renderState = ref<PptRenderState>('idle')
-  /** 最近一次渲染失败的错误文本（AI 经 ppt_read 读取自行修正） */
+  /** 最近一次渲染失败的错误文本（AI 经 ppt_info / ppt_get_nodes 读取自行修正） */
   readonly renderError = ref('')
 
   private renderTimer: ReturnType<typeof setTimeout> | null = null
@@ -151,7 +93,7 @@ export class PptStore {
     const text = await window.preload.fs.readTextFile(path)
     const parsed = parseDoc(text)
     if ('error' in parsed) return null
-    // 旧文件 / AI 手写文件可能缺 id：加载时补齐（内存态；下次写回时随 JSON 落盘）
+    // AI 手写文件可能缺 id：加载时补齐（内存态；下次写回时随 JSON 落盘）
     parsed.doc.slide.forEach(ensureNodeIds)
     const doc: PptCurrentDoc = { id, name: buildPptFileName(id), json: parsed.doc }
     this.current.value = doc
@@ -160,44 +102,12 @@ export class PptStore {
     return doc
   }
 
-  /**
-   * 读取指定 PPT（缺省当前）的 JSON，附渲染状态供 AI 自纠。
-   * slideId（1 起始）给定时只返回该页的 SlideNode 数组（聚焦单页编辑）。
-   * 返回 null 表示文件不存在；{ error } 表示解析失败。
-   */
+  /** 读取指定 PPT（缺省当前）的完整 JSON（导出工具用），附渲染状态供 AI 自纠。返回 null 表示文件不存在 */
   async read(id?: string): Promise<
     | { error: string }
     | {
         content: PptJsonDoc
         id: string
-        renderState: PptRenderState
-        renderError: string
-      }
-    | null
-  >
-  async read(
-    id: string | undefined,
-    slideId: number
-  ): Promise<
-    | { error: string }
-    | {
-        content: SlideNode[]
-        id: string
-        page: number
-        renderState: PptRenderState
-        renderError: string
-      }
-    | null
-  >
-  async read(
-    id?: string,
-    slideId?: number
-  ): Promise<
-    | { error: string }
-    | {
-        content: PptJsonDoc | SlideNode[]
-        id: string
-        page?: number
         renderState: PptRenderState
         renderError: string
       }
@@ -215,20 +125,7 @@ export class PptStore {
     const parsed = parseDoc(text)
     if ('error' in parsed) return parsed
     const json = parsed.doc
-    // 与 open 一致：读到的 JSON 补齐节点 id（AI 经 ppt_read 拿到 id 后可引用 / ppt_edit_element）
     json.slide.forEach(ensureNodeIds)
-    if (slideId != null) {
-      if (!Number.isInteger(slideId) || slideId < 1 || slideId > json.slide.length) {
-        return { error: `页码越界：${slideId}（当前共 ${json.slide.length} 页，从 1 开始）` }
-      }
-      return {
-        content: json.slide[slideId - 1],
-        id: targetId,
-        page: slideId,
-        renderState: this.renderState.value,
-        renderError: this.renderError.value
-      }
-    }
     return {
       content: json,
       id: targetId,
@@ -237,13 +134,92 @@ export class PptStore {
     }
   }
 
+  /** 文档级信息（ppt_info 工具）：id / name / 页数 / theme + 渲染状态。返回 null 表示文件不存在 */
+  async info(id?: string): Promise<
+    | { error: string }
+    | {
+        id: string
+        name: string
+        slideCount: number
+        theme: PptTheme
+        renderState: PptRenderState
+        renderError: string
+      }
+    | null
+  > {
+    const doc = this.current.value
+    const targetId = id ?? doc?.id
+    if (!targetId) return null
+    const path = window.preload.path.join(
+      buildPptOutputsDir(this.sandboxDir),
+      buildPptFileName(targetId)
+    )
+    if (!window.preload.fs.existsSync(path)) return null
+    const text = await window.preload.fs.readTextFile(path)
+    const parsed = parseDoc(text)
+    if ('error' in parsed) return parsed
+    return {
+      id: targetId,
+      name: parsed.doc.name,
+      slideCount: parsed.doc.slide.length,
+      theme: parsed.doc.theme,
+      renderState: this.renderState.value,
+      renderError: this.renderError.value
+    }
+  }
+
   /**
-   * 创建新 PPT：指定文件名（id）+ Theme 令牌，写 PptJsonDoc（0 页）。
+   * 读取指定页元素树（ppt_get_nodes 工具）：完整 SlideNode 数组（含顶层 id）+ theme + 渲染状态。
+   * ids 给定时只返回命中节点（保留祖先结构），供 AI 聚焦少量元素后再精准编辑。
+   */
+  async getNodes(
+    id: string | undefined,
+    slideId: number,
+    ids?: string[]
+  ): Promise<
+    | { error: string }
+    | {
+        nodes: SlideNode[]
+        theme: PptTheme
+        renderState: PptRenderState
+        renderError: string
+      }
+    | null
+  > {
+    const doc = this.current.value
+    const targetId = id ?? doc?.id
+    if (!targetId) return null
+    const path = window.preload.path.join(
+      buildPptOutputsDir(this.sandboxDir),
+      buildPptFileName(targetId)
+    )
+    if (!window.preload.fs.existsSync(path)) return null
+    const text = await window.preload.fs.readTextFile(path)
+    const parsed = parseDoc(text)
+    if ('error' in parsed) return parsed
+    const json = parsed.doc
+    if (!Number.isInteger(slideId) || slideId < 1 || slideId > json.slide.length) {
+      return { error: `页码越界：${slideId}（当前共 ${json.slide.length} 页，从 1 开始）` }
+    }
+    const page = json.slide[slideId - 1]
+    ensureNodeIds(page)
+    const nodes = ids?.length ? filterNodesByIds(page, ids) : page
+    return {
+      nodes,
+      theme: json.theme,
+      renderState: this.renderState.value,
+      renderError: this.renderError.value
+    }
+  }
+
+  /**
+   * 创建新 PPT：指定文件名（id）+ Theme 令牌 + 初始页数（slide 数组放 slideCount 个空页，缺省 1）。
    * 重名报错（不覆盖，AI 换名或先删除旧文件）。
    */
   async create(input: {
     name: string
     theme?: PptTheme
+    slideCount?: number
   }): Promise<{ error: string } | { success: true; id: string; path: string }> {
     const name = input.name?.trim()
     if (!name) return { error: 'name 不能为空：请为 PPT 指定文件名（如「产品发布会」）' }
@@ -252,6 +228,7 @@ export class PptStore {
     }
     const themeErrors = validatePptTheme(input.theme ?? {})
     if (themeErrors.length) return { error: themeErrors.join('；') }
+    const slideCount = Math.max(1, Math.floor(input.slideCount ?? 1))
     await this.refreshFiles()
     if (this.files.value.some((f) => f.id === name)) {
       return { error: `已存在同名 PPT「${name}」，请换一个文件名，或先 ppt_delete 删除旧文件` }
@@ -262,7 +239,7 @@ export class PptStore {
       createdAt: now,
       updatedAt: now,
       theme: input.theme ?? {},
-      slide: []
+      slide: Array.from({ length: slideCount }, () => [])
     }
     const doc: PptCurrentDoc = { id: name, name: buildPptFileName(name), json }
     await this.persist(doc)
@@ -272,98 +249,88 @@ export class PptStore {
     return { success: true, id: name, path: doc.name }
   }
 
-  /**
-   * 新增一页（Slide）到文件末尾，返回 1 起始索引。
-   * elements 缺省 / 为空 → 空白页（铺满画布的 VStack）；非空经 TypeBox 校验（任一非法整体拒绝）。
-   */
-  async addSlide(id: string | undefined, elements?: unknown[]): Promise<PptPageResult> {
+  /** 新增一页（空页）到文件末尾（ppt_add_slide 工具），返回 1 起始页索引与总页数 */
+  async addSlide(id: string | undefined): Promise<PptPageResult> {
     return this.withPages(id, (slide) => {
-      // clone 空页占位：避免多页共享同一 EMPTY_SLIDE_NODE 对象（共享会导致 id 被后写覆盖）
-      const page =
-        elements && elements.length > 0
-          ? this.prepareElements(elements)
-          : [cloneDeep(EMPTY_SLIDE_NODE)]
-      slide.push(page)
+      slide.push([])
       return { success: true, slideId: slide.length, total: slide.length }
     })
   }
 
-  /**
-   * 替换指定页（slideId 1 起始）内容为元素数组（整页覆盖）。
-   * 元素经 TypeBox 校验；任一非法或页码越界整体拒绝，不写文件。
-   */
-  async editSlide(
-    id: string | undefined,
-    slideId: number,
-    elements: unknown[]
-  ): Promise<PptPageResult> {
+  /** 删除指定页（ppt_delete_slide 工具）：页码越界报错；删除后 currentPage 收敛到有效范围 */
+  async deleteSlide(id: string | undefined, slideId: number): Promise<PptPageResult> {
     return this.withPages(id, (slide) => {
       if (!Number.isInteger(slideId) || slideId < 1 || slideId > slide.length) {
         return { error: `页码越界：${slideId}（当前共 ${slide.length} 页，从 1 开始）` }
       }
-      slide[slideId - 1] = this.prepareElements(elements)
-      return { success: true, slideId, total: slide.length }
+      slide.splice(slideId - 1, 1)
+      if (this.currentPage.value > slide.length) this.currentPage.value = Math.max(1, slide.length)
+      return { success: true, slideId: Math.min(slideId, slide.length), total: slide.length }
     })
   }
 
   /**
-   * 按节点 id 精准编辑指定页内单个节点（ppt_edit_element 工具用）：
-   * patch.attr 合并属性（点表示法键）；patch.text 覆盖文本（仅 child 为字符串的节点）；
-   * patch.child 替换子元素数组（结构校验通过后写入，自动补 id）。
-   * 对 patch 后的节点做结构校验，失败整体拒绝不落盘；成功原地写回并触发自动渲染。
+   * 批量编辑指定页元素（ppt_batch_edit 工具）：5 种 op（insert / copy / update / move / delete）
+   * 顺序执行，单操作非法只让该操作失败（错误写入 results），其余照常执行并整体落盘（仿 canvas）。
+   * 每批 ≤ 15 个操作（工具层 / schema 已拦截，此处兜底）。
    */
-  async editElementById(
+  async batchEdit(
     id: string | undefined,
     slideId: number,
-    nodeId: string,
-    patch: PptElementPatch
-  ): Promise<
-    { error: string } | { success: true; slideId: number; total: number; node: PptNodeInfo }
-  > {
+    ops: unknown[]
+  ): Promise<PptBatchEditResult> {
     return this.withPages(id, (slide) => {
       if (!Number.isInteger(slideId) || slideId < 1 || slideId > slide.length) {
         return { error: `页码越界：${slideId}（当前共 ${slide.length} 页，从 1 开始）` }
       }
-      const page = slide[slideId - 1]
-      const target = findNodeById(page, nodeId)
-      if (!target) {
+      if (!Array.isArray(ops) || ops.length === 0) {
+        return { error: 'operations 不能为空：至少 1 个操作' }
+      }
+      if (ops.length > 15) {
         return {
-          error: `未找到节点「${nodeId}」（第 ${slideId} 页）。该节点可能已被整页替换 / 删除，请先 ppt_read 重读该页获取最新节点 id`
+          error: 'operations 超过上限：每批最多 15 个操作（元素过多 AI 生成的 JSON 容易出错，请分批处理）'
         }
       }
-      // 深拷贝 patch 后整体校验，通过再写回（失败整体拒绝，不落盘）
-      const draft = cloneDeep(target)
-      if (patch.attr) {
-        for (const [key, value] of Object.entries(patch.attr)) {
-          if (key === 'id') continue // id 由 ensureNodeIds 管理，禁止通过 patch 篡改
-          draft.attr[key] = String(value)
-        }
-      }
-      if (patch.text !== undefined) {
-        if (typeof draft.child !== 'string') {
-          return {
-            error: `节点「${nodeId}」（${draft.tag}）不是文本节点，无法用 text 更新；如需改内容请用 child 数组替换`
-          }
-        }
-        draft.child = patch.text
-      }
-      if (patch.child !== undefined) {
-        const errors = validateNodeTree(patch.child)
-        if (errors.length) return { error: `节点子元素校验失败：${errors.join('；')}` }
-        draft.child = patch.child
-      }
-      Object.assign(target, draft)
-      return {
-        success: true,
-        slideId,
-        total: slide.length,
-        node: {
-          id: nodeId,
-          tag: target.tag,
-          text: typeof target.child === 'string' ? target.child : ''
-        }
-      }
+      const { results, potentialIssues } = executePptBatchOps(slide[slideId - 1], ops)
+      return { success: true, slideId, total: slide.length, results, potentialIssues }
     })
+  }
+
+  /** 更新全局主题色板（ppt_set_theme 工具）：校验 token 后整体替换 theme，$token 引用联动换肤 */
+  async setTheme(
+    id: string | undefined,
+    theme: PptTheme
+  ): Promise<{ error: string } | { success: true; id: string }> {
+    const themeErrors = validatePptTheme(theme)
+    if (themeErrors.length) return { error: themeErrors.join('；') }
+    const doc = this.current.value
+    const targetId = id ?? doc?.id
+    if (!targetId) return { error: '未指定 PPT，且当前没有打开的 PPT（先 ppt_create 或 ppt_open）' }
+    const path = window.preload.path.join(
+      buildPptOutputsDir(this.sandboxDir),
+      buildPptFileName(targetId)
+    )
+    if (!window.preload.fs.existsSync(path)) return { error: `未找到 PPT「${targetId}」` }
+    let text: string
+    try {
+      text = await window.preload.fs.readTextFile(path)
+    } catch (err) {
+      return { error: `读取失败：${errorText(err)}` }
+    }
+    const parsed = parseDoc(text)
+    if ('error' in parsed) return parsed
+    const json = parsed.doc
+    json.theme = theme
+    json.updatedAt = Date.now()
+    try {
+      await this.persist({ id: targetId, name: buildPptFileName(targetId), json })
+      if (this.current.value?.id === targetId) {
+        this.current.value = { id: targetId, name: buildPptFileName(targetId), json }
+      }
+    } catch (err) {
+      return { error: `写入失败：${errorText(err)}` }
+    }
+    return { success: true, id: targetId }
   }
 
   /** 删除指定 PPT 文件（删除的是当前文档时清空当前态） */
@@ -392,25 +359,6 @@ export class PptStore {
   }
 
   // ─── 内部：页面读写（读文件 → 校验元素 → 应用 → JSON 写回） ──
-
-  /**
-   * 元素数组 → 页面 SlideNode[]：TypeBox 校验（中文错误反馈）+ attr 值规范化，
-   * 非法抛错。布局边界规避（嵌套 HStack 链 Text 补 w）由主进程 jsonToPomXml 负责，渲染进程不做。
-   */
-  private prepareElements(elements: unknown[]): SlideNode[] {
-    if (!Array.isArray(elements) || elements.length === 0) {
-      throw new Error(
-        'elements 不能为空：页面至少包含 1 个元素（根元素建议为 VStack / HStack 布局容器）'
-      )
-    }
-    const errors = validatePptElements(elements)
-    if (errors.length) {
-      throw new Error(`元素校验失败：${errors.join('；')}`)
-    }
-    const nodes = elements as SlideNode[]
-    nodes.forEach(normalizeAttrValues)
-    return nodes
-  }
 
   /**
    * 页面操作公共链路：打开文件（pptId 缺省当前）→ JSON 解析 → 应用操作 →
@@ -447,7 +395,7 @@ export class PptStore {
       return { error: errorText(err) } as T
     }
     if ('error' in result) return result
-    // 写回前为全部页面补齐节点 id（新元素 / 旧文件统一），并把受影响页节点摘要返回给 AI 引用
+    // 写回前为全部页面补齐节点 id（新元素 / AI 手写文件统一），并把受影响页节点摘要返回给 AI 引用
     json.slide.forEach(ensureNodeIds)
     if (result.slideId >= 1 && result.slideId <= json.slide.length) {
       const enriched = result as PptPageResult & { nodes?: PptNodeInfo[] }
@@ -477,7 +425,7 @@ export class PptStore {
     }, 500)
   }
 
-  /** 渲染当前文档为每页 SVG；失败保留旧图并记录 renderError（AI 经 ppt_read 读取） */
+  /** 渲染当前文档为每页 SVG；失败保留旧图并记录 renderError（AI 经 ppt_info / ppt_get_nodes 读取） */
   private async render(): Promise<void> {
     const doc = this.current.value
     if (!doc) {

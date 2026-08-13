@@ -3,7 +3,7 @@ import type { InjectionKey } from 'vue'
 /**
  * PPT 侧边栏（PptSlideViewer）单击选中节点 + 按钮确认 → 聊天输入框（LChatSender）的桥接。
  * 由 LChatEngine provide，PptSlideViewer inject；携带 ppt 文件 id / 页码 / 节点 id，
- * 让 AI 能 ppt_open 打开后用 ppt_edit_element 精准编辑该节点。
+ * 让 AI 能用 ppt_batch_edit 的 update 操作精准编辑该节点。
  */
 export interface PptNodeRef {
   /** PPT 文件标识（id，即文件名） */

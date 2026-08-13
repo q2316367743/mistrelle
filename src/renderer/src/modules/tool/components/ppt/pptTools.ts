@@ -1,7 +1,9 @@
 /**
  * PPT 工具集（ppt_*，内部工具，全部仅操作当前聊天沙盒 outputs/）：
- * 契约模型 = 单一文件持续编辑：ppt_create 定文件名 + Theme → ppt_add_slide 加页 →
- * ppt_batch_edit 编辑页内元素（SlideNode JSON 元素数组，TypeBox 严格校验，全程 JSON 不涉及 xml）。
+ * 契约模型 = 单一文件持续编辑：ppt_create 定文件名 + Theme + 初始页数 → ppt_add_slide 加页 /
+ * ppt_delete_slide 删页 → ppt_batch_edit 对指定页做**元素级批量操作**（仿 canvas canvas_batch_edit：
+ * insert / copy / update / move / delete，按节点 id 精准增删改查，≤15 个/批，单操作容错）。
+ * 查看：ppt_info 文档级信息 / ppt_get_nodes 单页元素树（含 id）；换肤：ppt_set_theme。
  */
 import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
@@ -11,10 +13,8 @@ import {
   PPT_GUIDELINE_TOPICS,
   PPT_GUIDELINES,
   PPT_SLIDE_SIZE,
-  pptElementSchema,
-  pptElementPatchSchema
+  pptBatchOpsSchema
 } from '@/modules/ppt'
-import type { PptElementPatch } from '@/modules/ppt'
 import type { ChatTypeToolContext } from '@/modules/chat/chatType'
 
 const ctxError = (): never => {
@@ -32,7 +32,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_create',
       label: '创建 PPT',
       description:
-        '创建新 PPT 文件：指定文件名（id）+ 全局主题色板（theme 令牌），返回文件标识。创建后为 0 页，用 ppt_add_slide 逐页添加；后续编辑都在这个文件上原地进行',
+        '创建新 PPT 文件：指定文件名（id）+ 全局主题色板（theme 令牌）+ 初始页面数量（slideCount），返回文件标识。slide 数组按 slideCount 放对应数量的空页（空白页），之后用 ppt_batch_edit 逐页填充元素、ppt_add_slide 追加页、ppt_delete_slide 删除页；后续编辑都在这个文件上原地进行',
       parameters: {
         type: 'object',
         properties: {
@@ -45,6 +45,11 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
             type: 'object',
             description:
               '全局主题色板（theme 令牌）：token 名 → 6 位 hex 颜色（如 { "surface": "0F172A", "accent": "38BDF8", "textMain": "F8FAFC" }），后续所有颜色属性可用 $token 引用'
+          },
+          slideCount: {
+            type: 'number',
+            description:
+              '初始页面数量（slide 数组放对应数量的空页，缺省 1；建议先规划整份 PPT 页数，如封面 / 目录 / 内容页 / 结尾）'
           }
         },
         required: ['name']
@@ -52,110 +57,44 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       internal: true,
       risk: 'safe',
       handler: async (...params: unknown[]) => {
-        const { name, theme } = params[0] as { name?: string; theme?: Record<string, string> }
-        return store().create({ name: name ?? '', theme })
+        const { name, theme, slideCount } = params[0] as {
+          name?: string
+          theme?: Record<string, string>
+          slideCount?: number
+        }
+        return store().create({ name: name ?? '', theme, slideCount })
       }
     },
     {
-      name: 'ppt_add_slide',
-      label: '新增页面',
+      name: 'ppt_info',
+      label: '获取 PPT 信息',
       description:
-        '在 PPT 文件末尾新增一页，返回 1 起始的页索引。elements 为页面元素数组（SlideNode JSON：{tag, attr, child}），缺省生成空白页；页面根元素必须是 VStack / HStack 布局容器',
+        '获取指定 PPT 的文档级信息：id / 名称 / 页面数量 / 主题色板（theme 令牌）+ 渲染状态与最近渲染错误（有错先修正再编辑）',
       parameters: {
         type: 'object',
         properties: {
-          pptId: { type: 'string', description: 'PPT 文件标识（缺省使用当前打开的 PPT）' },
-          elements: {
-            type: 'array',
-            items: pptElementSchema,
-            description:
-              '页面元素数组（每个元素是 SlideNode：{tag, attr, child}；根元素必须用 VStack / HStack 布局容器）'
-          }
-        }
+          pptId: { type: 'string', description: 'PPT 文件标识（ppt_list / ppt_create 获取）' }
+        },
+        required: ['pptId']
       },
       internal: true,
       risk: 'safe',
       handler: async (...params: unknown[]) => {
-        const { pptId, elements } = params[0] as { pptId?: string; elements?: unknown[] }
-        return store().addSlide(pptId, elements)
+        const { pptId } = params[0] as { pptId: string }
+        const result = await store().info(pptId)
+        if (result === null) return { error: `未找到 PPT「${pptId}」（可能未创建，先 ppt_create 或 ppt_list）` }
+        return result
       }
-    },
-    {
-      name: 'ppt_batch_edit',
-      label: '编辑页面元素',
-      description:
-        '核心编辑工具：替换指定页（slideId 从 1 开始）的内容为元素数组（整页覆盖）。元素为 SlideNode JSON（tag + attr + child，经严格校验；任一非法整批拒绝）。页面根元素必须是 VStack / HStack 布局容器（flexbox 先布局后内容），不要散落裸 Text / Shape',
-      parameters: {
-        type: 'object',
-        properties: {
-          pptId: { type: 'string', description: 'PPT 文件标识（缺省使用当前打开的 PPT）' },
-          slideId: {
-            type: 'number',
-            description: '目标页码（1 起始，ppt_read / ppt_add_slide 获取）'
-          },
-          elements: {
-            type: 'array',
-            items: pptElementSchema,
-            description:
-              '该页全部元素（SlideNode JSON 数组，整页替换；根元素必须用 VStack / HStack 布局容器）'
-          }
-        },
-        required: ['slideId', 'elements']
-      },
-      internal: true,
-      risk: 'sensitive',
-      handler: async (...params: unknown[]) => {
-        const { pptId, slideId, elements } = params[0] as {
-          pptId?: string
-          slideId: number
-          elements?: unknown[]
-        }
-        return store().editSlide(pptId, slideId, elements ?? [])
-      }
-    },
-    {
-      name: 'ppt_edit_element',
-      label: '精准编辑节点',
-      description:
-        '按节点 id（nodeId）精准编辑指定页内单个节点，不动整页。nodeId 来自用户点击节点引用、ppt_read / ppt_add_slide / ppt_batch_edit 返回的 nodes[].id。patch 为任意组合：attr 合并覆盖属性（点表示法键）、text 覆盖文本（仅文本节点）、child 替换子元素数组。找不到节点返回错误（可能已被整页替换，先 ppt_read 重读）',
-      parameters: {
-        type: 'object',
-        properties: {
-          pptId: { type: 'string', description: 'PPT 文件标识（缺省使用当前打开的 PPT）' },
-          slideId: { type: 'number', description: '目标页码（1 起始）' },
-          nodeId: { type: 'string', description: '目标节点 id（引用返回 / ppt_read 获取）' },
-          patch: pptElementPatchSchema
-        },
-        required: ['slideId', 'nodeId', 'patch']
-      },
-      internal: true,
-      risk: 'sensitive',
-      handler: async (...params: unknown[]) => {
-        const { pptId, slideId, nodeId, patch } = params[0] as {
-          pptId?: string
-          slideId: number
-          nodeId: string
-          patch: PptElementPatch
-        }
-        return store().editElementById(pptId, slideId, nodeId, patch)
-      }
-    },
-    {
-      name: 'ppt_list',
-      label: '列出 PPT',
-      description: '列出当前聊天 outputs/ 下全部 PPT 文件（{name}.ppt.json），含文件标识与更新时间',
-      parameters: { type: 'object', properties: {} },
-      internal: true,
-      risk: 'safe',
-      handler: async () => store().refreshFiles()
     },
     {
       name: 'ppt_open',
       label: '打开 PPT',
-      description: '打开指定 PPT 为当前文档，后续缺省 pptId 的操作都作用于它，侧边栏预览同步切换',
+      description: '打开指定 PPT 为当前文档，侧边栏预览同步切换；后续操作仍需显式传 pptId',
       parameters: {
         type: 'object',
-        properties: { pptId: { type: 'string', description: 'PPT 文件标识（ppt_list 获取）' } },
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（ppt_list 获取）' }
+        },
         required: ['pptId']
       },
       internal: true,
@@ -168,26 +107,126 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       }
     },
     {
-      name: 'ppt_read',
-      label: '读取 PPT',
+      name: 'ppt_get_nodes',
+      label: '获取页面元素树',
       description:
-        '读取指定 PPT（缺省当前）的 JSON：不给 slideId 返回完整文档（含 name / theme / slide 数组），给 slideId 只返回该页的 SlideNode 元素数组；同时返回渲染状态与最近渲染错误（有错先修正再编辑）',
+        '返回指定页的完整元素树（SlideNode JSON，含每个节点顶层 id、tag、attr、child），供分析 / 编辑前查看节点结构与 id。ids 给定时只返回命中节点（保留祖先结构），用于聚焦少量元素；缺省返回整页。同页内 id 唯一，编辑用 id 精准定位；附带 theme 与渲染状态',
       parameters: {
         type: 'object',
         properties: {
-          pptId: { type: 'string', description: 'PPT 文件标识（缺省当前打开的 PPT）' },
-          slideId: { type: 'number', description: '页码（1 起始，缺省返回全文）' }
-        }
+          pptId: { type: 'string', description: 'PPT 文件标识（ppt_list / ppt_create 获取）' },
+          slideId: { type: 'number', description: '目标页码（1 起始）' },
+          ids: {
+            type: 'array',
+            items: { type: 'string', description: '节点 id' },
+            description: '可选：只返回指定 id 的节点（缺省返回全部）'
+          }
+        },
+        required: ['pptId', 'slideId']
       },
       internal: true,
       risk: 'safe',
       handler: async (...params: unknown[]) => {
-        const { pptId, slideId } = params[0] as { pptId?: string; slideId?: number }
-        const result =
-          slideId != null ? await store().read(pptId, slideId) : await store().read(pptId)
-        if (result === null) return { error: '未找到该 PPT（或当前未打开任何 PPT）' }
+        const { pptId, slideId, ids } = params[0] as {
+          pptId: string
+          slideId: number
+          ids?: string[]
+        }
+        const result = await store().getNodes(pptId, slideId, ids)
+        if (result === null) return { error: `未找到 PPT「${pptId}」` }
         return result
       }
+    },
+    {
+      name: 'ppt_batch_edit',
+      label: '批量编辑页面元素',
+      description:
+        '核心编辑工具：对指定页（slideId 1 起始）的元素做批量操作（insert / copy / update / move / delete，≤15 个/批），按节点 id 精准增删改查，非整页覆盖。单操作非法只让该操作失败并返回错误（results 内联），其余照常执行；同批可用 as 绑定名（insert / copy 声明，后续 op 用 parent:"@绑定名" 引用刚创建的节点）。构建顺序建议 背景→主视觉→装饰→文字。语法速查与示例详见 ppt_guidelines("operations")',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（ppt_list / ppt_create 获取）' },
+          slideId: { type: 'number', description: '目标页码（1 起始）' },
+          operations: pptBatchOpsSchema
+        },
+        required: ['pptId', 'slideId', 'operations']
+      },
+      internal: true,
+      risk: 'sensitive',
+      handler: async (...params: unknown[]) => {
+        const { pptId, slideId, operations } = params[0] as {
+          pptId: string
+          slideId: number
+          operations?: unknown[]
+        }
+        return store().batchEdit(pptId, slideId, operations ?? [])
+      }
+    },
+    {
+      name: 'ppt_add_slide',
+      label: '新增页面',
+      description: '在 PPT 文件末尾新增一页空白页，返回新增页的页码（1 起始）与当前总页数',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（ppt_list / ppt_create 获取）' }
+        },
+        required: ['pptId']
+      },
+      internal: true,
+      risk: 'safe',
+      handler: async (...params: unknown[]) => {
+        const { pptId } = params[0] as { pptId: string }
+        return store().addSlide(pptId)
+      }
+    },
+    {
+      name: 'ppt_delete_slide',
+      label: '删除页面',
+      description: '删除指定页（不可恢复），返回当前总页数；删除后后续页码自动前移',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（ppt_list / ppt_create 获取）' },
+          slideId: { type: 'number', description: '目标页码（1 起始）' }
+        },
+        required: ['pptId', 'slideId']
+      },
+      internal: true,
+      risk: 'dangerous',
+      handler: async (...params: unknown[]) => {
+        const { pptId, slideId } = params[0] as { pptId: string; slideId: number }
+        return store().deleteSlide(pptId, slideId)
+      }
+    },
+    {
+      name: 'ppt_set_theme',
+      label: '设置主题色板',
+      description:
+        '更新指定 PPT 的全局主题色板（theme 令牌），如 { "surface": "0F172A", "accent": "38BDF8", "textMain": "F8FAFC" }。之后所有颜色属性用 $token 引用，全篇色彩和谐、可整体换肤；同名 token 覆盖',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（ppt_list / ppt_create 获取）' },
+          theme: { type: 'object', description: 'token 名 → 6 位 hex 颜色（# 可选，如 FFFFFF）' }
+        },
+        required: ['pptId', 'theme']
+      },
+      internal: true,
+      risk: 'sensitive',
+      handler: async (...params: unknown[]) => {
+        const { pptId, theme } = params[0] as { pptId: string; theme: Record<string, string> }
+        return store().setTheme(pptId, theme)
+      }
+    },
+    {
+      name: 'ppt_list',
+      label: '列出 PPT',
+      description: '列出当前聊天 outputs/ 下全部 PPT 文件（{name}.ppt.json），含文件标识与更新时间',
+      parameters: { type: 'object', properties: {} },
+      internal: true,
+      risk: 'safe',
+      handler: async () => store().refreshFiles()
     },
     {
       name: 'ppt_select',
@@ -303,13 +342,13 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_guidelines',
       label: '获取 PPT 指南',
       description:
-        '获取内置 PPT 经验指南（按需加载，避免全部塞进提示词）。做 PPT 前先读 workflow 与 layout；元素属性不确定读 nodes；配色与样式读 styling；存储结构与语法速查读 json',
+        '获取内置 PPT 经验指南（按需加载，避免全部塞进提示词）。做 PPT 前先读 workflow 与 layout；批量操作元素语法读 operations；元素属性不确定读 nodes；配色与样式读 styling；存储结构与语法速查读 json',
       parameters: {
         type: 'object',
         properties: {
           topic: {
             type: 'string',
-            description: `layout（布局系统与页面模式）/ nodes（20 种节点属性速查）/ styling（配色 / 字体 / 样式）/ json（SlideNode JSON 存储结构速查）/ workflow（端到端工作流）（${PPT_GUIDELINE_TOPICS.join(' / ')}）`
+            description: `operations（批量操作语法速查）/ layout（布局系统与页面模式）/ nodes（20 种节点属性速查）/ styling（配色 / 字体 / 样式）/ json（SlideNode JSON 存储结构速查）/ workflow（端到端工作流）（${PPT_GUIDELINE_TOPICS.join(' / ')}）`
           }
         },
         required: ['topic']
@@ -331,12 +370,14 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
 /** PPT 工具完整清单（单一数据源：工具工厂与安全策略注册共用） */
 export const PPT_TOOL_NAMES = [
   'ppt_create',
-  'ppt_add_slide',
-  'ppt_batch_edit',
-  'ppt_edit_element',
-  'ppt_list',
+  'ppt_info',
   'ppt_open',
-  'ppt_read',
+  'ppt_get_nodes',
+  'ppt_batch_edit',
+  'ppt_add_slide',
+  'ppt_delete_slide',
+  'ppt_set_theme',
+  'ppt_list',
   'ppt_select',
   'ppt_delete',
   'ppt_export_pptx',

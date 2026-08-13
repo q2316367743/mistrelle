@@ -74,12 +74,12 @@ export const outlineAttrs = {
 
 // ── 公共属性（attr 段） ─────────────────────────────────────
 
-/** 节点 id（**顶层字段，与 tag 并列**）：自动生成，供用户引用 / ppt_edit_element 精准编辑；
+/** 节点 id（**顶层字段，与 tag 并列**）：自动生成，供用户引用 / ppt_batch_edit 精准编辑；
  * 不进 attr、不参与 POM 布局，主进程导出时仅对 POM 接受 id 的根标签代写 XML id 属性（Arrow 解析用） */
 export const nodeIdProp = {
   id: Type.Optional(
     Type.String({
-      description: '节点唯一标识（自动生成；用户引用节点 / ppt_edit_element 精准编辑用）'
+      description: '节点唯一标识（自动生成；用户引用节点 / ppt_batch_edit 精准编辑用）'
     })
   )
 }

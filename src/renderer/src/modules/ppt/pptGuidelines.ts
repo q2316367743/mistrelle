@@ -8,12 +8,22 @@ import nodesGuide from './guidelines/nodes.md?raw'
 import stylingGuide from './guidelines/styling.md?raw'
 import jsonGuide from './guidelines/json.md?raw'
 import workflowGuide from './guidelines/workflow.md?raw'
+import operationsGuide from './guidelines/operations.md?raw'
 
-export const PPT_GUIDELINE_TOPICS = ['layout', 'nodes', 'styling', 'json', 'workflow'] as const
+export const PPT_GUIDELINE_TOPICS = [
+  'operations',
+  'layout',
+  'nodes',
+  'styling',
+  'json',
+  'workflow'
+] as const
 
 export type PptGuidelineTopic = (typeof PPT_GUIDELINE_TOPICS)[number]
 
 export const PPT_GUIDELINES: Record<PptGuidelineTopic, string> = {
+  /** 批量操作语法：ppt_batch_edit 的 5 种 op + 绑定名 + 易错点 */
+  operations: operationsGuide,
   /** 布局系统：flexbox 规则 + 五种页面布局模式模板 */
   layout: layoutGuide,
   /** 节点参考：20 种节点属性速查 + 使用要点 */

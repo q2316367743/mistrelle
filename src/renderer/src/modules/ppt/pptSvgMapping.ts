@@ -2,7 +2,7 @@
  * PPT 预览 SVG → 节点 id 绑定（渲染进程，纯 DOM 操作，不注入脚本）：
  * pptx-glimpse 生成的 SVG 顶层 <g> 按 POM 文档前序排列（含各节点背景 / 边线 / 阴影形状），
  * 本模块把每个顶层分组对齐到 JSON 树中对应节点并注入 data-node-id，
- * 实现"点击节点 → 引用节点 id → ppt_edit_element 精准编辑"。
+ * 实现"点击节点 → 引用节点 id → ppt_batch_edit 精准编辑"。
  *
  * 对齐策略 = 确定性形状计数 + 文本校验（校准自 POM 10.3.0 + pptx-glimpse 3.2.8 实测）：
  * - 容器（VStack/HStack/Layer）：无内容形状，按 attrs 推导背景形状数
