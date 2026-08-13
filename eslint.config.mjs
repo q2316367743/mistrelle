@@ -3,6 +3,8 @@ import tseslint from '@electron-toolkit/eslint-config-ts'
 import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import eslintPluginVue from 'eslint-plugin-vue'
 import vueParser from 'vue-eslint-parser'
+import tsParser from '@typescript-eslint/parser'
+import eslintPluginTypeScript from '@typescript-eslint/eslint-plugin'
 import autoImportGlobals from './.eslintrc-auto-import.json' with { type: 'json' }
 
 export default defineConfig(
