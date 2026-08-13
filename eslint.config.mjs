@@ -36,7 +36,8 @@ export default defineConfig(
             lang: 'ts'
           }
         }
-      ]
+      ],
+      '@typescript-eslint/explicit-function-return-type': 'off'
     }
   },
   eslintConfigPrettier,
