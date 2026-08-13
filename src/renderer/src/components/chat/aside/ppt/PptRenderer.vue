@@ -31,36 +31,20 @@
           </div>
         </t-popup>
       </div>
-      <!-- 右侧：主内容（页码拖拽条 + 当前页大图） -->
-      <div class="ppt-renderer__main">
-        <div class="ppt-renderer__toolbar">
-          <span class="ppt-renderer__page">{{ page }} / {{ total }}</span>
-          <t-slider
-            v-model="page"
-            :min="1"
-            :max="sliderMax"
-            :step="1"
-            class="ppt-renderer__slider"
-            :disabled="total < 1"
-          />
-        </div>
-        <div class="ppt-renderer__viewport">
-          <div v-if="store.renderState.value === 'rendering'" class="ppt-renderer__loading">
-            渲染中…
-          </div>
-          <img
-            v-else-if="currentSvg"
-            :src="currentSvg"
-            class="ppt-renderer__img"
-            alt="幻灯片"
-          />
-        </div>
-      </div>
+      <!-- 右侧：主内容（页码拖拽条 + 当前页大图，滚轮缩放 + 拖拽平移） -->
+      <ppt-slide-viewer
+        v-model:page="page"
+        :current-svg="currentSvg"
+        :render-state="store.renderState.value"
+        :total="total"
+        :slider-max="sliderMax"
+      />
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { getPptStore } from '@/modules/ppt'
+import PptSlideViewer from './PptSlideViewer.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -198,65 +182,6 @@ watch(
     width: 320px;
     border-radius: var(--td-radius-small);
     box-shadow: var(--td-shadow-2);
-  }
-
-  &__main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-right: 8px;
-  }
-
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  &__page {
-    min-width: 52px;
-    text-align: center;
-    color: var(--td-text-color-secondary);
-    font-size: var(--td-font-size-body-small);
-    white-space: nowrap;
-  }
-
-  &__slider {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__viewport {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--td-bg-color-component);
-    border-radius: var(--td-radius-medium);
-    position: relative;
-  }
-
-  &__loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--td-text-color-placeholder);
-    font-size: var(--td-font-size-body-small);
-  }
-
-  &__img {
-    display: block;
-    max-width: 100%;
-    box-shadow: var(--td-shadow-2);
-    border-radius: var(--td-radius-small);
-    background: #fff;
   }
 }
 </style>

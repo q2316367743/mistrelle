@@ -43,6 +43,7 @@ declare module 'vue' {
     PageLayout: typeof import('./src/components/PageLayout/PageLayout.vue')['default']
     PptAside: typeof import('./src/components/chat/aside/ppt/PptAside.vue')['default']
     PptRenderer: typeof import('./src/components/chat/aside/ppt/PptRenderer.vue')['default']
+    PptSlideViewer: typeof import('./src/components/chat/aside/ppt/PptSlideViewer.vue')['default']
     RChatActionbar: typeof import('./src/components/chat/RChatActionbar.vue')['default']
     RChatList: typeof import('./src/components/chat/RChatList.vue')['default']
     RChatThink: typeof import('./src/components/chat/chat-assistant/RChatThink.vue')['default']

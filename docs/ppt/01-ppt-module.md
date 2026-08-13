@@ -155,6 +155,7 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 - `src/components/chat/aside/ppt/PptRenderer.vue`：
   - 全屏（fullscreen）：左侧缩略图栏 + 右侧当前页大图（WPS 左右结构，点击 / hover 预览）；非全屏窄侧边栏隐藏缩略图
   - 顶部页码拖拽条（t-slider 切页）+ 页码指示；`currentPage` 变更自动滚动定位缩略图
+  - 主内容（`PptSlideViewer.vue` + `usePptPanZoom.ts`）：滚轮**围绕鼠标指针缩放**（0.5x ~ 5x，deltaY 方向，指针下内容锚点不动）+ **拖拽平移**（PointerEvent + `setPointerCapture`，移出视口不中断）；工具栏显示缩放百分比 + 「重置」按钮恢复 1x 居中；状态为 CSS transform（`translate(tx,ty) scale(s)`），切页保持缩放（同文件页面尺寸一致）；图片 `max-width/max-height: 100%` + `object-fit: contain` 适配视口
   - SVG 用 `data:image/svg+xml` 经 `<img>` 渲染（**杜绝 v-html 脚本注入**）
 - 导出：**主进程构建并直接落盘**（渲染进程只传目标路径，不经手字节）——`window.preload.ppt.exportPptx` / `exportPptxToPngs` 写沙盒 / 用户选择路径。
 
@@ -215,7 +216,7 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 | IPC | `PptChannels`：`ppt:renderPptxToSvgs`（PptJsonDoc→每页 SVG）/ `ppt:exportPptx`（PptJsonDoc→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（PptJsonDoc→指定页 PNG 并落盘，preload `window.preload.ppt`）；载荷类型 `SlideNode` / `PptJsonDoc` 定义在 `src/preload/src/channels.ts`（main/preload 共享） |
 | 渲染进程 | `src/renderer/src/modules/ppt/`：`PptStore.ts`（500ms 防抖自动渲染，JSON 存储零 pom）/ `pptTypes.ts`（SlideNode / PptJsonDoc）/ `pptRender.ts` / `pptPrompt.ts` / `pptGuidelines.ts` |
 | 工具 | `src/renderer/src/modules/tool/components/ppt/pptTools.ts`（10 个 ppt_* 工具 + 策略：全 allow，导出工具走 `isPathUnder` 路径感知审批） |
-| UI | `src/components/chat/aside/ppt/PptAside.vue` + `PptRenderer.vue`（SVG `<img>` 渲染、翻页 / 缩放 / 缩略图导航 / 自动滚动定位） |
+| UI | `src/components/chat/aside/ppt/PptAside.vue` + `PptRenderer.vue` + `PptSlideViewer.vue` + `usePptPanZoom.ts`（SVG `<img>` 渲染、翻页 / 滚轮缩放（围绕指针）+ 拖拽平移 / 缩略图导航 / 自动滚动定位） |
 | 注册 | `chatType.ts`（ChatType + CHAT_TYPE_OPTIONS，design 后插入，图标 `SlideshowIcon`）/ `ChatTypeConfig.ts` / `LChatAside.vue` / `LChatEngine.vue` / `SUB_AGENT_ALLOW`（ppt 无子 Agent，空数组） |
 | 指南 | `docs/ppt/02-pom-xml-guide.md` + `docs/ppt/03-ppt-experience-guides.md`（layout / nodes / styling 经验指南，`ppt_guidelines` 经 `?raw` 读取；第三版起 topic `pom-xml` 改为 `json`，指南源为 `src/renderer/src/modules/ppt/guidelines/`） |
 
