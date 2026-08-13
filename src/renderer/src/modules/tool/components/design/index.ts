@@ -5,6 +5,7 @@
  * - font_list：查询本机可用字体（系统 + 资源库），供画布 text 节点指定 fontFamily
  * - image_crop：将一张图片按区域 / 网格裁剪成多张 PNG（本地 Sharp，免费）
  * - image_remove_background：去除图片从外到内的连续背景色（默认白底），产出透明 PNG（本地 Sharp）
+ * - image_color_map：分析图片颜色分布，返回主色 palette 与突兀区域 anomalies（本地 Sharp，LAB 感知色差）
  * - image_generate：文字生图（仅在配置了默认生图模型时注入；真实实现见 chat 模块 generateImage）
  * 工具注入：chatType.ts（global/ChatTypeConfig）的 design 配置里与画布工具一起挂载。
  * 注：字体入库 / 元数据修改由用户在资源管理页完成（window.preload.font），不对 AI 暴露注册工具。
@@ -15,6 +16,7 @@ import { createIconSvgTool } from './iconSvg'
 import { createWebsiteLogoTool, type DesignToolContext } from './websiteLogo'
 import { createFontListTool, createFontPickTool } from './fontTools'
 import { createImageCropTool } from './imageCrop'
+import { createImageColorMapTool } from './imageColorMap'
 import { createImageGenerateTool } from './imageGenerate'
 import { createImageRemoveBackgroundTool } from './imageRemoveBackground'
 
@@ -28,7 +30,8 @@ export const createDesignTools = (ctx: DesignToolContext): ToolFunction[] => {
     createFontListTool(),
     createFontPickTool(),
     createImageCropTool(),
-    createImageRemoveBackgroundTool()
+    createImageRemoveBackgroundTool(),
+    createImageColorMapTool()
     // TODO: 二维码生成
   ]
   // 仅配置了默认生图模型时注入 image_generate：未配置则 AI 无生图能力，走占位图 / 用户素材

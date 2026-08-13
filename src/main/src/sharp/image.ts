@@ -5,9 +5,15 @@
  * - metadata(input)：读取宽高 / 格式
  * - crop(input, region, output)：裁剪区域并输出 PNG
  * - removeBackground(input, options, output)：从四边 flood-fill 去除连续背景色（算法完整移植）
+ * - colorMap(input, gridSize, top)：网格主色 + LAB 感知色差突兀区域检测（纯 JS，一次 raw 读取）
  */
 import sharp from 'sharp'
-import type { SharpMetadata, SharpRegion, SharpRemoveBackgroundResult } from '~/channels'
+import type {
+  SharpColorMapResult,
+  SharpMetadata,
+  SharpRegion,
+  SharpRemoveBackgroundResult
+} from '~/channels'
 
 /** 解析目标背景色：hex / rgb() / [r,g,b]，非法或缺省回退纯白 */
 const parseTargetColor = (color: string | number[] | undefined): [number, number, number] => {
@@ -127,4 +133,137 @@ export const sharpRemoveBackground = async (
     .png()
     .toFile(output)
   return { width, height, removedPixels }
+}
+
+// ── colorMap ───────────────────────────────────────────────
+
+const toHex = (r: number, g: number, b: number): string =>
+  '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')
+
+/** sRGB → CIELAB（D65 白点），用于感知一致的颜色差异度量 */
+const rgbToLab = (r: number, g: number, b: number): [number, number, number] => {
+  const linear = (c: number): number => {
+    const s = c / 255
+    return s > 0.04045 ? Math.pow((s + 0.055) / 1.055, 2.4) : s / 12.92
+  }
+  const rl = linear(r)
+  const gl = linear(g)
+  const bl = linear(b)
+  const x = (rl * 0.4124564 + gl * 0.3575761 + bl * 0.1804375) / 0.95047
+  const y = rl * 0.2126729 + gl * 0.7151522 + bl * 0.072175
+  const z = (rl * 0.0193339 + gl * 0.119192 + bl * 0.9503041) / 1.08883
+  const f = (t: number): number => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116)
+  const fx = f(x)
+  const fy = f(y)
+  const fz = f(z)
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]
+}
+
+const deltaE = (a: [number, number, number], b: [number, number, number]): number =>
+  Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+/**
+ * 颜色分布分析：将图片按宽高比缩放到 gridSize 长边网格，返回全局主色 palette
+ * 与「突兀区域」anomalies（每格与其 8 邻域的 LAB ΔE76 最大色差，取 Top-N 降序）。
+ * 网格单元经 resize 下采样即得该区域平均色，一次 raw 读取 + 纯 JS 计算。
+ */
+export const sharpColorMap = async (
+  input: string,
+  gridSize: number,
+  top: number
+): Promise<SharpColorMapResult> => {
+  const meta = await sharp(input).metadata()
+  const width = meta.width ?? 0
+  const height = meta.height ?? 0
+  if (!width || !height) {
+    throw new Error('无法解析图片尺寸')
+  }
+
+  const cols = Math.max(4, Math.min(48, Math.round(gridSize) || 24))
+  const rows = Math.max(4, Math.round((cols * height) / width))
+  const { data, info } = await sharp(input)
+    .resize(cols, rows, { fit: 'fill' })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  const channels = info.channels || 4
+
+  const isOpaque = (r: number, c: number): boolean => data[(r * cols + c) * channels + 3] >= 128
+  const cellRgb = (r: number, c: number): [number, number, number] => {
+    const o = (r * cols + c) * channels
+    return [data[o], data[o + 1], data[o + 2]]
+  }
+
+  const labs: Array<Array<[number, number, number] | null>> = []
+  for (let r = 0; r < rows; r++) {
+    const row: Array<[number, number, number] | null> = []
+    for (let c = 0; c < cols; c++) {
+      row.push(isOpaque(r, c) ? rgbToLab(...cellRgb(r, c)) : null)
+    }
+    labs.push(row)
+  }
+
+  const count = new Map<string, number>()
+  let total = 0
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!labs[r][c]) continue
+      const key = `${cellRgb(r, c)[0]},${cellRgb(r, c)[1]},${cellRgb(r, c)[2]}`
+      count.set(key, (count.get(key) || 0) + 1)
+      total++
+    }
+  }
+  const palette = [...count.entries()]
+    .map(([key, n]) => {
+      const [r, g, b] = key.split(',').map(Number)
+      return { hex: toHex(r, g, b), ratio: Number((n / total).toFixed(3)) }
+    })
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, top)
+
+  const deviations: Array<{ row: number; col: number; lab: [number, number, number]; maxD: number }> = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const lab = labs[r][c]
+      if (!lab) continue
+      let maxD = 0
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue
+          const nr = r + dr
+          const nc = c + dc
+          const nb = labs[nr]?.[nc]
+          if (!nb) continue
+          const d = deltaE(lab, nb)
+          if (d > maxD) maxD = d
+        }
+      }
+      deviations.push({ row: r, col: c, lab, maxD })
+    }
+  }
+
+  const cellX = (col: number): number => Math.floor((col / cols) * width)
+  const cellY = (row: number): number => Math.floor((row / rows) * height)
+  const anomalies = deviations
+    .sort((a, b) => b.maxD - a.maxD)
+    .slice(0, top)
+    .map(({ row, col, maxD }) => {
+      const x = cellX(col)
+      const y = cellY(row)
+      const xEnd = col === cols - 1 ? width : cellX(col + 1)
+      const yEnd = row === rows - 1 ? height : cellY(row + 1)
+      const [r, g, b] = cellRgb(row, col)
+      return {
+        row,
+        col,
+        x,
+        y,
+        width: Math.max(1, xEnd - x),
+        height: Math.max(1, yEnd - y),
+        color: toHex(r, g, b),
+        deviation: Number(maxD.toFixed(1))
+      }
+    })
+
+  return { width, height, cols, rows, palette, anomalies }
 }

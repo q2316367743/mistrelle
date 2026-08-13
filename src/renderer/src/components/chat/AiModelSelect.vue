@@ -70,7 +70,10 @@ const visible = ref(false)
 const items = computed(() => useSettingAiStore().options)
 const select = computed(() => {
   if (!modelValue.value) return '请选择模型'
-  return modelValue.value.split(':').pop() || '请选择模型'
+  const t = items.value.flatMap((e) => e.children).find((e) => modelValue.value === e.value)
+  if (t) return t.label
+  const m = modelValue.value.split(':').pop()
+  return m || '请选择模型'
 })
 const chevronIconStyle = computed(() => ({
   transform: visible.value ? 'rotate(180deg)' : '',
@@ -93,6 +96,7 @@ const handleModelSetting = () => router.push('/setting/ai')
   padding: 0 8px;
   border-radius: var(--td-radius-medium);
   transition: background-color 0.3s ease-in-out;
+
   &:hover {
     background: var(--td-bg-color-container-hover);
   }
@@ -101,7 +105,8 @@ const handleModelSetting = () => router.push('/setting/ai')
   }
 }
 .ai-select-label {
-  max-width: 120px;
+  width: fit-content;
+  max-width: 100%;
   overflow: hidden;
   text-align: right;
   user-select: none;

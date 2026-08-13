@@ -189,13 +189,15 @@ interface InjectDisplay {
     types: string[]
     thumbnailSize?: { width: number; height: number }
     fetchWindowIcons?: boolean
-  }): Promise<{
-    appIcon?: string
-    display_id: string
-    id: string
-    name: string
-    thumbnail: string
-  }[]>
+  }): Promise<
+    {
+      appIcon?: string
+      display_id: string
+      id: string
+      name: string
+      thumbnail: string
+    }[]
+  >
 }
 
 // ── notification ───────────────────────────────────────────
@@ -264,6 +266,27 @@ interface InjectSharpRemoveBackgroundResult {
   removedPixels: number
 }
 
+interface InjectSharpColorMapResult {
+  width: number
+  height: number
+  /** 网格列数 / 行数（按宽高比缩放，非强制正方形） */
+  cols: number
+  rows: number
+  /** 全局主色 Top-N，ratio 为该色在非透明格中的占比 */
+  palette: Array<{ hex: string; ratio: number }>
+  /** 突兀区域 Top-N（按与 8 邻域的最大 LAB ΔE 降序），坐标为原图像素 */
+  anomalies: Array<{
+    row: number
+    col: number
+    x: number
+    y: number
+    width: number
+    height: number
+    color: string
+    deviation: number
+  }>
+}
+
 interface InjectSharp {
   /** 读取图片元信息（宽高 / 格式） */
   metadata(input: string | Uint8Array | ArrayBuffer): Promise<InjectSharpMetadata>
@@ -278,6 +301,11 @@ interface InjectSharp {
     options: InjectSharpRemoveBackgroundOptions,
     output: string
   ): Promise<InjectSharpRemoveBackgroundResult>
+  /**
+   * 颜色分布分析：按宽高比缩放为 gridSize 长边网格，返回全局主色 palette 与
+   * 突兀区域 anomalies（每格与 8 邻域的 LAB ΔE 最大色差 Top-N）。
+   */
+  colorMap(input: string, gridSize: number, top: number): Promise<InjectSharpColorMapResult>
 }
 
 // ── db（简化版：无 _rev、无附件） ──────────────────────────
@@ -349,7 +377,8 @@ interface InjectCBrowser {
   pdf(
     options?: {
       marginsType: 0 | 1 | 2
-      pageSize: 'A3' | 'A4' | 'A5' | 'Legal' | 'Letter' | 'Tabloid' | { width: number; height: number }
+      pageSize:
+        'A3' | 'A4' | 'A5' | 'Legal' | 'Letter' | 'Tabloid' | { width: number; height: number }
     },
     savePath?: string
   ): this
@@ -433,6 +462,6 @@ interface InjectApi {
   cBrowser: InjectCBrowser | null
 
   ffmpeg: InjectFfmpeg
-  sharp?: InjectSharp
+  sharp: InjectSharp
   db: InjectDb
 }

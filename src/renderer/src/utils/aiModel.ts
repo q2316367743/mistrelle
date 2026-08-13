@@ -38,7 +38,7 @@ export const MODEL_TYPE_THEME: Partial<Record<AiModelType, TagProps['theme']>> =
 /**
  * 根据模型 ID 猜测上下文窗口与最大输出大小（token）：
  * 先查精确表（MODEL_PARAMS_TABLE），未命中再按家族正则兜底（FAMILY_PARAMS_RULES），
- * 两者皆未命中返回空对象。规则维护见 src/utils/aiModelPresets.ts。
+ * 两者皆未命中返回空对象。规则维护见 src/global/aiModelPresets.ts。
  */
 export function guessModelParams(id: string): AiModelParams {
   const key = id.toLowerCase().trim()

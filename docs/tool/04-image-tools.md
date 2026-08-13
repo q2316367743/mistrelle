@@ -1,8 +1,8 @@
-# 生图 / 裁剪 / 去背景工具（image_generate / image_crop / image_remove_background）
+# 生图 / 裁剪 / 去背景 / 颜色分析工具（image_generate / image_crop / image_remove_background / image_color_map）
 
-> design 对话注入的 3 个图片处理工具：生图（依赖默认生图模型，多素材合并省钱）+ 本地裁剪 + 本地去背景（uTools Sharp）。
-> 定位：解决「AI 无插画素材 / 想省生图成本 / 生图产物带白底盖住画布背景」——多素材拼 sprite 一次生成，
-> 本地切分；需要透明底时本地 flood fill 去背景。
+> design 对话注入的 4 个图片处理工具：生图（依赖默认生图模型，多素材合并省钱）+ 本地裁剪 + 本地去背景 + 本地颜色分析（uTools Sharp）。
+> 定位：解决「AI 无插画素材 / 想省生图成本 / 生图产物带白底盖住画布背景 / 需要判断合成图哪里颜色突兀」——多素材拼 sprite 一次生成，
+> 本地切分；需要透明底时本地 flood fill 去背景；需要检查配色是否协调时本地网格色差分析。
 
 > 关键文件：
 >
@@ -10,8 +10,9 @@
 > - 生图工具 `src/modules/tool/components/design/imageGenerate.ts`
 > - 裁剪工具 `src/modules/tool/components/design/imageCrop.ts`
 > - 去背景工具 `src/modules/tool/components/design/imageRemoveBackground.ts`
+> - 颜色分析工具 `src/modules/tool/components/design/imageColorMap.ts`
 > - 生图服务封装 `src/modules/chat/service/ImageGenerate.ts`（已实现，接口自适应）
-> - Sharp 包装 `src-utools/src/inject.js`（inject.sharp）+ 类型 `src/types/inject.d.ts`
+> - Sharp 封装 `src/main/src/sharp/image.ts`（sharpColorMap）+ IPC `src/main/src/ipc/sharpIpc.ts` + 类型 `src/types/inject.d.ts`
 > - 省钱指南 `../../src/modules/canvas/guidelines/image-generation.md`
 > - 注入点 `src/global/ChatTypeConfig.ts`（design 配置）
 
@@ -87,6 +88,28 @@
 - **color 支持**：hex（`#ffffff`）/ `rgb(r,g,b)` / `[r,g,b]`；非法回退纯白。
 - **removedPixels = 0**：边缘未匹配到背景色（主体占满整图 / 背景不连续 / 容差过小），返回成功但带提示，
   AI 应提高 tolerance 或改用 color 指定实际背景色后重试。
+
+### `image_color_map`（本地颜色分析，不耗模型）
+
+| 项       | 值                                                                                                                         |
+| -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 参数     | `path`（源图，必填）+ `grid?`（长边格数 4~48，默认 24）+ `top?`（palette/anomalies 条数 1~16，默认 8）                     |
+| 返回成功 | `{ success, source:{path,width,height}, cols, rows, palette:[{hex,ratio}], anomalies:[{row,col,x,y,width,height,color,deviation}], note }` |
+| 返回失败 | `{ error }`（缺 path / 非 uTools 无 sharp / 处理失败）                                                                     |
+| 风险     | sensitive，路径感知策略（源图限沙盒 / 工作空间 / 主目录）                                                                  |
+| 注入条件 | 无条件注入（本地处理，不依赖生图模型）                                                                                     |
+
+- **用途**：判断图片 / 画布某区域颜色是否与周围差距过大（突兀）。AI 不必脑补整张网格，
+  直接读 `anomalies`（按 deviation 降序）定位问题区。
+- **算法**：`sharp(input).resize(cols, rows, { fit:'fill' }).ensureAlpha().raw()` 一次读入——
+  按宽高比缩放（`cols=grid` 长边，`rows=round(cols×h/w)`，非强制正方形），下采样即每格平均色。
+  - `palette`：非透明格 RGB 直方图计数，按占比降序取 Top-N。
+  - `anomalies`：每格 sRGB→CIELAB（D65），与 8 邻域格求 ΔE76 最大差值作 deviation，取 Top-N 降序；
+    `x/y/width/height` 映射回**原始像素坐标**（末行 / 末列吸收余量）。
+  - 透明格（alpha < 128）剔除，不参与统计。
+- **deviation 参考**：>30 明显突兀，15~30 轻微（note 内告知 AI）。
+- **实现**：`inject.sharp.colorMap(input, gridSize, top)`（`src/main/src/sharp/image.ts`，
+  纯 JS，一次 raw 读取）+ IPC `sharp:colorMap`（`src/main/src/ipc/sharpIpc.ts`）。
 
 ## 2. 与 canvas / 指南的关系
 

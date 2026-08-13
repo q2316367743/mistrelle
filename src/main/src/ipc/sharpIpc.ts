@@ -2,7 +2,12 @@
  * sharp IPC handler（main 进程）：原 inject.sharp 的 Electron 替代。
  */
 import { ipcMain } from 'electron'
-import { sharpMetadata, sharpCrop, sharpRemoveBackground } from '$/sharp/image'
+import {
+  sharpMetadata,
+  sharpCrop,
+  sharpRemoveBackground,
+  sharpColorMap
+} from '$/sharp/image'
 import { SharpChannels, type SharpRegion } from '~/channels'
 
 export function registerSharpIpc(): void {
@@ -20,5 +25,11 @@ export function registerSharpIpc(): void {
     SharpChannels.removeBackground,
     (_event, input: string, options: { color?: string | number[]; tolerance?: unknown }, output: string) =>
       sharpRemoveBackground(input, options, output)
+  )
+
+  ipcMain.handle(
+    SharpChannels.colorMap,
+    (_event, input: string, gridSize: number, top: number) =>
+      sharpColorMap(input, gridSize, top)
   )
 }

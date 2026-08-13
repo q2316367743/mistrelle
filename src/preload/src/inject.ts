@@ -21,6 +21,7 @@ import {
   FfmpegChannels,
   SharpChannels,
   SharpRegion,
+  SharpColorMapResult,
   DbChannels,
   DbDoc,
   DbPutResult,
@@ -225,7 +226,13 @@ const sharp = {
     options: { color?: string | number[]; tolerance?: unknown } | undefined,
     output: string
   ): Promise<{ width: number; height: number; removedPixels: number }> =>
-    ipcRenderer.invoke(SharpChannels.removeBackground, input, options, output)
+    ipcRenderer.invoke(SharpChannels.removeBackground, input, options, output),
+  colorMap: (
+    input: string,
+    gridSize: number,
+    top: number
+  ): Promise<SharpColorMapResult> =>
+    ipcRenderer.invoke(SharpChannels.colorMap, input, gridSize, top)
 }
 
 // ── db（简化版：无 _rev、无附件） ──────────────────────────

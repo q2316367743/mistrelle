@@ -106,7 +106,12 @@ export const createImageCropTool = (): ToolFunction => ({
   },
   risk: 'sensitive',
   handler: async (...params: unknown[]) => {
-    const { path: source, regions, grid, outDir } = params[0] as {
+    const {
+      path: source,
+      regions,
+      grid,
+      outDir
+    } = params[0] as {
       path?: string
       regions?: Array<{ x?: number; y?: number; width?: number; height?: number }>
       grid?: { cols?: number; rows?: number; gap?: number }
@@ -167,8 +172,7 @@ export const createImageCropTool = (): ToolFunction => ({
       success: true,
       source: { path: source, width, height },
       images,
-      note:
-        '已将源图裁剪为多张 PNG，把每个 path 填进画布 image 节点的 imageUrl；可用 image_info(path) 确认尺寸'
+      note: '已将源图裁剪为多张 PNG，把每个 path 填进画布 image 节点的 imageUrl；可用 image_info(path) 确认尺寸'
     }
   }
 })
