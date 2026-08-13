@@ -1,6 +1,6 @@
 <template>
   <div class="chat-list">
-    <VList :data="chats" :itemSize="36" style="height: 100%">
+    <VList :data="chats" :item-size="36" style="height: 100%">
       <template #default="{ item }">
         <button
           class="menu-item"
@@ -10,7 +10,10 @@
           @contextmenu="onContextmenu($event, item)"
           @click="goTo(`/chat/${item.id}`)"
         >
-          <FolderIcon class="menu-icon" />
+          <PaletteIcon v-if="item.type === 'design'" />
+          <SlideshowIcon v-else-if="item.type === 'ppt'" />
+          <EditIcon v-else-if="item.type === 'writing'" />
+          <FolderIcon v-else class="menu-icon" />
           <span class="ellipsis flex-1 min-w-0">{{ item.name }}</span>
           <t-loading v-if="isStreaming(item)" size="small" />
         </button>
@@ -21,7 +24,7 @@
 
 <script lang="ts" setup>
 import { VList } from 'virtua/vue'
-import { FolderIcon } from 'tdesign-icons-vue-next'
+import { EditIcon, FolderIcon, PaletteIcon, SlideshowIcon } from 'tdesign-icons-vue-next'
 import type { AiChatItem } from '@/entity/ai'
 import { useAiChatStore } from '@/store'
 import { buildChatMainPath, getChatSessionStatus } from '@/modules/chat'

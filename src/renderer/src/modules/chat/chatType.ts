@@ -1,5 +1,6 @@
 import { WorkIcon, EditIcon, PaletteIcon, SlideshowIcon } from 'tdesign-icons-vue-next'
 import type { WritingScene } from '@/modules/chat/writingScene'
+import type { Component } from 'vue'
 /**
  * 场景级工具工厂上下文：结构上等同 CanvasToolContext，但命名中性，与具体工具解耦。
  * 目前仅 canvas 工具需要 getSandboxDir；其余工具（如 context7）忽略该参数。

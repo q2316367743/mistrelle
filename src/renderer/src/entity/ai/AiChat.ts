@@ -15,6 +15,8 @@ export interface AiChatItem extends BaseEntity {
   projectId?: string
   // 所属任务
   taskId?: string
+  // 聊天类型（office/writing/design），新建对话时选定，创建后锁定；旧数据缺省回退 office
+  type?: ChatType
 }
 
 /**

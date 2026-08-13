@@ -42,7 +42,7 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     .catch((e) => logger.error('AI 聊天初始化失败', e))
 
   const update = async (id: string, target: Partial<AiChatItem>) => {
-    let index = state.value.findIndex((e) => e.id === id)
+    const index = state.value.findIndex((e) => e.id === id)
     if (index >= 0) {
       state.value[index] = {
         ...state.value[index],
@@ -65,7 +65,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       updatedAt: now,
       name: preview.slice(0, 10),
       top: false,
-      workspace: workspace || ''
+      workspace: workspace || '',
+      type: params.type
     }
     state.value.push(item)
     // 保存索引
