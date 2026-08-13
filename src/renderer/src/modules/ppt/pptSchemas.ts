@@ -18,18 +18,18 @@ export const pptElementsSchema: ToolProperty = toToolProperty(pptElementsSchemaT
 const PPT_ELEMENT_TYPES = Object.keys(pptElementVariants)
 
 /**
- * 校验单个元素：先按 type 判别到对应分支 schema（未知 type / 缺 type 给出明确提示），
- * 再做精确字段校验（含 children 递归，递归内错误定位到子元素位置）。
+ * 校验单个元素：先按 tag 判别到对应分支 schema（未知 tag / 缺 tag 给出明确提示），
+ * 再做精确字段校验（含 child 递归，递归内错误定位到子元素位置）。
  */
 export const validatePptElement = (value: unknown): string[] => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return ['元素必须是 JSON 对象']
-  const type = (value as { type?: unknown }).type
-  if (typeof type !== 'string') {
-    return [`元素缺少 type 字段（可用：${PPT_ELEMENT_TYPES.join(' / ')}）`]
+  const tag = (value as { tag?: unknown }).tag
+  if (typeof tag !== 'string') {
+    return [`元素缺少 tag 字段（可用：${PPT_ELEMENT_TYPES.join(' / ')}）`]
   }
-  const variant = pptElementVariants[type]
+  const variant = pptElementVariants[tag]
   if (!variant) {
-    return [`未知元素类型「${type}」（可用：${PPT_ELEMENT_TYPES.join(' / ')}）`]
+    return [`未知元素类型「${tag}」（可用：${PPT_ELEMENT_TYPES.join(' / ')}）`]
   }
   return collectErrors(variant, value)
 }

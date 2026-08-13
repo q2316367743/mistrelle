@@ -1,9 +1,5 @@
 # SlideNode JSON 结构与导出速查（PPT 专家专用）
 
-> 本文件为 `ppt_guidelines` 工具的数据源（经 `?raw` 打包进应用），
-> 同步维护于 `src/renderer/src/modules/ppt/guidelines/json.md`，修改时两处需保持一致。
-> 深度经验见 `docs/ppt/03-ppt-experience-guides.md`（layout / nodes / styling）。
-
 > 快速参考；深度经验见 layout（布局）/ nodes（节点）/ styling（样式）三份指南。
 
 ## 1. 存储结构（{name}.ppt.json，全程 JSON）
@@ -43,10 +39,10 @@
 
 ## 3. 元素与 XML 的对应（导出时由主进程转换，AI 无需关心 XML）
 
-| SlideNode | 转换后的 XML |
-|---|---|
+| SlideNode                                    | 转换后的 XML                              |
+|----------------------------------------------|-------------------------------------------|
 | `{ tag: 'Text', attr: { fontSize: '28' }, child: 'Title' }` | `<Text fontSize="28">Title</Text>` |
-| `{ tag: 'VStack', attr: { w: '100%' }, child: [...] }` | `<VStack w="100%">...</VStack>` |
+| `{ tag: 'VStack', attr: { w: '100%' }, child: [...] }`       | `<VStack w="100%">...</VStack>` |
 | `{ tag: 'TimelineItem', attr: { date: 'Q1', title: 'Phase 1' } }` | `<TimelineItem date="Q1" title="Phase 1" />` |
 
 - 复杂节点结构（子元素形式）：Table → `Tr`/`Td`（Td 文本写 child）、Ul/Ol → `Li`（文本写 child）、
@@ -74,4 +70,4 @@
 - 元素数组为 **SlideNode JSON**（tag + attr + child），经 TypeBox 严格校验（非法整批拒绝，错误文本原样返回）。
 - **页码从 1 开始**；slideId 越界报错。
 - 页面根元素必须是 VStack / HStack 布局容器。
-- 编辑**原地写回**当前文件（不产生新版本）；侧边栏实时渲染预览。
+- 编辑 **原地写回**当前文件（不产生新版本）；侧边栏实时渲染预览。

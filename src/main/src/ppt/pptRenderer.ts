@@ -1,14 +1,17 @@
 /**
- * PPT 渲染核心（主进程）：POM XML → 每页 SVG / 导出 PPTX / PNG。
+ * PPT 渲染核心（主进程）：PptJsonDoc → 每页 SVG / 导出 PPTX / PNG。
  *
+ * 渲染进程全程 JSON（SlideNode），主进程在导出 / 渲染前经 jsonToPomXml 转为 POM XML；
  * POM 为 ESM-only（exports 无 require 条件），CJS 主进程只能动态 import() 加载；
  * 首次调用后缓存 promise，避免反复解析。POC 已验证该链路（含 Icon / Chart / 中文）。
- * 导出（PPTX / PNG）在**主进程内构建并直接落盘**，渲染进程只传 (xml, 目标路径)，
+ * 导出（PPTX / PNG）在**主进程内构建并直接落盘**，渲染进程只传 (json, 目标路径)，
  * 不经手字节数组（避免主进程 → 渲染进程 → 主进程的往返）。
  */
 import type { Diagnostic } from '@hirokisakabe/pom'
 import { writeFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import type { PptJsonDoc } from '~/channels'
+import { jsonToPomXml } from './jsonToPomXml'
 
 let pomModule: Promise<typeof import('@hirokisakabe/pom')> | null = null
 const loadPom = (): Promise<typeof import('@hirokisakabe/pom')> =>
@@ -28,13 +31,13 @@ const collectErrorText = (diagnostics: Diagnostic[]): string | null => {
 }
 
 /**
- * 渲染 POM XML 为每页 SVG 字符串数组（预览链路）：
- * buildPptx(xml) → PPTX 字节 → convertPptxToSvg → svgs
+ * 渲染 PptJsonDoc 为每页 SVG 字符串数组（预览链路）：
+ * jsonToPomXml → buildPptx(xml) → PPTX 字节 → convertPptxToSvg → svgs
  */
-export const renderPptxToSvgs = async (xml: string, size: { w: number; h: number }): Promise<string[]> => {
+export const renderPptxToSvgs = async (json: PptJsonDoc, size: { w: number; h: number }): Promise<string[]> => {
   const { buildPptx } = await loadPom()
   const { convertPptxToSvg } = await loadGlimpse()
-  const { pptx, diagnostics } = await buildPptx(xml, size)
+  const { pptx, diagnostics } = await buildPptx(jsonToPomXml(json), size)
   const errorText = collectErrorText(diagnostics)
   const buf = await pptx.write({ outputType: 'nodebuffer' })
   const report = await convertPptxToSvg(buf)
@@ -48,14 +51,14 @@ export const renderPptxToSvgs = async (xml: string, size: { w: number; h: number
  *  - 多页：targetPath 为目录，每页写 page-{n}.png
  * 返回已写入的文件路径列表。 */
 export const exportPptxPngFiles = async (
-  xml: string,
+  json: PptJsonDoc,
   size: { w: number; h: number },
   targetPath: string,
   slides?: number[]
 ): Promise<string[]> => {
   const { buildPptx } = await loadPom()
   const { convertPptxToPng } = await loadGlimpse()
-  const { pptx } = await buildPptx(xml, size)
+  const { pptx } = await buildPptx(jsonToPomXml(json), size)
   const buf = await pptx.write({ outputType: 'nodebuffer' })
   const report = await convertPptxToPng(buf, { width: size.w, slides })
   const files: string[] = []
@@ -70,12 +73,12 @@ export const exportPptxPngFiles = async (
 
 /** 构建 PPTX 并落盘（导出 PPTX 用），返回文件路径 */
 export const exportPptxFile = async (
-  xml: string,
+  json: PptJsonDoc,
   size: { w: number; h: number },
   filePath: string
 ): Promise<string> => {
   const { buildPptx } = await loadPom()
-  const { pptx, diagnostics } = await buildPptx(xml, size)
+  const { pptx, diagnostics } = await buildPptx(jsonToPomXml(json), size)
   const errorText = collectErrorText(diagnostics)
   const buf = await pptx.write({ outputType: 'nodebuffer' })
   await mkdir(dirname(filePath), { recursive: true })

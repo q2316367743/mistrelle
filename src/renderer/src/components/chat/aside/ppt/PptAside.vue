@@ -158,7 +158,7 @@ const handleExportPptx = async () => {
       filters: [{ name: 'PPTX 演示文稿', extensions: ['pptx'] }]
     })
     if (!path) return
-    await exportPptx(doc.xml, PPT_SLIDE_SIZE, path)
+    await exportPptx(doc.json, PPT_SLIDE_SIZE, path)
     MessageUtil.success('已导出 PPTX')
   } catch (e) {
     MessageUtil.error('导出失败', e)
@@ -181,7 +181,7 @@ const handleExportPng = async () => {
       filters: [{ name: 'PNG 图片', extensions: ['png'] }]
     })
     if (!path) return
-    const files = await exportPptxToPngs(doc.xml, PPT_SLIDE_SIZE, path, [page])
+    const files = await exportPptxToPngs(doc.json, PPT_SLIDE_SIZE, path, [page])
     if (!files.length) throw new Error('当前页渲染失败')
     MessageUtil.success('已导出 PNG')
   } catch (e) {

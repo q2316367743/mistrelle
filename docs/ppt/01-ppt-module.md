@@ -111,40 +111,41 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 ## 4. 数据存储与状态（仿 design 的 CanvasStore）
 
 - `src/modules/ppt/PptStore.ts`：按 sandboxDir 键控的全局单例（`getPptStore(sandboxDir)`，同 `CanvasStore` 模式）。
-- 文件：`outputs/{name}.pom.xml`（**单一文件持续编辑**，AI 指定文件名；正则 `^(.+)\.pom\.xml$`；编辑原地写回，不产生版本文件）。
+- 文件：`outputs/{name}.ppt.json`（**单一文件持续编辑**，AI 指定文件名；正则 `^(.+)\.ppt\.json$`；编辑原地写回，不产生版本文件）。
+- **全程 JSON（SlideNode）**：渲染进程不涉及任何 xml，仅在导出时由主进程转换为 POM XML（见 12.5 第三版契约）。
 - 状态：
   - `files`：文件列表（id / name / path / updatedTime，id = 文件名）
-  - `current`：当前打开的文档 `{ id, name, xml }`
+  - `current`：当前打开的文档 `{ id, name, json }`（json 为 `PptJsonDoc`，见 12.5 契约）
   - `currentPage`：当前定位页（`ppt_select` 驱动，渲染器联动跳转）
   - `svgs`：渲染缓存（`string[]`，每页一个 SVG）+ `renderState: 'idle' | 'rendering' | 'error'`
-- 自动渲染：`watch(current.xml)` → 防抖 ~500ms → Node 侧渲染 → 更新 `svgs`；渲染失败保留旧图并记录 `renderError`（AI 经 `ppt_read` 读取修正）。
+- 自动渲染：`watch(current.json)` → 防抖 ~500ms → 主进程（json→xml 转换 + buildPptx）渲染 → 更新 `svgs`；渲染失败保留旧图并记录 `renderError`（AI 经 `ppt_read` 读取修正）。
 
 ## 5. 工具契约（ppt_*，第二版：单一文件持续编辑）
 
 文件：`src/modules/tool/components/ppt/pptTools.ts`（内部工具，全部 `registerToolPolicy → 'allow'`，仅操作沙盒 outputs/）。
 
-**契约模型**：一个 PPT = 一个文件（`outputs/{name}.pom.xml`，AI 指定文件名）。`ppt_create` 定文件名 + `<Theme>` 色板（0 页）→ `ppt_add_slide` 逐页添加 → `ppt_batch_edit` 编辑页内元素；后续编辑**原地写回**，不产生版本文件（用户要新版本时再 create 新文件）。一个文件的多个 `<Slide>` 页面对应 canvas 的「一组图片」。
+**契约模型**：一个 PPT = 一个文件（`outputs/{name}.ppt.json`，AI 指定文件名）。`ppt_create` 定文件名 + `theme` 色板（0 页）→ `ppt_add_slide` 逐页添加 → `ppt_batch_edit` 编辑页内元素；后续编辑**原地写回**，不产生版本文件（用户要新版本时再 create 新文件）。一个文件的多个 slide 页面对应 canvas 的「一组图片」。
 
 | 工具 | 参数 | 说明 |
 |---|---|---|
-| `ppt_create` | `name`（必填）、`theme?`（token→颜色对象） | 创建文件（含 `<Theme/>`，0 页），返回文件标识；重名报错 |
+| `ppt_create` | `name`（必填）、`theme?`（token→颜色对象） | 创建文件（含 theme 色板，0 页），返回文件标识；重名报错 |
 | `ppt_add_slide` | `pptId?`、`elements?` | 文件末尾加页（缺省空白页），返回 **1 起始**页索引 |
-| `ppt_batch_edit` | `pptId?`、`slideId`（1 起始）、`elements`（JSON 元素数组） | 替换指定页内容（整页覆盖） |
+| `ppt_batch_edit` | `pptId?`、`slideId`（1 起始）、`elements`（SlideNode JSON 数组） | 替换指定页内容（整页覆盖） |
 | `ppt_list` | - | 列出沙盒 outputs/ 下 PPT 文件 |
 | `ppt_open` | `pptId` | 打开指定文件为当前（驱动侧边栏/渲染器切换） |
-| `ppt_read` | `pptId?`、`slideId?` | 读文件全文（或指定页 `<Slide>` 片段），附渲染状态/错误 |
+| `ppt_read` | `pptId?`、`slideId?` | 读文件完整 JSON（或指定页 SlideNode 元素数组），附渲染状态/错误 |
 | `ppt_select` | `page: number`（1 起始） | 预览定位（设置 currentPage，渲染器跳转；越界给错误反馈） |
 | `ppt_delete` | `pptId` | 删除文件 |
 | `ppt_export_pptx` | `pptId?`、`path?` | 导出 PPTX（缺省写沙盒 outputs/） |
 | `ppt_export_png` | `pptId?`、`path?`、`page?` | 导出 PNG（缺省写沙盒 outputs/，`page` 缺省导出全部页） |
-| `ppt_guidelines` | `topic` | 按 topic 读取经验指南（layout / nodes / styling / pom-xml / workflow，见 03 文档） |
+| `ppt_guidelines` | `topic` | 按 topic 读取经验指南（layout / nodes / styling / json / workflow，见 03 文档） |
 
-### 5.1 `ppt_batch_edit` 的元素数组规范（JSON 节点，TypeBox 严格校验）
+### 5.1 `ppt_batch_edit` 的元素数组规范（SlideNode JSON，TypeBox 严格校验）
 
-- `elements` 为 **JSON 节点数组**（非 XML 字符串）：每个元素 `{ type, 属性..., children? }`，与 POM 规范一致。
-- **TypeBox 严格校验**（`pptSchemas.ts`，单一数据源同时喂给模型参数描述）：type 枚举 20 种、`additionalProperties: false` 拒绝未知字段、children 递归；非法整批拒绝并返回中文错误文本反馈 AI 自纠。
-- **页面根元素必须是 VStack / HStack 布局容器**（flexbox 先布局后内容）：1 个元素直接用；多个元素隐式包 VStack（对齐 parseXml 对 `<Slide>` 多子元素的语义）。
-- 实现链路：`parseXml(xml)` → pages（POMNode[]）→ TypeBox 校验元素 → 组装 slide 节点 → `serializeXml(pages)` 写回（round-trip 可 parse）。
+- `elements` 为 **SlideNode JSON 节点数组**（非 XML 字符串）：每个元素 `{ tag, attr, child }`——tag 即 POM XML 标签名（VStack / HStack / Text / Icon 等），attr 为属性对象（对象属性用点表示法如 `border.color`，值统一字符串），child 为子元素数组或文本字符串（Text 内容）。
+- **TypeBox 严格校验**（`pptSchemas.ts`，单一数据源同时喂给模型参数描述）：tag 枚举 20 种、attr `additionalProperties: false` 拒绝未知字段、child 递归；非法整批拒绝并返回中文错误文本反馈 AI 自纠。
+- **页面根元素必须是 VStack / HStack 布局容器**（flexbox 先布局后内容）：一页 = SlideNode 数组，导出时包进 `<Slide>`（多元素隐式 VStack 语义由 POM 解析）。
+- 实现链路：JSON 读文件 → TypeBox 校验元素 → 替换页面数组 → JSON 写回（**无 xml round-trip**）。
 - 与 canvas 差异：canvas 是节点树粒度的增删改查（版本化文件）；PPT 是**页面式文档**，一个文件持续编辑，按页（slideId，1 起始）整页替换最自然。
 
 ## 6. UI 设计（侧边栏，完全仿设计创意）
@@ -210,13 +211,13 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 | 项 | 说明 |
 |---|---|
 | 依赖 | `@hirokisakabe/pom@10.3.0` + `pptx-glimpse@3.2.8`（均 `dependencies`，主进程 externalize 后打包进 asar） |
-| 主进程渲染 | `src/main/src/ppt/pptRenderer.ts`（buildPptx → SVG / PPTX 字节 / PNG）+ `src/main/src/ipc/pptIpc.ts` |
-| IPC | `PptChannels`：`ppt:renderPptxToSvgs`（XML→每页 SVG）/ `ppt:exportPptx`（XML→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（XML→指定页 PNG 并落盘，preload `window.preload.ppt`） |
-| 渲染进程 | `src/renderer/src/modules/ppt/`：`PptStore.ts`（500ms 防抖自动渲染）/ `pptTypes.ts` / `pptRender.ts` / `pptPrompt.ts` / `pptGuidelines.ts` |
+| 主进程渲染 | `src/main/src/ppt/pptRenderer.ts`（PptJsonDoc → jsonToPomXml → buildPptx → SVG / PPTX 字节 / PNG）+ `src/main/src/ppt/jsonToPomXml.ts`（SlideNode JSON → POM XML 纯函数转换）+ `src/main/src/ipc/pptIpc.ts` |
+| IPC | `PptChannels`：`ppt:renderPptxToSvgs`（PptJsonDoc→每页 SVG）/ `ppt:exportPptx`（PptJsonDoc→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（PptJsonDoc→指定页 PNG 并落盘，preload `window.preload.ppt`）；载荷类型 `SlideNode` / `PptJsonDoc` 定义在 `src/preload/src/channels.ts`（main/preload 共享） |
+| 渲染进程 | `src/renderer/src/modules/ppt/`：`PptStore.ts`（500ms 防抖自动渲染，JSON 存储零 pom）/ `pptTypes.ts`（SlideNode / PptJsonDoc）/ `pptRender.ts` / `pptPrompt.ts` / `pptGuidelines.ts` |
 | 工具 | `src/renderer/src/modules/tool/components/ppt/pptTools.ts`（10 个 ppt_* 工具 + 策略：全 allow，导出工具走 `isPathUnder` 路径感知审批） |
 | UI | `src/components/chat/aside/ppt/PptAside.vue` + `PptRenderer.vue`（SVG `<img>` 渲染、翻页 / 缩放 / 缩略图导航 / 自动滚动定位） |
 | 注册 | `chatType.ts`（ChatType + CHAT_TYPE_OPTIONS，design 后插入，图标 `SlideshowIcon`）/ `ChatTypeConfig.ts` / `LChatAside.vue` / `LChatEngine.vue` / `SUB_AGENT_ALLOW`（ppt 无子 Agent，空数组） |
-| 指南 | `docs/ppt/02-pom-xml-guide.md`（= `src/renderer/src/modules/ppt/guidelines/pom-xml.md`）+ `docs/ppt/03-ppt-experience-guides.md`（layout / nodes / styling 经验指南，`ppt_guidelines` 经 `?raw` 读取） |
+| 指南 | `docs/ppt/02-pom-xml-guide.md` + `docs/ppt/03-ppt-experience-guides.md`（layout / nodes / styling 经验指南，`ppt_guidelines` 经 `?raw` 读取；第三版起 topic `pom-xml` 改为 `json`，指南源为 `src/renderer/src/modules/ppt/guidelines/`） |
 
 ### 12.2 实测差异（相对调研结论）
 
@@ -244,6 +245,32 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 7. **设计风格支持**（与 design 同源）：新建 PPT 会话可选设计风格（PageNew 开放选择），风格在创建后锁定，水合时经 `buildDesignStylePrompt` 注入稳定 system 前缀；PPT 不接生图，跳过「正向/反向提示词」段（`withVisualPrompt: false`），只注入配色方案 / 字体规范 / 布局约束——AI 创建 PPT 时按风格色板写 `<Theme>`、按风格字体排版。
 8. **POM 布局 bug 规避（实测）**：嵌套 HStack 链（≥2 层无像素宽）中的 Text 未显式声明 `w` 时，POM 10.3.0 布局测量产生 NaN 宽度 → `buildPptx` 抛 `addTextBox: width must be a finite positive EMU value`（导出 PPTX/PNG 全部失败，渲染保留旧图）。`PptStore.prepareElements` 自动为受影响 Text 补 `w="max"`（视觉等价，实测修复 13 页真实文件）；渲染错误附边界提示供 AI 自纠。已写入 layout 指南。
 9. **Svg 节点 w/h 仅数字（实测）**：POM 的 `<Svg>` 只接受数字 `w`/`h`（`"max"` / `"50%"` 被拒且报误导性的 `Missing required attribute "w"`，而 w 缺失反而通过）。`pptElementSchemas` 的 svg 分支 w/h 改为纯数字；`PptStore.withPages` 写回前用 `parseXml` 严格校验（serializeXml 宽容，坏数据会静默落盘、下次读取才炸——写回前拦截并当场反馈 AI，不污染文件）。已写入 nodes 指南。
+
+### 12.5 第三版契约调整（2026-08，SlideNode JSON 存储重构）
+
+第二版存储为 `{name}.pom.xml`（XML 与 POM 库格式完全耦合），渲染进程编辑链路依赖 `parseXml` / `serializeXml` round-trip，且 `<Theme>` 声明写回需正则提取拼回文件头——设计不佳。重构为 **全程 SlideNode JSON，渲染进程零 pom**：
+
+1. **存储格式**：`outputs/{name}.ppt.json`（旧 `.pom.xml` 忽略不迁移），内容为 `PptJsonDoc`：
+
+```json
+{
+  "name": "第一个 ppt",
+  "createdAt": 1755058092000,
+  "updatedAt": 1755058092000,
+  "theme": { "surface": "0F172A", "accent": "38BDF8", "textMain": "F8FAFC", "textMuted": "94A3B8" },
+  "slide": [ [ { "tag": "VStack", "attr": { "w": "100%" }, "child": [...] } ] ]
+}
+```
+
+2. **SlideNode 通用结构**：`{ tag, attr, child }`——tag 即 POM XML 标签名（VStack / Text / TimelineItem 等，一一对应），attr 为 `Record<string, string>`（对象属性点表示法展开：`border.color`、`shadow.blur`、`padding.top`），child 为子元素数组或**文本字符串**（Text 节点内容）。结构化数据全部用子元素表达（Table→Tr/Td、Timeline→TimelineItem、Flow→FlowNode/FlowConnection、Ul/Ol→Li 等，POM NODE_METADATA 全支持）；Chart 的 `data`/`chartColors` 为 attr 中的 JSON 字符串（pom 支持 JSON 属性解析）。
+
+3. **渲染进程完全排除 pom**：`PptStore.ts` 删除 `parseXml`/`serializeXml`/`POMNode` 依赖，编辑链路为「JSON 读文件 → TypeBox 校验（tag 判别）→ 替换页面数组 → JSON 写回」；`PptCurrentDoc` 从 `{xml}` 改为 `{json: PptJsonDoc}`，watch 依赖 `current.json`；attr 值入站统一 toString（AI 可输出数字/布尔，存储恒为字符串）。
+
+4. **json → xml 转换只在导出时（主进程）**：新增 `src/main/src/ppt/jsonToPomXml.ts`（纯函数，不依赖 pom）：递归 nodeToXml（attr/文本 XML 转义、空 child 自闭合）+ `<Theme/>` + `<Slide>` 包裹 + `normalizeHStackText`（12.4-8 的 POM 布局 bug 规避从渲染进程迁移至此，幂等）。`pptRenderer.ts` 三函数签名 `xml: string` → `json: PptJsonDoc`，内部先转换再 `buildPptx`；IPC 载荷类型 `SlideNode`/`PptJsonDoc` 定义在 `channels.ts`（main/preload 共享），renderer 侧 `pptTypes.ts` 同形状。
+
+5. **schema 重写为 SlideNode**：`pptElementSchemas.ts` / `pptComplexElementSchemas.ts` 的节点从扁平 `{type, ...}` 改为 `{tag, attr, child}`（tag 大写 Literal、attr 精确属性 + 点表示法、child 递归）；`pptSchemas.ts` 按 tag 判别校验；attr 值允许 string/number/boolean（AI 友好）。Table 用 Tr 子元素形式后 POM 自动补 columns（12.2-4 的 normalizeTableColumns 不再需要）。
+
+6. **prompt / guidelines 同步**：`pptPrompt.ts` 改为 SlideNode JSON 规范；`guidelines/` 的 pom-xml.md 重写为 json.md（存储结构速查），topic `pom-xml` → `json`；layout / nodes / styling / workflow 全部改为 attr JSON 写法；内联 runs（`<B>/<Span>` 装饰标签）暂不支持（字符串 child 会转义，装饰用多 Text + HStack 组合，见 12.3 限制）。
 
 ### 12.3 已知限制（第一版范围，与 §8 一致）
 

@@ -1,7 +1,7 @@
 /**
  * PPT 工具集（ppt_*，内部工具，全部仅操作当前聊天沙盒 outputs/）：
  * 契约模型 = 单一文件持续编辑：ppt_create 定文件名 + Theme → ppt_add_slide 加页 →
- * ppt_batch_edit 编辑页内元素（JSON 元素数组，TypeBox 严格校验，与 POM 规范一致）。
+ * ppt_batch_edit 编辑页内元素（SlideNode JSON 元素数组，TypeBox 严格校验，全程 JSON 不涉及 xml）。
  */
 import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
@@ -25,7 +25,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_create',
       label: '创建 PPT',
       description:
-        '创建新 PPT 文件：指定文件名（id）+ 全局主题色板（<Theme> 令牌），返回文件标识。创建后为 0 页，用 ppt_add_slide 逐页添加；后续编辑都在这个文件上原地进行',
+        '创建新 PPT 文件：指定文件名（id）+ 全局主题色板（theme 令牌），返回文件标识。创建后为 0 页，用 ppt_add_slide 逐页添加；后续编辑都在这个文件上原地进行',
       parameters: {
         type: 'object',
         properties: {
@@ -36,7 +36,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
           theme: {
             type: 'object',
             description:
-              '全局主题色板（<Theme> 令牌）：token 名 → 6 位 hex 颜色（如 { "surface": "0F172A", "accent": "38BDF8", "textMain": "F8FAFC" }），后续所有颜色属性可用 $token 引用'
+              '全局主题色板（theme 令牌）：token 名 → 6 位 hex 颜色（如 { "surface": "0F172A", "accent": "38BDF8", "textMain": "F8FAFC" }），后续所有颜色属性可用 $token 引用'
           }
         },
         required: ['name']
@@ -52,7 +52,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_add_slide',
       label: '新增页面',
       description:
-        '在 PPT 文件末尾新增一页（<Slide>），返回 1 起始的页索引。elements 为页面元素数组（JSON 节点，与 POM 规范一致），缺省生成空白页；页面根元素必须是 VStack / HStack 布局容器',
+        '在 PPT 文件末尾新增一页，返回 1 起始的页索引。elements 为页面元素数组（SlideNode JSON：{tag, attr, child}），缺省生成空白页；页面根元素必须是 VStack / HStack 布局容器',
       parameters: {
         type: 'object',
         properties: {
@@ -60,7 +60,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
           elements: {
             type: 'array',
             items: pptElementSchema,
-            description: '页面元素数组（每个元素是 POM 节点；根元素必须用 VStack / HStack 布局容器）'
+            description: '页面元素数组（每个元素是 SlideNode：{tag, attr, child}；根元素必须用 VStack / HStack 布局容器）'
           }
         }
       },
@@ -75,7 +75,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_batch_edit',
       label: '编辑页面元素',
       description:
-        '核心编辑工具：替换指定页（slideId 从 1 开始）的内容为元素数组（整页覆盖）。元素为 JSON 节点（type + 属性 + children，规范与 POM 一致，经严格校验；任一非法整批拒绝）。页面根元素必须是 VStack / HStack 布局容器（flexbox 先布局后内容），不要散落裸 Text / Shape',
+        '核心编辑工具：替换指定页（slideId 从 1 开始）的内容为元素数组（整页覆盖）。元素为 SlideNode JSON（tag + attr + child，经严格校验；任一非法整批拒绝）。页面根元素必须是 VStack / HStack 布局容器（flexbox 先布局后内容），不要散落裸 Text / Shape',
       parameters: {
         type: 'object',
         properties: {
@@ -84,7 +84,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
           elements: {
             type: 'array',
             items: pptElementSchema,
-            description: '该页全部元素（JSON 节点数组，整页替换；根元素必须用 VStack / HStack 布局容器）'
+            description: '该页全部元素（SlideNode JSON 数组，整页替换；根元素必须用 VStack / HStack 布局容器）'
           }
         },
         required: ['slideId', 'elements']
@@ -99,7 +99,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
     {
       name: 'ppt_list',
       label: '列出 PPT',
-      description: '列出当前聊天 outputs/ 下全部 PPT 文件（{name}.pom.xml），含文件标识与更新时间',
+      description: '列出当前聊天 outputs/ 下全部 PPT 文件（{name}.ppt.json），含文件标识与更新时间',
       parameters: { type: 'object', properties: {} },
       internal: true,
       risk: 'safe',
@@ -127,7 +127,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_read',
       label: '读取 PPT',
       description:
-        '读取指定 PPT（缺省当前）的 POM XML：不给 slideId 返回全文（含 Theme 与全部 <Slide>），给 slideId 只返回该页片段；同时返回渲染状态与最近渲染错误（有错先修正再编辑）',
+        '读取指定 PPT（缺省当前）的 JSON：不给 slideId 返回完整文档（含 name / theme / slide 数组），给 slideId 只返回该页的 SlideNode 元素数组；同时返回渲染状态与最近渲染错误（有错先修正再编辑）',
       parameters: {
         type: 'object',
         properties: {
@@ -139,7 +139,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       risk: 'safe',
       handler: async (...params: unknown[]) => {
         const { pptId, slideId } = params[0] as { pptId?: string; slideId?: number }
-        const result = await store().read(pptId, slideId)
+        const result = slideId != null ? await store().read(pptId, slideId) : await store().read(pptId)
         if (result === null) return { error: '未找到该 PPT（或当前未打开任何 PPT）' }
         return result
       }
@@ -245,13 +245,13 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_guidelines',
       label: '获取 PPT 指南',
       description:
-        '获取内置 POM 经验指南（按需加载，避免全部塞进提示词）。做 PPT 前先读 workflow 与 layout；元素属性不确定读 nodes；配色与样式读 styling；语法速查读 pom-xml',
+        '获取内置 PPT 经验指南（按需加载，避免全部塞进提示词）。做 PPT 前先读 workflow 与 layout；元素属性不确定读 nodes；配色与样式读 styling；存储结构与语法速查读 json',
       parameters: {
         type: 'object',
         properties: {
           topic: {
             type: 'string',
-            description: `layout（布局系统与页面模式）/ nodes（20 种节点属性速查）/ styling（配色 / 字体 / 样式）/ pom-xml（语法速查）/ workflow（端到端工作流）（${PPT_GUIDELINE_TOPICS.join(' / ')}）`
+            description: `layout（布局系统与页面模式）/ nodes（20 种节点属性速查）/ styling（配色 / 字体 / 样式）/ json（SlideNode JSON 存储结构速查）/ workflow（端到端工作流）（${PPT_GUIDELINE_TOPICS.join(' / ')}）`
           }
         },
         required: ['topic']

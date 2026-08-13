@@ -229,12 +229,39 @@ export interface SharpRemoveBackgroundResult {
 }
 
 // ── ppt ────────────────────────────────────────────────────
+/**
+ * SlideNode：与 POM XML 标签一一对应的通用节点（tag 即 XML 标签名），
+ * 渲染进程全程以此 JSON 形式存储 / 传输，仅在主进程导出时转换为 POM XML。
+ * child 为字符串表示文本节点内容（如 <Text>Title</Text>）。
+ * 注意：与 renderer 的 src/renderer/src/modules/ppt/pptTypes.ts 形状一致，修改需同步。
+ */
+export interface SlideNode {
+  tag: string
+  attr: Record<string, string>
+  child: Array<SlideNode> | string
+}
+
+/**
+ * PPT 文档 JSON（存储文件 {name}.ppt.json 的内容，同时是 IPC 导出载荷）：
+ * slide 每项是一页的根节点数组（对应 <Slide> 内的多个子元素）。
+ */
+export interface PptJsonDoc {
+  name: string
+  /** 创建时间（Date.now() 毫秒） */
+  createdAt: number
+  /** 最近修改时间（Date.now() 毫秒） */
+  updatedAt: number
+  /** 主题令牌表：token 名 → 6 位 hex 颜色（渲染时引用为 $token） */
+  theme: Record<string, string>
+  slide: SlideNode[][]
+}
+
 export const PptChannels = {
-  /** POM XML → 每页 SVG 字符串数组（预览渲染） */
+  /** PptJsonDoc → 每页 SVG 字符串数组（预览渲染；主进程转 POM XML 后 buildPptx） */
   renderPptxToSvgs: 'ppt:renderPptxToSvgs',
-  /** POM XML → 构建 PPTX 并直接落盘（导出 PPTX；主进程完成，渲染进程不经手字节） */
+  /** PptJsonDoc → 构建 PPTX 并直接落盘（导出 PPTX；主进程完成，渲染进程不经手字节） */
   exportPptx: 'ppt:exportPptx',
-  /** POM XML → 渲染指定页 PNG 并直接落盘（导出 PNG；单页为文件路径，多页为目录） */
+  /** PptJsonDoc → 渲染指定页 PNG 并直接落盘（导出 PNG；单页为文件路径，多页为目录） */
   exportPptxToPngs: 'ppt:exportPptxToPngs'
 } as const
 
