@@ -7,7 +7,7 @@
  *   readCurrentFolderPath / readCurrentBrowserUrl
  * - 除 os.getPath（Constant.ts 模块级同步初始化依赖）外，全部方法异步（Promise）
  * - db 简化：无 _rev 冲突检测、无附件（postAttachment / getAttachment / getAttachmentType 已删除）
- * - cBrowser 暂为 null（浏览器自动化能力待实现）
+ * - runBrowser 为浏览器工具统一入口（browser_fetch / browser_actions 共用，主进程内执行）
  */
 
 // ── shell ──────────────────────────────────────────────────
@@ -344,112 +344,45 @@ interface InjectDb {
   promises: InjectDbPromises
 }
 
-// ── cBrowser（暂未实现） ───────────────────────────────────
+// ── browserTool（浏览器工具） ────────────────────────────────
 
-interface CookieFilter {
-  url?: string
-  name?: string
-  domain?: string
-  path?: string
-  secure?: boolean
-  session?: boolean
-  httpOnly?: boolean
+/** runBrowser 载荷：browser_fetch（隐藏窗口抓取网页内容） */
+interface InjectRunBrowserFetchPayload {
+  kind: 'fetch'
+  /** 目标 URL */
+  url: string
+  /** 等待 JS 渲染的毫秒数（默认 3000） */
+  waitMs?: number
+  /** 输出格式：markdown（默认）/ text / html */
+  mode?: 'markdown' | 'text' | 'html'
+  /** CSS 选择器：只提取匹配元素（未命中抛错），省略则提取整页 */
+  selector?: string
 }
 
-/**
- * 浏览器自动化 API（uTools uBrowser 兼容层，Electron 迁移后暂未实现）。
- * 链式调用，所有中间方法返回 this，最终通过 run() 执行并返回 Promise。
- */
-interface InjectCBrowser {
-  useragent(userAgent: string): this
-  goto(url: string, headers?: { Referer: string; userAgent: string }, timeout?: number): this
-  viewport(width: number, height: number): this
-  hide(): this
-  show(): this
-  css(css: string): this
-  press(key: string, ...modifier: ('ctrl' | 'shift' | 'alt' | 'meta')[]): this
-  paste(text?: string): this
-  screenshot(
-    arg: string | { x: number; y: number; width: number; height: number },
-    savePath?: string
-  ): this
-  markdown(selector?: string): this
-  pdf(
-    options?: {
-      marginsType: 0 | 1 | 2
-      pageSize:
-        'A3' | 'A4' | 'A5' | 'Legal' | 'Letter' | 'Tabloid' | { width: number; height: number }
-    },
-    savePath?: string
-  ): this
-  device(arg: { size: { width: number; height: number }; useragent: string }): this
-  cookies(name?: string): this
-  cookies(filter: CookieFilter): this
-  setCookies(name: string, value: string): this
-  setCookies(cookies: { name: string; value: string }[]): this
-  removeCookies(name: string): this
-  clearCookies(url?: string): this
-  devTools(mode?: 'right' | 'bottom' | 'undocked' | 'detach'): this
-  evaluate<T extends any[]>(func: (...params: T) => any, ...params: T): this
-  wait(ms: number): this
-  wait(selector: string, timeout?: number): this
-  wait<T extends any[]>(func: (...params: T) => boolean, timeout?: number, ...params: T): this
-  when(selector: string): this
-  when<T extends any[]>(func: (...params: T) => boolean, ...params: T): this
-  end(): this
-  click(selector: string): this
-  mousedown(selector: string): this
-  mouseup(selector: string): this
-  file(selector: string, payload: string | string[] | Uint8Array): this
-  value(selector: string, value: string): this
-  check(selector: string, checked: boolean): this
-  focus(selector: string): this
-  scroll(selector: string): this
-  scroll(y: number): this
-  scroll(x: number, y: number): this
-  download(url: string, savePath?: string): this
-  download(func: (...params: any[]) => string, savePath: string | null, ...params: any[]): this
-  run<T = any>(options?: {
+/** browser_actions 的单步操作（type + 类型相关字段，与工具 schema 一致） */
+interface InjectRunBrowserActionStep {
+  type: string
+  [key: string]: unknown
+}
+
+/** runBrowser 载荷：browser_actions（自动化操作步骤） */
+interface InjectRunBrowserActionsPayload {
+  kind: 'actions'
+  steps: InjectRunBrowserActionStep[]
+  /** 窗口配置（show: true 时显示窗口） */
+  options?: {
     show?: boolean
     width?: number
     height?: number
-    x?: number
-    y?: number
-    center?: boolean
-    minWidth?: number
-    minHeight?: number
-    maxWidth?: number
-    maxHeight?: number
-    resizable?: boolean
-    movable?: boolean
-    minimizable?: boolean
-    maximizable?: boolean
-    alwaysOnTop?: boolean
-    fullscreen?: boolean
-    fullscreenable?: boolean
-    enableLargerThanScreen?: boolean
-    opacity?: number
-    frame?: boolean
-    closable?: boolean
-    focusable?: boolean
-    skipTaskbar?: boolean
-    backgroundColor?: string
-    hasShadow?: boolean
-    transparent?: boolean
-    titleBarStyle?: string
-    thickFrame?: boolean
-  }): Promise<T>
-  run<T = any>(ubrowserId: number): Promise<T>
+    [key: string]: unknown
+  }
 }
+
+type InjectRunBrowserPayload = InjectRunBrowserFetchPayload | InjectRunBrowserActionsPayload
 
 // ── 汇总 ───────────────────────────────────────────────────
 
 interface InjectApi {
-  /**
-   * 当前平台恒为 'electron'；保留 utools / ZTools 联合类型以兼容历史平台分支代码
-   * （Electron 下这些分支不执行，但代码保留）
-   */
-  getPlatform(): 'electron' | 'ZTools' | 'utools' | 'browser'
 
   shell: InjectShell
   dialog: InjectDialog
@@ -458,8 +391,11 @@ interface InjectApi {
   display: InjectDisplay
   notification: InjectNotification
 
-  /** 浏览器自动化能力：Electron 迁移后暂为 null（待实现） */
-  cBrowser: InjectCBrowser | null
+  /**
+   * 浏览器工具统一入口（browser_fetch / browser_actions 共用，主进程内执行）。
+   * resolve 最后一个数据项（fetch 为提取内容，actions 为最后一个 evaluate 类结果），出错时 reject。
+   */
+  runBrowser(payload: InjectRunBrowserPayload): Promise<unknown>
 
   ffmpeg: InjectFfmpeg
   sharp: InjectSharp

@@ -6,7 +6,8 @@
  * - 删除 utools 平台专有能力：window / browser / input / simulate / feature / purchase / redirect / screen / ai / team
  * - 删除事件钩子：onPluginEnter / onPluginOut / onPluginDetach / onDbPull / onMainPush / outPlugin /
  *   readCurrentFolderPath / readCurrentBrowserUrl
- * - cBrowser 暂为 null（由用户自行实现浏览器自动化）
+ * - runBrowser 为 browser_fetch / browser_actions 工具的统一桥：载荷（fetch/actions）直传 main，
+ *   error 时 reject，resolve 最后一个数据项
  */
 import { ipcRenderer, type IpcRendererEvent } from 'electron'
 import {
@@ -28,7 +29,10 @@ import {
   DbRemoveResult,
   FfmpegProgress,
   FfmpegRunResult,
-  FfmpegDonePayload
+  FfmpegDonePayload,
+  BrowserToolChannels,
+  type BrowserToolResult,
+  type BrowserToolPayload
 } from './channels'
 
 // ── 类型（与 renderer 侧 types/inject.d.ts 对齐的简化契约） ──
@@ -57,8 +61,10 @@ const shell = {
   openExternal: (url: string): void => {
     void ipcRenderer.invoke(ShellChannels.openExternal, url).catch(() => {})
   },
-  openPath: (fullPath: string): Promise<void> => ipcRenderer.invoke(ShellChannels.openPath, fullPath),
-  trashItem: (filename: string): Promise<void> => ipcRenderer.invoke(ShellChannels.trashItem, filename),
+  openPath: (fullPath: string): Promise<void> =>
+    ipcRenderer.invoke(ShellChannels.openPath, fullPath),
+  trashItem: (filename: string): Promise<void> =>
+    ipcRenderer.invoke(ShellChannels.trashItem, filename),
   showItemInFolder: (fullPath: string): void => {
     void ipcRenderer.invoke(ShellChannels.showItemInFolder, fullPath).catch(() => {})
   },
@@ -79,7 +85,8 @@ const dialog = {
 // ── clipboard ──────────────────────────────────────────────
 
 const clipboard = {
-  copyText: (text: string): Promise<boolean> => ipcRenderer.invoke(ClipboardChannels.copyText, text),
+  copyText: (text: string): Promise<boolean> =>
+    ipcRenderer.invoke(ClipboardChannels.copyText, text),
   copyFile: (file: string | string[]): Promise<boolean> =>
     ipcRenderer.invoke(ClipboardChannels.copyFile, file),
   copyImage: (img: string | Uint8Array): Promise<boolean> =>
@@ -103,7 +110,8 @@ const os = {
   getAppName: (): Promise<string> => ipcRenderer.invoke(OsChannels.getAppName),
   /** 唯一同步方法：Constant.ts 在模块级同步初始化中依赖（sendSync） */
   getPath: (name: string): string => ipcRenderer.sendSync(OsChannels.getPath, name),
-  getFileIcon: (filePath: string): Promise<string> => ipcRenderer.invoke(OsChannels.getFileIcon, filePath),
+  getFileIcon: (filePath: string): Promise<string> =>
+    ipcRenderer.invoke(OsChannels.getFileIcon, filePath),
   getCursorScreenPoint: (): Promise<{ x: number; y: number }> =>
     ipcRenderer.invoke(OsChannels.getCursorScreenPoint)
 }
@@ -227,11 +235,7 @@ const sharp = {
     output: string
   ): Promise<{ width: number; height: number; removedPixels: number }> =>
     ipcRenderer.invoke(SharpChannels.removeBackground, input, options, output),
-  colorMap: (
-    input: string,
-    gridSize: number,
-    top: number
-  ): Promise<SharpColorMapResult> =>
+  colorMap: (input: string, gridSize: number, top: number): Promise<SharpColorMapResult> =>
     ipcRenderer.invoke(SharpChannels.colorMap, input, gridSize, top)
 }
 
@@ -239,7 +243,8 @@ const sharp = {
 
 const db = {
   promises: {
-    get: <T = unknown>(id: string): Promise<DbDoc<T> | null> => ipcRenderer.invoke(DbChannels.get, id),
+    get: <T = unknown>(id: string): Promise<DbDoc<T> | null> =>
+      ipcRenderer.invoke(DbChannels.get, id),
     put: (doc: Record<string, unknown> & { _id: string }): Promise<DbPutResult> =>
       ipcRenderer.invoke(DbChannels.put, doc),
     remove: (idOrDoc: string | Record<string, unknown>): Promise<DbRemoveResult> =>
@@ -253,9 +258,22 @@ const db = {
 
 // ── 对外输出 ───────────────────────────────────────────────
 
-export const injectApi = {
-  getPlatform: (): string => 'electron',
+/**
+ * 运行浏览器工具（browser_fetch / browser_actions 统一入口）
+ *
+ * 载荷（fetch/actions 判别联合）直传 main，由 BrowserToolRunner 在主进程内创建隐藏窗口执行。
+ * error 时 reject，resolve 最后一个数据项（fetch 为提取的内容，actions 为最后一个 evaluate 类结果）。
+ */
+const runBrowser = async (payload: BrowserToolPayload): Promise<unknown> => {
+  const result = (await ipcRenderer.invoke(BrowserToolChannels.run, payload)) as BrowserToolResult
+  if (result?.error) {
+    throw new Error(result.message || 'browserTool run failed')
+  }
+  const data = result?.data
+  return Array.isArray(data) ? data[data.length - 1] : undefined
+}
 
+export const injectApi = {
   shell,
   dialog,
   clipboard,
@@ -263,8 +281,8 @@ export const injectApi = {
   display,
   notification,
 
-  /** 浏览器自动化能力：Electron 迁移后暂未实现（null），由业务侧自行补齐 */
-  cBrowser: null,
+  /** 浏览器工具统一入口：fetch（抓取网页内容）/ actions（自动化操作步骤） */
+  runBrowser,
 
   ffmpeg,
   sharp,

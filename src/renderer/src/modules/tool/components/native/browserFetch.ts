@@ -45,43 +45,10 @@ Selector targeting: optionally pass a CSS selector to extract only a specific bl
         selector?: string
       }
 
-      const cBrowser = window.preload.inject.cBrowser
-      if (!cBrowser) {
-        return { error: '浏览器渲染能力未就绪（Electron 迁移中，待实现）' }
-      }
-
-      let browser = cBrowser.hide().goto(url).wait(waitMs)
-
-      if (mode === 'html') {
-        browser = browser.evaluate(extractHtml, selector)
-      } else if (mode === 'text') {
-        browser = browser.evaluate(extractText, selector)
-      } else {
-        browser = browser.markdown(selector)
-      }
-
-      return browser.run()
+      // 步骤解释（goto/wait/提取）在 main 的 BrowserToolRunner 内完成
+      return window.preload.inject.runBrowser({ kind: 'fetch', url, waitMs, mode, selector })
     }
   }
 ]
 
-function extractHtml(sel?: string): string {
-  if (sel) {
-    const el = document.querySelector(sel)
-    if (!el) throw new Error(`CSS 选择器 "${sel}" 未匹配到任何元素`)
-    return el.outerHTML
-  }
-  return document.documentElement.outerHTML
-}
-
-function extractText(sel?: string): string {
-  if (sel) {
-    const el = document.querySelector(sel) as HTMLElement | null
-    if (!el) throw new Error(`CSS 选择器 "${sel}" 未匹配到任何元素`)
-    return el.innerText
-  }
-  return document.body.innerText
-}
-
-export const browserFetchTools: ToolFunction[] =
-  window.preload.inject.getPlatform() === 'utools' ? uBrowserFetchTools : []
+export const browserFetchTools: ToolFunction[] = uBrowserFetchTools

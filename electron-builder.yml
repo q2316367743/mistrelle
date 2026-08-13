@@ -9,16 +9,34 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{.claude/**,.githooks/**,.github/**}'
+  - '!docs/**'
+  - '!{.claude/**,.githooks/**,.github/**,.zcode/**}'
+  - '!docs/**'
 asarUnpack:
   - resources/**
+  - '**/node_modules/sharp/**/*'
 win:
   executableName: mistrelle
+  artifactName: ${name}-${version}-${os}-${arch}.${ext}
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
 mac:
+  entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
@@ -26,6 +44,10 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
+  target:
+    - dmg
+    - zip
+  artifactName: ${name}-${version}-${os}-${arch}.${ext}
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
@@ -33,7 +55,7 @@ linux:
     - AppImage
     - snap
     - deb
-  maintainer: electronjs.org
+  maintainer: xyz.esion
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}

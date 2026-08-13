@@ -1,7 +1,5 @@
 import { ToolFunction } from '@/domain'
 
-type CbStep = Record<string, any>
-
 const uBrowserAutomationTools: ToolFunction[] = [
   {
     name: 'browser_actions',
@@ -140,121 +138,15 @@ Supported step types:
     risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { steps = [], options } = params[0] as {
-        steps: CbStep[]
-        options?: Record<string, any>
+        steps: InjectRunBrowserActionStep[]
+        options?: Record<string, unknown>
       }
 
-      const cBrowser = window.preload.inject.cBrowser
-      if (!cBrowser) {
-        return { error: '浏览器自动化能力未就绪（Electron 迁移中，待实现）' }
-      }
-
-      const wantsVisible = steps.some((s) => s.type === 'show') || options?.show === true
-
-      let browser: InjectCBrowser = cBrowser
-
-      if (!wantsVisible) {
-        browser = browser.hide()
-      }
-
-      for (const step of steps) {
-        browser = applyStep(browser, step)
-      }
-
-      return browser.run(options)
+      // 步骤解释（goto/click/value/evaluate/wait/...）在 main 的 BrowserToolRunner 内完成；
+      // 窗口默认隐藏，'show' 步骤或 options.show === true 时显示
+      return window.preload.inject.runBrowser({ kind: 'actions', steps, options })
     }
   }
 ]
 
-function applyStep(browser: InjectCBrowser, step: CbStep): InjectCBrowser {
-  switch (step.type) {
-    case 'goto':
-      return browser.goto(step.url, step.headers, step.timeout)
-    case 'click':
-      return browser.click(step.selector)
-    case 'value':
-      return browser.value(step.selector, step.value)
-    case 'evaluate': {
-      const paramNames = (step.args || []).map((_: any, i: number) => `$${i}`)
-      const fn = new Function(...paramNames, step.script)
-      return browser.evaluate(fn as any, ...(step.args || []))
-    }
-    case 'wait':
-      if (step.selector) return browser.wait(step.selector, step.timeout)
-      return browser.wait(step.ms ?? step.timeout ?? 30000)
-    case 'screenshot':
-      if (step.selector) return browser.screenshot(step.selector, step.savePath)
-      return browser.screenshot(step.savePath)
-    case 'press':
-      return (browser as any).press(step.key, ...(step.modifiers || []))
-    case 'paste':
-      return browser.paste(step.text)
-    case 'scroll':
-      if (step.selector) return browser.scroll(step.selector)
-      if (step.x !== undefined && step.y !== undefined) return browser.scroll(step.x, step.y)
-      if (step.y !== undefined) return browser.scroll(step.y)
-      return browser
-    case 'cookies':
-      return handleCookies(browser, step)
-    case 'getHtml':
-      return browser.evaluate(extractHtml, step.selector)
-    case 'getText':
-      return browser.evaluate(extractText, step.selector)
-    case 'getTitle':
-      return browser.evaluate(function () {
-        return document.title
-      })
-    case 'hide':
-      return browser.hide()
-    case 'show':
-      return browser.show()
-    case 'viewport':
-      return browser.viewport(step.width, step.height)
-    case 'useragent':
-      return browser.useragent(step.userAgent)
-    case 'css':
-      return browser.css(step.css)
-    default:
-      return browser
-  }
-}
-
-function handleCookies(browser: InjectCBrowser, step: CbStep): InjectCBrowser {
-  switch (step.action) {
-    case 'get':
-      if (step.filter) return browser.cookies(step.filter as any)
-      return browser.cookies(step.name)
-    case 'set':
-      if (step.name && step.value !== undefined)
-        return (browser as any).setCookies(step.name, step.value)
-      if (step.cookies) return (browser as any).setCookies(step.cookies)
-      return browser
-    case 'remove':
-      return browser.removeCookies(step.name)
-    case 'clear':
-      return browser.clearCookies(step.url)
-    default:
-      return browser.cookies()
-  }
-}
-
-export const nativeBrowserAutomationTools: ToolFunction[] =
-  window.preload.inject.getPlatform() === 'utools' ? uBrowserAutomationTools : []
-
-function extractHtml(sel?: string): string {
-  if (sel) {
-    const el = document.querySelector(sel)
-    if (!el) throw new Error(`CSS 选择器 "${sel}" 未匹配到任何元素`)
-    return el.outerHTML
-  }
-  return document.documentElement.outerHTML
-}
-
-function extractText(sel?: string): string {
-  if (sel) {
-    const el = document.querySelector(sel) as HTMLElement | null
-    if (!el) throw new Error(`CSS 选择器 "${sel}" 未匹配到任何元素`)
-    return el.innerText
-  }
-  return document.body.innerText
-}
+export const nativeBrowserAutomationTools: ToolFunction[] = uBrowserAutomationTools

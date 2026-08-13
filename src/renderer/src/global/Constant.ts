@@ -39,7 +39,6 @@ export const LOADING_TEXTS = [
 
 export const appData = window.preload.path.join(
   window.preload.inject.os.getPath('appData'),
-  window.preload.inject.getPlatform(),
   Constant.id
 )
 

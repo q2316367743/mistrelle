@@ -8,7 +8,8 @@
 - 原 `src-utools/preload.js` 向 `window.preload` 挂 9 个模块 + axios 实例，其中 `inject.js` 是 uTools API 的薄封装
 - Electron 迁移后：**特权操作进 main 进程（IPC）**，纯函数留在 preload，`window.preload` 形状不变
 - **例外：`net.downloadFileFromUrl` 保留在 preload**——下载需透传 `onDownloadProgress` 回调，而 IPC（结构化克隆）无法序列化函数，故由 preload 用 axios + node:fs 直接落盘（`sandbox: false` 下 Node 能力可用）
-- 已确认裁剪：db 无 `_rev` 冲突检测、无附件；`cBrowser` 暂为 `null`（用户自行实现）；删除 uTools 平台专有能力
+- 已确认裁剪：db 无 `_rev` 冲突检测、无附件；删除 uTools 平台专有能力
+- **浏览器工具已实现**（见 `docs/browserTool/01-browser-tool.md`）：`runBrowser(payload)` 统一入口，经 `browserTool:run` IPC 由 main 的 `BrowserToolRunner` 进程内执行（fetch / actions 判别联合）
 
 ## 二、进程职责划分
 
@@ -54,6 +55,7 @@ sharp（metadata/crop/removeBackground）
 | ffmpeg | `ffmpeg:run`（invoke→`{id}`）+ `ffmpeg:progress`/`ffmpeg:done`（事件推送）+ `ffmpeg:kill/quit`（send） | 混合 |
 | sharp | `sharp:metadata/crop/removeBackground` | invoke |
 | ppt | `ppt:renderPptxToSvgs`（XML→每页 SVG）/ `ppt:exportPptx`（XML→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（XML→指定页 PNG 并落盘） | invoke（POM 渲染与导出落盘都在 main，`src/main/src/ppt/pptRenderer.ts`；渲染进程只传 xml + 目标路径，不经手字节） |
+| browserTool | `browserTool:run`（`{kind:'fetch'}` 抓取网页内容 / `{kind:'actions'}` 自动化步骤 → main `BrowserToolRunner` 直接创建隐藏窗口执行，无 runner 子进程） | invoke（载荷 `BrowserToolPayload`，返回 `BrowserToolResult`，详见 `docs/browserTool/01-browser-tool.md`） |
 
 ## 四、数据层
 
@@ -98,7 +100,7 @@ sharp（metadata/crop/removeBackground）
    - `AssetPage.vue` 的 `reload` → `.then(async () => ...)`
    - `SubscribeService.ts` 删除同步函数 `subscribeMediaExists`（孤儿），`SubscribeDetail.vue` 的 `hasVideo/hasAudio` computed → ref（loadContent 中异步刷新）
 3. **平台判断同步化**：`SettingSecured.ts` 的 `getDefaultEgoBrowserPath` 用 `navigator.platform`（computed 同步消费，os.isMacOS/isWindows 已异步）
-4. **降级处理**：`inject/screen.ts` 两工具返回友好错误；`browserFetch.ts` / `browserAutomation.ts` handler 对 `cBrowser === null` 判空（工具列表本身已有 `getPlatform() === 'utools' ? tools : []` 平台守卫）
+4. **降级处理**：`inject/screen.ts` 两工具返回友好错误；`browserFetch.ts` / `browserAutomation.ts` 已启用（移除 `getPlatform() === 'utools'` 守卫），改用 `window.preload.inject.runBrowser(payload)` 统一入口（步骤解释在 main 的 `BrowserToolRunner`）
 5. **类型契约**：`types/inject.d.ts` 重写（删 window/browser/input/simulate/feature/purchase/redirect/screen/ai/team + 事件钩子；全异步；`getPlatform(): 'electron' | 'ZTools' | 'utools' | 'browser'` 保留联合类型兼容历史平台分支）；`types/fs.d.ts` 的 `existsSync` → `Promise<boolean>`
 
 ## 八、工程配置
