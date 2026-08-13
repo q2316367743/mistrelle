@@ -10,11 +10,13 @@ AI 操作 ego-browser（ego-lite）时，若走通用的 `cli_run`（`risk: 'sen
 
 ## 实现思路
 
-- `ego_browser_run`：通用包装。第一个参数 `subcommand` 为 CLI 子命令，`args` 原样透传，
-  组装成 `cliRun(egoBrowserPath, [--ego-server-name=<name>, subcommand, ...args])`。
+- `ego_browser_run`：通用包装。第一个参数 `subcommand` 为 CLI 子命令；`nodejs` 子命令的脚本经
+  `script` 参数 + `cliRun` 的 `stdin` 通道传入（等价 SKILL.md 的 `ego-browser nodejs <<'EOF'` heredoc 写法），
+  其余子命令 `args` 原样透传，组装成
+  `cliRun(egoBrowserPath, [--ego-server-name=<name>, subcommand, ...args], { cwd, timeout, stdin })`。
 - `ego_browser_exist`：只读探测，执行 `ego-browser --version` 判断是否安装可用。
-- 底层复用 `@/plugin/shell` 的 `cliRun`（spawn 直传参数、双层超时兜底），不走 shell，
-  多行 JS 脚本可作为一个 argv 元素安全透传。
+- 底层复用 `@/plugin/shell` 的 `cliRun`（spawn 直传参数、双层超时兜底、可选 stdin 写入），
+  多行 JS 脚本走 stdin 不经 shell 拼接，无需转义。
 
 ## 可执行文件路径解析
 
@@ -54,7 +56,7 @@ ego-browser 命令**默认不在 PATH 中**（macOS 上 onboarding 注册到 `~/
 ```json
 {
   "subcommand": "nodejs",
-  "args": ["-e", "await openOrReuseTab(\"https://example.com\"); cliLog(await snapshotText())"],
+  "script": "const task = await useOrCreateTaskSpace(\"打开示例页\"); await openOrReuseTab(\"https://example.com\"); cliLog(await snapshotText())",
   "serverName": "app-a",
   "cwd": "/path",
   "timeout": 60000
@@ -62,7 +64,8 @@ ego-browser 命令**默认不在 PATH 中**（macOS 上 onboarding 注册到 `~/
 ```
 
 - `subcommand`（必填）：`nodejs` / `import` / `upgrade` / `onboarding` / `help` 等。
-- `args`：子命令后的参数列表，原样透传。
+- `script`：仅 `nodejs` 子命令使用，要执行的 JS 脚本（多行、无需转义），经 stdin 传入。
+- `args`：非 `nodejs` 子命令后的参数列表，原样透传。
 - `serverName`：映射 `--ego-server-name=<name>` 全局参数。
 - `cwd` / `timeout`（ms）：透传给 `cliRun`。
 
@@ -90,7 +93,8 @@ ego-browser 命令**默认不在 PATH 中**（macOS 上 onboarding 注册到 `~/
   但按需求定为 `risk: 'safe'` → 永不弹窗、计划模式也放行。兜底仅剩安全中心**文件黑名单
   子串扫描**（对全部字符串参数生效）；因参数名为 `subcommand` 而非 `command`，
   **`commandAskList`（shell 命令询问名单）不会命中 `ego-browser`**。
-- **无 stdin**：底层 `cliRun` 不支持 stdin，SKILL.md 中的 heredoc 写法
-  （`ego-browser nodejs <<'EOF'`）不可用，必须用 `-e "<script>"` 形式，脚本含换行可直接传。
+- **stdin 通道**：`cliRun` 的 `CliRunOptions` 新增 `stdin` 字段（`channels.ts` / `plugin/shell.ts` /
+  main `shellExec.ts` 三层同步），main 进程 spawn 后写入 `child.stdin` 并 `end()`（EPIPE 已吞掉）。
+  `nodejs` 子命令脚本即经此通道传入，SKILL.md 的 heredoc 写法（`ego-browser nodejs <<'EOF'`）等价可用。
 - 按 ego-browser 约定，通常每个用户目标复用一个 task space（`useOrCreateTaskSpace`），
   跨轮次用返回的 `task.id` 续用；任务完成调用 `completeTaskSpace(id, { keep: false })`。

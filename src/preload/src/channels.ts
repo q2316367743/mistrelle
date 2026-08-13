@@ -103,6 +103,8 @@ export const ShellExecChannels = {
 export interface CliRunOptions {
   cwd?: string
   timeout?: number
+  /** 写入子进程 stdin 的内容（写完后自动 end），用于 heredoc 类命令（如 ego-browser nodejs） */
+  stdin?: string
 }
 
 export interface CliRunResult {

@@ -71,7 +71,7 @@ if (process.platform !== 'win32') {
  * 超时与 close 兜底均由手动计时器保证，任何情况下 Promise 必会 resolve。
  */
 export const cliRun = (command: string, args: Array<string | number> = [], options: CliRunOptions = {}): Promise<CliRunResult> => {
-  const { timeout = 30000, cwd } = options
+  const { timeout = 30000, cwd, stdin } = options
   return new Promise((resolve) => {
     let stdout = ''
     let stderr = ''
@@ -97,6 +97,17 @@ export const cliRun = (command: string, args: Array<string | number> = [], optio
         env: { ...process.env, PATH: USER_PATH },
         shell: true
       })
+      // 有 stdin 内容时写入后关闭，等效 heredoc（如 ego-browser nodejs 从 stdin 读脚本）；
+      // 子进程提前退出（不读 stdin）时可能 EPIPE，吞掉避免未处理异常
+      if (stdin !== undefined && child.stdin) {
+        child.stdin.on('error', () => {})
+        try {
+          child.stdin.write(stdin)
+        } catch {
+          // 子进程已关闭 stdin，忽略
+        }
+        child.stdin.end()
+      }
       // 手动超时兜底，不依赖 spawn 的 timeout 选项（旧版 Node 会静默忽略）
       timeoutTimer = setTimeout(() => {
         child.kill()
