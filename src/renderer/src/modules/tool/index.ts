@@ -1,9 +1,7 @@
 import { CommonSelect, ToolFunction, ToolRiskLevel } from '@/domain'
 import { dateTools } from '@/modules/tool/components/date'
 import {
-  injectOsTools,
   injectClipboardTools,
-  injectScreenTools,
   injectBrowserTools,
   injectFfmpegTools
 } from '@/modules/tool/components/inject'
@@ -43,9 +41,7 @@ const toOptions = (tools: ToolFunction[]) =>
  */
 export const toolGroups: Array<ToolGroup> = [
   { group: '日期工具', tools: dateTools },
-  { group: '系统信息', tools: injectOsTools },
   { group: '剪贴板', tools: injectClipboardTools },
-  { group: '屏幕', tools: injectScreenTools },
   { group: '媒体工具', tools: [...injectFfmpegTools] },
   { group: '浏览器', tools: [...injectBrowserTools, ...nativeBrowserAutomationTools] },
   { group: '专家管理', tools: agentTools },
@@ -62,9 +58,7 @@ export const toolOptions: Array<ToolOption> = toolGroups.map((e) => ({
 
 export const toolMap: Record<string, ToolFunction> = {
   ...objectify(dateTools, 'name'),
-  ...objectify(injectOsTools, 'name'),
   ...objectify(injectClipboardTools, 'name'),
-  ...objectify(injectScreenTools, 'name'),
   ...objectify(injectBrowserTools, 'name'),
   ...objectify(injectFfmpegTools, 'name'),
   ...objectify(nativeBrowserAutomationTools, 'name'),

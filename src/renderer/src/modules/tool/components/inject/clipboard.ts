@@ -7,13 +7,13 @@ export const injectClipboardTools: ToolFunction[] = [
     description: '读取系统剪贴板中的文本内容',
     parameters: {
       type: 'object',
-      properties: {},
+      properties: {}
     },
     risk: 'sensitive',
     handler: async () => {
       const text = await navigator.clipboard.readText()
       return { text }
-    },
+    }
   },
   {
     name: 'clipboard_copy',
@@ -22,15 +22,15 @@ export const injectClipboardTools: ToolFunction[] = [
     parameters: {
       type: 'object',
       properties: {
-        text: { type: 'string', description: '要复制的文本内容' },
+        text: { type: 'string', description: '要复制的文本内容' }
       },
-      required: ['text'],
+      required: ['text']
     },
     risk: 'sensitive',
     handler: async (...params: unknown[]) => {
       const { text } = params[0] as { text: string }
       const ok = await window.preload.inject.clipboard.copyText(text)
       return { success: ok }
-    },
-  },
+    }
+  }
 ]
