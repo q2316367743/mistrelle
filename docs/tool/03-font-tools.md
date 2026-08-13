@@ -1,7 +1,9 @@
 # 字体工具（font_list / font_pick）与字体渲染
 
 > 画布文字指定字体的完整链路：本机可用字体查询 → 指定 fontFamily → 渲染前确保字体就绪。
-> 设计类对话（design chat）注入 font_list（查询）、font_pick（让用户挑选）两个工具。
+> 设计类对话（design chat）注入 font_list（查询）、font_pick（让用户挑选）两个工具；
+> 另注册 `font_list` 单例进 `toolMap`（`src/modules/tool/index.ts`），内置 Agent（如「设计风格创建助手」）
+> 声明后可在任意聊天类型下查询字体（`fontTools.ts` 导出 `fontListTool`）。
 >
 > 关键文件：
 > - 工具工厂 `src/modules/tool/components/design/index.ts`

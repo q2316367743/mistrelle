@@ -16,12 +16,14 @@
 | `src/pages/design/list/index.vue`                                  | 列表页（hero + 搜索 + 分类筛选 + 卡片网格）                     |
 | `src/pages/design/list/components/DesignStyleCard.vue`             | 列表卡片（色板圆点 / 内置徽标 / 更多菜单）                      |
 | `src/pages/design/list/modals/DesignStylePutDialog.tsx`            | 新建 / 编辑抽屉外壳（命令式 `DrawerPlugin`）                    |
-| `src/pages/design/list/modals/DesignStylePutContent.vue`           | 抽屉内容（5 个 Tab 表单 + 保存按钮，`emit('close'/'success')`） |
+| `src/pages/design/list/modals/DesignStylePutContent.vue`           | 抽屉内容（6 个 Tab 表单 + 保存按钮，`emit('close'/'success')`） |
 | `src/pages/design/list/modals/ColorPaletteFields.vue`              | 配色方案表单区段（6 个 `t-color-picker`）                       |
-| `src/pages/design/list/modals/TypographyFields.vue`                | 字体规范表单区段（3 级 × 字体/字重/字号/行高）                  |
-| `src/pages/design/detail/index.vue`                                | 明细页（基础信息 / 配色 / 字体 / 视觉提示 / 布局规则分块展示）   |
+| `src/pages/design/list/modals/TypographyFields.vue`                | 字体规范表单区段（字体下拉选自 `window.preload.font.listFonts()`，支持输入自定义；3 级 × 字体/字重/字号/行高） |
+| `src/pages/design/list/modals/TokenFields.vue`                     | 细节规范表单区段（spacing / radius / border / shadow / motion 五组 tokens） |
+| `src/pages/design/detail/index.vue`                                | 明细页（基础信息 / 配色 / 字体 / 细节规范 / 视觉提示 / 布局规则分块展示）   |
 | `src/pages/design/detail/components/StylePaletteBlock.vue`         | 明细页配色区块（色带 + 色块网格）                                |
 | `src/pages/design/detail/components/StyleTypographyBlock.vue`      | 明细页字体区块（层级表格）                                       |
+| `src/pages/design/detail/components/StyleTokenBlock.vue`           | 明细页细节规范区块（间距 / 圆角 / 边框 / 阴影 / 动效一行一表）   |
 
 ## 数据结构与持久化契约
 
@@ -29,7 +31,8 @@
 
 - `AiDesignStyleCore`：name / description / category（`'poster' | '移动端' | '网页端'`）/ tags
 - `AiDesignStyleItem`：Core + `colorPalette`（**索引项含配色**，供卡片直接预览色板）
-- `AiDesignStyleForm`：Core + visualPrompt / negativePrompt / colorPalette（6 色）/ typography（heading/body/caption × font/weight/size/lineHeight）/ layoutRules
+- `AiDesignStyleForm`：Core + visualPrompt / negativePrompt / colorPalette（6 色）/ typography（heading/body/caption × font/weight/size/lineHeight）/ layoutRules / tokens（**细节规范**）
+- `tokens`（`AiDesignStyleTokens`）：spacing（pageMargin / sectionGap / cardPadding / baseUnit）/ radius（small / medium / large / pill）/ border（width / style / color）/ shadow（enabled / offsetX / offsetY / blur / color）/ motion（duration / easing / scope），数值化描述间距 / 圆角 / 边框 / 阴影 / 动效，供 AI 精确复现风格细节
 - `AiDesignStyle`：Form + `isSystem: boolean`（true 则不可编辑 / 删除）
 
 落盘位置 `~/.mistrelle/design/`（`getAppData2Design()`）：
@@ -66,5 +69,7 @@
 - 路由 `/design/list`、`/design/detail/:id` 已注册于 `src/plugin/router.ts`，侧边栏入口在 `src/pages/app/AppSide.vue`
 - 分类键 `poster` 为英文（展示为「海报」），选项映射统一走 `DESIGN_STYLE_CATEGORY_OPTIONS`
 - 列表卡片预览色板依赖索引项 `colorPalette` 字段 —— 新增展示字段时需同步保证 `put` 双写两处一致
+- **tokens 不在索引项中**（卡片无需预览细节），只写在单条文件与预设常量；旧数据缺 tokens 时 `store.getDetail` 用 `buildAiDesignStyleTokens` 默认值兜底补齐，agent 工具 create/update 部分传入 tokens 时同样走该函数合并
+- 提示词注入（`DesignStylePrompt.ts`）固定输出「细节规范」段落，**不随 `withVisualPrompt` 跳过**——PPT 不接生图也能拿到间距 / 圆角 / 边框 / 阴影 / 动效细节
 - 编辑系统预设的 UI 入口已隐藏，store 层也有 isSystem 拒绝兜底，改保护逻辑时两层需同步
 - 目录结构与 `src/entity/index.ts` 头部注释保持一致；`LocalNameEnum` 无设计风格键（本模块走 fs 文件模式，非 DB 文档模式）

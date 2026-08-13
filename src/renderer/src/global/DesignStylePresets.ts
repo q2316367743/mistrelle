@@ -40,6 +40,17 @@ export const DESIGN_STYLE_PRESETS: Array<AiDesignStyle> = [
       '卡片圆角 12pt-16pt，阴影柔和',
       '主色仅用于交互强调，占比不超过 10%'
     ],
+    tokens: {
+      spacing: { pageMargin: 20, sectionGap: 32, cardPadding: 20, baseUnit: 8 },
+      radius: { small: 8, medium: 12, large: 20, pill: true },
+      border: { width: 1, style: 'solid', color: '#E5E5EA' },
+      shadow: { enabled: true, offsetX: 0, offsetY: 4, blur: 16, color: 'rgba(0,0,0,0.06)' },
+      motion: {
+        duration: 300,
+        easing: 'cubic-bezier(0.25,0.1,0.25,1)',
+        scope: 'hover / 切换 / 转场'
+      }
+    },
     isSystem: true,
     createdAt: PRESET_TS,
     updatedAt: PRESET_TS
@@ -73,6 +84,13 @@ export const DESIGN_STYLE_PRESETS: Array<AiDesignStyle> = [
       '允许超出血排版与大量负空间',
       '元素对齐遵循网格，边缘对齐保持锋利'
     ],
+    tokens: {
+      spacing: { pageMargin: 24, sectionGap: 12, cardPadding: 8, baseUnit: 8 },
+      radius: { small: 0, medium: 0, large: 0, pill: false },
+      border: { width: 2, style: 'solid', color: '#FFFFFF' },
+      shadow: { enabled: false, offsetX: 0, offsetY: 0, blur: 0, color: 'rgba(0,0,0,0)' },
+      motion: { duration: 100, easing: 'ease-out', scope: '切换' }
+    },
     isSystem: true,
     createdAt: PRESET_TS,
     updatedAt: PRESET_TS
@@ -96,9 +114,24 @@ export const DESIGN_STYLE_PRESETS: Array<AiDesignStyle> = [
       text_secondary: '#787774'
     },
     typography: {
-      heading: { font: 'ui-sans-serif, -apple-system, Segoe UI', weight: 600, size: 24, lineHeight: 1.3 },
-      body: { font: 'ui-sans-serif, -apple-system, Segoe UI', weight: 400, size: 16, lineHeight: 1.6 },
-      caption: { font: 'ui-sans-serif, -apple-system, Segoe UI', weight: 400, size: 13, lineHeight: 1.4 }
+      heading: {
+        font: 'ui-sans-serif, -apple-system, Segoe UI',
+        weight: 600,
+        size: 24,
+        lineHeight: 1.3
+      },
+      body: {
+        font: 'ui-sans-serif, -apple-system, Segoe UI',
+        weight: 400,
+        size: 16,
+        lineHeight: 1.6
+      },
+      caption: {
+        font: 'ui-sans-serif, -apple-system, Segoe UI',
+        weight: 400,
+        size: 13,
+        lineHeight: 1.4
+      }
     },
     layoutRules: [
       '禁止渐变、重阴影与装饰性元素',
@@ -106,6 +139,13 @@ export const DESIGN_STYLE_PRESETS: Array<AiDesignStyle> = [
       '内容区最大宽度 ≤ 900px 居中排布',
       '文字层级用字重与字号区分，不用颜色'
     ],
+    tokens: {
+      spacing: { pageMargin: 16, sectionGap: 12, cardPadding: 16, baseUnit: 4 },
+      radius: { small: 3, medium: 4, large: 6, pill: false },
+      border: { width: 1, style: 'solid', color: '#E9E9E7' },
+      shadow: { enabled: false, offsetX: 0, offsetY: 0, blur: 0, color: 'rgba(0,0,0,0)' },
+      motion: { duration: 120, easing: 'ease', scope: 'hover' }
+    },
     isSystem: true,
     createdAt: PRESET_TS,
     updatedAt: PRESET_TS
@@ -129,9 +169,19 @@ export const DESIGN_STYLE_PRESETS: Array<AiDesignStyle> = [
       text_secondary: '#65676B'
     },
     typography: {
-      heading: { font: 'system-ui, -apple-system, Segoe UI', weight: 700, size: 22, lineHeight: 1.3 },
+      heading: {
+        font: 'system-ui, -apple-system, Segoe UI',
+        weight: 700,
+        size: 22,
+        lineHeight: 1.3
+      },
       body: { font: 'system-ui, -apple-system, Segoe UI', weight: 400, size: 15, lineHeight: 1.5 },
-      caption: { font: 'system-ui, -apple-system, Segoe UI', weight: 400, size: 12, lineHeight: 1.4 }
+      caption: {
+        font: 'system-ui, -apple-system, Segoe UI',
+        weight: 400,
+        size: 12,
+        lineHeight: 1.4
+      }
     },
     layoutRules: [
       '圆角 8-16px，操作按钮采用胶囊圆角',
@@ -139,6 +189,13 @@ export const DESIGN_STYLE_PRESETS: Array<AiDesignStyle> = [
       '卡片阴影轻且柔和，避免硬边缘',
       '列表行高 ≥ 48px，保证触控友好'
     ],
+    tokens: {
+      spacing: { pageMargin: 12, sectionGap: 8, cardPadding: 12, baseUnit: 4 },
+      radius: { small: 8, medium: 12, large: 20, pill: true },
+      border: { width: 1, style: 'solid', color: '#DADDE1' },
+      shadow: { enabled: true, offsetX: 0, offsetY: 1, blur: 2, color: 'rgba(0,0,0,0.1)' },
+      motion: { duration: 200, easing: 'ease', scope: 'hover / 切换' }
+    },
     isSystem: true,
     createdAt: PRESET_TS,
     updatedAt: PRESET_TS
@@ -172,6 +229,13 @@ export const DESIGN_STYLE_PRESETS: Array<AiDesignStyle> = [
       '主色面积 ≤ 30%，其余使用表面色与色调层',
       '所有可点击元素必须提供涟漪反馈'
     ],
+    tokens: {
+      spacing: { pageMargin: 16, sectionGap: 8, cardPadding: 16, baseUnit: 4 },
+      radius: { small: 4, medium: 12, large: 28, pill: true },
+      border: { width: 0, style: 'none', color: '#000000' },
+      shadow: { enabled: true, offsetX: 0, offsetY: 2, blur: 8, color: 'rgba(0,0,0,0.3)' },
+      motion: { duration: 300, easing: 'cubic-bezier(0.2,0,0,1)', scope: 'hover / 切换 / 入场' }
+    },
     isSystem: true,
     createdAt: PRESET_TS,
     updatedAt: PRESET_TS
@@ -205,6 +269,13 @@ export const DESIGN_STYLE_PRESETS: Array<AiDesignStyle> = [
       '交互切换使用 150-300ms 自然缓动',
       '用 1px 描边（Stroke）区分层级，避免重阴影'
     ],
+    tokens: {
+      spacing: { pageMargin: 16, sectionGap: 12, cardPadding: 12, baseUnit: 4 },
+      radius: { small: 4, medium: 8, large: 12, pill: false },
+      border: { width: 1, style: 'solid', color: '#E5E5E5' },
+      shadow: { enabled: true, offsetX: 0, offsetY: 4, blur: 16, color: 'rgba(0,0,0,0.14)' },
+      motion: { duration: 200, easing: 'cubic-bezier(0.2,0,0,1)', scope: 'hover / 切换 / 转场' }
+    },
     isSystem: true,
     createdAt: PRESET_TS,
     updatedAt: PRESET_TS

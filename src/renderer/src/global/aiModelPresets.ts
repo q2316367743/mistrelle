@@ -22,10 +22,10 @@ export const MODEL_PARAMS_TABLE: Record<string, AiModelParams> = {
   'gpt-4': { context: 8192, output: 8192 },
   'gpt-4-32k': { context: 32768, output: 8192 },
   'gpt-3.5-turbo': { context: 16385, output: 4096 },
-  'o1': { context: 200000, output: 100000 },
+  o1: { context: 200000, output: 100000 },
   'o1-mini': { context: 128000, output: 65536 },
   'o1-preview': { context: 128000, output: 32768 },
-  'o3': { context: 200000, output: 100000 },
+  o3: { context: 200000, output: 100000 },
   'o3-mini': { context: 200000, output: 100000 },
   'o4-mini': { context: 200000, output: 100000 },
   'gpt-5': { context: 400000, output: 128000 },
@@ -64,6 +64,8 @@ export const MODEL_PARAMS_TABLE: Record<string, AiModelParams> = {
   'deepseek-reasoner': { context: 128000, output: 8192 },
   'deepseek-coder': { context: 128000, output: 8192 },
   'deepseek-v3': { context: 128000, output: 8192 },
+  'deepseek-v4-flash': { context: 1048576, output: 384000 },
+  'deepseek-v4-pro': { context: 1048576, output: 384000 },
   'deepseek-r1': { context: 128000, output: 8192 },
 
   // ---------- Meta Llama ----------
@@ -107,7 +109,7 @@ export const MODEL_PARAMS_TABLE: Record<string, AiModelParams> = {
   'mistral-8x7b': { context: 32768 },
   'open-mixtral-8x7b': { context: 32768 },
   'open-mixtral-8x22b': { context: 65536 },
-  'codestral': { context: 32000 },
+  codestral: { context: 32000 },
   'ministral-3b': { context: 128000 },
   'ministral-8b': { context: 128000 },
 
@@ -161,7 +163,6 @@ export const FAMILY_PARAMS_RULES: Array<[RegExp, AiModelParams]> = [
   [/^gemini-2\.5/, { context: 1048576, output: 65536 }],
   [/^gemini-2\.0/, { context: 1048576, output: 8192 }],
   [/^gemini-1\.5/, { context: 1048576, output: 8192 }],
-  [/^deepseek-/, { context: 128000, output: 8192 }],
   [/^llama-4/, { context: 1048576 }],
   [/^llama-3\.3/, { context: 128000 }],
   [/^llama-3\.2/, { context: 128000 }],
@@ -192,5 +193,6 @@ export const FAMILY_PARAMS_RULES: Array<[RegExp, AiModelParams]> = [
   [/^command-a/, { context: 256000, output: 64000 }],
   [/^command-r/, { context: 128000 }],
   [/^command-/, { context: 128000 }],
-  [/^yi-/, { context: 32768 }]
+  [/^yi-/, { context: 32768 }],
+  [/^deepseek-v4/, { context: 1048576, output: 384000 }]
 ]

@@ -18,22 +18,27 @@
 
 ## 工具契约
 
-4 个工具全部 `internal: true`：仅在 `toolMap` 注册、供声明它的 agent 调用；被 `toolGroups` 过滤，不对外展示、不可分配给其他
-agent（与「专家管理」工具集一致）。
+4 个风格工具全部 `internal: true`（`font_list` 亦为 internal）：仅在 `toolMap` 注册、供声明它的 agent 调用；被 `toolGroups`
+过滤，不对外展示、不可分配给其他 agent（与「专家管理」工具集一致）。
 
 | 工具名                | 功能                                                                                            | 必填参数 | risk      |
 |-----------------------|-------------------------------------------------------------------------------------------------|----------|-----------|
 | `list_design_styles`  | 全部风格概要（含系统预设）：id / name / description / category / tags / isSystem / colorPalette | 无       | safe      |
-| `get_design_style`    | 按 id 完整信息（含 visualPrompt / negativePrompt / typography / layoutRules）                   | id       | safe      |
+| `get_design_style`    | 按 id 完整信息（含 visualPrompt / negativePrompt / typography / layoutRules / tokens）          | id       | safe      |
 | `create_design_style` | 新建风格并落库，返回新 id                                                                       | name     | sensitive |
 | `update_design_style` | 按 id 修改，仅覆盖显式传入字段                                                                  | id       | sensitive |
+| `font_list`           | 查询本机可用字体（系统 + 资源库，含分类元数据），为字体规范挑选真实存在的字体                  | 无       | safe      |
+
+> `font_list` 非本模块专属：`fontTools.ts` 导出 `fontListTool` 单例注册进 `toolMap`（见 `tool/03-font-tools.md`），
+> agent 声明后即可在任意聊天类型下调用；`design` 聊天类型工具另建实例。
 
 ### 入参 Schema（create / update 共用 `FORM_PROPERTIES`）
 
 扁平字段：`name` / `description` / `category`（enum: `poster` / `移动端` / `网页端`）/ `tags` / `visualPrompt` /
 `negativePrompt` / `layoutRules`；嵌套对象：`colorPalette`（primary / secondary / background / surface / text_primary /
-text_secondary 六个色值）、`typography`（heading / body / caption × font / weight / size / lineHeight）。未传字段由 `create`
-侧 `buildAiDesignStyleForm()` 补默认值、`update` 侧保持原值。
+text_secondary 六个色值）、`typography`（heading / body / caption × font / weight / size / lineHeight）、`tokens`（spacing /
+radius / border / shadow / motion 五组，支持部分分组传入）。未传字段由 `create`
+侧 `buildAiDesignStyleForm()` 补默认值、`update` 侧保持原值；`tokens` 一律经 `buildAiDesignStyleTokens()` 与默认值兜底合并。
 
 ### 返回契约
 

@@ -34,6 +34,77 @@ export interface AiDesignStyleTypography {
   caption: AiDesignStyleTypographyItem
 }
 
+/** 边框样式选项（表单下拉） */
+export const DESIGN_STYLE_BORDER_STYLES = ['solid', 'dashed', 'dotted', 'none'] as const
+export type AiDesignStyleBorderStyle = (typeof DESIGN_STYLE_BORDER_STYLES)[number]
+
+/** 间距规范：外边距 / 内边距 / 间距基准 */
+export interface AiDesignStyleSpacing {
+  /** 页面安全边距（px） */
+  pageMargin: number
+  /** 区块 / 卡片间距（px） */
+  sectionGap: number
+  /** 卡片 / 容器内边距（px） */
+  cardPadding: number
+  /** 间距基准单位（px），间距体系按此缩放 */
+  baseUnit: number
+}
+
+/** 圆角规范：三档 + 胶囊开关 */
+export interface AiDesignStyleRadius {
+  /** 小圆角：按钮 / 输入框（px） */
+  small: number
+  /** 常规圆角：卡片（px） */
+  medium: number
+  /** 大圆角：弹窗 / 横幅（px） */
+  large: number
+  /** 是否使用胶囊圆角（按钮全圆角） */
+  pill: boolean
+}
+
+/** 边框规范 */
+export interface AiDesignStyleBorder {
+  /** 边框宽度（px） */
+  width: number
+  /** 边框样式 */
+  style: AiDesignStyleBorderStyle
+  /** 边框颜色（色值） */
+  color: string
+}
+
+/** 阴影规范（单级、可开关） */
+export interface AiDesignStyleShadow {
+  /** 是否启用阴影 */
+  enabled: boolean
+  /** 水平偏移（px） */
+  offsetX: number
+  /** 垂直偏移（px） */
+  offsetY: number
+  /** 模糊半径（px） */
+  blur: number
+  /** 阴影颜色（含透明度，如 rgba(0,0,0,0.08)） */
+  color: string
+}
+
+/** 动效规范 */
+export interface AiDesignStyleMotion {
+  /** 过渡基础时长（ms） */
+  duration: number
+  /** 缓动曲线（如 ease / cubic-bezier(0.2,0,0,1)） */
+  easing: string
+  /** 动效范围（如 hover / 切换 / 入场） */
+  scope: string
+}
+
+/** 全局样式细节规范（tokens）：间距 / 圆角 / 边框 / 阴影 / 动效 */
+export interface AiDesignStyleTokens {
+  spacing: AiDesignStyleSpacing
+  radius: AiDesignStyleRadius
+  border: AiDesignStyleBorder
+  shadow: AiDesignStyleShadow
+  motion: AiDesignStyleMotion
+}
+
 export interface AiDesignStyleCore {
   // ========================== 基础层（身份与分类） ==========================
 
@@ -105,6 +176,11 @@ export interface AiDesignStyleForm extends AiDesignStyleCore {
    * 布局硬约束（针对生图模型）
    */
   layoutRules: Array<string>
+
+  /**
+   * 全局样式细节规范（tokens）：间距 / 圆角 / 边框 / 阴影 / 动效
+   */
+  tokens: AiDesignStyleTokens
 }
 
 export interface AiDesignStyle extends BaseEntity, AiDesignStyleForm {
@@ -114,6 +190,27 @@ export interface AiDesignStyle extends BaseEntity, AiDesignStyleForm {
    * 是否为系统预设（true则不可删除）
    */
   isSystem: boolean
+}
+
+/** tokens 默认值，并用默认值兜底合并部分传入（兼容旧数据 / agent 部分传参） */
+export const buildAiDesignStyleTokens = (
+  partial?: Partial<AiDesignStyleTokens>
+): AiDesignStyleTokens => {
+  const base: AiDesignStyleTokens = {
+    spacing: { pageMargin: 16, sectionGap: 24, cardPadding: 16, baseUnit: 8 },
+    radius: { small: 4, medium: 8, large: 16, pill: false },
+    border: { width: 1, style: 'solid', color: '#e0e0e0' },
+    shadow: { enabled: true, offsetX: 0, offsetY: 2, blur: 8, color: 'rgba(0,0,0,0.08)' },
+    motion: { duration: 200, easing: 'ease', scope: 'hover / 切换 / 入场' }
+  }
+  if (!partial) return base
+  return {
+    spacing: { ...base.spacing, ...partial.spacing },
+    radius: { ...base.radius, ...partial.radius },
+    border: { ...base.border, ...partial.border },
+    shadow: { ...base.shadow, ...partial.shadow },
+    motion: { ...base.motion, ...partial.motion }
+  }
 }
 
 /** 新建时的默认表单值 */
@@ -137,7 +234,8 @@ export const buildAiDesignStyleForm = (): AiDesignStyleForm => ({
     body: { font: '', weight: 400, size: 16, lineHeight: 1.6 },
     caption: { font: '', weight: 400, size: 12, lineHeight: 1.5 }
   },
-  layoutRules: []
+  layoutRules: [],
+  tokens: buildAiDesignStyleTokens()
 })
 
 /** 完整实体 → 表单（编辑时回填） */
@@ -150,5 +248,6 @@ export const toAiDesignStyleForm = (style: AiDesignStyle): AiDesignStyleForm => 
   negativePrompt: style.negativePrompt,
   colorPalette: style.colorPalette,
   typography: style.typography,
-  layoutRules: style.layoutRules
+  layoutRules: style.layoutRules,
+  tokens: buildAiDesignStyleTokens(style.tokens)
 })

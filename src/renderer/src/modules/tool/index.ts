@@ -15,6 +15,7 @@ import { egoBrowserTools } from './components/native/egoBrowser'
 import { skillTools } from './components/skill'
 import { agentTools } from './components/agent'
 import { designStyleTools } from './components/design'
+import { fontListTool } from './components/design/fontTools'
 import { askTool } from './components/ask'
 import { spawnAgentTool } from '@/modules/subagent/tool'
 import { objectify } from '@/utils/lang'
@@ -63,7 +64,8 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(injectFfmpegTools, 'name'),
   ...objectify(nativeBrowserAutomationTools, 'name'),
   ...objectify(agentTools, 'name'),
-  ...objectify(designStyleTools, 'name')
+  ...objectify(designStyleTools, 'name'),
+  ...objectify([fontListTool], 'name')
 }
 
 export const defaultTools: ToolFunction[] = [

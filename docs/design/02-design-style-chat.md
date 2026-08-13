@@ -20,16 +20,16 @@ design 类型聊天在「新增页」可选绑定一个设计风格（可选，�
 
 ## 提示词格式（`buildDesignStylePrompt`）
 
-位于 `src/modules/design/service/DesignStylePrompt.ts`，按以下结构输出，空字段跳过：
+位于 `src/modules/design/service/DesignStylePrompt.ts`，按以下结构输出，空字段跳过。`withVisualPrompt: false`（PPT）时跳过「正向提示词 / 反向排除词」两段；**「细节规范」段始终输出**（PPT 不接生图也能拿到间距 / 圆角 / 边框 / 阴影 / 动效细节）：
 
 ```text
 ## 设计风格
 本次设计采用风格「{name}」，{description}
 
-### 正向提示词
+### 正向提示词          # withVisualPrompt 时输出
 {visualPrompt}
 
-### 反向排除词
+### 反向排除词          # withVisualPrompt 时输出
 {negativePrompt}
 
 ### 配色方案
@@ -41,6 +41,13 @@ design 类型聊天在「新增页」可选绑定一个设计风格（可选，�
 - 标题：{font}，字重 {weight}，字号 {size}px，行高 {lineHeight}
 - 正文：...
 - 辅助文字：...
+
+### 细节规范            # 始终输出（tokens，缺字段用默认值兜底）
+- 间距：页面边距 {pageMargin}px，区块间距 {sectionGap}px，卡片内边距 {cardPadding}px，基准单位 {baseUnit}px
+- 圆角：小 {small}px / 中 {medium}px / 大 {large}px{，胶囊按钮}
+- 边框：{width}px {style} {color}（或无边框）
+- 阴影：{offsetX}px {offsetY}px {blur}px {color}（或不启用）
+- 动效：{duration}ms {easing}，范围 {scope}
 
 ### 布局约束
 - {layoutRules each}

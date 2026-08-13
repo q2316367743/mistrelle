@@ -59,6 +59,13 @@
       </section>
 
       <section class="detail-block">
+        <div class="detail-block__title">细节规范</div>
+        <div class="detail-block__body">
+          <style-token-block :tokens="style.tokens" />
+        </div>
+      </section>
+
+      <section class="detail-block">
         <div class="detail-block__title">视觉提示</div>
         <div class="detail-block__body">
           <div class="detail-prompt">
@@ -104,6 +111,7 @@ import { useDesignStyleStore } from '@/store'
 import { openDesignStylePut } from '@/pages/design/list/modals/DesignStylePutDialog'
 import StylePaletteBlock from './components/StylePaletteBlock.vue'
 import StyleTypographyBlock from './components/StyleTypographyBlock.vue'
+import StyleTokenBlock from './components/StyleTokenBlock.vue'
 import { ASIDE_PADDING_LEFT } from '@/global/Constant'
 
 const route = useRoute()

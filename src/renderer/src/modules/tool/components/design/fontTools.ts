@@ -38,7 +38,10 @@ export const createFontListTool = (): ToolFunction => ({
   parameters: {
     type: 'object',
     properties: {
-      query: { type: 'string', description: '按字体名子串过滤，如 PingFang / Songti / 黑体；缺省返回全部' },
+      query: {
+        type: 'string',
+        description: '按字体名子串过滤，如 PingFang / Songti / 黑体；缺省返回全部'
+      },
       source: {
         type: 'string',
         description: '来源过滤：system 系统字体 / library 资源库；缺省返回全部',
@@ -69,7 +72,10 @@ export const createFontListTool = (): ToolFunction => ({
         description: `字体语言过滤；缺省返回全部。可选：${FONT_LANG_OPTIONS.join(' / ')}`,
         enum: [...FONT_LANG_OPTIONS]
       },
-      limit: { type: 'number', description: `返回条数上限，默认 ${DEFAULT_LIMIT}，最大 ${MAX_LIMIT}` },
+      limit: {
+        type: 'number',
+        description: `返回条数上限，默认 ${DEFAULT_LIMIT}，最大 ${MAX_LIMIT}`
+      },
       offset: { type: 'number', description: '分页偏移，配合 limit 翻页' }
     }
   },
@@ -116,6 +122,12 @@ export const createFontListTool = (): ToolFunction => ({
  * 字体入库 / 元数据修改不对 AI 开放，仅资源管理页经 window.preload.font 操作。
  */
 registerToolPolicy({ name: 'font_list', resolve: () => 'allow' })
+
+/**
+ * font_list 单例（无 ctx 依赖）：注册进 toolMap，供声明该工具的内置 Agent
+ * （如「设计风格创建助手」）在任意聊天类型下查询本机字体；design 聊天的类型工具另建实例。
+ */
+export const fontListTool = createFontListTool()
 
 // ── font_pick：让用户选择字体（交互式，走 InteractiveBridge）──────────────
 

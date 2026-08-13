@@ -67,6 +67,10 @@
           </t-button>
         </div>
       </t-tab-panel>
+
+      <t-tab-panel value="tokens" label="细节规范">
+        <token-fields :tokens="form.tokens" />
+      </t-tab-panel>
     </t-tabs>
 
     <div class="put-content__footer">
@@ -84,6 +88,7 @@ import { useDesignStyleStore } from '@/store'
 import { MessageUtil } from '@/utils/modal'
 import ColorPaletteFields from './ColorPaletteFields.vue'
 import TypographyFields from './TypographyFields.vue'
+import TokenFields from './TokenFields.vue'
 
 const props = defineProps<{ form: AiDesignStyleForm; styleId?: string }>()
 const emit = defineEmits<{ close: []; success: [] }>()

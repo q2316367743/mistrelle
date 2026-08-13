@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia'
-import { AiDesignStyle, AiDesignStyleForm, AiDesignStyleItem } from '@/entity'
+import {
+  AiDesignStyle,
+  AiDesignStyleForm,
+  AiDesignStyleItem,
+  buildAiDesignStyleTokens
+} from '@/entity'
 import { DESIGN_STYLE_PRESETS } from '@/global/DesignStylePresets'
 import {
   designStyleGet,
@@ -43,12 +48,14 @@ export const useDesignStyleStore = defineStore('design:style', () => {
   }
 
   /**
-   * 读取完整风格：内置预设直接返回常量，用户风格读单条文件（列表缓存、详情不缓存，按需读盘）
+   * 读取完整风格：内置预设直接返回常量，用户风格读单条文件（列表缓存、详情不缓存，按需读盘）。
+   * 旧数据缺 tokens 字段时用默认值补齐，保证消费端（明细页 / 提示词 / 编辑表单）字段完整。
    */
   const getDetail = async (id: string): Promise<AiDesignStyle | undefined> => {
     const preset = DESIGN_STYLE_PRESETS.find((e) => e.id === id)
     if (preset) return preset
-    return designStyleGet(id)
+    const style = await designStyleGet(id)
+    return style ? { ...style, tokens: buildAiDesignStyleTokens(style.tokens) } : undefined
   }
 
   /**

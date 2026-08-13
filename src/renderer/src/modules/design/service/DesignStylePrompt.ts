@@ -1,4 +1,4 @@
-import { AiDesignStyle, AiDesignStyleColorPalette } from '@/entity'
+import { AiDesignStyle, AiDesignStyleColorPalette, buildAiDesignStyleTokens } from '@/entity'
 
 /**
  * 设计风格 → 提示词段落。
@@ -36,6 +36,20 @@ export const buildDesignStylePrompt = (
     return `- ${label}：${item.font}，字重 ${item.weight}，字号 ${item.size}px，行高 ${item.lineHeight}`
   })
 
+  // 细节规范（tokens）：用默认值兜底合并，兼容旧数据缺字段；PPT 也注入，不随 withVisualPrompt 跳过
+  const t = buildAiDesignStyleTokens(style.tokens)
+  const tokenLines = [
+    `- 间距：页面边距 ${t.spacing.pageMargin}px，区块间距 ${t.spacing.sectionGap}px，卡片内边距 ${t.spacing.cardPadding}px，基准单位 ${t.spacing.baseUnit}px`,
+    `- 圆角：小 ${t.radius.small}px / 中 ${t.radius.medium}px / 大 ${t.radius.large}px${t.radius.pill ? '，按钮使用胶囊圆角' : ''}`,
+    t.border.style === 'none'
+      ? '- 边框：无边框'
+      : `- 边框：${t.border.width}px ${t.border.style} ${t.border.color}`,
+    t.shadow.enabled
+      ? `- 阴影：${t.shadow.offsetX}px ${t.shadow.offsetY}px ${t.shadow.blur}px ${t.shadow.color}`
+      : '- 阴影：不启用',
+    `- 动效：${t.motion.duration}ms ${t.motion.easing}，范围 ${t.motion.scope}`
+  ]
+
   const parts: string[] = []
   parts.push('## 设计风格')
   parts.push(`本次设计采用风格「${style.name}」，${style.description}`.trim())
@@ -43,6 +57,7 @@ export const buildDesignStylePrompt = (
   if (withVisual && style.negativePrompt) parts.push('', '### 反向排除词', style.negativePrompt)
   parts.push('', '### 配色方案', ...paletteLines)
   parts.push('', '### 字体规范', ...typoLines)
+  parts.push('', '### 细节规范', ...tokenLines)
   if (style.layoutRules.length > 0) {
     parts.push('', '### 布局约束', ...style.layoutRules.map((rule) => `- ${rule}`))
   }

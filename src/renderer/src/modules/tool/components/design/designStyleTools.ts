@@ -9,8 +9,10 @@ import {
   AiDesignStyleCategory,
   AiDesignStyleForm,
   AiDesignStyleItem,
+  DESIGN_STYLE_BORDER_STYLES,
   DESIGN_STYLE_CATEGORY_OPTIONS,
   buildAiDesignStyleForm,
+  buildAiDesignStyleTokens,
   toAiDesignStyleForm
 } from '@/entity/ai'
 import { useDesignStyleStore } from '@/store'
@@ -85,6 +87,65 @@ const FORM_PROPERTIES: Record<string, ToolProperty> = {
     type: 'array',
     description: '布局硬约束（针对生图模型）',
     items: { type: 'string', description: '一条布局规则' }
+  },
+  tokens: {
+    type: 'object',
+    description: '全局样式细节规范（tokens）：间距 / 圆角 / 边框 / 阴影 / 动效，可整体或部分传入',
+    properties: {
+      spacing: {
+        type: 'object',
+        description: '间距规范',
+        properties: {
+          pageMargin: { type: 'number', description: '页面安全边距（px）' },
+          sectionGap: { type: 'number', description: '区块 / 卡片间距（px）' },
+          cardPadding: { type: 'number', description: '卡片 / 容器内边距（px）' },
+          baseUnit: { type: 'number', description: '间距基准单位（px）' }
+        }
+      },
+      radius: {
+        type: 'object',
+        description: '圆角规范',
+        properties: {
+          small: { type: 'number', description: '小圆角：按钮 / 输入框（px）' },
+          medium: { type: 'number', description: '常规圆角：卡片（px）' },
+          large: { type: 'number', description: '大圆角：弹窗 / 横幅（px）' },
+          pill: { type: 'boolean', description: '是否胶囊圆角（按钮全圆角）' }
+        }
+      },
+      border: {
+        type: 'object',
+        description: '边框规范',
+        properties: {
+          width: { type: 'number', description: '边框宽度（px）' },
+          style: {
+            type: 'string',
+            description: '边框样式',
+            enum: [...DESIGN_STYLE_BORDER_STYLES]
+          },
+          color: { type: 'string', description: '边框颜色（色值，如 #e0e0e0）' }
+        }
+      },
+      shadow: {
+        type: 'object',
+        description: '阴影规范',
+        properties: {
+          enabled: { type: 'boolean', description: '是否启用阴影' },
+          offsetX: { type: 'number', description: '水平偏移（px）' },
+          offsetY: { type: 'number', description: '垂直偏移（px）' },
+          blur: { type: 'number', description: '模糊半径（px）' },
+          color: { type: 'string', description: '阴影颜色（支持透明度，如 rgba(0,0,0,0.08)）' }
+        }
+      },
+      motion: {
+        type: 'object',
+        description: '动效规范',
+        properties: {
+          duration: { type: 'number', description: '过渡基础时长（ms）' },
+          easing: { type: 'string', description: '缓动曲线（如 ease / cubic-bezier(0.2,0,0,1)）' },
+          scope: { type: 'string', description: '动效范围（如 hover / 切换 / 入场）' }
+        }
+      }
+    }
   }
 }
 
@@ -161,7 +222,13 @@ export const designStyleTools: ToolFunction[] = [
       const name = args.name?.trim()
       if (!name) return { error: '风格名称（name）不能为空' }
       if (invalidCategory(args.category)) return categoryError(args.category as string)
-      const form: AiDesignStyleForm = { ...buildAiDesignStyleForm(), ...args, name }
+      const form: AiDesignStyleForm = {
+        ...buildAiDesignStyleForm(),
+        ...args,
+        name,
+        // 模型可能只传 tokens 的部分分组，用默认值兜底合并
+        tokens: buildAiDesignStyleTokens(args.tokens)
+      }
       const id = await useDesignStyleStore().put(form)
       if (!id) return { error: '设计风格创建失败，未生成 id' }
       return { id, name, message: '设计风格创建成功，已出现在「设计风格」列表中' }
@@ -189,9 +256,16 @@ export const designStyleTools: ToolFunction[] = [
       const old = await store.getDetail(id)
       if (!old) return { error: `未找到 id 为 "${id}" 的设计风格` }
       if (invalidCategory(rest.category)) return categoryError(rest.category as string)
+      // 先取出 tokens（保留精确类型），避免被 Object.fromEntries 抹成宽联合类型
+      const { tokens, ...restFields } = rest
       // 仅覆盖显式传入的字段，undefined 不参与合并
-      const patch = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined))
-      const form: AiDesignStyleForm = { ...toAiDesignStyleForm(old), ...patch }
+      const patch = Object.fromEntries(Object.entries(restFields).filter(([, v]) => v !== undefined))
+      const form: AiDesignStyleForm = {
+        ...toAiDesignStyleForm(old),
+        ...patch,
+        // tokens 支持部分分组更新，与旧值（已归一化）合并
+        tokens: buildAiDesignStyleTokens(tokens ?? old.tokens)
+      }
       if (!form.name.trim()) return { error: '风格名称（name）不能为空' }
       await store.put(form, id)
       return { id, name: form.name, message: '设计风格修改成功' }
