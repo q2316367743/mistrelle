@@ -1,6 +1,6 @@
 <template>
   <page-layout>
-    <div class="page-new">
+    <div v-if="show" class="page-new">
       <div class="page-new__hero">
         <div class="page-new__title">Hi，今天从哪里开始</div>
         <div class="page-new__subtitle">
@@ -23,12 +23,7 @@
             class="page-new__style"
             :popup-props="{ overlayClassName: 'page-new-style-overlay' }"
           >
-            <t-option
-              v-for="s in designStyleOptions"
-              :key="s.id"
-              :value="s.id"
-              :label="s.name"
-            >
+            <t-option v-for="s in designStyleOptions" :key="s.id" :value="s.id" :label="s.name">
               <div class="page-new__style-option">
                 <span class="page-new__style-option-name">
                   {{ s.name }}
@@ -53,8 +48,12 @@ import { CHAT_TYPE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { toggleCollapsed } from '@/global/BeanFactory'
 
+/** 显式组件名：App.vue 的 keep-alive 按此名对「新建聊天」页保活 */
+defineOptions({ name: 'PageNew' })
+
 const router = useRouter()
 
+const show = ref(true)
 const model = ref('')
 const type = ref<ChatType>('office')
 const scene = ref<WritingScene>('article')
@@ -81,8 +80,24 @@ const handleSend = async (message: ChatRequestParams) => {
     ...message,
     designStyleId: designStyleId.value || undefined
   })
+  // 页面被 keep-alive 保活，不会随跳转卸载：发送后立即重置全部页面数据，返回本页时保持干净状态
   await router.push(`/chat/${id}`)
   toggleCollapsed(true)
+  resetPageData()
+}
+
+/** 重置页面全部数据：类型、场景、设计风格、模型（输入框内容由 LChatSender 发送成功后自行清空） */
+const resetPageData = () => {
+  type.value = 'office'
+  scene.value = 'article'
+  designStyleId.value = ''
+  model.value = useSettingDefaultStore().state.defaultAssistantModel
+  setTimeout(() => {
+    show.value = false
+    nextTick(() => {
+      show.value = true
+    })
+  }, 100)
 }
 
 watch(type, (val) => {

@@ -3,7 +3,11 @@
     <div class="window-drag-region"></div>
     <app-side />
     <t-content class="main-container">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="keepAliveNames">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </t-content>
     <div class="common-operator">
       <t-button theme="default" shape="square" variant="text" @click="toggleCollapsed()">
@@ -46,6 +50,9 @@ const showChatAdd = computed(() => {
 
   return true
 })
+
+/** keep-alive 缓存的组件名：仅「新建聊天」页保活，切到其他页面再返回时内容不丢失 */
+const keepAliveNames = ['PageNew']
 
 onMounted(() => {
   console.log(`插件已启动:
