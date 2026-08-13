@@ -46,6 +46,8 @@ const buildPptxBytes = async (
 /**
  * 渲染 PptJsonDoc 为每页 SVG 字符串数组（预览链路）：
  * jsonToPomXml → buildPptx(xml) → PPTX 字节 → convertPptxToSvg → svgs
+ * textOutput: 'text' 让 SVG 输出真实 <text> 元素（而非字形 path），
+ * 渲染进程可提取文本做"SVG 分组 ↔ JSON 节点"映射校验，并回填节点引用。
  */
 export const renderPptxToSvgs = async (
   json: PptJsonDoc,
@@ -53,7 +55,7 @@ export const renderPptxToSvgs = async (
 ): Promise<string[]> => {
   const { convertPptxToSvg } = await loadGlimpse()
   const { buf, errorText } = await buildPptxBytes(json, size)
-  const report = await convertPptxToSvg(buf)
+  const report = await convertPptxToSvg(buf, { textOutput: 'text' })
   const svgs = report.slides.map((s) => s.svg)
   if (errorText) console.warn('[ppt] 渲染诊断提示：', errorText)
   return svgs

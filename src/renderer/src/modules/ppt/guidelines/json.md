@@ -32,6 +32,9 @@
 - `tag` 即 XML 标签名（区分大小写）：Text / VStack / HStack / Icon / Shape / Image / Ul / Ol / Layer /
   Line / Arrow / Table / Chart / Timeline / Flow / Tree / Matrix / Pyramid / ProcessArrow / Svg。
 - `attr` 为属性对象：**值统一为字符串**（数字 / 布尔也写字符串，如 `"fontSize": "28"`、`"bold": "true"`）。
+- **顶层 `id` = 节点唯一标识**（`{ id, tag, attr, child }`，与 tag 并列）：写入时自动生成（`n-` + nanoid），无需 AI 手动指定；
+  用户点选节点后 AI 用它做**精准编辑**（见 §7 ppt_edit_element）。所有节点（含 Li/Td/TimelineItem 等子元素）都有 id；
+  id 不进 attr、不参与 POM 布局。
 - 对象型属性用**点表示法**扁平展开：`border.color`、`border.width`、`shadow.blur`、`padding.top`、
   `fill.color`、`glow.size` 等（与 POM XML 点表示法属性一一对应）。
 - `child`：文本节点（Text / Shape / Li / Td）写**字符串**；容器节点写**子元素数组**；无子元素可省略（导出为自闭合标签）。
@@ -71,3 +74,15 @@
 - **页码从 1 开始**；slideId 越界报错。
 - 页面根元素必须是 VStack / HStack 布局容器。
 - 编辑 **原地写回**当前文件（不产生新版本）；侧边栏实时渲染预览。
+
+## 7. 精准编辑单个节点（ppt_edit_element）
+
+- 用户可在预览中**点选节点**并引用（输入框出现 `PPT(文件名)节点(文本)` 标签）；引用消息会附
+  pptId / slideId / nodeId，AI 应**只改该节点**，不要整页重建。
+- `ppt_edit_element(pptId?, slideId, nodeId, patch)`：按 nodeId 精准编辑，`patch` 任意组合：
+  - `attr`：合并 / 覆盖属性（点表示法键，如 `"fontSize"`、`"border.color"`）
+  - `text`：覆盖文本（仅 Text / Shape 等 child 为字符串的节点）
+  - `child`：替换子元素数组
+- nodeId 来源：用户引用消息 / `ppt_read` 返回的 JSON（每个节点的顶层 `id`）/ `ppt_add_slide`、`ppt_batch_edit` 返回的 `nodes`。
+- 找不到 nodeId 说明该节点已被整页替换（旧 id 失效）→ 先 `ppt_read` 重读再编辑。
+- **只改引用节点**：修改单个 Text / Shape 的文案或样式用 ppt_edit_element，改动大才用 ppt_batch_edit 整页重建。

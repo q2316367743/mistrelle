@@ -50,6 +50,17 @@
           <template #icon><LayersIcon /></template>
           画布(canvas-{{ item.data.version }})节点({{ item.data.label || item.data.nodeId }})
         </t-tag>
+        <t-tag
+          v-else-if="item.type === 'ppt'"
+          theme="warning"
+          variant="light"
+          :title="`PPT「${item.data.pptId}」第 ${item.data.slide} 页节点 ${item.data.nodeId}`"
+          size="small"
+          class="r-chat-list__inline-tag mr-4px"
+        >
+          <template #icon><SlideshowIcon /></template>
+          PPT({{ item.data.pptId }})节点({{ item.data.label || item.data.nodeId }})
+        </t-tag>
       </template>
     </div>
     <div class="footer">
@@ -63,7 +74,7 @@
 </template>
 <script lang="ts" setup>
 import { UserMessage } from '@/domain'
-import { CodeIcon, FileIcon, LayersIcon, ToolsIcon } from 'tdesign-icons-vue-next'
+import { CodeIcon, FileIcon, LayersIcon, SlideshowIcon, ToolsIcon } from 'tdesign-icons-vue-next'
 
 defineProps({
   message: {

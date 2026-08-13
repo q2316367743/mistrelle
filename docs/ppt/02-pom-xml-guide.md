@@ -36,6 +36,9 @@
 - `tag` 即 XML 标签名（区分大小写）：Text / VStack / HStack / Icon / Shape / Image / Ul / Ol / Layer /
   Line / Arrow / Table / Chart / Timeline / Flow / Tree / Matrix / Pyramid / ProcessArrow / Svg。
 - `attr` 为属性对象：**值统一为字符串**（数字 / 布尔也写字符串，如 `"fontSize": "28"`、`"bold": "true"`）。
+- **顶层 `id` = 节点唯一标识**（`{ id, tag, attr, child }`，与 tag 并列）：写入时自动生成（`n-` + nanoid），无需 AI 手动指定；
+  用户点选节点后 AI 用它做**精准编辑**（ppt_edit_element）。所有节点（含 Li/Td/TimelineItem 等子元素）都有 id；
+  id 是纯 JSON 层引用标识，不进 attr、不进 POM XML。
 - 对象型属性用**点表示法**扁平展开：`border.color`、`border.width`、`shadow.blur`、`padding.top`、
   `fill.color`、`glow.size` 等（与 POM XML 点表示法属性一一对应）。
 - `child`：文本节点（Text / Shape / Li / Td）写**字符串**；容器节点写**子元素数组**；无子元素可省略（导出为自闭合标签）。

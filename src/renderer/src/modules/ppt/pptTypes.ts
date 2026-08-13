@@ -7,9 +7,12 @@
 /**
  * SlideNode：与 POM XML 标签一一对应的通用节点（tag 即 XML 标签名），
  * child 为字符串表示文本节点内容（如 <Text>Title</Text>）。
+ * id 为节点唯一标识（**顶层字段，与 tag 并列**，自动生成）：不进 attr、不参与 POM 布局，
+ * 主进程导出时仅对 POM 接受 id 的根标签代写 XML id 属性（Arrow 的 from/to 据此解析）。
  * 注意：与 preload 的 src/preload/src/channels.ts 形状一致（IPC 契约），修改需同步。
  */
 export interface SlideNode {
+  id?: string
   tag: string
   attr: Record<string, string>
   child: Array<SlideNode> | string

@@ -12,7 +12,11 @@ import { Type } from '@sinclair/typebox'
 
 /** 边距：标量（统一数值）或 top / right / bottom / left 单侧（点表示法） */
 export const edgeAttrs = (prefix: 'padding' | 'margin') => ({
-  [prefix]: Type.Optional(Type.Union([Type.Number(), Type.String()], { description: `${prefix === 'padding' ? '内' : '外'}边距：统一数值` })),
+  [prefix]: Type.Optional(
+    Type.Union([Type.Number(), Type.String()], {
+      description: `${prefix === 'padding' ? '内' : '外'}边距：统一数值`
+    })
+  ),
   [`${prefix}.top`]: Type.Optional(Type.Number({ description: '上侧' })),
   [`${prefix}.right`]: Type.Optional(Type.Number({ description: '右侧' })),
   [`${prefix}.bottom`]: Type.Optional(Type.Number({ description: '下侧' })),
@@ -34,19 +38,25 @@ const DASH_TYPES = [
 export const borderAttrs = (
   prefix: 'border' | 'borderTop' | 'borderRight' | 'borderBottom' | 'borderLeft' | 'cellBorder'
 ) => ({
-  [`${prefix}.color`]: Type.Optional(Type.String({ description: '颜色（6 位 hex 无 #，可 $token）' })),
+  [`${prefix}.color`]: Type.Optional(
+    Type.String({ description: '颜色（6 位 hex 无 #，可 $token）' })
+  ),
   [`${prefix}.width`]: Type.Optional(Type.Number({ description: '宽度（px）' })),
   [`${prefix}.dashType`]: Type.Optional(Type.Union([...DASH_TYPES], { description: '虚线样式' }))
 })
 
 /** 阴影点表示法属性（shadow.*） */
 export const shadowAttrs = {
-  'shadow.type': Type.Optional(Type.Union([Type.Literal('outer'), Type.Literal('inner')], { description: '外阴影 / 内阴影' })),
+  'shadow.type': Type.Optional(
+    Type.Union([Type.Literal('outer'), Type.Literal('inner')], { description: '外阴影 / 内阴影' })
+  ),
   'shadow.blur': Type.Optional(Type.Number({ description: '模糊半径' })),
   'shadow.offset': Type.Optional(Type.Number({ description: '偏移距离' })),
   'shadow.angle': Type.Optional(Type.Number({ description: '偏移角度（度）' })),
   'shadow.color': Type.Optional(Type.String({ description: '颜色' })),
-  'shadow.opacity': Type.Optional(Type.Number({ minimum: 0, maximum: 1, description: '不透明度 0-1' }))
+  'shadow.opacity': Type.Optional(
+    Type.Number({ minimum: 0, maximum: 1, description: '不透明度 0-1' })
+  )
 }
 
 /** 发光点表示法属性（glow.*，Text / Shape） */
@@ -64,11 +74,28 @@ export const outlineAttrs = {
 
 // ── 公共属性（attr 段） ─────────────────────────────────────
 
+/** 节点 id（**顶层字段，与 tag 并列**）：自动生成，供用户引用 / ppt_edit_element 精准编辑；
+ * 不进 attr、不参与 POM 布局，主进程导出时仅对 POM 接受 id 的根标签代写 XML id 属性（Arrow 解析用） */
+export const nodeIdProp = {
+  id: Type.Optional(
+    Type.String({
+      description: '节点唯一标识（自动生成；用户引用节点 / ppt_edit_element 精准编辑用）'
+    })
+  )
+}
+
 /** 所有节点公共属性（布局 / 背景 / 边框 / 定位；对象属性为点表示法） */
 export const commonAttrs = {
-  id: Type.Optional(Type.String({ description: '页面内唯一标识（Arrow 连接用）' })),
-  w: Type.Optional(Type.Union([Type.Number(), Type.Literal('max'), Type.String()], { description: '宽：像素数字 | "max"（沿主轴撑满） | "50%"（百分比）' })),
-  h: Type.Optional(Type.Union([Type.Number(), Type.Literal('max'), Type.String()], { description: '高：像素数字 | "max" | "50%"（百分比）' })),
+  w: Type.Optional(
+    Type.Union([Type.Number(), Type.Literal('max'), Type.String()], {
+      description: '宽：像素数字 | "max"（沿主轴撑满） | "50%"（百分比）'
+    })
+  ),
+  h: Type.Optional(
+    Type.Union([Type.Number(), Type.Literal('max'), Type.String()], {
+      description: '高：像素数字 | "max" | "50%"（百分比）'
+    })
+  ),
   grow: Type.Optional(Type.Number({ description: '兄弟间主轴剩余空间分配比例（同 flex-grow）' })),
   minW: Type.Optional(Type.Number()),
   maxW: Type.Optional(Type.Number()),
@@ -76,12 +103,20 @@ export const commonAttrs = {
   maxH: Type.Optional(Type.Number()),
   ...edgeAttrs('padding'),
   ...edgeAttrs('margin'),
-  backgroundColor: Type.Optional(Type.String({ description: '背景色（6 位 hex 无 #，可 $token）' })),
+  backgroundColor: Type.Optional(
+    Type.String({ description: '背景色（6 位 hex 无 #，可 $token）' })
+  ),
   backgroundGradient: Type.Optional(
     Type.String({ description: 'CSS 渐变，如 linear-gradient(135deg, #1E40AF 0%, #0EA5E9 100%)' })
   ),
-  'backgroundImage.src': Type.Optional(Type.String({ description: '背景图地址 / 本地路径 / base64' })),
-  'backgroundImage.sizing': Type.Optional(Type.Union([Type.Literal('cover'), Type.Literal('contain')], { description: 'cover 铺满（默认）/ contain 完整容纳' })),
+  'backgroundImage.src': Type.Optional(
+    Type.String({ description: '背景图地址 / 本地路径 / base64' })
+  ),
+  'backgroundImage.sizing': Type.Optional(
+    Type.Union([Type.Literal('cover'), Type.Literal('contain')], {
+      description: 'cover 铺满（默认）/ contain 完整容纳'
+    })
+  ),
   ...borderAttrs('border'),
   ...borderAttrs('borderTop'),
   ...borderAttrs('borderRight'),
@@ -90,18 +125,28 @@ export const commonAttrs = {
   borderRadius: Type.Optional(Type.Number({ description: '圆角半径（px）' })),
   opacity: Type.Optional(Type.Number({ minimum: 0, maximum: 1, description: '背景不透明度 0-1' })),
   zIndex: Type.Optional(Type.Number({ description: '层级（越大越靠上）' })),
-  position: Type.Optional(Type.Union([Type.Literal('relative'), Type.Literal('absolute')], { description: '定位模式' })),
+  position: Type.Optional(
+    Type.Union([Type.Literal('relative'), Type.Literal('absolute')], { description: '定位模式' })
+  ),
   top: Type.Optional(Type.Number()),
   right: Type.Optional(Type.Number()),
   bottom: Type.Optional(Type.Number()),
   left: Type.Optional(Type.Number()),
   alignSelf: Type.Optional(
     Type.Union(
-      [Type.Literal('auto'), Type.Literal('start'), Type.Literal('center'), Type.Literal('end'), Type.Literal('stretch')],
+      [
+        Type.Literal('auto'),
+        Type.Literal('start'),
+        Type.Literal('center'),
+        Type.Literal('end'),
+        Type.Literal('stretch')
+      ],
       { description: '覆盖父级 alignItems' }
     )
   ),
-  rotate: Type.Optional(Type.Number({ description: '旋转角度（度，顺时针；仅 Text/Shape/Image/Icon）' })),
+  rotate: Type.Optional(
+    Type.Number({ description: '旋转角度（度，顺时针；仅 Text/Shape/Image/Icon）' })
+  ),
   ...shadowAttrs
 }
 
@@ -109,11 +154,15 @@ export const commonAttrs = {
 export const textAttrs = {
   fontSize: Type.Optional(Type.Number({ description: '字号（px）' })),
   color: Type.Optional(Type.String({ description: '文本色（6 位 hex 无 #，可 $token）' })),
-  textAlign: Type.Optional(Type.Union([Type.Literal('left'), Type.Literal('center'), Type.Literal('right')])),
+  textAlign: Type.Optional(
+    Type.Union([Type.Literal('left'), Type.Literal('center'), Type.Literal('right')])
+  ),
   bold: Type.Optional(Type.Boolean()),
   italic: Type.Optional(Type.Boolean()),
   strike: Type.Optional(Type.Boolean()),
-  underline: Type.Optional(Type.Boolean({ description: '下划线（true 或改用 underline.style / underline.color 细调）' })),
+  underline: Type.Optional(
+    Type.Boolean({ description: '下划线（true 或改用 underline.style / underline.color 细调）' })
+  ),
   'underline.style': Type.Optional(Type.String()),
   'underline.color': Type.Optional(Type.String()),
   highlight: Type.Optional(Type.String({ description: '文本高亮色' })),
@@ -128,7 +177,10 @@ export const textAttrs = {
 export const childUnion = (Self: unknown) =>
   Type.Optional(
     Type.Union(
-      [Type.String({ description: '文本内容（如 "Title"）' }), Type.Array(Self as never, { description: '子元素（布局顺序即渲染顺序）' })],
+      [
+        Type.String({ description: '文本内容（如 "Title"）' }),
+        Type.Array(Self as never, { description: '子元素（布局顺序即渲染顺序）' })
+      ],
       { description: '内容：文本字符串或子元素数组' }
     )
   )

@@ -31,10 +31,12 @@
           </div>
         </t-popup>
       </div>
-      <!-- 右侧：主内容（页码拖拽条 + 当前页大图，滚轮缩放 + 拖拽平移） -->
+      <!-- 右侧：主内容（页码拖拽条 + 当前页大图，滚轮缩放 + 拖拽平移 + 节点点选） -->
       <ppt-slide-viewer
         v-model:page="page"
-        :current-svg="currentSvg"
+        :svg="currentPageSvg"
+        :nodes="currentPageNodes"
+        :ppt-id="currentPptId"
         :render-state="store.renderState.value"
         :total="total"
         :slider-max="sliderMax"
@@ -76,18 +78,29 @@ const sliderMax = computed(() => Math.max(1, total.value))
 
 const thumbRefs = ref<HTMLElement[]>([])
 
-/** 当前页 SVG（data URI，经 <img> 渲染，杜绝 v-html 脚本注入） */
-const currentSvg = computed(() => {
+/** 当前页 SVG 字符串（内联渲染 + 节点映射用；缩略图仍经 <img> data URI 展示） */
+const currentPageSvg = computed(() => {
   const svgs = store.value.svgs.value
   const index = store.value.currentPage.value - 1
-  return svgs[index] ? toDataUrl(svgs[index]) : undefined
+  return svgs[index]
 })
+
+/** 当前页 JSON 根节点数组（节点映射数据源） */
+const currentPageNodes = computed(() => {
+  const doc = store.value.current.value
+  if (!doc) return undefined
+  return doc.json.slide[store.value.currentPage.value - 1]
+})
+
+/** 当前 PPT 文件标识（节点引用回填用） */
+const currentPptId = computed(() => store.value.current.value?.id)
 
 const goto = (value: number) => {
   page.value = value
 }
 
-const toDataUrl = (svg: string): string => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+const toDataUrl = (svg: string): string =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 
 /** 左侧缩略图导航滚动定位到当前页 */
 const scrollThumb = (value: number) => {

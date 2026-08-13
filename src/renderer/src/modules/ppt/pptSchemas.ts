@@ -7,12 +7,35 @@
 import { collectErrors, toToolProperty } from '@/modules/tool/typeboxUtil'
 import type { ToolProperty } from '@/domain'
 import { pptElementSchemaT, pptElementVariants, pptElementsSchemaT } from './pptElementSchemas'
+import { Type } from '@sinclair/typebox'
 
 /** 元素 schema（供模型了解 batch_edit 的 elements 元素结构） */
 export const pptElementSchema: ToolProperty = toToolProperty(pptElementSchemaT)
 
 /** 元素数组 schema（供模型了解 add_slide / batch_edit 的 elements 参数） */
 export const pptElementsSchema: ToolProperty = toToolProperty(pptElementsSchemaT)
+
+/** ppt_edit_element 的 patch 参数 schema：attr 合并 / text 覆盖 / child 替换（任意组合） */
+export const pptElementPatchSchemaT = Type.Object(
+  {
+    attr: Type.Optional(
+      Type.Record(Type.String(), Type.Union([Type.String(), Type.Number(), Type.Boolean()]), {
+        description: '要合并或覆盖的属性（点表示法键，如 fontSize、border.color；缺省不改 attr'
+      })
+    ),
+    text: Type.Optional(Type.String({ description: '文本内容（仅文本节点，覆盖 child 字符串）' })),
+    child: Type.Optional(
+      Type.Array(pptElementSchemaT, { description: '替换子元素数组（SlideNode JSON）' })
+    )
+  },
+  {
+    additionalProperties: false,
+    description: '节点编辑补丁：attr 合并 / text 覆盖 / child 替换（任意组合）'
+  }
+)
+
+/** patch 参数描述（喂给模型） */
+export const pptElementPatchSchema: ToolProperty = toToolProperty(pptElementPatchSchemaT)
 
 /** 可用元素类型清单（错误提示用） */
 const PPT_ELEMENT_TYPES = Object.keys(pptElementVariants)
@@ -42,21 +65,26 @@ export const validatePptElements = (value: unknown): string[] => {
   }
   const errors: string[] = []
   value.forEach((element, index) => {
-    errors.push(...validatePptElement(element).map((message) => `第 ${index + 1} 个元素：${message}`))
+    errors.push(
+      ...validatePptElement(element).map((message) => `第 ${index + 1} 个元素：${message}`)
+    )
   })
   return errors
 }
 
 /** 校验 Theme 令牌表：token 名合法 + 值 6 位 hex（# 可选） */
 export const validatePptTheme = (theme: unknown): string[] => {
-  if (!theme || typeof theme !== 'object' || Array.isArray(theme)) return ['theme 必须是对象（token 名 → 颜色）']
+  if (!theme || typeof theme !== 'object' || Array.isArray(theme))
+    return ['theme 必须是对象（token 名 → 颜色）']
   const errors: string[] = []
   for (const [key, value] of Object.entries(theme)) {
     if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(key)) {
       errors.push(`theme 令牌名「${key}」非法（以字母开头，可含字母 / 数字 / _ / -）`)
     }
     if (typeof value !== 'string' || !/^#?[0-9a-fA-F]{6}$/.test(value)) {
-      errors.push(`theme 令牌「${key}」的颜色值「${String(value)}」非法（应为 6 位 hex，如 FFFFFF）`)
+      errors.push(
+        `theme 令牌「${key}」的颜色值「${String(value)}」非法（应为 6 位 hex，如 FFFFFF）`
+      )
     }
   }
   return errors

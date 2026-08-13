@@ -17,12 +17,17 @@ export const usePptPanZoom = () => {
   const ty = ref(0)
   const isDragging = ref(false)
 
+  /** 最近一次 pointer 拖拽位移（px；click 处理器据此区分"点击 vs 平移"） */
+  const dragDistance = ref(0)
+
   /** 拖拽起点：指针屏幕坐标 + 起拖时位移（指针 capture 期间以此基准累加） */
   const dragStart = ref<{ x: number; y: number; tx: number; ty: number } | null>(null)
 
   const isScaled = computed(() => scale.value !== 1 || tx.value !== 0 || ty.value !== 0)
   const scalePercent = computed(() => `${Math.round(scale.value * 100)}%`)
-  const transformStyle = computed(() => `translate(${tx.value}px, ${ty.value}px) scale(${scale.value})`)
+  const transformStyle = computed(
+    () => `translate(${tx.value}px, ${ty.value}px) scale(${scale.value})`
+  )
 
   const reset = () => {
     scale.value = 1
@@ -68,6 +73,10 @@ export const usePptPanZoom = () => {
   }
 
   const handlePointerUp = (e: PointerEvent) => {
+    const start = dragStart.value
+    if (start) {
+      dragDistance.value = Math.hypot(e.clientX - start.x, e.clientY - start.y)
+    }
     dragStart.value = null
     isDragging.value = false
     if (viewportRef.value?.hasPointerCapture(e.pointerId)) {
@@ -78,6 +87,7 @@ export const usePptPanZoom = () => {
   return {
     viewportRef,
     isDragging,
+    dragDistance,
     isScaled,
     scalePercent,
     transformStyle,

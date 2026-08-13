@@ -4,6 +4,7 @@
  * + resvg wasm Node-only 加载），渲染进程只负责传 (json, 目标路径)，不经手导出字节。
  */
 import type { PptJsonDoc } from './pptTypes'
+import { cloneDeep } from 'es-toolkit'
 
 /** 清理 Electron invoke 错误的包装前缀，保留原始错误文本（如 POM 的 ParseXmlError 列表） */
 const toReadableError = (err: unknown): string => {
@@ -17,7 +18,7 @@ export const renderPptxToSvgs = async (
   size: { w: number; h: number }
 ): Promise<string[]> => {
   try {
-    return await window.preload.ppt.renderPptxToSvgs(json, size)
+    return await window.preload.ppt.renderPptxToSvgs(cloneDeep(json), size)
   } catch (err) {
     throw new Error(toReadableError(err))
   }
@@ -30,7 +31,7 @@ export const exportPptx = async (
   path: string
 ): Promise<string> => {
   try {
-    return await window.preload.ppt.exportPptx(json, { ...size, path })
+    return await window.preload.ppt.exportPptx(cloneDeep(json), { ...size, path })
   } catch (err) {
     throw new Error(toReadableError(err))
   }
@@ -44,7 +45,7 @@ export const exportPptxToPngs = async (
   slides?: number[]
 ): Promise<string[]> => {
   try {
-    return await window.preload.ppt.exportPptxToPngs(json, { ...size, path, slides })
+    return await window.preload.ppt.exportPptxToPngs(cloneDeep(json), { ...size, path, slides })
   } catch (err) {
     throw new Error(toReadableError(err))
   }

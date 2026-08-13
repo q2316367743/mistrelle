@@ -2,16 +2,14 @@
  * PptJsonDoc → POM XML 转换（主进程导出 / 渲染前调用，纯函数、不依赖 pom 库）：
  * - SlideNode 的 tag 即 XML 标签名，attr 即 XML 属性，child 为字符串时输出内联文本（Text 节点）
  * - child 为空数组 / 缺失时输出自闭合标签；渲染进程全程 JSON，只有这里涉及 xml
+ * - SlideNode 顶层 id 是**纯 JSON 层标识**（不进 attr、不写进 XML）：只服务渲染进程的
+ *   节点引用 / ppt_edit_element，与 POM 布局、Arrow/Flow 的 attr.id 互不干扰（后者按 attr 原样透传）
  */
 import type { PptJsonDoc, SlideNode } from '~/channels'
 
 /** XML 属性值转义（& < > " 与 #xD） */
 const escapeAttr = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+  value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 /** XML 文本内容转义（& < >） */
 const escapeText = (value: string): string =>
@@ -35,7 +33,8 @@ const normalizeHStackText = (node: SlideNode, hstackChain: number): void => {
   if (node.tag === 'Text' && node.attr.w === undefined && hstackChain >= 2) {
     node.attr.w = 'max'
   }
-  if (Array.isArray(node.child)) node.child.forEach((child) => normalizeHStackText(child, hstackChain))
+  if (Array.isArray(node.child))
+    node.child.forEach((child) => normalizeHStackText(child, hstackChain))
 }
 
 /** 递归节点 → XML 片段（2 空格缩进；文本节点内联输出；attr 缺失按空处理） */

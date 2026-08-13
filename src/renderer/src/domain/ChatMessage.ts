@@ -97,6 +97,15 @@ export type CanvasItem = {
   label?: string
 }
 export type CanvasContent = ChatBaseContent<'canvas', CanvasItem>
+/** 用户在 PPT 侧边栏选中节点引用的节点：pptId 即 PPT 文件标识，slide 为页码，nodeId 为节点 id */
+export type PptItem = {
+  pptId: string
+  slide: number
+  nodeId: string
+  /** 节点文本摘要，仅用于展示 */
+  label?: string
+}
+export type PptContent = ChatBaseContent<'ppt', PptItem>
 export type ThinkingContent = ChatBaseContent<
   'thinking',
   {
@@ -151,11 +160,7 @@ type AIContentTypeMap = {
 export type AIContentType = keyof AIContentTypeMap
 export type AIMessageContent = AIContentTypeMap[AIContentType]
 export type UserMessageContent =
-  | TextContent
-  | AttachmentContent
-  | SkillContent
-  | ToolContent
-  | CanvasContent
+  TextContent | AttachmentContent | SkillContent | ToolContent | CanvasContent | PptContent
 /** 思考强度（DeepSeek 思考模式）：low / high / max，默认 high */
 export type ThinkingEffort = 'low' | 'high' | 'max'
 export interface UserMessage extends ChatBaseMessage {

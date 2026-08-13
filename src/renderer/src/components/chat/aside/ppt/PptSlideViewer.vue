@@ -20,6 +20,12 @@
       >
         重置
       </t-button>
+      <template v-if="selectedNode">
+        <t-button theme="primary" size="small" @click="confirmPick">引用此节点</t-button>
+        <t-button variant="text" size="small" title="取消选中" @click="clearSelection"
+          >取消</t-button
+        >
+      </template>
     </div>
     <div
       ref="_viewportRef"
@@ -30,25 +36,32 @@
       @pointermove="handlePointerMove"
       @pointerup="handlePointerUp"
       @pointercancel="handlePointerUp"
+      @click="handleClick"
     >
       <div v-if="renderState === 'rendering'" class="ppt-slide-viewer__loading">渲染中…</div>
-      <img
-        v-else-if="currentSvg"
-        :src="currentSvg"
+      <div
+        v-else-if="svg"
+        class="ppt-slide-viewer__svg-wrap"
         :style="{ transform: transformStyle }"
-        class="ppt-slide-viewer__img"
-        draggable="false"
-        alt="幻灯片"
-      />
+      >
+        <div ref="svgHostRef" class="ppt-slide-viewer__svg-host"></div>
+      </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import type { PptRenderState } from '@/modules/ppt/pptTypes'
+import { computed, ref } from 'vue'
+import type { PptRenderState, SlideNode } from '@/modules/ppt/pptTypes'
 import { usePptPanZoom } from './usePptPanZoom'
+import { usePptNodePick, CLICK_DRAG_THRESHOLD } from './usePptNodePick'
 
 const props = defineProps<{
-  currentSvg?: string
+  /** 当前页 SVG 字符串（主进程 textOutput:'text' 渲染，含 <text> 可做节点映射） */
+  svg?: string
+  /** 当前页 JSON 根节点数组（映射与回填引用用） */
+  nodes?: SlideNode[]
+  /** 当前 PPT 文件标识（回填引用用） */
+  pptId?: string
   renderState: PptRenderState
   page: number
   total: number
@@ -62,6 +75,7 @@ const emit = defineEmits<{
 const {
   viewportRef: _viewportRef,
   isDragging,
+  dragDistance,
   isScaled,
   scalePercent,
   transformStyle,
@@ -72,11 +86,36 @@ const {
   handlePointerUp
 } = usePptPanZoom()
 
-/** 页码与父级（缩略图导航 / store.currentPage）双向联动 */
+const svgHostRef = ref<HTMLElement | null>(null)
+
+const svg = computed(() => props.svg)
+const slide = computed(() => props.nodes)
+const pptId = computed(() => props.pptId)
 const page = computed({
   get: () => props.page,
   set: (value) => emit('update:page', value)
 })
+
+const {
+  selected: selectedNode,
+  handleViewportClick,
+  confirmPick,
+  clearSelection
+} = usePptNodePick({
+  svg,
+  slide,
+  pptId,
+  page,
+  svgHostRef
+})
+
+/** 区分平移拖拽：位移超过阈值视为拖拽，不触发点选 */
+const handleClick = (e: MouseEvent) => {
+  const isDrag = dragDistance.value >= CLICK_DRAG_THRESHOLD
+  dragDistance.value = 0
+  if (isDrag) return
+  handleViewportClick(e)
+}
 </script>
 <style scoped lang="less">
 .ppt-slide-viewer {
@@ -144,15 +183,36 @@ const page = computed({
     font-size: var(--td-font-size-body-small);
   }
 
-  &__img {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
+  &__svg-wrap {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transform-origin: center;
-    box-shadow: var(--td-shadow-2);
-    border-radius: var(--td-radius-small);
-    background: #fff;
+  }
+
+  &__svg-host {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      box-shadow: var(--td-shadow-2);
+      border-radius: var(--td-radius-small);
+      background: #fff;
+
+      [data-node-id] {
+        cursor: pointer;
+      }
+    }
   }
 }
 </style>

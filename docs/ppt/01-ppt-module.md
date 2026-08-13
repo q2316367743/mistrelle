@@ -33,13 +33,14 @@ await pptx.writeFile({ fileName: 'presentation.pptx' }) // 或 write('arraybuffe
 
 依赖全部为纯 JS / WASM，**无 native 二进制**：
 
-| 依赖 | 用途 | 浏览器友好性 |
-|---|---|---|
-| `yoga-layout@3.2.1` | flexbox 布局（wasm） | ✅ bundler 友好（`yoga-layout/load`） |
-| `@resvg/resvg-wasm@^2.6.2` | SVG → PNG（渲染 icon / svg 节点） | ⚠️ POM 内部用 Node-only 加载器，见 §2.4 |
-| `jszip` / `fast-xml-parser` / `zod` / `opentype.js` / `image-size` / `@pptx-glimpse/document` | 打包 / 解析 / 校验 / 字体 / 图片尺寸 | ✅ |
+| 依赖                                                                                          | 用途                                 | 浏览器友好性                            |
+| --------------------------------------------------------------------------------------------- | ------------------------------------ | --------------------------------------- |
+| `yoga-layout@3.2.1`                                                                           | flexbox 布局（wasm）                 | ✅ bundler 友好（`yoga-layout/load`）   |
+| `@resvg/resvg-wasm@^2.6.2`                                                                    | SVG → PNG（渲染 icon / svg 节点）    | ⚠️ POM 内部用 Node-only 加载器，见 §2.4 |
+| `jszip` / `fast-xml-parser` / `zod` / `opentype.js` / `image-size` / `@pptx-glimpse/document` | 打包 / 解析 / 校验 / 字体 / 图片尺寸 | ✅                                      |
 
 运行要求：
+
 - **`engines: node >= 22`**（Node 22 硬性声明）
 - **ESM-only**：`exports` 只有 `import` 条件，**无 CJS 构建**；另有子路径 `@hirokisakabe/pom/clientApi`（仅聚合导出 `parseXml` / `serializeXml` / `ParseXmlError`，环境无关）。
 - `buildPptx` 本身不碰文件系统，`pptx.write()` 支持 `arraybuffer / base64 / blob / nodebuffer` 等输出类型（浏览器可用 Blob 分支）。
@@ -60,11 +61,11 @@ pom XML → buildPptx() → PPTX 字节 → convertPptxToSvg()（pptx-glimpse �
 
 即便纯 JS+WASM，源码级扫描发现 3 处 Node API 泄漏，**浏览器直跑不可行或需打补丁**：
 
-| # | 文件 | 问题 |
-|---|---|---|
-| 1 | `shared/measureImage.js`、`renderPptx/utils/glimpsePicture.js` | **静态 `import * as fs from 'fs'`**（Vite externalize 成空桩）；`Buffer.from` 无保护使用（需 polyfill） |
-| 2 | `icons/renderIcon.js` | resvg wasm 加载是 **Node-only**：`import('node:module')`(createRequire) + `require.resolve('@resvg/resvg-wasm/index_bg.wasm')` |
-| 3 | `renderPptx/writablePptx.js` | `writeFile()` 里 `await import('node:fs/promises')`（浏览器分支走 downloadInBrowser，可避开） |
+| #   | 文件                                                           | 问题                                                                                                                           |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `shared/measureImage.js`、`renderPptx/utils/glimpsePicture.js` | **静态 `import * as fs from 'fs'`**（Vite externalize 成空桩）；`Buffer.from` 无保护使用（需 polyfill）                        |
+| 2   | `icons/renderIcon.js`                                          | resvg wasm 加载是 **Node-only**：`import('node:module')`(createRequire) + `require.resolve('@resvg/resvg-wasm/index_bg.wasm')` |
+| 3   | `renderPptx/writablePptx.js`                                   | `writeFile()` 里 `await import('node:fs/promises')`（浏览器分支走 downloadInBrowser，可避开）                                  |
 
 其中 **#2 是硬伤**：`registry/definitions/icon.js` 在**布局阶段**就调用 `rasterizeIcon()`，任何含 `<Icon>` 节点的 deck 在浏览器必然抛错（动态 `import('node:module')` 无解）。而 icon 是 POM 的核心卖点（内置 lucide 图标库），AI 生成 PPT 大概率使用 → **生成侧必须放 Node 环境**。
 
@@ -83,12 +84,12 @@ pom XML → buildPptx() → PPTX 字节 → convertPptxToSvg()（pptx-glimpse �
 
 ### 3.2 升级 Electron 后的简化点
 
-| 项 | uTools 7.8（旧） | Electron 最新版（新） |
-|---|---|---|
-| Node 版本 | 16.17 | ≥ 22（满足 POM engines） |
-| 模块系统 | preload 必须 CJS | preload 支持 ESM；主进程 / Node 侧原生 ESM |
-| fetch | 无 | ✅ 原生 |
-| POM 部署 | esbuild CJS bundle + wasm shim | **直接 npm 依赖**，无需任何打包补丁 |
+| 项        | uTools 7.8（旧）               | Electron 最新版（新）                      |
+| --------- | ------------------------------ | ------------------------------------------ |
+| Node 版本 | 16.17                          | ≥ 22（满足 POM engines）                   |
+| 模块系统  | preload 必须 CJS               | preload 支持 ESM；主进程 / Node 侧原生 ESM |
+| fetch     | 无                             | ✅ 原生                                    |
+| POM 部署  | esbuild CJS bundle + wasm shim | **直接 npm 依赖**，无需任何打包补丁        |
 
 ### 3.3 推荐架构（升级后）
 
@@ -126,19 +127,19 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 
 **契约模型**：一个 PPT = 一个文件（`outputs/{name}.ppt.json`，AI 指定文件名）。`ppt_create` 定文件名 + `theme` 色板（0 页）→ `ppt_add_slide` 逐页添加 → `ppt_batch_edit` 编辑页内元素；后续编辑**原地写回**，不产生版本文件（用户要新版本时再 create 新文件）。一个文件的多个 slide 页面对应 canvas 的「一组图片」。
 
-| 工具 | 参数 | 说明 |
-|---|---|---|
-| `ppt_create` | `name`（必填）、`theme?`（token→颜色对象） | 创建文件（含 theme 色板，0 页），返回文件标识；重名报错 |
-| `ppt_add_slide` | `pptId?`、`elements?` | 文件末尾加页（缺省空白页），返回 **1 起始**页索引 |
-| `ppt_batch_edit` | `pptId?`、`slideId`（1 起始）、`elements`（SlideNode JSON 数组） | 替换指定页内容（整页覆盖） |
-| `ppt_list` | - | 列出沙盒 outputs/ 下 PPT 文件 |
-| `ppt_open` | `pptId` | 打开指定文件为当前（驱动侧边栏/渲染器切换） |
-| `ppt_read` | `pptId?`、`slideId?` | 读文件完整 JSON（或指定页 SlideNode 元素数组），附渲染状态/错误 |
-| `ppt_select` | `page: number`（1 起始） | 预览定位（设置 currentPage，渲染器跳转；越界给错误反馈） |
-| `ppt_delete` | `pptId` | 删除文件 |
-| `ppt_export_pptx` | `pptId?`、`path?` | 导出 PPTX（缺省写沙盒 outputs/） |
-| `ppt_export_png` | `pptId?`、`path?`、`page?` | 导出 PNG（缺省写沙盒 outputs/，`page` 缺省导出全部页） |
-| `ppt_guidelines` | `topic` | 按 topic 读取经验指南（layout / nodes / styling / json / workflow，见 03 文档） |
+| 工具              | 参数                                                             | 说明                                                                            |
+| ----------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `ppt_create`      | `name`（必填）、`theme?`（token→颜色对象）                       | 创建文件（含 theme 色板，0 页），返回文件标识；重名报错                         |
+| `ppt_add_slide`   | `pptId?`、`elements?`                                            | 文件末尾加页（缺省空白页），返回 **1 起始**页索引                               |
+| `ppt_batch_edit`  | `pptId?`、`slideId`（1 起始）、`elements`（SlideNode JSON 数组） | 替换指定页内容（整页覆盖）                                                      |
+| `ppt_list`        | -                                                                | 列出沙盒 outputs/ 下 PPT 文件                                                   |
+| `ppt_open`        | `pptId`                                                          | 打开指定文件为当前（驱动侧边栏/渲染器切换）                                     |
+| `ppt_read`        | `pptId?`、`slideId?`                                             | 读文件完整 JSON（或指定页 SlideNode 元素数组），附渲染状态/错误                 |
+| `ppt_select`      | `page: number`（1 起始）                                         | 预览定位（设置 currentPage，渲染器跳转；越界给错误反馈）                        |
+| `ppt_delete`      | `pptId`                                                          | 删除文件                                                                        |
+| `ppt_export_pptx` | `pptId?`、`path?`                                                | 导出 PPTX（缺省写沙盒 outputs/）                                                |
+| `ppt_export_png`  | `pptId?`、`path?`、`page?`                                       | 导出 PNG（缺省写沙盒 outputs/，`page` 缺省导出全部页）                          |
+| `ppt_guidelines`  | `topic`                                                          | 按 topic 读取经验指南（layout / nodes / styling / json / workflow，见 03 文档） |
 
 ### 5.1 `ppt_batch_edit` 的元素数组规范（SlideNode JSON，TypeBox 严格校验）
 
@@ -155,41 +156,51 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 - `src/components/chat/aside/ppt/PptRenderer.vue`：
   - 全屏（fullscreen）：左侧缩略图栏 + 右侧当前页大图（WPS 左右结构，点击 / hover 预览）；非全屏窄侧边栏隐藏缩略图
   - 顶部页码拖拽条（t-slider 切页）+ 页码指示；`currentPage` 变更自动滚动定位缩略图
-  - 主内容（`PptSlideViewer.vue` + `usePptPanZoom.ts`）：滚轮**围绕鼠标指针缩放**（0.5x ~ 5x，deltaY 方向，指针下内容锚点不动）+ **拖拽平移**（PointerEvent + `setPointerCapture`，移出视口不中断）；工具栏显示缩放百分比 + 「重置」按钮恢复 1x 居中；状态为 CSS transform（`translate(tx,ty) scale(s)`），切页保持缩放（同文件页面尺寸一致）；图片 `max-width/max-height: 100%` + `object-fit: contain` 适配视口
-  - SVG 用 `data:image/svg+xml` 经 `<img>` 渲染（**杜绝 v-html 脚本注入**）
+  - 主内容（`PptSlideViewer.vue` + `usePptPanZoom.ts`）：滚轮**围绕鼠标指针缩放**（0.5x ~ 5x，deltaY 方向，指针下内容锚点不动）+ **拖拽平移**（PointerEvent + `setPointerCapture`，移出视口不中断）；工具栏显示缩放百分比 + 「重置」按钮恢复 1x 居中；状态为 CSS transform（`translate(tx,ty) scale(s)`），切页保持缩放（同文件页面尺寸一致）；SVG `max-width/max-height: 100%` 适配视口
+  - 主图**内联 SVG 渲染**（不再 `<img>`）：主进程渲染加 `textOutput: 'text'`（SVG 输出真实 `<text>` 而非字形 path）；渲染进程 `DOMParser.parseFromString` 解析为 DOM 后挂载（解析产生的脚本不执行，安全，无需 DOMPurify）；缩略图 / hover 大图仍用 `data:image/svg+xml` 经 `<img>` 展示
+  - **节点点选**（`usePptNodePick.ts` + `pptSvgMapping.ts`）：单击选中节点（高亮框追加到 SVG 用户坐标系，随缩放平移同步）→ 工具栏「引用此节点」→ 经 `PPT_NODE_PICK_KEY` 桥注入聊天输入框 `pptMention` 标签 → AI 用 `ppt_edit_element` 按 nodeId 精准编辑（详见 §8）
 - 导出：**主进程构建并直接落盘**（渲染进程只传目标路径，不经手字节）——`window.preload.ppt.exportPptx` / `exportPptxToPngs` 写沙盒 / 用户选择路径。
 
 ## 7. 注册链路与改动文件清单
 
 表驱动注册，无需改 AgentChat 逻辑：
 
-| 层 | 文件 | 动作 |
-|---|---|---|
-| 类型 | `src/modules/chat/chatType.ts` | `ChatType` 加 `'ppt'`；`CHAT_TYPE_OPTIONS` 在 design 后插入「PPT 专家」（图标 `SlideshowIcon`，tdesign 已确认存在） |
-| 配置 | `src/global/ChatTypeConfig.ts` | `CHAT_TYPE_CONFIG` 加 `ppt: { label, prompt, tools }` |
-| 提示词 | `src/modules/ppt/pptPrompt.ts` | PPT 专家提示词 + POM XML 语法精要（16:9 画布、字号层级/留白/对齐铁律、禁止 http 图片） |
-| 工具 | `src/modules/tool/components/ppt/pptTools.ts` | §5 工具集 + `PPT_TOOL_NAMES` + 安全策略 |
-| 状态 | `src/modules/ppt/PptStore.ts` | §4 |
-| 侧边栏 | `src/components/chat/aside/LChatAside.vue` | 加 `v-else-if="type === 'ppt'"` → `PptAside` |
-| 展开 | `src/components/chat/LChatEngine.vue` | asideType 自动展开数组加 `'ppt'` |
-| 沙盒 | `src/modules/chat/service/ChatService.ts` | `aiChatSandbox` 为 ppt 预建 `outputs/` |
-| 渲染 | `src/modules/ppt/pptRender.ts` | 封装 Node 侧渲染调用（IPC），类型声明 |
-| 文档 | `docs/ppt/02-pom-xml-guide.md` | AI 用 XML 语法指南（`ppt_guidelines` 读取） |
+| 层     | 文件                                          | 动作                                                                                                                |
+| ------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 类型   | `src/modules/chat/chatType.ts`                | `ChatType` 加 `'ppt'`；`CHAT_TYPE_OPTIONS` 在 design 后插入「PPT 专家」（图标 `SlideshowIcon`，tdesign 已确认存在） |
+| 配置   | `src/global/ChatTypeConfig.ts`                | `CHAT_TYPE_CONFIG` 加 `ppt: { label, prompt, tools }`                                                               |
+| 提示词 | `src/modules/ppt/pptPrompt.ts`                | PPT 专家提示词 + POM XML 语法精要（16:9 画布、字号层级/留白/对齐铁律、禁止 http 图片）                              |
+| 工具   | `src/modules/tool/components/ppt/pptTools.ts` | §5 工具集 + `PPT_TOOL_NAMES` + 安全策略                                                                             |
+| 状态   | `src/modules/ppt/PptStore.ts`                 | §4                                                                                                                  |
+| 侧边栏 | `src/components/chat/aside/LChatAside.vue`    | 加 `v-else-if="type === 'ppt'"` → `PptAside`                                                                        |
+| 展开   | `src/components/chat/LChatEngine.vue`         | asideType 自动展开数组加 `'ppt'`                                                                                    |
+| 沙盒   | `src/modules/chat/service/ChatService.ts`     | `aiChatSandbox` 为 ppt 预建 `outputs/`                                                                              |
+| 渲染   | `src/modules/ppt/pptRender.ts`                | 封装 Node 侧渲染调用（IPC），类型声明                                                                               |
+| 文档   | `docs/ppt/02-pom-xml-guide.md`                | AI 用 XML 语法指南（`ppt_guidelines` 读取）                                                                         |
 
-## 8. 第一版范围声明（明确不做）
+## 8. 节点引用与精准编辑（已实现）
 
-- ❌ **点击元素选择元素**：不做点击/双击 SVG 元素向输入框注入引用（SVG 用 `<img>` 渲染本就无 DOM 交互）。后续如需，需改 v-html/iframe 渲染 + 绑定事件（参考 design 的 `canvasNodeBridge`）。
+**目标**：用户点选预览中的节点，告诉 AI「改这个节点」，AI 精准修改而不整页重建。
+
+- **节点 id（SlideNode 顶层字段，与 tag 并列）**：创建 / 加载 / 编辑时由 `ensureNodeIds` 用 nanoid 自动生成（`n-` + 10 位），同页内去重；**所有节点（含 Li / Td / TimelineItem 等子元素）都有 id**。id 是纯 JSON 层引用标识：不进 attr、不进 POM XML（`jsonToPomXml` 不写 id），只服务渲染进程节点映射 / 引用与 `ppt_edit_element` 精准编辑；`attr.id`（FlowNode 必填 id / 旧文件 Arrow 端点 id）是 POM 功能型标识，原样保留透传 XML。
+- **映射（`pptSvgMapping.ts`）**：主进程渲染加 `textOutput: 'text'` 使 SVG 含真实 `<text>`；渲染进程把 SVG 顶层 `<g>` 按 POM 前序发射规则对齐到 JSON 节点（确定性形状计数 + Text/Shape 文本校验；复合节点 Timeline/Flow/Tree/Matrix/Pyramid/ProcessArrow 以"下一个文本锚点"为界整体绑定；含 zIndex / Arrow 或校验失败 → 整页不可点降级），就地注入 `data-node-id`。
+- **交互（`PptSlideViewer.vue` + `usePptNodePick.ts`）**：单击选中节点（区分拖拽，阈值 5px）→ 高亮框 → 工具栏「引用此节点」→ 经 `PPT_NODE_PICK_KEY`（`components/chat/ppt/pptNodeBridge.ts`，LChatEngine provide）注入输入框 `pptMention` 标签 → 序列化为 `{ type: 'ppt', data: { pptId, slide, nodeId, label } }`。
+- **AI 闭环**：`agentContext.buildPinnedContext` 识别 ppt 内容类型 → `ppt_edit_element(pptId?, slideId, nodeId, patch)` 按 id 精准编辑（patch = attr 合并 / text 覆盖 / child 替换，结构校验 + 深搜 id）；`ppt_add_slide` / `ppt_batch_edit` 返回 `nodes`（该页全部节点摘要含 id）。
+- 降级：整页替换会使旧 nodeId 失效 → `ppt_edit_element` 报"未找到节点"引导 AI 重读。
+
+## 9. 第一版范围声明（明确不做）
+
 - ❌ **高级设计类 tool**：不接生图 `image_generate`、素材 `icon_svg` / `website_logo`、字体 `font_*`；AI 仅用 POM 内置 lucide 图标、形状、图表、表格节点。图片仅允许 base64 / 沙盒本地文件。
 - ❌ **子 Agent（`SUB_AGENT_ALLOW`）**：不加 ppt 型子 Agent，主 Agent 直用。
 
-## 9. 风险与待验证项
+## 10. 风险与待验证项
 
 - **POC 必做**（实现第一步）：Node ≥ 22 环境装 POM + pptx-glimpse，跑通含 `<Icon>`/`<Chart>` 的 XML → `buildPptx` → `convertPptxToSvg` → SVG 输出；确认 resvg wasm 加载与字体默认值。
 - 锁定 POM 版本（活跃迭代中，升级需回归）。
 - http(s) 图片：Node 侧 `measureImage` 用 fetch（Node 22 有原生 fetch），但跨域/网络失败会兜底 1x1 占位 → prompt 仍建议 base64 / 本地文件。
 - 字体：内置 Noto Sans JP 中文可显示但字形偏日式；后续映射系统字体。
 
-## 10. 实施步骤（升级 Electron 完成后）
+## 11. 实施步骤（升级 Electron 完成后）
 
 1. **POC**：Node 侧跑通「XML → PPTX → SVG」全链路（含 icon）。
 2. Node 侧封装：`pptRender.ts`（IPC 暴露 `renderPptxToSvgs(xml, { w, h }) → Promise<string[]>`）。
@@ -198,27 +209,27 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 5. 注册链路 7 处改动。
 6. `docs/ppt/02-pom-xml-guide.md`（AI 指南）+ 本方案文档转「已实现」状态。
 
-## 11. 参考资料
+## 12. 参考资料
 
 - POM 官网：https://pom.pptx.app （Requires Node.js 22+ / MIT）
 - 仓库：https://github.com/hirokisakabe/pom （monorepo：pom / pom-cli / pom-md / pom-jsx / pom-editor）
 - `@hirokisakabe/pom@10.3.0`（unpkg 源码扫描）、`@hirokisakabe/pom-cli@0.10.0`（preview 链路）、`pptx-glimpse@3.2.8`（browser 构建）
 - uTools 7.8.0 运行时：Electron 22.3.27 / Node 16.17（本机安装包二进制分析 + 官方 preload 文档）
 
-## 12. 实现记录（2026-08，实测差异与补充）
+## 13. 实现记录（2026-08，实测差异与补充）
 
 ### 12.1 已落地的实现
 
-| 项 | 说明 |
-|---|---|
-| 依赖 | `@hirokisakabe/pom@10.3.0` + `pptx-glimpse@3.2.8`（均 `dependencies`，主进程 externalize 后打包进 asar） |
-| 主进程渲染 | `src/main/src/ppt/pptRenderer.ts`（PptJsonDoc → jsonToPomXml → buildPptx → SVG / PPTX 字节 / PNG）+ `src/main/src/ppt/jsonToPomXml.ts`（SlideNode JSON → POM XML 纯函数转换）+ `src/main/src/ipc/pptIpc.ts` |
-| IPC | `PptChannels`：`ppt:renderPptxToSvgs`（PptJsonDoc→每页 SVG）/ `ppt:exportPptx`（PptJsonDoc→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（PptJsonDoc→指定页 PNG 并落盘，preload `window.preload.ppt`）；载荷类型 `SlideNode` / `PptJsonDoc` 定义在 `src/preload/src/channels.ts`（main/preload 共享） |
-| 渲染进程 | `src/renderer/src/modules/ppt/`：`PptStore.ts`（500ms 防抖自动渲染，JSON 存储零 pom）/ `pptTypes.ts`（SlideNode / PptJsonDoc）/ `pptRender.ts` / `pptPrompt.ts` / `pptGuidelines.ts` |
-| 工具 | `src/renderer/src/modules/tool/components/ppt/pptTools.ts`（10 个 ppt_* 工具 + 策略：全 allow，导出工具走 `isPathUnder` 路径感知审批） |
-| UI | `src/components/chat/aside/ppt/PptAside.vue` + `PptRenderer.vue` + `PptSlideViewer.vue` + `usePptPanZoom.ts`（SVG `<img>` 渲染、翻页 / 滚轮缩放（围绕指针）+ 拖拽平移 / 缩略图导航 / 自动滚动定位） |
-| 注册 | `chatType.ts`（ChatType + CHAT_TYPE_OPTIONS，design 后插入，图标 `SlideshowIcon`）/ `ChatTypeConfig.ts` / `LChatAside.vue` / `LChatEngine.vue` / `SUB_AGENT_ALLOW`（ppt 无子 Agent，空数组） |
-| 指南 | `docs/ppt/02-pom-xml-guide.md` + `docs/ppt/03-ppt-experience-guides.md`（layout / nodes / styling 经验指南，`ppt_guidelines` 经 `?raw` 读取；第三版起 topic `pom-xml` 改为 `json`，指南源为 `src/renderer/src/modules/ppt/guidelines/`） |
+| 项         | 说明                                                                                                                                                                                                                                                                                               |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 依赖       | `@hirokisakabe/pom@10.3.0` + `pptx-glimpse@3.2.8`（均 `dependencies`，主进程 externalize 后打包进 asar）                                                                                                                                                                                           |
+| 主进程渲染 | `src/main/src/ppt/pptRenderer.ts`（PptJsonDoc → jsonToPomXml → buildPptx → SVG / PPTX 字节 / PNG）+ `src/main/src/ppt/jsonToPomXml.ts`（SlideNode JSON → POM XML 纯函数转换）+ `src/main/src/ipc/pptIpc.ts`                                                                                        |
+| IPC        | `PptChannels`：`ppt:renderPptxToSvgs`（PptJsonDoc→每页 SVG）/ `ppt:exportPptx`（PptJsonDoc→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（PptJsonDoc→指定页 PNG 并落盘，preload `window.preload.ppt`）；载荷类型 `SlideNode` / `PptJsonDoc` 定义在 `src/preload/src/channels.ts`（main/preload 共享） |
+| 渲染进程   | `src/renderer/src/modules/ppt/`：`PptStore.ts`（500ms 防抖自动渲染，JSON 存储零 pom）/ `pptTypes.ts`（SlideNode / PptJsonDoc）/ `pptRender.ts` / `pptPrompt.ts` / `pptGuidelines.ts`                                                                                                               |
+| 工具       | `src/renderer/src/modules/tool/components/ppt/pptTools.ts`（10 个 ppt_* 工具 + 策略：全 allow，导出工具走 `isPathUnder` 路径感知审批）                                                                                                                                                             |
+| UI         | `src/components/chat/aside/ppt/PptAside.vue` + `PptRenderer.vue` + `PptSlideViewer.vue` + `usePptPanZoom.ts`（SVG `<img>` 渲染、翻页 / 滚轮缩放（围绕指针）+ 拖拽平移 / 缩略图导航 / 自动滚动定位）                                                                                                |
+| 注册       | `chatType.ts`（ChatType + CHAT_TYPE_OPTIONS，design 后插入，图标 `SlideshowIcon`）/ `ChatTypeConfig.ts` / `LChatAside.vue` / `LChatEngine.vue` / `SUB_AGENT_ALLOW`（ppt 无子 Agent，空数组）                                                                                                       |
+| 指南       | `docs/ppt/02-pom-xml-guide.md` + `docs/ppt/03-ppt-experience-guides.md`（layout / nodes / styling 经验指南，`ppt_guidelines` 经 `?raw` 读取；第三版起 topic `pom-xml` 改为 `json`，指南源为 `src/renderer/src/modules/ppt/guidelines/`）                                                           |
 
 ### 12.2 实测差异（相对调研结论）
 
@@ -263,7 +274,7 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 }
 ```
 
-2. **SlideNode 通用结构**：`{ tag, attr, child }`——tag 即 POM XML 标签名（VStack / Text / TimelineItem 等，一一对应），attr 为 `Record<string, string>`（对象属性点表示法展开：`border.color`、`shadow.blur`、`padding.top`），child 为子元素数组或**文本字符串**（Text 节点内容）。结构化数据全部用子元素表达（Table→Tr/Td、Timeline→TimelineItem、Flow→FlowNode/FlowConnection、Ul/Ol→Li 等，POM NODE_METADATA 全支持）；Chart 的 `data`/`chartColors` 为 attr 中的 JSON 字符串（pom 支持 JSON 属性解析）。
+2. **SlideNode 通用结构**：`{ id?, tag, attr, child }`——`id` 为**顶层节点标识**（与 tag 并列，自动生成、所有节点都有，不进 attr/XML），tag 即 POM XML 标签名（VStack / Text / TimelineItem 等，一一对应），attr 为 `Record<string, string>`（对象属性点表示法展开：`border.color`、`shadow.blur`、`padding.top`），child 为子元素数组或**文本字符串**（Text 节点内容）。结构化数据全部用子元素表达（Table→Tr/Td、Timeline→TimelineItem、Flow→FlowNode/FlowConnection、Ul/Ol→Li 等，POM NODE_METADATA 全支持）；Chart 的 `data`/`chartColors` 为 attr 中的 JSON 字符串（pom 支持 JSON 属性解析）。
 
 3. **渲染进程完全排除 pom**：`PptStore.ts` 删除 `parseXml`/`serializeXml`/`POMNode` 依赖，编辑链路为「JSON 读文件 → TypeBox 校验（tag 判别）→ 替换页面数组 → JSON 写回」；`PptCurrentDoc` 从 `{xml}` 改为 `{json: PptJsonDoc}`，watch 依赖 `current.json`；attr 值入站统一 toString（AI 可输出数字/布尔，存储恒为字符串）。
 
@@ -273,9 +284,9 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 
 6. **prompt / guidelines 同步**：`pptPrompt.ts` 改为 SlideNode JSON 规范；`guidelines/` 的 pom-xml.md 重写为 json.md（存储结构速查），topic `pom-xml` → `json`；layout / nodes / styling / workflow 全部改为 attr JSON 写法；内联 runs（`<B>/<Span>` 装饰标签）暂不支持（字符串 child 会转义，装饰用多 Text + HStack 组合，见 12.3 限制）。
 
-### 12.3 已知限制（第一版范围，与 §8 一致）
+### 12.3 已知限制（第一版范围）
 
-- SVG 经 `<img>` + data URI 渲染，无元素级点击交互；图片仅 base64 / 沙盒本地文件；无 ppt 型子 Agent。
+- 节点点选映射对**含 zIndex / Arrow 的页**降级为不可点（POM 发射顺序不可保序）；复合节点（Timeline/Flow/Tree/Matrix/Pyramid/ProcessArrow）整体绑定到整节点（不可细分到子项）；含复合节点且后续跟无文本简单节点的页，其后节点可能被并入复合节点跨度（仍可点，引用整节点）。
 - 渲染失败保留旧图，错误文本记录在 `PptStore.renderError`，AI 经 `ppt_read` 返回值读取自纠。
 - 中文默认用 POM 内置 Noto Sans JP（字形偏日式），后续可映射系统字体（参考 pom-cli `EXTRA_FONT_MAPPING`）。
 - JSON 元素暂不支持内联 runs（`<B>/<Span>` 等装饰标签），复杂装饰建议用纯文本 + 属性表达。

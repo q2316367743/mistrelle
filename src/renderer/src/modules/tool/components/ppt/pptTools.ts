@@ -7,7 +7,14 @@ import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
 import { isPathUnder } from '@/utils/sandbox'
 import { buildPptOutputsDir, exportPptx, exportPptxToPngs, getPptStore } from '@/modules/ppt'
-import { PPT_GUIDELINE_TOPICS, PPT_GUIDELINES, PPT_SLIDE_SIZE, pptElementSchema } from '@/modules/ppt'
+import {
+  PPT_GUIDELINE_TOPICS,
+  PPT_GUIDELINES,
+  PPT_SLIDE_SIZE,
+  pptElementSchema,
+  pptElementPatchSchema
+} from '@/modules/ppt'
+import type { PptElementPatch } from '@/modules/ppt'
 import type { ChatTypeToolContext } from '@/modules/chat/chatType'
 
 const ctxError = (): never => {
@@ -31,7 +38,8 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
         properties: {
           name: {
             type: 'string',
-            description: '文件名（作为文件标识，如「产品发布会」；1-60 字符，中文 / 字母 / 数字 / _ / -）'
+            description:
+              '文件名（作为文件标识，如「产品发布会」；1-60 字符，中文 / 字母 / 数字 / _ / -）'
           },
           theme: {
             type: 'object',
@@ -60,7 +68,8 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
           elements: {
             type: 'array',
             items: pptElementSchema,
-            description: '页面元素数组（每个元素是 SlideNode：{tag, attr, child}；根元素必须用 VStack / HStack 布局容器）'
+            description:
+              '页面元素数组（每个元素是 SlideNode：{tag, attr, child}；根元素必须用 VStack / HStack 布局容器）'
           }
         }
       },
@@ -80,11 +89,15 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
         type: 'object',
         properties: {
           pptId: { type: 'string', description: 'PPT 文件标识（缺省使用当前打开的 PPT）' },
-          slideId: { type: 'number', description: '目标页码（1 起始，ppt_read / ppt_add_slide 获取）' },
+          slideId: {
+            type: 'number',
+            description: '目标页码（1 起始，ppt_read / ppt_add_slide 获取）'
+          },
           elements: {
             type: 'array',
             items: pptElementSchema,
-            description: '该页全部元素（SlideNode JSON 数组，整页替换；根元素必须用 VStack / HStack 布局容器）'
+            description:
+              '该页全部元素（SlideNode JSON 数组，整页替换；根元素必须用 VStack / HStack 布局容器）'
           }
         },
         required: ['slideId', 'elements']
@@ -92,8 +105,39 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const { pptId, slideId, elements } = params[0] as { pptId?: string; slideId: number; elements?: unknown[] }
+        const { pptId, slideId, elements } = params[0] as {
+          pptId?: string
+          slideId: number
+          elements?: unknown[]
+        }
         return store().editSlide(pptId, slideId, elements ?? [])
+      }
+    },
+    {
+      name: 'ppt_edit_element',
+      label: '精准编辑节点',
+      description:
+        '按节点 id（nodeId）精准编辑指定页内单个节点，不动整页。nodeId 来自用户点击节点引用、ppt_read / ppt_add_slide / ppt_batch_edit 返回的 nodes[].id。patch 为任意组合：attr 合并覆盖属性（点表示法键）、text 覆盖文本（仅文本节点）、child 替换子元素数组。找不到节点返回错误（可能已被整页替换，先 ppt_read 重读）',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（缺省使用当前打开的 PPT）' },
+          slideId: { type: 'number', description: '目标页码（1 起始）' },
+          nodeId: { type: 'string', description: '目标节点 id（引用返回 / ppt_read 获取）' },
+          patch: pptElementPatchSchema
+        },
+        required: ['slideId', 'nodeId', 'patch']
+      },
+      internal: true,
+      risk: 'sensitive',
+      handler: async (...params: unknown[]) => {
+        const { pptId, slideId, nodeId, patch } = params[0] as {
+          pptId?: string
+          slideId: number
+          nodeId: string
+          patch: PptElementPatch
+        }
+        return store().editElementById(pptId, slideId, nodeId, patch)
       }
     },
     {
@@ -139,7 +183,8 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       risk: 'safe',
       handler: async (...params: unknown[]) => {
         const { pptId, slideId } = params[0] as { pptId?: string; slideId?: number }
-        const result = slideId != null ? await store().read(pptId, slideId) : await store().read(pptId)
+        const result =
+          slideId != null ? await store().read(pptId, slideId) : await store().read(pptId)
         if (result === null) return { error: '未找到该 PPT（或当前未打开任何 PPT）' }
         return result
       }
@@ -197,7 +242,8 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
         const doc = await store().read(pptId)
         if (doc === null) return { error: '未找到该 PPT（或当前未打开任何 PPT）' }
         if ('error' in doc) return { error: doc.error }
-        const target = path || window.preload.path.join(buildPptOutputsDir(sandboxDir), `${doc.id}.pptx`)
+        const target =
+          path || window.preload.path.join(buildPptOutputsDir(sandboxDir), `${doc.id}.pptx`)
         try {
           const filePath = await exportPptx(doc.content, PPT_SLIDE_SIZE, target)
           return { success: true, path: filePath }
@@ -215,7 +261,10 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
         type: 'object',
         properties: {
           pptId: { type: 'string', description: 'PPT 文件标识（缺省当前打开的 PPT）' },
-          path: { type: 'string', description: '保存路径：单页导出为文件路径，多页导出为目录（缺省沙盒 outputs/）' },
+          path: {
+            type: 'string',
+            description: '保存路径：单页导出为文件路径，多页导出为目录（缺省沙盒 outputs/）'
+          },
           page: { type: 'number', description: '页码（1 起始，缺省导出全部页）' }
         }
       },
@@ -231,9 +280,18 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
           // 单页导出：path 为文件路径；多页导出：path 为目录（每页 page-{n}.png）
           const target =
             page != null
-              ? (path ?? window.preload.path.join(buildPptOutputsDir(sandboxDir), `${doc.id}-page-${page}.png`))
-              : (path || buildPptOutputsDir(sandboxDir))
-          const files = await exportPptxToPngs(doc.content, PPT_SLIDE_SIZE, target, page != null ? [page] : undefined)
+              ? (path ??
+                window.preload.path.join(
+                  buildPptOutputsDir(sandboxDir),
+                  `${doc.id}-page-${page}.png`
+                ))
+              : path || buildPptOutputsDir(sandboxDir)
+          const files = await exportPptxToPngs(
+            doc.content,
+            PPT_SLIDE_SIZE,
+            target,
+            page != null ? [page] : undefined
+          )
           if (!files.length) return { error: `未找到可导出的页面（page: ${page}）` }
           return { success: true, files }
         } catch (err) {
@@ -275,6 +333,7 @@ export const PPT_TOOL_NAMES = [
   'ppt_create',
   'ppt_add_slide',
   'ppt_batch_edit',
+  'ppt_edit_element',
   'ppt_list',
   'ppt_open',
   'ppt_read',
@@ -299,7 +358,11 @@ for (const name of PPT_TOOL_NAMES) {
   })
 }
 
-const exportPathPolicy = (_tool: unknown, args: Record<string, unknown>, ctx: { sandboxDir: string; workspace: string }) => {
+const exportPathPolicy = (
+  _tool: unknown,
+  args: Record<string, unknown>,
+  ctx: { sandboxDir: string; workspace: string }
+) => {
   const path = args.path
   if (typeof path !== 'string' || !path) return 'allow'
   return isPathUnder(path, ctx.sandboxDir) || isPathUnder(path, ctx.workspace) ? 'allow' : 'ask'

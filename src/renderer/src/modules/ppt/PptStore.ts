@@ -10,6 +10,8 @@
 import { ref, watch } from 'vue'
 import { renderPptxToSvgs } from './pptRender'
 import { validatePptElements, validatePptTheme } from './pptSchemas'
+import { ensureNodeIds, findNodeById, validateNodeTree } from './pptNodeId'
+import type { PptElementPatch, PptNodeInfo } from './pptNodeId'
 import type {
   PptCurrentDoc,
   PptFileInfo,
@@ -77,8 +79,27 @@ const normalizeAttrValues = (node: SlideNode): void => {
   if (Array.isArray(node.child)) node.child.forEach(normalizeAttrValues)
 }
 
-/** 页面操作返回（error 或 success + 1 起始 slideId） */
-export type PptPageResult = { error: string } | { success: true; slideId: number; total: number }
+/** 页面操作返回（error 或 success + 1 起始 slideId；nodes 为受影响页全部节点摘要，供 AI 引用 id） */
+export type PptPageResult =
+  | { error: string }
+  | { success: true; slideId: number; total: number; nodes?: PptNodeInfo[]; node?: PptNodeInfo }
+
+/** 深遍历页内节点 → 摘要数组（id + tag + 文本，AI 引用节点用；仅收录带顶层 id 的节点） */
+const collectPageNodes = (page: SlideNode[]): PptNodeInfo[] => {
+  const infos: PptNodeInfo[] = []
+  const walk = (node: SlideNode) => {
+    if (node.id) {
+      infos.push({
+        id: node.id,
+        tag: node.tag,
+        text: typeof node.child === 'string' ? node.child : ''
+      })
+    }
+    if (Array.isArray(node.child)) node.child.forEach(walk)
+  }
+  page.forEach(walk)
+  return infos
+}
 
 export class PptStore {
   /** outputs/ 下的 PPT 文件列表（id = 文件名） */
@@ -130,6 +151,8 @@ export class PptStore {
     const text = await window.preload.fs.readTextFile(path)
     const parsed = parseDoc(text)
     if ('error' in parsed) return null
+    // 旧文件 / AI 手写文件可能缺 id：加载时补齐（内存态；下次写回时随 JSON 落盘）
+    parsed.doc.slide.forEach(ensureNodeIds)
     const doc: PptCurrentDoc = { id, name: buildPptFileName(id), json: parsed.doc }
     this.current.value = doc
     this.currentPage.value = 1
@@ -192,6 +215,8 @@ export class PptStore {
     const parsed = parseDoc(text)
     if ('error' in parsed) return parsed
     const json = parsed.doc
+    // 与 open 一致：读到的 JSON 补齐节点 id（AI 经 ppt_read 拿到 id 后可引用 / ppt_edit_element）
+    json.slide.forEach(ensureNodeIds)
     if (slideId != null) {
       if (!Number.isInteger(slideId) || slideId < 1 || slideId > json.slide.length) {
         return { error: `页码越界：${slideId}（当前共 ${json.slide.length} 页，从 1 开始）` }
@@ -253,8 +278,11 @@ export class PptStore {
    */
   async addSlide(id: string | undefined, elements?: unknown[]): Promise<PptPageResult> {
     return this.withPages(id, (slide) => {
+      // clone 空页占位：避免多页共享同一 EMPTY_SLIDE_NODE 对象（共享会导致 id 被后写覆盖）
       const page =
-        elements && elements.length > 0 ? this.prepareElements(elements) : [EMPTY_SLIDE_NODE]
+        elements && elements.length > 0
+          ? this.prepareElements(elements)
+          : [cloneDeep(EMPTY_SLIDE_NODE)]
       slide.push(page)
       return { success: true, slideId: slide.length, total: slide.length }
     })
@@ -275,6 +303,66 @@ export class PptStore {
       }
       slide[slideId - 1] = this.prepareElements(elements)
       return { success: true, slideId, total: slide.length }
+    })
+  }
+
+  /**
+   * 按节点 id 精准编辑指定页内单个节点（ppt_edit_element 工具用）：
+   * patch.attr 合并属性（点表示法键）；patch.text 覆盖文本（仅 child 为字符串的节点）；
+   * patch.child 替换子元素数组（结构校验通过后写入，自动补 id）。
+   * 对 patch 后的节点做结构校验，失败整体拒绝不落盘；成功原地写回并触发自动渲染。
+   */
+  async editElementById(
+    id: string | undefined,
+    slideId: number,
+    nodeId: string,
+    patch: PptElementPatch
+  ): Promise<
+    { error: string } | { success: true; slideId: number; total: number; node: PptNodeInfo }
+  > {
+    return this.withPages(id, (slide) => {
+      if (!Number.isInteger(slideId) || slideId < 1 || slideId > slide.length) {
+        return { error: `页码越界：${slideId}（当前共 ${slide.length} 页，从 1 开始）` }
+      }
+      const page = slide[slideId - 1]
+      const target = findNodeById(page, nodeId)
+      if (!target) {
+        return {
+          error: `未找到节点「${nodeId}」（第 ${slideId} 页）。该节点可能已被整页替换 / 删除，请先 ppt_read 重读该页获取最新节点 id`
+        }
+      }
+      // 深拷贝 patch 后整体校验，通过再写回（失败整体拒绝，不落盘）
+      const draft = cloneDeep(target)
+      if (patch.attr) {
+        for (const [key, value] of Object.entries(patch.attr)) {
+          if (key === 'id') continue // id 由 ensureNodeIds 管理，禁止通过 patch 篡改
+          draft.attr[key] = String(value)
+        }
+      }
+      if (patch.text !== undefined) {
+        if (typeof draft.child !== 'string') {
+          return {
+            error: `节点「${nodeId}」（${draft.tag}）不是文本节点，无法用 text 更新；如需改内容请用 child 数组替换`
+          }
+        }
+        draft.child = patch.text
+      }
+      if (patch.child !== undefined) {
+        const errors = validateNodeTree(patch.child)
+        if (errors.length) return { error: `节点子元素校验失败：${errors.join('；')}` }
+        draft.child = patch.child
+      }
+      Object.assign(target, draft)
+      return {
+        success: true,
+        slideId,
+        total: slide.length,
+        node: {
+          id: nodeId,
+          tag: target.tag,
+          text: typeof target.child === 'string' ? target.child : ''
+        }
+      }
     })
   }
 
@@ -328,36 +416,43 @@ export class PptStore {
    * 页面操作公共链路：打开文件（pptId 缺省当前）→ JSON 解析 → 应用操作 →
    * JSON 写回（原地更新，不产生新版本）；操作抛错则整体拒绝。
    */
-  private async withPages(
+  private async withPages<T extends PptPageResult>(
     id: string | undefined,
-    apply: (slide: SlideNode[][]) => PptPageResult
-  ): Promise<PptPageResult> {
+    apply: (slide: SlideNode[][]) => T
+  ): Promise<T> {
     const doc = this.current.value
     const targetId = id ?? doc?.id
-    if (!targetId) return { error: '未指定 PPT，且当前没有打开的 PPT（先 ppt_create 或 ppt_open）' }
+    if (!targetId)
+      return { error: '未指定 PPT，且当前没有打开的 PPT（先 ppt_create 或 ppt_open）' } as T
     const path = window.preload.path.join(
       buildPptOutputsDir(this.sandboxDir),
       buildPptFileName(targetId)
     )
     if (!window.preload.fs.existsSync(path)) {
-      return { error: `未找到 PPT「${targetId}」` }
+      return { error: `未找到 PPT「${targetId}」` } as T
     }
     let text: string
     try {
       text = await window.preload.fs.readTextFile(path)
     } catch (err) {
-      return { error: `读取失败：${errorText(err)}` }
+      return { error: `读取失败：${errorText(err)}` } as T
     }
     const parsed = parseDoc(text)
-    if ('error' in parsed) return parsed
+    if ('error' in parsed) return parsed as T
     const json = parsed.doc
-    let result: PptPageResult
+    let result: T
     try {
       result = apply(json.slide)
     } catch (err) {
-      return { error: errorText(err) }
+      return { error: errorText(err) } as T
     }
     if ('error' in result) return result
+    // 写回前为全部页面补齐节点 id（新元素 / 旧文件统一），并把受影响页节点摘要返回给 AI 引用
+    json.slide.forEach(ensureNodeIds)
+    if (result.slideId >= 1 && result.slideId <= json.slide.length) {
+      const enriched = result as PptPageResult & { nodes?: PptNodeInfo[] }
+      enriched.nodes = collectPageNodes(json.slide[result.slideId - 1])
+    }
     json.updatedAt = Date.now()
     try {
       await this.persist({ id: targetId, name: buildPptFileName(targetId), json })
@@ -366,7 +461,7 @@ export class PptStore {
         this.current.value = { id: targetId, name: buildPptFileName(targetId), json }
       }
     } catch (err) {
-      return { error: `写入失败：${errorText(err)}` }
+      return { error: `写入失败：${errorText(err)}` } as T
     }
     return result
   }

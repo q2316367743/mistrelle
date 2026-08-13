@@ -6,11 +6,12 @@
  * 公共属性见 pptCommonSchemas.ts；与基本节点（pptElementSchemas.ts）组成递归联合。
  */
 import { Type } from '@sinclair/typebox'
-import { borderAttrs, childUnion, commonAttrs, textAttrs } from './pptCommonSchemas'
+import { borderAttrs, childUnion, commonAttrs, nodeIdProp, textAttrs } from './pptCommonSchemas'
 
 export const buildTableNode = (Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Table'),
       attr: Type.Object(
         {
@@ -26,6 +27,7 @@ export const buildTableNode = (Self: unknown) =>
             [
               Type.Object(
                 {
+                  ...nodeIdProp,
                   tag: Type.Literal('Col'),
                   attr: Type.Object(
                     {
@@ -39,12 +41,17 @@ export const buildTableNode = (Self: unknown) =>
               ),
               Type.Object(
                 {
+                  ...nodeIdProp,
                   tag: Type.Literal('Tr'),
-                  attr: Type.Object({ height: Type.Optional(Type.Number({ description: '行高' })) }, { additionalProperties: false }),
+                  attr: Type.Object(
+                    { height: Type.Optional(Type.Number({ description: '行高' })) },
+                    { additionalProperties: false }
+                  ),
                   child: Type.Optional(
                     Type.Array(
                       Type.Object(
                         {
+                          ...nodeIdProp,
                           tag: Type.Literal('Td'),
                           attr: Type.Object(
                             {
@@ -71,25 +78,40 @@ export const buildTableNode = (Self: unknown) =>
         )
       )
     },
-    { additionalProperties: false, description: 'Table 表格节点（Tr/Td 子元素形式，POM 自动补 columns）' }
+    {
+      additionalProperties: false,
+      description: 'Table 表格节点（Tr/Td 子元素形式，POM 自动补 columns）'
+    }
   )
 
 export const buildChartNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Chart'),
       attr: Type.Object(
         {
           chartType: Type.Union(
-            [Type.Literal('bar'), Type.Literal('line'), Type.Literal('pie'), Type.Literal('area'), Type.Literal('doughnut'), Type.Literal('radar')],
+            [
+              Type.Literal('bar'),
+              Type.Literal('line'),
+              Type.Literal('pie'),
+              Type.Literal('area'),
+              Type.Literal('doughnut'),
+              Type.Literal('radar')
+            ],
             { description: '图表类型' }
           ),
           title: Type.Optional(Type.String()),
           showTitle: Type.Optional(Type.Boolean()),
           showLegend: Type.Optional(Type.Boolean()),
-          chartColors: Type.Optional(Type.String({ description: '系列颜色 JSON 数组字符串，如 ["#FF6B6B","#4ECDC4"]' })),
+          chartColors: Type.Optional(
+            Type.String({ description: '系列颜色 JSON 数组字符串，如 ["#FF6B6B","#4ECDC4"]' })
+          ),
           sparkline: Type.Optional(Type.Boolean({ description: '迷你图表（隐藏坐标轴/图例）' })),
-          radarStyle: Type.Optional(Type.Union([Type.Literal('standard'), Type.Literal('marker'), Type.Literal('filled')])),
+          radarStyle: Type.Optional(
+            Type.Union([Type.Literal('standard'), Type.Literal('marker'), Type.Literal('filled')])
+          ),
           data: Type.Optional(
             Type.String({
               description:
@@ -107,10 +129,13 @@ export const buildChartNode = (_Self: unknown) =>
 export const buildTimelineNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Timeline'),
       attr: Type.Object(
         {
-          direction: Type.Optional(Type.Union([Type.Literal('horizontal'), Type.Literal('vertical')])),
+          direction: Type.Optional(
+            Type.Union([Type.Literal('horizontal'), Type.Literal('vertical')])
+          ),
           dateColor: Type.Optional(Type.String()),
           titleColor: Type.Optional(Type.String()),
           descriptionColor: Type.Optional(Type.String()),
@@ -126,6 +151,7 @@ export const buildTimelineNode = (_Self: unknown) =>
         Type.Array(
           Type.Object(
             {
+              ...nodeIdProp,
               tag: Type.Literal('TimelineItem'),
               attr: Type.Object(
                 {
@@ -150,10 +176,13 @@ export const buildTimelineNode = (_Self: unknown) =>
 export const buildFlowNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Flow'),
       attr: Type.Object(
         {
-          direction: Type.Optional(Type.Union([Type.Literal('horizontal'), Type.Literal('vertical')])),
+          direction: Type.Optional(
+            Type.Union([Type.Literal('horizontal'), Type.Literal('vertical')])
+          ),
           nodeWidth: Type.Optional(Type.Number({ description: '节点宽（默认 120）' })),
           nodeHeight: Type.Optional(Type.Number({ description: '节点高（默认 60）' })),
           nodeGap: Type.Optional(Type.Number({ description: '节点间距（默认 80）' })),
@@ -171,11 +200,17 @@ export const buildFlowNode = (_Self: unknown) =>
             [
               Type.Object(
                 {
+                  ...nodeIdProp,
                   tag: Type.Literal('FlowNode'),
                   attr: Type.Object(
                     {
                       id: Type.String({ description: '节点 id（必填，连接引用）' }),
-                      shape: Type.Optional(Type.String({ description: 'flowChartProcess / flowChartDecision / flowChartTerminator 等' })),
+                      shape: Type.Optional(
+                        Type.String({
+                          description:
+                            'flowChartProcess / flowChartDecision / flowChartTerminator 等'
+                        })
+                      ),
                       text: Type.String({ description: '节点文本（必填）' }),
                       color: Type.Optional(Type.String()),
                       textColor: Type.Optional(Type.String()),
@@ -189,6 +224,7 @@ export const buildFlowNode = (_Self: unknown) =>
               ),
               Type.Object(
                 {
+                  ...nodeIdProp,
                   tag: Type.Literal('FlowConnection'),
                   attr: Type.Object(
                     {
@@ -215,6 +251,7 @@ export const buildFlowNode = (_Self: unknown) =>
 const treeItemSchema = (Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('TreeItem'),
       attr: Type.Object(
         {
@@ -232,11 +269,14 @@ const treeItemSchema = (Self: unknown) =>
 export const buildTreeNode = (Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Tree'),
       attr: Type.Object(
         {
           layout: Type.Optional(Type.Union([Type.Literal('vertical'), Type.Literal('horizontal')])),
-          nodeShape: Type.Optional(Type.Union([Type.Literal('rect'), Type.Literal('roundRect'), Type.Literal('ellipse')])),
+          nodeShape: Type.Optional(
+            Type.Union([Type.Literal('rect'), Type.Literal('roundRect'), Type.Literal('ellipse')])
+          ),
           textColor: Type.Optional(Type.String({ description: '节点文本色（默认 FFFFFF）' })),
           nodeWidth: Type.Optional(Type.Number({ description: '节点宽（默认 120）' })),
           nodeHeight: Type.Optional(Type.Number({ description: '节点高（默认 40）' })),
@@ -248,7 +288,9 @@ export const buildTreeNode = (Self: unknown) =>
         },
         { additionalProperties: false }
       ),
-      child: Type.Optional(Type.Array(treeItemSchema(Self), { description: '根节点（通常 1 个 TreeItem）' }))
+      child: Type.Optional(
+        Type.Array(treeItemSchema(Self), { description: '根节点（通常 1 个 TreeItem）' })
+      )
     },
     { additionalProperties: false, description: 'Tree 树形结构节点（TreeItem 递归）' }
   )
@@ -256,6 +298,7 @@ export const buildTreeNode = (Self: unknown) =>
 export const buildMatrixNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Matrix'),
       attr: Type.Object(
         {
@@ -272,9 +315,13 @@ export const buildMatrixNode = (_Self: unknown) =>
             [
               Type.Object(
                 {
+                  ...nodeIdProp,
                   tag: Type.Literal('MatrixAxes'),
                   attr: Type.Object(
-                    { x: Type.String({ description: 'x 轴标签' }), y: Type.String({ description: 'y 轴标签' }) },
+                    {
+                      x: Type.String({ description: 'x 轴标签' }),
+                      y: Type.String({ description: 'y 轴标签' })
+                    },
                     { additionalProperties: false }
                   )
                 },
@@ -282,6 +329,7 @@ export const buildMatrixNode = (_Self: unknown) =>
               ),
               Type.Object(
                 {
+                  ...nodeIdProp,
                   tag: Type.Literal('MatrixQuadrants'),
                   attr: Type.Object(
                     {
@@ -297,6 +345,7 @@ export const buildMatrixNode = (_Self: unknown) =>
               ),
               Type.Object(
                 {
+                  ...nodeIdProp,
                   tag: Type.Literal('MatrixItem'),
                   attr: Type.Object(
                     {
@@ -323,6 +372,7 @@ export const buildMatrixNode = (_Self: unknown) =>
 export const buildPyramidNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Pyramid'),
       attr: Type.Object(
         {
@@ -338,6 +388,7 @@ export const buildPyramidNode = (_Self: unknown) =>
         Type.Array(
           Type.Object(
             {
+              ...nodeIdProp,
               tag: Type.Literal('PyramidLevel'),
               attr: Type.Object(
                 {
@@ -360,10 +411,13 @@ export const buildPyramidNode = (_Self: unknown) =>
 export const buildProcessArrowNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('ProcessArrow'),
       attr: Type.Object(
         {
-          direction: Type.Optional(Type.Union([Type.Literal('horizontal'), Type.Literal('vertical')])),
+          direction: Type.Optional(
+            Type.Union([Type.Literal('horizontal'), Type.Literal('vertical')])
+          ),
           itemWidth: Type.Optional(Type.Number({ description: '步骤宽（默认 150）' })),
           itemHeight: Type.Optional(Type.Number({ description: '步骤高（默认 80）' })),
           gap: Type.Optional(Type.Number({ description: '间距（默认重叠）' })),
@@ -377,6 +431,7 @@ export const buildProcessArrowNode = (_Self: unknown) =>
         Type.Array(
           Type.Object(
             {
+              ...nodeIdProp,
               tag: Type.Literal('ProcessArrowStep'),
               attr: Type.Object(
                 {
@@ -402,11 +457,16 @@ const { w: _svgW, h: _svgH, ...svgCommonAttrs } = commonAttrs
 export const buildSvgNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Svg'),
       attr: Type.Object(
         {
-          w: Type.Optional(Type.Number({ description: 'SVG 宽度（px，**仅接受数字**，不支持 max / 百分比）' })),
-          h: Type.Optional(Type.Number({ description: 'SVG 高度（px，**仅接受数字**，不支持 max / 百分比）' })),
+          w: Type.Optional(
+            Type.Number({ description: 'SVG 宽度（px，**仅接受数字**，不支持 max / 百分比）' })
+          ),
+          h: Type.Optional(
+            Type.Number({ description: 'SVG 高度（px，**仅接受数字**，不支持 max / 百分比）' })
+          ),
           svgContent: Type.Optional(Type.String({ description: '内联 SVG 内容' })),
           color: Type.Optional(Type.String({ description: '统一着色（stroke）' })),
           ...svgCommonAttrs

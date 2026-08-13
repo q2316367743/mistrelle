@@ -7,6 +7,7 @@ import type {
   AIMessageContent,
   CanvasContent,
   ChatMessage,
+  PptContent,
   SkillContent,
   TextContent,
   ToolCallContent,
@@ -64,16 +65,14 @@ const appendAssistantStep = (
   }
   if (reasoning) assistantMessage.reasoning_content = reasoning
   if (toolContents.length > 0) {
-    assistantMessage.tool_calls = toolContents.map(
-      (item): ChatCompletionMessageToolCall => ({
-        id: item.data.toolCallId,
-        type: 'function',
-        function: {
-          name: item.data.toolCallName,
-          arguments: slimToolArgs(item.data.toolCallName, item.data.args)
-        }
-      })
-    )
+    assistantMessage.tool_calls = toolContents.map((item): ChatCompletionMessageToolCall => ({
+      id: item.data.toolCallId,
+      type: 'function',
+      function: {
+        name: item.data.toolCallName,
+        arguments: slimToolArgs(item.data.toolCallName, item.data.args)
+      }
+    }))
   }
   out.push(assistantMessage)
 
@@ -127,18 +126,25 @@ const buildPinnedContext = (msg: ChatMessage): string => {
   const skills = msg.content.filter((c): c is SkillContent => c.type === 'skill')
   const tools = msg.content.filter((c): c is ToolContent => c.type === 'tool')
   const canvases = msg.content.filter((c): c is CanvasContent => c.type === 'canvas')
-  if (skills.length === 0 && tools.length === 0 && canvases.length === 0) return ''
+  const ppts = msg.content.filter((c): c is PptContent => c.type === 'ppt')
+  if (skills.length === 0 && tools.length === 0 && canvases.length === 0 && ppts.length === 0)
+    return ''
 
   const parts: string[] = []
   if (skills.length > 0) {
     const list = skills
-      .map((s) => `- Skill「${s.data.name}」：请调用 load_skill("${s.data.name}") 加载完整指令并严格遵循`)
+      .map(
+        (s) =>
+          `- Skill「${s.data.name}」：请调用 load_skill("${s.data.name}") 加载完整指令并严格遵循`
+      )
       .join('\n')
     parts.push(`用户在本条消息中指定了以下 Skill，请直接加载并遵循（无需再确认）：\n${list}`)
   }
   if (tools.length > 0) {
     const list = tools
-      .map((t) => `- 工具「${t.data.label}」（调用名 ${t.data.name}）：请直接调用 ${t.data.name} 执行`)
+      .map(
+        (t) => `- 工具「${t.data.label}」（调用名 ${t.data.name}）：请直接调用 ${t.data.name} 执行`
+      )
       .join('\n')
     parts.push(`用户在本条消息中指定了以下工具，请直接调用（无需再确认）：\n${list}`)
   }
@@ -151,6 +157,15 @@ const buildPinnedContext = (msg: ChatMessage): string => {
       .join('\n')
     parts.push(`用户在本条消息中指定了以下画布节点，请先打开画布定位节点，再按需修改：\n${list}`)
   }
+  if (ppts.length > 0) {
+    const list = ppts
+      .map(
+        (p) =>
+          `- PPT 节点：PPT「${p.data.pptId}」第 ${p.data.slide} 页中的节点 ${p.data.nodeId}（文本 ${p.data.label ?? '(非文本节点)'}）：请先 ppt_open("${p.data.pptId}") 打开，再用 ppt_edit_element 精准编辑该节点（slideId=${p.data.slide}，nodeId=${p.data.nodeId}）`
+      )
+      .join('\n')
+    parts.push(`用户在本条消息中指定了以下 PPT 节点，请定位后只修改该节点、不要整页重建：\n${list}`)
+  }
   return parts.join('\n\n')
 }
 
@@ -160,7 +175,9 @@ export const toAgentRequestMessages = (
   activeReferenceContext = ''
 ): ChatCompletionMessageParam[] => {
   const out: ChatCompletionMessageParam[] = []
-  const activeAssistantIndex = messages.findIndex((message) => message.id === activeAssistantMessageId)
+  const activeAssistantIndex = messages.findIndex(
+    (message) => message.id === activeAssistantMessageId
+  )
   const activeUserIndex = activeAssistantIndex > 0 ? activeAssistantIndex - 1 : -1
 
   for (const [index, message] of messages.entries()) {

@@ -6,7 +6,14 @@
  */
 import { Type } from '@sinclair/typebox'
 import type { TSchema } from '@sinclair/typebox'
-import { childUnion, commonAttrs, glowAttrs, outlineAttrs, textAttrs } from './pptCommonSchemas'
+import {
+  childUnion,
+  commonAttrs,
+  glowAttrs,
+  nodeIdProp,
+  outlineAttrs,
+  textAttrs
+} from './pptCommonSchemas'
 import {
   buildTableNode,
   buildChartNode,
@@ -22,6 +29,7 @@ import {
 export const buildTextNode = (Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Text'),
       attr: Type.Object(
         {
@@ -35,20 +43,33 @@ export const buildTextNode = (Self: unknown) =>
       ),
       child: childUnion(Self)
     },
-    { additionalProperties: false, description: 'Text 文本节点（默认字号 24、行距 1.3、字体 Noto Sans JP；文本写在 child 字符串）' }
+    {
+      additionalProperties: false,
+      description:
+        'Text 文本节点（默认字号 24、行距 1.3、字体 Noto Sans JP；文本写在 child 字符串）'
+    }
   )
 
 export const buildStackNode = (type: 'VStack' | 'HStack', Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal(type),
       attr: Type.Object(
         {
           gap: Type.Optional(Type.Number({ description: '子元素间距' })),
           alignItems: Type.Optional(
-            Type.Union([Type.Literal('start'), Type.Literal('center'), Type.Literal('end'), Type.Literal('stretch')], {
-              description: '交叉轴对齐（默认 stretch）'
-            })
+            Type.Union(
+              [
+                Type.Literal('start'),
+                Type.Literal('center'),
+                Type.Literal('end'),
+                Type.Literal('stretch')
+              ],
+              {
+                description: '交叉轴对齐（默认 stretch）'
+              }
+            )
           ),
           justifyContent: Type.Optional(
             Type.Union(
@@ -64,9 +85,12 @@ export const buildStackNode = (type: 'VStack' | 'HStack', Self: unknown) =>
             )
           ),
           flexWrap: Type.Optional(
-            Type.Union([Type.Literal('nowrap'), Type.Literal('wrap'), Type.Literal('wrapReverse')], {
-              description: '换行（默认 nowrap）'
-            })
+            Type.Union(
+              [Type.Literal('nowrap'), Type.Literal('wrap'), Type.Literal('wrapReverse')],
+              {
+                description: '换行（默认 nowrap）'
+              }
+            )
           ),
           ...commonAttrs
         },
@@ -83,15 +107,23 @@ export const buildStackNode = (type: 'VStack' | 'HStack', Self: unknown) =>
 export const buildIconNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Icon'),
       attr: Type.Object(
         {
-          name: Type.String({ description: 'lucide 图标名，如 rocket / check-circle / trending-up' }),
+          name: Type.String({
+            description: 'lucide 图标名，如 rocket / check-circle / trending-up'
+          }),
           size: Type.Optional(Type.Number({ description: '图标尺寸（默认 24）' })),
           color: Type.Optional(Type.String({ description: '图标色（默认 #000000）' })),
           variant: Type.Optional(
             Type.Union(
-              [Type.Literal('circle-filled'), Type.Literal('circle-outlined'), Type.Literal('square-filled'), Type.Literal('square-outlined')],
+              [
+                Type.Literal('circle-filled'),
+                Type.Literal('circle-outlined'),
+                Type.Literal('square-filled'),
+                Type.Literal('square-outlined')
+              ],
               { description: '带底色变体' }
             )
           ),
@@ -107,12 +139,17 @@ export const buildIconNode = (_Self: unknown) =>
 export const buildShapeNode = (Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Shape'),
       attr: Type.Object(
         {
-          shapeType: Type.String({ description: '形状类型：roundRect / ellipse / triangle / diamond / star / heart 等' }),
+          shapeType: Type.String({
+            description: '形状类型：roundRect / ellipse / triangle / diamond / star / heart 等'
+          }),
           'fill.color': Type.Optional(Type.String({ description: '填充色' })),
-          'fill.transparency': Type.Optional(Type.Number({ minimum: 0, maximum: 1, description: '透明度 0-1（0 不透明）' })),
+          'fill.transparency': Type.Optional(
+            Type.Number({ minimum: 0, maximum: 1, description: '透明度 0-1（0 不透明）' })
+          ),
           'line.color': Type.Optional(Type.String({ description: '描边色' })),
           'line.width': Type.Optional(Type.Number({ description: '描边宽' })),
           'line.dashType': Type.Optional(Type.String({ description: '描边虚线样式' })),
@@ -130,11 +167,16 @@ export const buildShapeNode = (Self: unknown) =>
 export const buildImageNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Image'),
       attr: Type.Object(
         {
           src: Type.String({ description: '图片：base64 data URI 或本地绝对路径（禁止 http）' }),
-          'sizing.type': Type.Optional(Type.Union([Type.Literal('contain'), Type.Literal('cover'), Type.Literal('crop')], { description: 'contain / cover / crop（crop 需 x/y/w/h 像素）' })),
+          'sizing.type': Type.Optional(
+            Type.Union([Type.Literal('contain'), Type.Literal('cover'), Type.Literal('crop')], {
+              description: 'contain / cover / crop（crop 需 x/y/w/h 像素）'
+            })
+          ),
           'sizing.x': Type.Optional(Type.Number()),
           'sizing.y': Type.Optional(Type.Number()),
           'sizing.w': Type.Optional(Type.Number()),
@@ -147,10 +189,11 @@ export const buildImageNode = (_Self: unknown) =>
     { additionalProperties: false, description: 'Image 图片节点' }
   )
 
-/** 列表项（Li）：文本写在 child，样式属性在 attr */
+/** 列表项（Li）：文本写在 child，样式属性在 attr（顶层 id 不进 attr、不参与 POM，可安全携带） */
 const liNode = (Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Li'),
       attr: Type.Object({ ...textAttrs }, { additionalProperties: false }),
       child: childUnion(Self)
@@ -161,12 +204,17 @@ const liNode = (Self: unknown) =>
 export const buildListNode = (type: 'Ul' | 'Ol', Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal(type),
       attr: Type.Object(
         {
           ...(type === 'Ol'
             ? {
-                numberType: Type.Optional(Type.String({ description: '编号样式：arabicPlain / arabicPeriod / romanLcPeriod 等' })),
+                numberType: Type.Optional(
+                  Type.String({
+                    description: '编号样式：arabicPlain / arabicPeriod / romanLcPeriod 等'
+                  })
+                ),
                 numberStartAt: Type.Optional(Type.Number({ description: '起始编号（默认 1）' }))
               }
             : {}),
@@ -175,24 +223,36 @@ export const buildListNode = (type: 'Ul' | 'Ol', Self: unknown) =>
         },
         { additionalProperties: false }
       ),
-      child: Type.Optional(Type.Array(liNode(Self), { description: '列表项（Li），文本写在 Li 的 child' }))
+      child: Type.Optional(
+        Type.Array(liNode(Self), { description: '列表项（Li），文本写在 Li 的 child' })
+      )
     },
-    { additionalProperties: false, description: `${type === 'Ul' ? '无序' : '有序'}列表节点（Li 子项）` }
+    {
+      additionalProperties: false,
+      description: `${type === 'Ul' ? '无序' : '有序'}列表节点（Li 子项）`
+    }
   )
 
 export const buildLayerNode = (Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Layer'),
       attr: Type.Object({ ...commonAttrs }, { additionalProperties: false }),
-      child: Type.Optional(Type.Array(Self as never, { description: '子元素（绝对定位，坐标相对 Layer 左上角）' }))
+      child: Type.Optional(
+        Type.Array(Self as never, { description: '子元素（绝对定位，坐标相对 Layer 左上角）' })
+      )
     },
-    { additionalProperties: false, description: 'Layer 绝对定位容器（子元素用 position="absolute" + top/left 定位）' }
+    {
+      additionalProperties: false,
+      description: 'Layer 绝对定位容器（子元素用 position="absolute" + top/left 定位）'
+    }
   )
 
 export const buildLineNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Line'),
       attr: Type.Object(
         {
@@ -203,9 +263,17 @@ export const buildLineNode = (_Self: unknown) =>
           color: Type.Optional(Type.String({ description: '线条色（默认 000000）' })),
           lineWidth: Type.Optional(Type.Number({ description: '线宽（默认 1）' })),
           dashType: Type.Optional(Type.String()),
-          beginArrow: Type.Optional(Type.Union([Type.Boolean(), Type.String()], { description: '起点箭头（true / 类型名）' })),
+          beginArrow: Type.Optional(
+            Type.Union([Type.Boolean(), Type.String()], {
+              description: '起点箭头（true / 类型名）'
+            })
+          ),
           'beginArrow.type': Type.Optional(Type.String()),
-          endArrow: Type.Optional(Type.Union([Type.Boolean(), Type.String()], { description: '终点箭头（true / 类型名）' })),
+          endArrow: Type.Optional(
+            Type.Union([Type.Boolean(), Type.String()], {
+              description: '终点箭头（true / 类型名）'
+            })
+          ),
           'endArrow.type': Type.Optional(Type.String()),
           ...commonAttrs
         },
@@ -218,6 +286,7 @@ export const buildLineNode = (_Self: unknown) =>
 export const buildArrowNode = (_Self: unknown) =>
   Type.Object(
     {
+      ...nodeIdProp,
       tag: Type.Literal('Arrow'),
       attr: Type.Object(
         {
@@ -226,9 +295,17 @@ export const buildArrowNode = (_Self: unknown) =>
           color: Type.Optional(Type.String()),
           lineWidth: Type.Optional(Type.Number()),
           dashType: Type.Optional(Type.String()),
-          beginArrow: Type.Optional(Type.Union([Type.Boolean(), Type.String()], { description: '起点箭头（true / 类型名）' })),
+          beginArrow: Type.Optional(
+            Type.Union([Type.Boolean(), Type.String()], {
+              description: '起点箭头（true / 类型名）'
+            })
+          ),
           'beginArrow.type': Type.Optional(Type.String()),
-          endArrow: Type.Optional(Type.Union([Type.Boolean(), Type.String()], { description: '终点箭头（true / 类型名）' })),
+          endArrow: Type.Optional(
+            Type.Union([Type.Boolean(), Type.String()], {
+              description: '终点箭头（true / 类型名）'
+            })
+          ),
           'endArrow.type': Type.Optional(Type.String()),
           ...commonAttrs
         },
@@ -273,7 +350,8 @@ export const pptElementSchemaT = Type.Recursive(
 /** 页面元素数组 schema（1..N 个元素） */
 export const pptElementsSchemaT = Type.Array(pptElementSchemaT, {
   minItems: 1,
-  description: '页面元素数组（每个元素是 SlideNode：{tag, attr, child}；页面根元素必须是 VStack / HStack 布局容器）'
+  description:
+    '页面元素数组（每个元素是 SlideNode：{tag, attr, child}；页面根元素必须是 VStack / HStack 布局容器）'
 })
 
 /**
