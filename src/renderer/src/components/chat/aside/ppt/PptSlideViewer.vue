@@ -31,12 +31,14 @@
       ref="_viewportRef"
       class="ppt-slide-viewer__viewport"
       :class="{ 'ppt-slide-viewer__viewport--dragging': isDragging }"
+      tabindex="0"
       @wheel="handleWheel"
-      @pointerdown="handlePointerDown"
+      @pointerdown="handleViewportPointerDown"
       @pointermove="handlePointerMove"
       @pointerup="handlePointerUp"
       @pointercancel="handlePointerUp"
       @click="handleClick"
+      @keydown="handleKeydown"
     >
       <div v-if="renderState === 'rendering'" class="ppt-slide-viewer__loading">渲染中…</div>
       <div
@@ -109,6 +111,26 @@ const {
   svgHostRef
 })
 
+/** 视口按下时先平移拖拽，再显式聚焦（点击任意位置后即可用方向键翻页） */
+const handleViewportPointerDown = (e: PointerEvent) => {
+  handlePointerDown(e)
+  _viewportRef.value?.focus({ preventScroll: true })
+}
+
+/**
+ * 视口聚焦时的键盘翻页：↑ 上一页 / ↓ 下一页（边界内 clamp，无页时无操作）。
+ * 仅绑定在视口自身，slider / 按钮聚焦时不受影响。
+ */
+const handleKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    if (props.page > 1) page.value = props.page - 1
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    if (props.page < props.total) page.value = props.page + 1
+  }
+}
+
 /** 区分平移拖拽：位移超过阈值视为拖拽，不触发点选 */
 const handleClick = (e: MouseEvent) => {
   const isDrag = dragDistance.value >= CLICK_DRAG_THRESHOLD
@@ -170,6 +192,11 @@ const handleClick = (e: MouseEvent) => {
 
     &--dragging {
       cursor: grabbing;
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--td-brand-color);
     }
   }
 

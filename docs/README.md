@@ -49,7 +49,7 @@
 
 | 文档                                                            | 描述                                                                                                                               |
 |-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型（已实现，第四版契约：元素级批量操作）：POM 库调研、主进程渲染 + IPC（渲染进程零 pom）、单一文件持续编辑（{name}.ppt.json）+ 元素 TypeBox 校验、ppt_* 工具契约（ppt_batch_edit 仿 canvas 的 insert/copy/update/move/delete，≤15 个/批）/ 侧边栏 UI / 注册链路、实现记录与实测差异；§8 节点引用与精准编辑（顶层 id + SVG 映射 + batch update）；§13 三端展示一致修复（WPS/快速预览字体替换错乱 → 后处理 wrap=none+normAutofit + 提示词文字宽度经验） |
+| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型（已实现，第四版契约：元素级批量操作）：POM 库调研、主进程渲染 + IPC（渲染进程零 pom）、单一文件持续编辑（{name}.ppt.json）+ 元素 TypeBox 校验、ppt_* 工具契约（ppt_batch_edit 仿 canvas 的 insert/copy/update/move/delete，≤15 个/批）/ 侧边栏 UI（视口聚焦后 ↑/↓ 方向键翻页）/ 注册链路、实现记录与实测差异；§8 节点引用与精准编辑（顶层 id + SVG 映射 + batch update）；§13 三端展示一致修复（WPS/快速预览字体替换错乱 → 后处理 wrap=none+normAutofit + 提示词文字宽度经验） |
 | [02-pom-xml-guide.md](./ppt/02-pom-xml-guide.md)                | SlideNode JSON 结构与导出速查（`ppt_guidelines` 数据源，topic: json）：存储结构 / SlideNode 通用结构（含顶层 id 节点标识）/ 元素与 XML 对应 / Theme 色板 / 设计铁律 / 编辑规范与 update 精准编辑（批量操作见 `ppt_guidelines("operations")`） |
 | [03-ppt-experience-guides.md](./ppt/03-ppt-experience-guides.md) | PPT 经验指南（官方三文档转写，`ppt_guidelines` 数据源）：layout 布局系统与页面模式 / nodes 20 种节点速查 / styling 配色字体样式最佳实践（SlideNode JSON 写法） |
 

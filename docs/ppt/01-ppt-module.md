@@ -191,7 +191,9 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
   - 顶部页码拖拽条（t-slider 切页）+ 页码指示；`currentPage` 变更自动滚动定位缩略图
   - 主内容（`PptSlideViewer.vue` + `usePptPanZoom.ts`）：滚轮 **围绕鼠标指针缩放**（0.5x ~ 5x，deltaY 方向，指针下内容锚点不动）+
     **拖拽平移**（PointerEvent + `setPointerCapture`，移出视口不中断）；工具栏显示缩放百分比 + 「重置」按钮恢复 1x 居中；状态为
-    CSS transform（`translate(tx,ty) scale(s)`），切页保持缩放（同文件页面尺寸一致）；SVG `max-width/max-height: 100%` 适配视口
+    CSS transform（`translate(tx,ty) scale(s)`），切页保持缩放（同文件页面尺寸一致）；SVG `max-width/max-height: 100%` 适配视口；
+    **键盘翻页**：视口可聚焦（`tabindex="0"` + `:focus-visible` 焦点环），点击视口任意位置自动聚焦，↑/↓ 方向键上一页 / 下一页
+    （边界内 clamp，无页时无操作；仅视口聚焦时生效，slider / 按钮聚焦不受影响）
   - 主图 **内联 SVG 渲染**（不再 `<img>`）：主进程渲染加 `textOutput: 'text'`（SVG 输出真实 `<text>` 而非字形 path）；渲染进程
     `DOMParser.parseFromString` 解析为 DOM 后挂载（解析产生的脚本不执行，安全，无需 DOMPurify）；缩略图 / hover 大图仍用
     `data:image/svg+xml` 经 `<img>` 展示
