@@ -105,6 +105,7 @@
 | 文档                                                   | 描述                                                                                     |
 |--------------------------------------------------------|------------------------------------------------------------------------------------------|
 | [01-app-icon.md](./build/01-app-icon.md)               | 应用图标生成机制：electron-builder 自动从 `build/icon.png` 转换 icns/ico，禁止手动预生成  |
+| [02-monaco-editor.md](./build/02-monaco-editor.md)     | Monaco worker 配置：`vite-plugin-monaco-editor` 已移除，改 `?worker` 原生导入 + `MonacoEnvironment` label 分发 |
 
 ### todo/ —— 规划与待办
 

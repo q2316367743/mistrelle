@@ -6,7 +6,6 @@ import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { TDesignResolver } from 'unplugin-vue-components/resolvers'
-import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 import { visualizer } from 'rollup-plugin-visualizer' // 引入插件
 
 export default defineConfig({
@@ -56,11 +55,6 @@ export default defineConfig({
           })
         ]
       }),
-      typeof monacoEditorPlugin === 'function'
-        ? monacoEditorPlugin({})
-        : // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          monacoEditorPlugin.default({}),
       visualizer({
         // 配置项（可选，下面是常用配置）
         open: false, // 打包后自动打开浏览器展示图表
