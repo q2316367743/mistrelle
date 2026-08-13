@@ -62,6 +62,7 @@ onMounted(() => {
   bottom: 0;
   color: var(--td-text-color-primary);
   background: var(--td-bg-color-page);
+  user-select: unset !important;
 
   & > .sidebar {
     display: flex;
