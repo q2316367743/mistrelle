@@ -73,6 +73,7 @@ import {
 import { PPT_SLIDE_SIZE } from '@/modules/ppt'
 import type { ChatStatus } from '@/modules/chat'
 import PptRenderer from './PptRenderer.vue'
+import { cloneDeep } from 'es-toolkit'
 
 const props = withDefaults(
   defineProps<{
@@ -146,7 +147,7 @@ const handleRefresh = () => {
 }
 
 /** 导出当前 PPTX（用户选择保存路径，主进程构建并落盘） */
-const handleExportPptx = async () => {
+const handleExportPptx = async (): Promise<void> => {
   const doc = store.value.current.value
   if (!doc) return
   busy.value = true
@@ -158,8 +159,9 @@ const handleExportPptx = async () => {
       filters: [{ name: 'PPTX 演示文稿', extensions: ['pptx'] }]
     })
     if (!path) return
-    await exportPptx(doc.json, PPT_SLIDE_SIZE, path)
+    await exportPptx(cloneDeep(doc.json), PPT_SLIDE_SIZE, path)
     MessageUtil.success('已导出 PPTX')
+    window.preload.inject.shell.showItemInFolder(path)
   } catch (e) {
     MessageUtil.error('导出失败', e)
   } finally {
@@ -197,7 +199,10 @@ const handleAction: DropdownProps['onClick'] = (data) => {
   else if (data.value === 'folder') {
     if (selected.value) {
       window.preload.inject.shell.showItemInFolder(
-        window.preload.path.join(buildPptOutputsDir(props.sandbox ?? ''), buildPptFileName(selected.value))
+        window.preload.path.join(
+          buildPptOutputsDir(props.sandbox ?? ''),
+          buildPptFileName(selected.value)
+        )
       )
     } else {
       void window.preload.inject.shell.openPath(buildPptOutputsDir(props.sandbox ?? ''))
