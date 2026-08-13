@@ -12,6 +12,7 @@ import { writeFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { PptJsonDoc } from '~/channels'
 import { jsonToPomXml } from './jsonToPomXml'
+import { postprocessPptx } from './postprocessPptx'
 
 let pomModule: Promise<typeof import('@hirokisakabe/pom')> | null = null
 const loadPom = (): Promise<typeof import('@hirokisakabe/pom')> =>
@@ -30,16 +31,28 @@ const collectErrorText = (diagnostics: Diagnostic[]): string | null => {
   return diagnostics.map((d) => d.message).join('；')
 }
 
+/** 构建 PPTX 字节（三路共用）：jsonToPomXml → buildPptx → 后处理（字体自适应）。
+ * 预览 SVG / PNG / PPTX 使用同一份字节，保证任何渲染器（WPS / 快速预览）下结构一致。 */
+const buildPptxBytes = async (
+  json: PptJsonDoc,
+  size: { w: number; h: number }
+): Promise<{ buf: Uint8Array; errorText: string | null }> => {
+  const { buildPptx } = await loadPom()
+  const { pptx, diagnostics } = await buildPptx(jsonToPomXml(json), size)
+  const buf = await pptx.write({ outputType: 'nodebuffer' })
+  return { buf: postprocessPptx(buf), errorText: collectErrorText(diagnostics) }
+}
+
 /**
  * 渲染 PptJsonDoc 为每页 SVG 字符串数组（预览链路）：
  * jsonToPomXml → buildPptx(xml) → PPTX 字节 → convertPptxToSvg → svgs
  */
-export const renderPptxToSvgs = async (json: PptJsonDoc, size: { w: number; h: number }): Promise<string[]> => {
-  const { buildPptx } = await loadPom()
+export const renderPptxToSvgs = async (
+  json: PptJsonDoc,
+  size: { w: number; h: number }
+): Promise<string[]> => {
   const { convertPptxToSvg } = await loadGlimpse()
-  const { pptx, diagnostics } = await buildPptx(jsonToPomXml(json), size)
-  const errorText = collectErrorText(diagnostics)
-  const buf = await pptx.write({ outputType: 'nodebuffer' })
+  const { buf, errorText } = await buildPptxBytes(json, size)
   const report = await convertPptxToSvg(buf)
   const svgs = report.slides.map((s) => s.svg)
   if (errorText) console.warn('[ppt] 渲染诊断提示：', errorText)
@@ -56,14 +69,15 @@ export const exportPptxPngFiles = async (
   targetPath: string,
   slides?: number[]
 ): Promise<string[]> => {
-  const { buildPptx } = await loadPom()
   const { convertPptxToPng } = await loadGlimpse()
-  const { pptx } = await buildPptx(jsonToPomXml(json), size)
-  const buf = await pptx.write({ outputType: 'nodebuffer' })
+  const { buf } = await buildPptxBytes(json, size)
   const report = await convertPptxToPng(buf, { width: size.w, slides })
   const files: string[] = []
   for (const s of report.slides) {
-    const file = slides != null && slides.length === 1 ? targetPath : join(targetPath, `page-${s.slideNumber}.png`)
+    const file =
+      slides != null && slides.length === 1
+        ? targetPath
+        : join(targetPath, `page-${s.slideNumber}.png`)
     await mkdir(dirname(file), { recursive: true })
     await writeFile(file, s.png)
     files.push(file)
@@ -77,10 +91,7 @@ export const exportPptxFile = async (
   size: { w: number; h: number },
   filePath: string
 ): Promise<string> => {
-  const { buildPptx } = await loadPom()
-  const { pptx, diagnostics } = await buildPptx(jsonToPomXml(json), size)
-  const errorText = collectErrorText(diagnostics)
-  const buf = await pptx.write({ outputType: 'nodebuffer' })
+  const { buf, errorText } = await buildPptxBytes(json, size)
   await mkdir(dirname(filePath), { recursive: true })
   await writeFile(filePath, buf)
   if (errorText) console.warn('[ppt] 构建诊断提示：', errorText)

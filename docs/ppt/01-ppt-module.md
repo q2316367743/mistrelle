@@ -279,3 +279,37 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 - 渲染失败保留旧图，错误文本记录在 `PptStore.renderError`，AI 经 `ppt_read` 返回值读取自纠。
 - 中文默认用 POM 内置 Noto Sans JP（字形偏日式），后续可映射系统字体（参考 pom-cli `EXTRA_FONT_MAPPING`）。
 - JSON 元素暂不支持内联 runs（`<B>/<Span>` 等装饰标签），复杂装饰建议用纯文本 + 属性表达。
+
+## 13. 三端展示一致修复（2026-08，WPS / 快速预览字体替换错乱）
+
+### 13.1 现象与根因
+
+- 现象：SVG 预览 / PNG 导出正常，但导出的 PPTX 在 **WPS / macOS 快速预览**打开时，个别文本换行后与下方元素重叠（预览与 PPT 展示不一致）。
+- 关键事实：三条链路（`renderPptxToSvgs` / `exportPptxPngFiles` / `exportPptxFile`）共用同一份 `buildPptx` 字节，**不是两套逻辑**。不一致来自渲染方：POM 用内置 Noto Sans JP 测宽，把文本框冻结为「Noto 测宽 + 10px」绝对坐标（`measureText.js` 写死 `widthPx + 10`），导出不内嵌字体、不写 autofit；本机预览（pptx-glimpse）字体与 Noto 度量差 <1% 所以不重排，WPS / 快速预览缺 Noto 替换更宽字体 → `wrap="square"` 重排成多行 → 超出冻结框高 → 重叠。
+- 定量证据：拉丁 / 数字 / 空格占比高的 hug 框在替代字体（微软雅黑 / 等线类）下实测超宽 0.4~19.3px；纯中文行 1em/字最稳。
+
+### 13.2 修复：主进程后处理 `postprocessPptx.ts`
+
+- 位置：`src/main/src/ppt/postprocessPptx.ts`（纯函数，fflate 解压 → 改写 `ppt/slides/slideN.xml` → 重打包）。
+- 三路共用：`pptRenderer.ts` 抽 `buildPptxBytes`（`buildPptx → write → postprocessPptx`），预览 / PNG / PPTX 用同一份字节 → 任何渲染器结构一致。
+- 改写规则：
+  1. 正文文本框（`<p:txBody>`）：`wrap="square"` → `"none"` + 注入 `<a:normAutofit fontScale="100000" lnSpcReduction="0"/>`。POM 输出本就是「每段一行」，禁止软换行后行数恒定 → 不再出现「多出一行顶到相邻元素」；某行过宽时由渲染端收缩字号适配冻结框（PowerPoint「Shrink text on overflow」语义）。
+  2. 表格单元格（`<a:txBody>`）：rPr 缺 typeface 时补 `<a:latin/a:ea/a:cs typeface="Noto Sans JP"/>`，与正文统一（实测表格 run 原本无 typeface，中文字体走主题空 ea，与正文不一致）。
+- **两个坑（已踩过）**：
+  - `lnSpcReduction` 必须写 `0`：glimpse 的 `getLineHeightPx` 对固定 `spcPts` 也乘 `(1 - lnSpcReduction)`（`val/1e5`），写 100000 会让行高归零。
+  - **不做 spcPts→spcPct 换算**：spcPct 是相对字体「自然行高」的百分比，导出端无法移植换算（同一百分比在不同字体下行高不同），改了反而让 WPS 行距失控；wrap=none 已冻结行数，固定 spcPts 保垂直适配。
+- 副作用与边界：
+  - WPS / 快速预览中原本会溢出的文本，字号会比预览略小（收缩所致），但结构一致、不重叠、不截断。
+  - glimpse 对 `wrap="none"` **不执行 autofit 收缩**（`chunk-B5GBQS2M.js` 仅在 `wrap !== "none"` 时 `computeShrinkToFitScale`）；本机字体与 Noto 度量一致所以预览正常，个别临界文本横向最多溢出几像素（属于"去掉预览对单行设计的多绕换行"，反而更贴合 POM 冻结的单行意图）。
+
+### 13.3 提示词侧配合（让 AI 少触发收缩）
+
+- `src/renderer/src/modules/ppt/pptPrompt.ts` 设计铁律新增「文字宽度」：单行文本避免长英文连串、中英混排按英文更宽预留、文字不贴边、长内容用 `\n` 拆行。
+- `src/renderer/src/modules/ppt/guidelines/layout.md` 新增 §8「文字宽度经验」，含按有效性排序的 5 条写作经验。
+
+### 13.4 验证要点
+
+- `npm run typecheck:node` 通过（web 侧报错为仓库既有 `Ref<T>` 问题，与本次无关）。
+- 样例 `海报设计Agent技术架构.ppt.json` 重导出 PPTX：136 个正文框 bodyPr 均为 `wrap="none"` + `normAutofit`、表格 14 个 run 已补 typeface、无残留 `wrap="square"`、XML 格式校验通过。
+- 预览 SVG 像素对比：slide9（表格字体统一）与 slide2/4/10（去掉 glimpse 多余换行）有预期差异，其余 6 页完全一致。
+- **待真机验证**：WPS / macOS 快速预览打开新导出 PPTX，确认无重叠、无截断。

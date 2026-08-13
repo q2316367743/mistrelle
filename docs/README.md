@@ -49,7 +49,7 @@
 
 | 文档                                                            | 描述                                                                                                                               |
 |-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型（已实现，第三版契约：SlideNode JSON 存储）：POM 库调研、主进程渲染 + IPC（渲染进程零 pom）、单一文件持续编辑（{name}.ppt.json）+ 元素 TypeBox 校验、ppt_* 工具契约 / 侧边栏 UI / 注册链路、实现记录与实测差异 |
+| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型（已实现，第三版契约：SlideNode JSON 存储）：POM 库调研、主进程渲染 + IPC（渲染进程零 pom）、单一文件持续编辑（{name}.ppt.json）+ 元素 TypeBox 校验、ppt_* 工具契约 / 侧边栏 UI / 注册链路、实现记录与实测差异；§13 三端展示一致修复（WPS/快速预览字体替换错乱 → 后处理 wrap=none+normAutofit + 提示词文字宽度经验） |
 | [02-pom-xml-guide.md](./ppt/02-pom-xml-guide.md)                | SlideNode JSON 结构与导出速查（`ppt_guidelines` 数据源，topic: json）：存储结构 / SlideNode 通用结构 / 元素与 XML 对应 / Theme 色板 / 设计铁律 / 编辑规范 |
 | [03-ppt-experience-guides.md](./ppt/03-ppt-experience-guides.md) | PPT 经验指南（官方三文档转写，`ppt_guidelines` 数据源）：layout 布局系统与页面模式 / nodes 20 种节点速查 / styling 配色字体样式最佳实践（SlideNode JSON 写法） |
 
