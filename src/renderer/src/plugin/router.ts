@@ -40,14 +40,6 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/pages/discussion/PageDiscussion.vue')
   },
 
-  // --------------------------------- 灵感 ---------------------------------
-
-  {
-    name: 'inspiration/log',
-    path: '/inspiration/log',
-    component: () => import('@/pages/inspiration/log/index.vue')
-  },
-
   // --------------------------------- 项目相关 ---------------------------------
 
   {

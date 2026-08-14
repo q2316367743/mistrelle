@@ -1,7 +1,6 @@
 export * from './BaseEntity'
 
 export * from './setting'
-export * from './note'
 export * from './ai'
 export * from './project'
 

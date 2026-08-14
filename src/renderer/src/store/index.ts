@@ -12,5 +12,3 @@ export * from '@/store/ai/AiAgentStore'
 export * from './project/ProjectStore'
 
 export * from './design/DesignStyleStore'
-
-export * from '@/store/note/NoteTraceStore'

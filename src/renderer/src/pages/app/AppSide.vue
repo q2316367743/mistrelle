@@ -27,18 +27,11 @@
           <span>项目</span>
         </button>
         <button class="menu-item" @click="toggleNote()">
-          <ChatBubbleHistoryIcon class="menu-icon" />
-          <span>灵感</span>
+          <PenIcon class="menu-icon" />
+          <span>设计</span>
           <chevron-right-icon class="ml-auto" :style="noteIconStyle" />
         </button>
         <div v-if="note" class="pl-16px">
-          <button
-            :class="['menu-item', { active: isActive('/inspiration/log') }]"
-            @click="handleNoteClick('log')"
-          >
-            <tree-catalog-icon class="menu-icon" />
-            <span>碎碎念</span>
-          </button>
           <button
             :class="['menu-item', { active: isStartActive('/design') }]"
             @click="goTo('/design/list')"
@@ -112,9 +105,9 @@ import {
   AiArticleIcon,
   AiIcon,
   ChatIcon,
+  PenIcon,
   InternetIcon,
   UserIcon,
-  ChatBubbleHistoryIcon,
   ChevronRightIcon,
   Setting1Icon,
   SecuredIcon,
@@ -124,7 +117,7 @@ import {
   LightbulbIcon,
   AbilityOpenIcon,
   FolderFilledIcon,
-  TreeCatalogIcon, Palette1Icon
+  Palette1Icon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
@@ -171,7 +164,6 @@ const goTo = (path: string) => {
 }
 
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
-const handleNoteClick = (key: string) => router.push(`/inspiration/${key}`)
 
 onMounted(() => {
   console.log('plugin enter', isDark.value)
