@@ -26,6 +26,11 @@ export interface AiModel {
   output?: number
 }
 
+/**
+ * - anthropic: Anthropic Message (/v1/messages)
+ * - chat: Chat Completions (/chat/completions)
+ * - responses: Responses (/responses)
+ */
 export type AiProvideFormat = 'anthropic' | 'chat' | 'responses'
 
 export interface AiProvideCore {

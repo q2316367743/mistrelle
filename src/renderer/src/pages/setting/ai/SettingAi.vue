@@ -212,6 +212,7 @@ function selectItem(id: string) {
     form.baseUrl = ''
     form.key = ''
     form.models = [] as AiModel[]
+    form.format = 'chat'
     return
   }
   selectedId.value = id
@@ -223,6 +224,7 @@ function selectItem(id: string) {
     form.baseUrl = item.baseUrl
     form.key = item.key
     form.models = item.models.map((m) => ({ ...m }))
+    form.format = item.format || 'chat'
   }
 }
 
