@@ -15,7 +15,7 @@
           @click="goTo('/new')"
         >
           <ChatIcon class="menu-icon" />
-          <span>半窗烟雨</span>
+          <span>{{ Constant.name }}</span>
         </button>
         <button
           class="menu-item"
@@ -133,6 +133,7 @@ import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
 import { useBoolState } from '@/hooks'
 import ChatList from './components/ChatList.vue'
+import { Constant } from '@/global/Constant'
 
 const router = useRouter()
 const route = useRoute()
