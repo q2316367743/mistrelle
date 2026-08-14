@@ -60,6 +60,11 @@ export const routes: Array<RouteRecordRaw> = [
     path: '/design/detail/:id',
     component: () => import('@/pages/design/detail/index.vue')
   },
+  {
+    name: '设置/字体管理',
+    path: '/design/font',
+    component: () => import('@/pages/design/font/DesignFontPage.vue')
+  },
 
   // --------------------------------- 项目 ---------------------------------
 
@@ -140,11 +145,6 @@ export const routes: Array<RouteRecordRaw> = [
     name: '设置/安全中心',
     path: '/setting/secure',
     component: () => import('@/pages/setting/secure/SettingSecurePage.vue')
-  },
-  {
-    name: '设置/资源管理',
-    path: '/setting/assets',
-    component: () => import('@/pages/setting/assets/SettingAssetPage.vue')
   }
 ]
 

@@ -1,6 +1,7 @@
 import { h } from 'vue'
 import { DialogPlugin } from 'tdesign-vue-next'
 import FontMetaContent from './FontMetaContent.vue'
+import { FontItemWithMeta } from '@/domain/FontItem'
 
 export interface FontMetaDialogParams {
   /** 添加模式：待入库字体文件绝对路径列表 */

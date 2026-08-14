@@ -33,11 +33,21 @@
         </button>
         <div v-if="note" class="pl-16px">
           <button
-            :class="['menu-item', { active: isStartActive('/design') }]"
+            :class="[
+              'menu-item',
+              { active: isStartActive('/design/detail/') || isActive('/design/list') }
+            ]"
             @click="goTo('/design/list')"
           >
             <palette1-icon class="menu-icon" />
             <span>设计风格</span>
+          </button>
+          <button
+            :class="['menu-item', { active: isActive('/design/font') }]"
+            @click="goTo('/design/font')"
+          >
+            <palette1-icon class="menu-icon" />
+            <span>字体</span>
           </button>
         </div>
         <button class="menu-item" type="button" @click="toggleMore()">
@@ -116,7 +126,6 @@ import {
   AiEducationIcon,
   LightbulbIcon,
   AbilityOpenIcon,
-  FolderFilledIcon,
   Palette1Icon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
@@ -139,8 +148,7 @@ const settingOptions = [
   { label: '记忆～', icon: AiIcon, value: 'ai' },
   { label: '模型', icon: AppIcon, value: 'ai' },
   { label: '安全中心', icon: SecuredIcon, value: 'secure' },
-  { label: '网络设置', icon: InternetIcon, value: 'network' },
-  { label: '资源管理', icon: FolderFilledIcon, value: 'assets' }
+  { label: '网络设置', icon: InternetIcon, value: 'network' }
 ]
 
 const noteIconStyle = computed(() => ({
@@ -176,8 +184,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 48px;
-  padding: 8px;
-  padding-bottom: 0;
+  padding: 8px 8px 0;
   overflow-x: hidden;
   overflow-y: auto;
 }

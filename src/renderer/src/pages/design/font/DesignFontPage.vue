@@ -1,120 +1,96 @@
 <template>
-  <page-layout title="资源管理">
-    <div class="asset-page">
-      <div class="asset-subtitle">
-        <span>统一管理本地资源库（~/.mistrelle/assets），字体可被设计画布直接使用</span>
-        <t-tag variant="light" theme="primary" class="subtitle-tag">资源库</t-tag>
-      </div>
-
-      <t-tabs v-model="activeTab" placement="top">
-        <t-tab-panel value="font" label="字体">
-          <div class="font-toolbar">
-            <t-button theme="primary" variant="outline" @click="openFolder">
-              <template #icon><FolderOpenIcon /></template>
-              打开字体目录
-            </t-button>
-            <t-button theme="primary" @click="addFont">
-              <template #icon><AddIcon /></template>
-              添加字体
-            </t-button>
-            <t-radio-group
-              v-model="sourceFilter"
-              theme="button"
-              variant="default-filled"
-              class="font-toolbar__radio"
-            >
-              <t-radio-button value="all">全部</t-radio-button>
-              <t-radio-button value="system">系统字体</t-radio-button>
-              <t-radio-button value="library">资源库</t-radio-button>
-            </t-radio-group>
-            <t-button theme="primary" variant="text" class="ml-auto" @click="reload">
-              <template #icon><RefreshIcon /></template>
-              刷新
-            </t-button>
-          </div>
-
-          <div class="font-filterbar">
-            <t-select
-              v-model="filter.type"
-              :options="FONT_TYPE_SELECT"
-              size="small"
-              placeholder="类型"
-            />
-            <t-select
-              v-model="filter.style"
-              :options="FONT_STYLE_SELECT"
-              size="small"
-              placeholder="风格"
-            />
-            <t-select
-              v-model="filter.weight"
-              :options="FONT_WEIGHT_SELECT"
-              size="small"
-              placeholder="字重"
-            />
-            <t-select
-              v-model="filter.license"
-              :options="FONT_LICENSE_SELECT"
-              size="small"
-              placeholder="授权"
-            />
-            <t-select
-              v-model="filter.language"
-              :options="FONT_LANG_SELECT"
-              size="small"
-              placeholder="语言"
-            />
-            <t-button v-if="hasFilter" variant="text" theme="primary" @click="resetFilter"
-              >重置</t-button
-            >
-            <span class="font-filterbar__count"
-              >{{ tableData.length }} / {{ fonts.length }} 个字体</span
-            >
-          </div>
-
-          <t-table
-            :data="tableData"
-            :columns="columns"
-            :loading="loading"
-            row-key="name"
-            size="medium"
-            :pagination="pagination"
-            hover
-            max-height="calc(100vh - 326px)"
-            :table-layout="'fixed'"
-          >
-            <template #source="{ row }">
-              <t-tag :theme="row.source === 'library' ? 'primary' : 'default'" variant="light">
-                {{ row.source === 'library' ? '资源库' : '系统' }}
-              </t-tag>
-            </template>
-            <template #preview="{ row }">
-              <font-preview-text :font="row" />
-            </template>
-            <template #op="{ row }">
-              <t-button variant="text" theme="primary" @click="editFont(row)">编辑</t-button>
-              <t-button
-                v-if="row.source === 'library'"
-                variant="text"
-                theme="danger"
-                @click="removeFont(row)"
-              >
-                删除
-              </t-button>
-            </template>
-          </t-table>
-        </t-tab-panel>
-
-        <t-tab-panel value="image" label="插图素材">
-          <t-empty description="插图素材管理即将上线，敬请期待" class="mt-15vh" />
-        </t-tab-panel>
-      </t-tabs>
+  <page-layout title="字体管理">
+    <div class="font-toolbar px-8px">
+      <t-button theme="primary" variant="outline" @click="openFolder">
+        <template #icon><FolderOpenIcon /></template>
+        打开字体目录
+      </t-button>
+      <t-button theme="primary" @click="addFont">
+        <template #icon><AddIcon /></template>
+        添加字体
+      </t-button>
+      <t-radio-group
+        v-model="sourceFilter"
+        theme="button"
+        variant="default-filled"
+        class="font-toolbar__radio"
+      >
+        <t-radio-button value="all">全部</t-radio-button>
+        <t-radio-button value="system">系统字体</t-radio-button>
+        <t-radio-button value="library">资源库</t-radio-button>
+      </t-radio-group>
+      <t-button theme="primary" variant="text" class="ml-auto" @click="reload">
+        <template #icon><RefreshIcon /></template>
+        刷新
+      </t-button>
     </div>
+
+    <div class="font-filterbar px-8px">
+      <t-select v-model="filter.type" :options="FONT_TYPE_SELECT" size="small" placeholder="类型" />
+      <t-select
+        v-model="filter.style"
+        :options="FONT_STYLE_SELECT"
+        size="small"
+        placeholder="风格"
+      />
+      <t-select
+        v-model="filter.weight"
+        :options="FONT_WEIGHT_SELECT"
+        size="small"
+        placeholder="字重"
+      />
+      <t-select
+        v-model="filter.license"
+        :options="FONT_LICENSE_SELECT"
+        size="small"
+        placeholder="授权"
+      />
+      <t-select
+        v-model="filter.language"
+        :options="FONT_LANG_SELECT"
+        size="small"
+        placeholder="语言"
+      />
+      <t-button v-if="hasFilter" variant="text" theme="primary" @click="resetFilter">重置</t-button>
+      <span class="font-filterbar__count">{{ tableData.length }} / {{ fonts.length }} 个字体</span>
+    </div>
+
+    <t-table
+      :data="tableData"
+      :columns="columns"
+      :loading="loading"
+      row-key="name"
+      size="medium"
+      :pagination="pagination"
+      hover
+      max-height="calc(100vh - 216px)"
+      :table-layout="'fixed'"
+      class="px-8px"
+    >
+      <template #source="{ row }">
+        <t-tag :theme="row.source === 'library' ? 'primary' : 'default'" variant="light">
+          {{ row.source === 'library' ? '资源库' : '系统' }}
+        </t-tag>
+      </template>
+      <template #preview="{ row }">
+        <font-preview-text :font="row" />
+      </template>
+      <template #op="{ row }">
+        <t-button variant="text" theme="primary" @click="editFont(row)">编辑</t-button>
+        <t-button
+          v-if="row.source === 'library'"
+          variant="text"
+          theme="danger"
+          @click="removeFont(row)"
+        >
+          删除
+        </t-button>
+      </template>
+    </t-table>
   </page-layout>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref } from 'vue'
 import { AddIcon, FolderOpenIcon, RefreshIcon } from 'tdesign-icons-vue-next'
 import { MessageUtil } from '@/utils/modal'
 import {
@@ -129,8 +105,8 @@ import {
 import { openFontMetaDialog } from './modals/FontMetaDialog'
 import FontPreviewText from '@/components/FontPreviewText.vue'
 import { clearFontPreviewCache } from '@/utils/fontPreview'
+import { FontItem, FontItemWithMeta } from '@/domain/FontItem'
 
-const activeTab = ref('font')
 const fonts = ref<FontItem[]>([])
 const loading = ref(false)
 /** 来源筛选：all 全部 / system 系统字体 / library 我上传的 */
