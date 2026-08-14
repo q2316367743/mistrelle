@@ -46,7 +46,7 @@
             :class="['menu-item', { active: isActive('/design/font') }]"
             @click="goTo('/design/font')"
           >
-            <palette1-icon class="menu-icon" />
+            <textformat-color-icon class="menu-icon" />
             <span>字体</span>
           </button>
         </div>
@@ -126,7 +126,8 @@ import {
   AiEducationIcon,
   LightbulbIcon,
   AbilityOpenIcon,
-  Palette1Icon
+  Palette1Icon,
+  TextformatColorIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
