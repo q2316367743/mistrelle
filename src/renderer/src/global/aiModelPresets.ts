@@ -2,6 +2,8 @@
  * 内置常见模型上下文大小表（按厂商分组）：
  * 与 `guessModelType`（类型猜测）同思路，根据模型 ID 猜测 `context`（总上下文）与 `output`（最大输出）。
  * 精确表覆盖主流裸 ID，家族正则表兜底带日期 / 变体后缀的 ID，未知模型返回空。
+ * 家族正则不区分大小写、不锚定开头（子串匹配），兼容 `provider/model` 形式的前缀 ID
+ * （如 `deepseek-ai/deepseek-v4-flash`）。
  *
  * 数据来源：@earendil-works/pi-ai@0.84.1（pi.dev 同源权威数据，dist/providers/data/*.json）
  * 核对日期：2026-08-13。表中数值以该包官方厂商条目为准，聚合商（bedrock / groq 等）数值仅作参考。
@@ -11,7 +13,7 @@ export interface AiModelParams {
   output?: number
 }
 
-/** 单个厂商的模型参数预设：精确表 + 家族正则兜底（组内按优先级从上到下，越具体越靠前） */
+/** 单个厂商的模型参数预设：精确表 + 家族正则兜底（正则忽略大小写、子串匹配，组内按优先级从上到下，越具体越靠前） */
 export interface AiModelProviderPreset {
   name: string
   source: string
@@ -60,16 +62,16 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'o4-mini': { context: 200000, output: 100000 }
     },
     rules: [
-      [/^gpt-5/, { context: 400000, output: 128000 }],
-      [/^gpt-4\.1/, { context: 1047576, output: 32768 }],
-      [/^gpt-4o/, { context: 128000, output: 16384 }],
-      [/^gpt-4-turbo/, { context: 128000, output: 4096 }],
-      [/^gpt-4-32k/, { context: 32768, output: 8192 }],
-      [/^gpt-4/, { context: 8192, output: 8192 }],
-      [/^gpt-3\.5-turbo/, { context: 16385, output: 4096 }],
-      [/^o4/, { context: 200000, output: 100000 }],
-      [/^o3/, { context: 200000, output: 100000 }],
-      [/^o1/, { context: 200000, output: 100000 }]
+      [/gpt-5/i, { context: 400000, output: 128000 }],
+      [/gpt-4\.1/i, { context: 1047576, output: 32768 }],
+      [/gpt-4o/i, { context: 128000, output: 16384 }],
+      [/gpt-4-turbo/i, { context: 128000, output: 4096 }],
+      [/gpt-4-32k/i, { context: 32768, output: 8192 }],
+      [/gpt-4/i, { context: 8192, output: 8192 }],
+      [/gpt-3\.5-turbo/i, { context: 16385, output: 4096 }],
+      [/o4/i, { context: 200000, output: 100000 }],
+      [/o3/i, { context: 200000, output: 100000 }],
+      [/o1/i, { context: 200000, output: 100000 }]
     ]
   },
 
@@ -104,12 +106,12 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'claude-3-opus': { context: 200000, output: 4096 }
     },
     rules: [
-      [/^claude-4-5/, { context: 1000000, output: 64000 }],
-      [/^claude-4/, { context: 1000000, output: 128000 }],
-      [/^claude-3-7-sonnet/, { context: 200000, output: 64000 }],
-      [/^claude-3-5/, { context: 200000, output: 8192 }],
-      [/^claude-3-/, { context: 200000, output: 4096 }],
-      [/^claude-/, { context: 1000000, output: 128000 }]
+      [/claude-4-5/i, { context: 1000000, output: 64000 }],
+      [/claude-4/i, { context: 1000000, output: 128000 }],
+      [/claude-3-7-sonnet/i, { context: 200000, output: 64000 }],
+      [/claude-3-5/i, { context: 200000, output: 8192 }],
+      [/claude-3-/i, { context: 200000, output: 4096 }],
+      [/claude-/i, { context: 1000000, output: 128000 }]
     ]
   },
 
@@ -135,11 +137,11 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'gemini-flash': { context: 32768 }
     },
     rules: [
-      [/^gemini-3/, { context: 1048576, output: 65536 }],
-      [/^gemini-2\.5/, { context: 1048576, output: 65536 }],
-      [/^gemini-2\.0/, { context: 1048576, output: 8192 }],
-      [/^gemini-1\.5/, { context: 1048576, output: 8192 }],
-      [/^gemini-/, { context: 1048576, output: 65536 }]
+      [/gemini-3/i, { context: 1048576, output: 65536 }],
+      [/gemini-2\.5/i, { context: 1048576, output: 65536 }],
+      [/gemini-2\.0/i, { context: 1048576, output: 8192 }],
+      [/gemini-1\.5/i, { context: 1048576, output: 8192 }],
+      [/gemini-/i, { context: 1048576, output: 65536 }]
     ]
   },
 
@@ -159,9 +161,9 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'deepseek-r1': { context: 128000, output: 8192 }
     },
     rules: [
-      [/^deepseek-v4/, { context: 1000000, output: 384000 }],
-      [/^deepseek-v3/, { context: 131072, output: 65536 }],
-      [/^deepseek-/, { context: 128000, output: 8192 }]
+      [/deepseek-v4/i, { context: 1000000, output: 384000 }],
+      [/deepseek-v3/i, { context: 131072, output: 65536 }],
+      [/deepseek-/i, { context: 128000, output: 8192 }]
     ]
   },
 
@@ -187,12 +189,12 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'llama-2-7b': { context: 4096 }
     },
     rules: [
-      [/^llama-4/, { context: 1048576 }],
-      [/^llama-3\.3/, { context: 128000 }],
-      [/^llama-3\.2/, { context: 128000 }],
-      [/^llama-3\.1/, { context: 128000 }],
-      [/^llama-3/, { context: 8192 }],
-      [/^llama-2/, { context: 4096 }]
+      [/llama-4/i, { context: 1048576 }],
+      [/llama-3\.3/i, { context: 128000 }],
+      [/llama-3\.2/i, { context: 128000 }],
+      [/llama-3\.1/i, { context: 128000 }],
+      [/llama-3/i, { context: 8192 }],
+      [/llama-2/i, { context: 4096 }]
     ]
   },
 
@@ -223,12 +225,12 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'qwen-turbo': { context: 131072, output: 8192 }
     },
     rules: [
-      [/^qwen3-coder/, { context: 131072, output: 32768 }],
-      [/^qwen3/, { context: 131072, output: 32768 }],
-      [/^qwen2\.5-72b/, { context: 131072, output: 8192 }],
-      [/^qwen2\.5/, { context: 32768, output: 8192 }],
-      [/^qwen2/, { context: 32768, output: 8192 }],
-      [/^qwen-/, { context: 131072, output: 8192 }]
+      [/qwen3-coder/i, { context: 131072, output: 32768 }],
+      [/qwen3/i, { context: 131072, output: 32768 }],
+      [/qwen2\.5-72b/i, { context: 131072, output: 8192 }],
+      [/qwen2\.5/i, { context: 32768, output: 8192 }],
+      [/qwen2/i, { context: 32768, output: 8192 }],
+      [/qwen-/i, { context: 131072, output: 8192 }]
     ]
   },
 
@@ -257,17 +259,17 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'pixtral-12b': { context: 128000, output: 128000 }
     },
     rules: [
-      [/^mistral-large/, { context: 262144, output: 262144 }],
-      [/^ministral/, { context: 128000, output: 128000 }],
-      [/^open-mixtral-8x22b/, { context: 64000, output: 64000 }],
-      [/^open-mixtral/, { context: 32000, output: 32000 }],
-      [/^mistral-8x7b/, { context: 32768 }],
-      [/^mistral-7b/, { context: 32768 }],
-      [/^codestral/, { context: 256000, output: 4096 }],
-      [/^mistral-tiny/, { context: 32000 }],
-      [/^mistral-small/, { context: 128000, output: 16384 }],
-      [/^mistral-medium/, { context: 131072, output: 131072 }],
-      [/^mistral-/, { context: 128000, output: 128000 }]
+      [/mistral-large/i, { context: 262144, output: 262144 }],
+      [/ministral/i, { context: 128000, output: 128000 }],
+      [/open-mixtral-8x22b/i, { context: 64000, output: 64000 }],
+      [/open-mixtral/i, { context: 32000, output: 32000 }],
+      [/mistral-8x7b/i, { context: 32768 }],
+      [/mistral-7b/i, { context: 32768 }],
+      [/codestral/i, { context: 256000, output: 4096 }],
+      [/mistral-tiny/i, { context: 32000 }],
+      [/mistral-small/i, { context: 128000, output: 16384 }],
+      [/mistral-medium/i, { context: 131072, output: 131072 }],
+      [/mistral-/i, { context: 128000, output: 128000 }]
     ]
   },
 
@@ -290,8 +292,8 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'moonshot-v1-8k': { context: 8192 }
     },
     rules: [
-      [/^moonshot-v1/, { context: 131072 }],
-      [/^kimi-/, { context: 262144, output: 262144 }]
+      [/moonshot-v1/i, { context: 131072 }],
+      [/kimi-/i, { context: 262144, output: 262144 }]
     ]
   },
 
@@ -319,14 +321,14 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'command-r': { context: 128000 }
     },
     rules: [
-      [/^glm-5/, { context: 1000000, output: 131072 }],
-      [/^glm-4/, { context: 131072 }],
-      [/^grok-4/, { context: 1000000, output: 30000 }],
-      [/^grok-/, { context: 131072 }],
-      [/^command-a/, { context: 256000, output: 64000 }],
-      [/^command-r/, { context: 128000 }],
-      [/^command-/, { context: 128000 }],
-      [/^yi-/, { context: 32768 }]
+      [/glm-5/i, { context: 1000000, output: 131072 }],
+      [/glm-4/i, { context: 131072 }],
+      [/grok-4/i, { context: 1000000, output: 30000 }],
+      [/grok-/i, { context: 131072 }],
+      [/command-a/i, { context: 256000, output: 64000 }],
+      [/command-r/i, { context: 128000 }],
+      [/command-/i, { context: 128000 }],
+      [/yi-/i, { context: 32768 }]
     ]
   }
 ]
@@ -337,6 +339,6 @@ export const MODEL_PARAMS_TABLE: Record<string, AiModelParams> = Object.assign(
   ...AI_MODEL_PROVIDER_PRESETS.map((p) => p.models)
 )
 
-/** 聚合家族兜底表：按优先级从上到下匹配，命中即返回（组内具体规则在前，组间前缀互不冲突） */
+/** 聚合家族兜底表：按优先级从上到下匹配（正则忽略大小写、子串匹配），命中即返回（组内具体规则在前，组间前缀互不冲突） */
 export const FAMILY_PARAMS_RULES: Array<[RegExp, AiModelParams]> =
   AI_MODEL_PROVIDER_PRESETS.flatMap((p) => p.rules)

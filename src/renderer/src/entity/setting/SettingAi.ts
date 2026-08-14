@@ -11,7 +11,6 @@ export const AiModelTypeOptions: Array<CommonSelect> = [
   { value: 'vector', label: '向量' }
 ]
 
-
 export interface AiModel {
   // 标识符
   identifier: string
@@ -27,6 +26,8 @@ export interface AiModel {
   output?: number
 }
 
+export type AiProvideFormat = 'anthropic' | 'chat' | 'responses'
+
 export interface AiProvideCore {
   // 提供方名称
   name: string
@@ -36,6 +37,13 @@ export interface AiProvideCore {
   key: string
 
   models: Array<AiModel>
+
+  /**
+   * API 格式
+   * 默认 Chat Completions
+   * @default 'chat'
+   */
+  format?: AiProvideFormat
 }
 
 /**

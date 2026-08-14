@@ -43,16 +43,23 @@
                 @change="onNameChange"
               />
             </t-form-item>
-            <t-form-item label="接口地址" name="baseUrl">
+            <t-form-item label="Base URL" name="baseUrl">
               <t-input v-model="form.baseUrl" placeholder="例如：https://api.openai.com/v1" />
             </t-form-item>
-            <t-form-item label="密钥" name="key">
+            <t-form-item label="API Key" name="key">
               <t-input
                 v-model="form.key"
                 type="password"
                 placeholder="请输入 API Key"
                 allow-clear
               />
+            </t-form-item>
+            <t-form-item label="API 格式" name="key">
+              <t-select v-model="form.format" default-value="chat">
+                <t-option value="anthropic" label="Anthropic Message (/v1/messages)" />
+                <t-option value="chat" label="Chat Completions (/chat/completions)" />
+                <t-option value="responses" label="Responses (/responses)" />
+              </t-select>
             </t-form-item>
             <t-form-item>
               <t-space>
@@ -164,9 +171,14 @@
 import OpenAI from 'openai'
 import { AddIcon, DeleteIcon, EditIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import { useSettingAiStore } from '@/store'
-import type { AiModel } from '@/entity'
+import { AiModel, AiProvideFormat } from '@/entity'
 import { MessageUtil } from '@/utils/modal'
-import { MODEL_TYPE_LABEL, MODEL_TYPE_THEME, guessModelParams, guessModelType } from '@/utils/aiModel'
+import {
+  MODEL_TYPE_LABEL,
+  MODEL_TYPE_THEME,
+  guessModelParams,
+  guessModelType
+} from '@/utils/aiModel'
 import { openModelDialog } from './modals/OpenModelDialog'
 import { fetchModelsDrawer } from './modals/FetchModelsDrawer'
 
@@ -186,6 +198,7 @@ let form = reactive({
   name: '',
   baseUrl: '',
   key: '',
+  format: 'chat' as AiProvideFormat,
   models: [] as AiModel[]
 })
 
@@ -246,7 +259,8 @@ async function handleSave() {
       name: form.name,
       baseUrl: form.baseUrl,
       key: form.key,
-      models: form.models
+      models: form.models,
+      format: form.format
     })
     // 新增完成后，选中刚刚保存的项，退出创建模式
     if (isCreating.value) {
@@ -293,7 +307,7 @@ const namePresets = providerPresets.map((p) => ({
   value: p.label
 }))
 
-function onNameChange(value: any) {
+function onNameChange(value: string | number) {
   if (typeof value === 'string' && value) {
     const matched = providerPresets.find((p) => p.label === value)
     if (matched) {
@@ -340,9 +354,7 @@ const modelGroups = computed(() => {
   const kw = modelKeyword.value.trim().toLowerCase()
   const list = kw
     ? form.models.filter(
-        (m) =>
-          m.identifier.toLowerCase().includes(kw) ||
-          (m.model || '').toLowerCase().includes(kw)
+        (m) => m.identifier.toLowerCase().includes(kw) || (m.model || '').toLowerCase().includes(kw)
       )
     : form.models
   const map = new Map<string, AiModel[]>()
@@ -371,7 +383,7 @@ function handleAddModel() {
         type: result.type,
         context: result.context,
         output: result.output,
-        enable: true,
+        enable: true
       })
       await handleSave()
       MessageUtil.success('模型已添加')

@@ -58,6 +58,8 @@
 - `models`：**精确表**，裸 ID（小写）→ `{ context, output }`
 - `rules`：**家族正则兜底表** `[RegExp, params]`，按优先级从上到下匹配，处理带日期 /
   版本 / `instruct` 等后缀的变体 ID；组内越具体的规则放越前面（如 `qwen3-coder` 在 `qwen3` 之前）
+- 家族正则**不区分大小写**、**不锚定开头**（子串匹配），因此兼容 `provider/model` 前缀形式的
+  ID（如 `deepseek-ai/deepseek-v4-flash`，`^` 锚点会使其从开头匹配失败）
 
 对外导出 `MODEL_PARAMS_TABLE` / `FAMILY_PARAMS_RULES` 由分组**聚合**生成（`Object.assign` + `flatMap`），
 组间模型前缀互不冲突，聚合不改变匹配语义。
@@ -70,6 +72,7 @@
 | `claude-3-7-sonnet-20250219` | `context: 200000, output: 64000`（家族正则） |
 | `claude-sonnet-4-5`          | `context: 1000000, output: 64000` |
 | `deepseek-v4-flash`          | `context: 1000000, output: 384000` |
+| `deepseek-ai/deepseek-v4-flash` | `context: 1000000, output: 384000`（前缀 ID，家族正则子串匹配） |
 | `custom-model`               | `{}`                              |
 
 `formatContextWindow(n)` 将 token 数格式化为 `128K` / `1M` 供列表展示；无值返回空串。
