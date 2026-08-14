@@ -18,8 +18,7 @@ DeepSeek 模型在输出最终回答前会先输出思维链（`reasoning_conten
 
 注意：
 
-- openai-node SDK v6 无 `extra_body` 请求选项，但 body 序列化（`FallbackEncoder` → `JSON.stringify(body)`）会原样透传对象字段，
-  因此把 `thinking` 直接放入请求 body 即可，无需额外处理。
+- 自统一 AI 请求模块（`modules/ai`）落地后，`thinking` 直接放入 chat 格式请求 body 由 chat 适配器完成（见 `docs/ai/01-ai-request-module.md`），不再经过 openai SDK。
 - 流式响应思维链通过 `delta.reasoning_content` 返回，已由 `ChatCommon.extractReasoningContent` 处理并渲染为 `thinking` 内容块。
 - 思考模式下不支持 `temperature` / `top_p` 等采样参数（传入不报错但不生效）。
 - 工具调用场景：带 `tools` 的请求需在后续轮次完整回传 `reasoning_content`，否则 API 返回 400（当前实现由多轮拼接逻辑保证）。
@@ -38,19 +37,19 @@ reasoning_effort?: ThinkingEffort // 'low' | 'high' | 'max'
 
 ## 请求构建
 
-`src/modules/chat/agent/agentStream.ts` 的 `streamAgentStep` 构建 `AgentStreamingBody`：
+`src/modules/chat/agent/agentStream.ts` 的 `streamAgentStep` 把扁平参数透传给统一 AI 模块（`modules/ai`），
+chat 格式适配器负责落成 `thinking` / `reasoning_effort` body 字段：
 
 ```ts
-if (typeof options.requestParams.message.thinking === 'boolean') {
-  body.thinking = { type: options.requestParams.message.thinking ? 'enabled' : 'disabled' }
-}
-if (options.requestParams.message.reasoning_effort) {
-  body.reasoning_effort = options.requestParams.message.reasoning_effort
-}
+createChatStream({
+  ...
+  thinking: typeof params.message.thinking === 'boolean' ? params.message.thinking : undefined,
+  reasoningEffort: params.message.reasoning_effort
+})
 ```
 
-- `AgentStreamingBody`（`agentTypes.ts`）交叉类型新增 `thinking?: { type: 'enabled' | 'disabled' }`。
-- `thinking` 为 `undefined` 时不传，走服务端默认（enabled），保证旧消息 / 旧链路行为不变。
+- `AiRequestParams.thinking` 为 `undefined` 时不传 `thinking`，走服务端默认（enabled），保证旧消息 / 旧链路行为不变。
+- `modules/ai/formats/chat.ts` 的 `buildRequest`：`thinking` → `{ type: 'enabled' | 'disabled' }`；`reasoningEffort` → `reasoning_effort`。
 
 ## UI 与链路
 
@@ -117,8 +116,9 @@ interface ChatSenderInitial {
 |---|---|
 | `src/domain/ChatMessage.ts` | `ThinkingEffort` 类型；消息字段 |
 | `src/modules/chat/engine/ChatCommon.ts` | `ChatRequestParams` 请求参数 |
-| `src/modules/chat/agent/agentTypes.ts` | `AgentStreamingBody` 类型 |
-| `src/modules/chat/agent/agentStream.ts` | 按 thinking 构建请求 body |
+| `src/modules/ai/types.ts` | `AiRequestParams` 统一请求参数（含 thinking / reasoningEffort） |
+| `src/modules/ai/formats/chat.ts` | chat 格式请求体构建（`thinking` / `reasoning_effort` 落 body） |
+| `src/modules/chat/agent/agentStream.ts` | 扁平参数 → `createChatStream` 透传 |
 | `src/components/chat/AiModelSelect.vue` | 思考开关 + 强度选择器 UI |
 | `src/components/chat/sender/LChatSender.vue` | 接线发送参数（`initial` 对象初始化） |
 | `src/components/chat/sender/chatSenderInitial.ts` | `ChatSenderInitial` 初始化参数类型 |

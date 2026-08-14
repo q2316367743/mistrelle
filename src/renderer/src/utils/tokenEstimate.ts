@@ -1,7 +1,4 @@
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionTool
-} from 'openai/resources/chat/completions'
+import type { AiMessageParam, AiTool } from '@/modules/ai'
 import type { TokenBreakdown } from '@/domain'
 
 /** 技能工具：其工具结果计入「技能」分类（load_skill / read_skill_file），其余工具结果计入「工具及子智能体」 */
@@ -32,15 +29,10 @@ export const formatTokens = (value: number): string => {
   return `${value}`
 }
 
-/** 提取 API 消息的纯文本内容（兼容 string / 多模态数组 / null） */
-const messageText = (message: ChatCompletionMessageParam): string => {
+/** 提取 API 消息的纯文本内容（AiMessageParam.content 为 string | null） */
+const messageText = (message: AiMessageParam): string => {
   const content = message.content
   if (typeof content === 'string') return content
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => (part.type === 'text' ? part.text : ''))
-      .join('')
-  }
   return ''
 }
 
@@ -53,8 +45,8 @@ const messageText = (message: ChatCompletionMessageParam): string => {
  * 返回值仅为相对比例，由调用方归一化到 API usage 的精确 prompt_tokens。
  */
 export const estimateTokenBreakdown = (
-  apiMessages: ChatCompletionMessageParam[],
-  toolDefs: ChatCompletionTool[],
+  apiMessages: AiMessageParam[],
+  toolDefs: AiTool[],
   skillCatalogPrompt: string
 ): TokenBreakdown => {
   // 第一遍：收集 tool_call_id → 工具名映射，用于给 tool 结果归类

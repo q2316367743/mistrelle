@@ -1,5 +1,5 @@
 import { useSettingAiStore, useSettingDefaultStore } from '@/store'
-import { createClient } from './ChatCommon'
+import { createChatCompletion } from '@/modules/ai'
 
 const SYSTEM_PROMPT =
   '你是一个讨论主题命名器。根据用户抛出的议题或讨论内容，生成一个3-8个字的中文标题，概括讨论主题。直接输出标题，不要解释，不要标点，不要引号。'
@@ -17,16 +17,17 @@ export const useDiscussionName = async (content: string): Promise<string> => {
   if (!option) return content.substring(0, 24)
 
   try {
-    const client = createClient(option.baseUrl, option.key)
-    const response = await client.chat.completions.create({
+    const result = await createChatCompletion({
+      baseURL: option.baseUrl,
+      apiKey: option.key,
+      format: option.format ?? 'chat',
       model: option.model,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content }
-      ],
-      stream: false
+      ]
     })
-    const title = response.choices?.[0]?.message?.content?.trim()
+    const title = result.content.trim()
     return (title || content).substring(0, 24)
   } catch {
     return content.substring(0, 24)

@@ -1,7 +1,4 @@
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall
-} from 'openai/resources/chat/completions'
+import type { AiMessageParam, AiToolCallParam } from '@/modules/ai'
 import type {
   AIMessage,
   AIMessageContent,
@@ -46,7 +43,7 @@ const getReasoning = (contents: AIMessageContent[]): string =>
     .join('')
 
 const appendAssistantStep = (
-  out: ChatCompletionMessageParam[],
+  out: AiMessageParam[],
   contents: AIMessageContent[],
   filterSkillTools: boolean
 ): void => {
@@ -65,7 +62,7 @@ const appendAssistantStep = (
   }
   if (reasoning) assistantMessage.reasoning_content = reasoning
   if (toolContents.length > 0) {
-    assistantMessage.tool_calls = toolContents.map((item): ChatCompletionMessageToolCall => ({
+    assistantMessage.tool_calls = toolContents.map((item): AiToolCallParam => ({
       id: item.data.toolCallId,
       type: 'function',
       function: {
@@ -86,7 +83,7 @@ const appendAssistantStep = (
 }
 
 const appendAssistantMessage = (
-  out: ChatCompletionMessageParam[],
+  out: AiMessageParam[],
   message: AIMessage,
   filterSkillTools: boolean
 ): void => {
@@ -173,8 +170,8 @@ export const toAgentRequestMessages = (
   messages: ChatMessage[],
   activeAssistantMessageId: string,
   activeReferenceContext = ''
-): ChatCompletionMessageParam[] => {
-  const out: ChatCompletionMessageParam[] = []
+): AiMessageParam[] => {
+  const out: AiMessageParam[] = []
   const activeAssistantIndex = messages.findIndex(
     (message) => message.id === activeAssistantMessageId
   )

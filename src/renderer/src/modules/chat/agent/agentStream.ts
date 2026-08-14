@@ -1,11 +1,8 @@
-import type {
-  ChatCompletionCreateParamsStreaming,
-  ChatCompletionTool
-} from 'openai/resources/chat/completions'
+import type { AiMessageParam, AiTool } from '@/modules/ai'
+import { createChatStream } from '@/modules/ai'
 import type { Ref } from 'vue'
 import type { ChatMessage, ChatUsage } from '@/domain'
 import {
-  createClient,
   extractReasoningContent,
   finishReasonToStatus,
   type ResolvedChatRequestParams,
@@ -14,14 +11,14 @@ import {
 } from '@/modules/chat'
 import { nanoid } from 'nanoid'
 import { appendAssistantContent, setAssistantStatus } from './agentMessages'
-import type { AgentStreamingBody, StreamStepResult, ToolCall } from './agentTypes'
+import type { StreamStepResult, ToolCall } from './agentTypes'
 
 type StreamOptions = {
   messages: Ref<ChatMessage[]>
   assistantMessageId: string
   requestParams: ResolvedChatRequestParams
-  apiMessages: ChatCompletionCreateParamsStreaming['messages']
-  tools: ChatCompletionTool[]
+  apiMessages: AiMessageParam[]
+  tools: AiTool[]
   config: ChatServiceConfig
   signal: AbortSignal
   seq: number
@@ -46,53 +43,49 @@ const toStringHeaders = (headers: unknown): Record<string, string> => {
     )
   }
   if (!headers || typeof headers !== 'object') return {}
-  return Object.fromEntries(
-    Object.entries(headers).map(([key, value]) => [key, String(value)])
-  )
+  return Object.fromEntries(Object.entries(headers).map(([key, value]) => [key, String(value)]))
 }
 
 export const streamAgentStep = async (options: StreamOptions): Promise<StreamStepResult> => {
   const stepId = nanoid()
-  const body: AgentStreamingBody = {
-    model: options.requestParams.message.model,
-    messages: options.apiMessages,
-    stream: true,
-    tools: options.tools,
-    // 请求流式 usage，使末个 chunk 携带完整 token 统计
-    stream_options: { include_usage: true }
-  }
-  if (typeof options.requestParams.message.thinking === 'boolean') {
-    body.thinking = { type: options.requestParams.message.thinking ? 'enabled' : 'disabled' }
-  }
-  if (options.requestParams.message.reasoning_effort) {
-    body.reasoning_effort = options.requestParams.message.reasoning_effort
-  }
 
-  const finalBody: ChatCompletionCreateParamsStreaming = { ...body }
+  // onRequest 覆盖：body 为格式原生覆盖项（chat 透传 thinking 等），headers 透传
+  let bodyOverride: Record<string, unknown> | undefined
   let requestHeaders: Record<string, string> = {}
   const modified = await options.config.onRequest?.(options.requestParams)
   if (modified) {
     const customBody: unknown = Reflect.get(modified, 'body')
     if (customBody && typeof customBody === 'object') {
-      Object.assign(finalBody, customBody)
+      bodyOverride = customBody as Record<string, unknown>
     }
     requestHeaders = toStringHeaders(modified.headers)
   }
 
   options.config.onStart?.('')
   setAssistantStatus(options.messages, options.assistantMessageId, 'streaming')
-  const stream = await createClient(options.requestParams.baseURL, options.requestParams.apiKey)
-    .chat.completions.create(finalBody, {
-      signal: options.signal,
-      headers: requestHeaders
-    })
+  const stream = createChatStream({
+    baseURL: options.requestParams.baseURL,
+    apiKey: options.requestParams.apiKey,
+    format: options.requestParams.format ?? 'chat',
+    model: options.requestParams.message.model,
+    messages: options.apiMessages,
+    tools: options.tools,
+    thinking:
+      typeof options.requestParams.message.thinking === 'boolean'
+        ? options.requestParams.message.thinking
+        : undefined,
+    reasoningEffort: options.requestParams.message.reasoning_effort,
+    signal: options.signal,
+    headers: requestHeaders,
+    bodyOverride
+  })
 
   const accumulated = new Map<number, { id: string; name: string; args: string }>()
   let finishReason: string | null | undefined
   let usage: ChatUsage | undefined
   for await (const chunk of stream) {
     if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
-    // usage 常出现在带 include_usage 的末个 chunk（choices 为空），需在跳过前捕获
+    // usage 常出现在末个 chunk（choices 为空），需在跳过前捕获
     if (chunk.usage) {
       usage = {
         promptTokens: chunk.usage.prompt_tokens,

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { AiModel, AiModelType, AiProvide, AiProvideForm } from '@/entity'
+import { AiModel, AiModelType, AiProvide, AiProvideFormat, AiProvideForm } from '@/entity'
 import { useSnowflake } from '@/hooks'
 import { SelectOptionGroup } from 'tdesign-vue-next'
 import { modelList, modelSave } from '@/modules/setting/service/ModelService'
@@ -10,6 +10,8 @@ export interface AiProvideOption extends AiModel {
   baseUrl: string
   // 提供方密钥
   key: string
+  // API 格式（chat / responses / anthropic），缺省 chat
+  format?: AiProvideFormat
 }
 
 export const handleModelOption = (

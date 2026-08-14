@@ -11,6 +11,7 @@ import { zipApi } from '~/zip'
 import { shellExecApi } from '~/shellExec'
 import { fontApi } from '~/font'
 import { pptApi } from '~/ppt'
+import { aiStreamApi } from '~/aiStream'
 
 // 组装 window.preload（形状与原 src-utools/preload.js 一致：9 模块 + axios 实例）
 // axios 强制 Node http 适配器：绕开渲染进程 XHR 的 CORS 限制（原 utools 环境同样依赖此行为）
@@ -25,6 +26,7 @@ const preload = {
   shellExec: shellExecApi,
   font: fontApi,
   ppt: pptApi,
+  aiStream: aiStreamApi,
   axios: axios.create({ adapter: axios.getAdapter('http') })
 }
 

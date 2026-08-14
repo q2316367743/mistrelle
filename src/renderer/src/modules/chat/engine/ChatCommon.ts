@@ -1,7 +1,6 @@
-import OpenAI from 'openai'
-import type { ChatCompletionChunk } from 'openai/resources/chat/completions'
+import type { AiStreamChunk } from '@/modules/ai'
 import type { AIMessageContent, ThinkingEffort, UserMessageContent } from '@/domain'
-import { AiChatMode } from '@/entity'
+import { AiChatMode, AiProvideFormat } from '@/entity'
 import type { ChatType, WritingScene } from '@/modules/chat'
 
 // ==========================================
@@ -38,6 +37,8 @@ export interface ChatRequestParams {
 export interface ResolvedChatRequestParams extends ChatRequestParams {
   baseURL: string
   apiKey?: string
+  /** API 格式（chat / responses / anthropic），决定请求体与流式解析方式；缺省 chat */
+  format?: AiProvideFormat
 }
 
 /** onRequest 可返回的请求覆盖项；刻意不含 fetch 的 `mode` 等会与 chat 字段冲突的项 */
@@ -87,18 +88,10 @@ export interface ChatContext {
 //  纯工具函数
 // ==========================================
 
-export function createClient(baseURL: string, apiKey?: string): OpenAI {
-  return new OpenAI({
-    baseURL,
-    apiKey,
-    dangerouslyAllowBrowser: true
-  })
-}
-
 export function extractReasoningContent(
-  delta: ChatCompletionChunk.Choice.Delta
+  delta: NonNullable<AiStreamChunk['choices']>[number]['delta']
 ): string | undefined {
-  return (delta as Record<string, unknown>).reasoning_content as string | undefined
+  return delta.reasoning_content
 }
 
 export function finishReasonToStatus(reason: string | null | undefined): ChatMessageStatus {

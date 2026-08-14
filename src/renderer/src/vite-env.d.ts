@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { AxiosInstance, AxiosRequestConfig } from 'axios'
+import { AiStreamApi } from '@/types/aiStream'
 
 declare global {
   interface Window {
@@ -29,6 +30,7 @@ declare global {
       zip: ZipApi
       font: FontApi
       ppt: PptApi
+      aiStream: AiStreamApi
       shellExec: {
         cliRun(
           command: string,

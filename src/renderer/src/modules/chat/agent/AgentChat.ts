@@ -1,7 +1,4 @@
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionTool
-} from 'openai/resources/chat/completions'
+import type { AiMessageParam, AiTool } from '@/modules/ai'
 import type {
   AttachmentContent,
   ChatMessage,
@@ -142,7 +139,8 @@ export class ToolChat {
     return {
       ...params,
       baseURL: option.baseUrl,
-      apiKey: option.key
+      apiKey: option.key,
+      format: option.format ?? 'chat'
     }
   }
 
@@ -204,7 +202,7 @@ export class ToolChat {
     return CHAT_TYPE_CONFIG[this.chatType].tools(this.typeToolsContext())
   }
 
-  private buildTools(functions: ToolFunction[]): ChatCompletionTool[] {
+  private buildTools(functions: ToolFunction[]): AiTool[] {
     return functions.map((fn) => ({
       type: 'function',
       function: {
@@ -275,7 +273,7 @@ export class ToolChat {
     const sections: string[] = []
     for (const fileName of settingFiles) {
       const filePath = window.preload.path.join(this.workspace, fileName)
-      if (!(window.preload.fs.existsSync(filePath))) continue
+      if (!window.preload.fs.existsSync(filePath)) continue
       try {
         const content = await window.preload.fs.readTextFile(filePath)
         if (content.trim()) sections.push(`### ${fileName}\n\n${content.trim()}`)
@@ -334,7 +332,7 @@ export class ToolChat {
   private async buildRequestMessages(
     params: ChatRequestParams,
     assistantMessageId: string
-  ): Promise<ChatCompletionMessageParam[]> {
+  ): Promise<AiMessageParam[]> {
     const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
     const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
     const skills = await localSkillList()
@@ -357,7 +355,7 @@ export class ToolChat {
     ]
       .filter(Boolean)
       .join('\n\n')
-    const systemMessages: ChatCompletionMessageParam[] = []
+    const systemMessages: AiMessageParam[] = []
     if (systemPrompt) systemMessages.push({ role: 'system', content: systemPrompt })
     // 模式指令作为独立 system 消息追加（不污染稳定 system 提示词，保留缓存前缀）
     const modeInstruction = this.buildModeInstruction()
@@ -393,7 +391,9 @@ export class ToolChat {
   private buildTodoStatePrompt(): string {
     if (this.todos.value.length === 0) return ''
     const lines = this.todos.value.map((todo) => {
-      const statusLabel = { pending: '待开始', in_progress: '进行中', completed: '已完成' }[todo.status]
+      const statusLabel = { pending: '待开始', in_progress: '进行中', completed: '已完成' }[
+        todo.status
+      ]
       return `- [${statusLabel}] ${todo.content}`
     })
     return `## 当前待办清单\n\n以下是你当前维护的待办清单，请据此推进任务；需要变更时调用 update_todo 工具全量替换：\n\n${lines.join('\n')}`
@@ -431,8 +431,8 @@ export class ToolChat {
     this.hitMaxSteps.value = false
     this.reachedMaxSteps.value = false
     // 最近一次请求的 API 消息与工具定义（用于完成时估算 token 构成）
-    let lastApiMessages: ChatCompletionMessageParam[] = []
-    let lastTools: ChatCompletionTool[] = []
+    let lastApiMessages: AiMessageParam[] = []
+    let lastTools: AiTool[] = []
     while (seq === this.ctx.requestSeq && !signal.aborted && step < maxSteps) {
       step++
       const functions = this.filterToolsByMode(this.getFunctions(params))
@@ -511,8 +511,8 @@ export class ToolChat {
    */
   private estimateAndStoreBreakdown(
     assistantMessageId: string,
-    apiMessages: ChatCompletionMessageParam[],
-    tools: ChatCompletionTool[]
+    apiMessages: AiMessageParam[],
+    tools: AiTool[]
   ): void {
     const assistant = this.messages.value.find((m) => m.id === assistantMessageId)
     if (!assistant || assistant.role !== 'assistant' || !assistant.usage) return
@@ -538,7 +538,8 @@ export class ToolChat {
     const resolvedParams = await this.resolveModel(params)
     const apiMessages = await this.buildRequestMessages(params, assistantMessageId)
     apiMessages.push({ role: 'system', content: FINALIZE_PROMPT })
-    const before = this.messages.value.find((m) => m.id === assistantMessageId)?.content?.length ?? 0
+    const before =
+      this.messages.value.find((m) => m.id === assistantMessageId)?.content?.length ?? 0
     try {
       const result = await streamAgentStep({
         messages: this.messages,

@@ -54,6 +54,7 @@ function httpRequestToAxiosConfig(config: HttpRequest): AxiosRequestConfig {
     url,
     method = 'GET',
     cookie,
+    signal,
     onDownloadProgress
   } = config
   const _config: AxiosRequestConfig = {
@@ -64,6 +65,7 @@ function httpRequestToAxiosConfig(config: HttpRequest): AxiosRequestConfig {
     headers,
     data,
     params,
+    signal,
     onDownloadProgress,
     responseType: 'arraybuffer'
   }
@@ -153,6 +155,123 @@ export async function requestDownload(
 ): Promise<void> {
   const _config = httpRequestToAxiosConfig(config)
   return window.preload.net.downloadFileFromUrl(_config, path)
+}
+
+// ====================================== 流式请求 ======================================
+
+export interface StreamRequestOptions extends HttpRequest {
+  signal?: AbortSignal
+}
+
+export interface StreamResponse {
+  status: number
+  headers: Record<string, string>
+  /**
+   * 响应体原始字节流（经 preload 桥逐块转发，块边界与内容无关，需自行分帧解析）
+   */
+  stream: AsyncIterable<Uint8Array>
+}
+
+/**
+ * 发起流式请求（SSE / 任意字节流）。
+ * - 走 preload 的 Node http 适配器，免疫渲染层 CORS。
+ * - 返回的 stream 是惰性迭代器：调用方 break / return 提前退出时会自动取消底层请求；
+ *   config.signal abort 同样触发取消。
+ * - 非 2xx 状态也照常流入 stream，调用方需自行校验 status。
+ */
+export async function requestStream(config: StreamRequestOptions): Promise<StreamResponse> {
+  const { signal, ...rest } = config
+  const _config = httpRequestToAxiosConfig(rest)
+  _config.responseType = 'stream'
+
+  let infoResolved = false
+  let resolveInfo!: (info: {
+    requestId: string
+    status: number
+    headers: Record<string, string>
+  }) => void
+  let rejectInfo!: (error: unknown) => void
+  const infoPromise = new Promise<{
+    requestId: string
+    status: number
+    headers: Record<string, string>
+  }>((resolve, reject) => {
+    resolveInfo = resolve
+    rejectInfo = reject
+  })
+
+  const queue: Uint8Array[] = []
+  let waiter: (() => void) | null = null
+  let settled = false
+  let streamError: unknown = null
+
+  const wake = (): void => {
+    if (waiter) {
+      const pending = waiter
+      waiter = null
+      pending()
+    }
+  }
+
+  const donePromise = window.preload.aiStream.streamRequest(
+    _config as unknown as Record<string, unknown>,
+    {
+      onStart: (info) => {
+        infoResolved = true
+        resolveInfo(info)
+      },
+      onChunk: (chunk) => {
+        queue.push(new Uint8Array(chunk))
+        wake()
+      }
+    }
+  )
+  donePromise.then(
+    () => {
+      settled = true
+      wake()
+    },
+    (error: unknown) => {
+      settled = true
+      streamError = error
+      if (!infoResolved) rejectInfo(error)
+      wake()
+    }
+  )
+
+  const info = await infoPromise
+
+  // 取消信号：外部 abort 时取消底层请求（流正常结束后由 donePromise 收尾，不再响应）
+  if (signal) {
+    if (signal.aborted) {
+      window.preload.aiStream.streamAbort(info.requestId)
+    } else {
+      signal.addEventListener('abort', () => window.preload.aiStream.streamAbort(info.requestId), {
+        once: true
+      })
+    }
+  }
+
+  async function* generate(): AsyncGenerator<Uint8Array> {
+    try {
+      for (;;) {
+        if (queue.length > 0) {
+          yield queue.shift() as Uint8Array
+          continue
+        }
+        if (settled) break
+        await new Promise<void>((resolve) => {
+          waiter = resolve
+        })
+      }
+      if (streamError) throw streamError
+    } finally {
+      // 消费方提前退出（break / return / 异常）时取消底层请求，避免悬挂
+      if (!settled) window.preload.aiStream.streamAbort(info.requestId)
+    }
+  }
+
+  return { status: info.status, headers: info.headers, stream: generate() }
 }
 
 // ====================================== 包装方法 ======================================

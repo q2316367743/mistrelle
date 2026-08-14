@@ -168,10 +168,10 @@
 </template>
 
 <script lang="ts" setup>
-import OpenAI from 'openai'
 import { AddIcon, DeleteIcon, EditIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import { useSettingAiStore } from '@/store'
 import { AiModel, AiProvideFormat } from '@/entity'
+import { listAiModels } from '@/modules/ai'
 import { MessageUtil } from '@/utils/modal'
 import {
   MODEL_TYPE_LABEL,
@@ -440,14 +440,9 @@ async function handleFetchModels() {
   }
   fetching.value = true
   try {
-    const client = new OpenAI({
-      baseURL: form.baseUrl,
-      apiKey: form.key,
-      dangerouslyAllowBrowser: true
-    })
-    const response = await client.models.list()
-    const data = response.data || []
-    const fetched = data.map((m: { id: string; owned_by?: string }) => ({
+    const fetched = (
+      await listAiModels({ baseURL: form.baseUrl, apiKey: form.key, format: form.format })
+    ).map((m) => ({
       id: m.id,
       name: m.id
     }))

@@ -37,4 +37,9 @@ export interface HttpRequest<D = unknown> {
    * 一种快捷方式，设置cookie
    */
   cookie?: string
+
+  /**
+   * 取消信号（透传到 preload 层，AbortSignal.abort 时中止请求）
+   */
+  signal?: AbortSignal
 }
