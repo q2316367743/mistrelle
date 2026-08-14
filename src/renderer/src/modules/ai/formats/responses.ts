@@ -69,7 +69,11 @@ export const createResponsesAdapter = (): AiFormatAdapter => {
       if (params.bodyOverride) Object.assign(body, params.bodyOverride)
       return {
         url: `${normalizeBase(params.baseURL)}/responses`,
-        headers: params.headers ?? {},
+        // 缺省注入 Bearer 认证（可被 onRequest 的 headers 覆盖）
+        headers: {
+          ...(params.apiKey ? { Authorization: `Bearer ${params.apiKey}` } : {}),
+          ...(params.headers ?? {})
+        },
         body
       }
     },

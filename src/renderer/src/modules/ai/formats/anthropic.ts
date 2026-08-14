@@ -83,8 +83,8 @@ export const createAnthropicAdapter = (): AiFormatAdapter => {
       return {
         url: `${base}/v1/messages`,
         headers: {
-          'x-api-key': params.apiKey ?? '',
           'anthropic-version': '2023-06-01',
+          ...(params.apiKey ? { 'x-api-key': params.apiKey } : {}),
           ...(params.headers ?? {})
         },
         body

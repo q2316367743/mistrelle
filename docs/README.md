@@ -77,6 +77,7 @@
 | [06-token-usage.md](./chat/06-token-usage.md)                       | Token 用量与上下文占用：API usage 记录、四类构成估算+归一化、发送栏圆环 + 弹窗明细 |
 | [07-chat-process-fold.md](./chat/07-chat-process-fold.md)           | 助理消息过程折叠：完成 + 有过程内容即可折叠、无最终回复时折叠条 +「异常停止」提示 |
 | [08-new-page-keep-alive.md](./chat/08-new-page-keep-alive.md)       | 新建聊天页 keep-alive 保活：router-view 外套 keep-alive 缓存 /new 页（组件名 PageNew），发送后重置全部表单数据 |
+| [09-user-message-expand.md](./chat/09-user-message-expand.md)       | 用户消息折叠 / 展开：默认最多 2 行（-webkit-line-clamp）、溢出检测决定「更多/收起」按钮显隐 |
 
 ### setting/ —— 设置
 

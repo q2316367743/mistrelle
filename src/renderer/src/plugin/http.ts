@@ -241,14 +241,15 @@ export async function requestStream(config: StreamRequestOptions): Promise<Strea
 
   const info = await infoPromise
 
-  // 取消信号：外部 abort 时取消底层请求（流正常结束后由 donePromise 收尾，不再响应）
+  // 取消信号：外部 abort 时取消底层请求；流结束后（generate finally）移除监听，避免悬挂
+  let removeAbortListener: (() => void) | null = null
   if (signal) {
     if (signal.aborted) {
       window.preload.aiStream.streamAbort(info.requestId)
     } else {
-      signal.addEventListener('abort', () => window.preload.aiStream.streamAbort(info.requestId), {
-        once: true
-      })
+      const onAbort = (): void => window.preload.aiStream.streamAbort(info.requestId)
+      signal.addEventListener('abort', onAbort, { once: true })
+      removeAbortListener = () => signal.removeEventListener('abort', onAbort)
     }
   }
 
@@ -266,6 +267,7 @@ export async function requestStream(config: StreamRequestOptions): Promise<Strea
       }
       if (streamError) throw streamError
     } finally {
+      removeAbortListener?.()
       // 消费方提前退出（break / return / 异常）时取消底层请求，避免悬挂
       if (!settled) window.preload.aiStream.streamAbort(info.requestId)
     }

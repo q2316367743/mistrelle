@@ -40,6 +40,10 @@ export const aiStreamApi = {
         ...config,
         adapter: axios.getAdapter('http'),
         responseType: 'stream',
+        // 流式场景禁用 axios 整体超时：其 timeout 定时器在响应头到达后不会清除，会在响应体读取
+        // 期间（AI 思考 / 长回答常远超默认 30s）触发并 request.destroy()，导致流迭代抛 AbortError，
+        // 被渲染层误判为主动取消。超时与取消统一由渲染层 AbortSignal（streamAbort）控制。
+        timeout: 0,
         signal: controller.signal
       })
       onStart?.({
