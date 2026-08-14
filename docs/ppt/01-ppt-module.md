@@ -186,6 +186,8 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 
 - `src/components/chat/aside/ppt/PptAside.vue`（仿 `DesignAside.vue`）：
   - 顶部：t-select 选择 slides 文件（聊天进行中 disabled）+ 刷新 + 下拉菜单（导出 PPTX / 导出 PNG / 文件夹中显示）
+  - 「文件夹中显示」：已选中具体 PPT 时定位沙盒真实文件（`{sandbox}/outputs/{name}.ppt.json`），未选中时优先打开
+    工作空间根目录 `{workspace}`（`workspace` prop 由 `LChatAside` 透传会话工作空间，未选择才退回 `{sandbox}/outputs`）
 - `src/components/chat/aside/ppt/PptRenderer.vue`：
   - 全屏（fullscreen）：左侧缩略图栏 + 右侧当前页大图（WPS 左右结构，点击 / hover 预览）；非全屏窄侧边栏隐藏缩略图
   - 顶部页码拖拽条（t-slider 切页）+ 页码指示；`currentPage` 变更自动滚动定位缩略图

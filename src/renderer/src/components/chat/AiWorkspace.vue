@@ -1,5 +1,11 @@
 <template>
-  <div v-if="readonly" class="ai-workspace ai-workspace--readonly" :title="workspace">
+  <div
+    v-if="readonly"
+    class="ai-workspace ai-workspace--readonly"
+    :title="workspace"
+    role="button"
+    @click="openWorkspace"
+  >
     <div class="ai-workspace__icon active">
       <folder-filled-icon />
     </div>
@@ -52,6 +58,7 @@
 </template>
 <script lang="ts" setup>
 import { CloseIcon, FolderAdd1Icon, FolderFilledIcon, HistoryIcon } from 'tdesign-icons-vue-next'
+import type { DropdownOption } from 'tdesign-vue-next'
 import { useUtoolsDbAsync } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import { debounce } from 'es-toolkit'
@@ -103,8 +110,14 @@ const handleClickDebounced = debounce((val: string) => {
   }
 }, 300)
 
-const handleClick = ({ value }: any) => {
-  handleClickDebounced(value)
+const handleClick = ({ value }: DropdownOption) => {
+  handleClickDebounced(String(value))
+}
+
+const openWorkspace = () => {
+  if (workspace.value) {
+    window.preload.inject.shell.openPath(workspace.value)
+  }
 }
 
 const renderBasename = (path: string) => window.preload.path.basename(path)
@@ -116,9 +129,19 @@ const renderBasename = (path: string) => window.preload.path.basename(path)
   cursor: pointer;
   font-size: var(--td-font-size-body-medium);
   &--readonly {
-    cursor: default;
+    cursor: pointer;
     padding: 4px 8px;
     user-select: none;
+    border-radius: var(--td-radius-medium);
+    transition: background-color 0.3s ease-in-out;
+    .ai-workspace__icon,
+    .ai-workspace__text {
+      transition: none;
+    }
+
+    &:hover {
+      background-color: var(--td-bg-color-container-hover);
+    }
   }
   &__icon,
   &__text {

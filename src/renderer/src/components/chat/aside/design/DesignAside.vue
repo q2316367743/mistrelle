@@ -103,6 +103,8 @@ import { openVideoExportDialog } from './VideoExportDialog'
 const props = withDefaults(
   defineProps<{
     sandbox?: string
+    /** 用户工作空间：已选择时「文件夹中显示」优先打开它 */
+    workspace?: string
     /** 侧边栏全屏：展示「左元素树 + 右画布」双栏布局 */
     fullscreen?: boolean
     /** 会话作答状态：pending / streaming 视为聊天进行中 */
@@ -110,6 +112,7 @@ const props = withDefaults(
   }>(),
   {
     sandbox: '',
+    workspace: '',
     fullscreen: false,
     status: 'idle'
   }
@@ -241,7 +244,9 @@ const handleAction: DropdownProps['onClick'] = (data) => {
         )
       )
     } else {
-      window.preload.inject.shell.openPath(buildCanvasOutputsDir(props.sandbox ?? ''))
+      window.preload.inject.shell.openPath(
+        props.workspace || buildCanvasOutputsDir(props.sandbox ?? '')
+      )
     }
   }
 }

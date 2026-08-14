@@ -78,12 +78,15 @@ import { cloneDeep } from 'es-toolkit'
 const props = withDefaults(
   defineProps<{
     sandbox?: string
+    /** 用户工作空间：已选择时「文件夹中显示」优先打开它 */
+    workspace?: string
     fullscreen?: boolean
     /** 会话作答状态：pending / streaming 视为聊天进行中 */
     status?: ChatStatus
   }>(),
   {
     sandbox: '',
+    workspace: '',
     fullscreen: false,
     status: 'idle'
   }
@@ -205,7 +208,9 @@ const handleAction: DropdownProps['onClick'] = (data) => {
         )
       )
     } else {
-      void window.preload.inject.shell.openPath(buildPptOutputsDir(props.sandbox ?? ''))
+      void window.preload.inject.shell.openPath(
+        props.workspace || buildPptOutputsDir(props.sandbox ?? '')
+      )
     }
   }
 }

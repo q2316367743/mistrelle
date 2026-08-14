@@ -83,3 +83,6 @@ emit:  (e: 'select', id: string | undefined): void
 - 画布重建会清空选中（`cancel()` 自动触发），无需手动清理。
 - 全屏开关不影响画布组件生命周期；非全屏时树组件卸载，`selectedId` 保留，再次全屏恢复联动。
 - 空画布 / 无节点时树显示「暂无元素」。
+- 「文件夹中显示」：`DesignAside` 接收 `workspace` prop（`LChatAside` 透传会话工作空间）；
+  已选中具体画布时定位沙盒真实文件（`{sandbox}/outputs/canvas-{version}.canvas`），未选中时优先打开
+  工作空间根目录 `{workspace}`（未选择工作空间才退回 `{sandbox}/outputs`）。

@@ -78,6 +78,7 @@
 | [07-chat-process-fold.md](./chat/07-chat-process-fold.md)           | 助理消息过程折叠：完成 + 有过程内容即可折叠、无最终回复时折叠条 +「异常停止」提示 |
 | [08-new-page-keep-alive.md](./chat/08-new-page-keep-alive.md)       | 新建聊天页 keep-alive 保活：router-view 外套 keep-alive 缓存 /new 页（组件名 PageNew），发送后重置全部表单数据 |
 | [09-user-message-expand.md](./chat/09-user-message-expand.md)       | 用户消息折叠 / 展开：默认最多 2 行（-webkit-line-clamp）、溢出检测决定「更多/收起」按钮显隐 |
+| [10-ai-workspace.md](./chat/10-ai-workspace.md)                     | AiWorkspace 工作目录选择器：非只读 dropdown 选择/清除/历史，只读锁定态点击 shell.openPath 打开目录（cursor default 无动画） |
 
 ### setting/ —— 设置
 
