@@ -76,6 +76,7 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
     ready.value = true
   }
 
+  // eslint-disable-next-line prefer-const
   initPromise = init()
 
   const put = async (form: AiProvideForm) => {
