@@ -11,6 +11,8 @@
  * 清空预览字体而不影响画布已注册字体）。
  */
 
+import { FontSource } from '@/domain/FontItem'
+
 /** 注册器接收的字体信息（FontItem 的子集） */
 export interface FontFaceRegistryFont {
   name: string

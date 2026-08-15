@@ -39,7 +39,9 @@
 
     <div class="font-meta-content__actions">
       <t-button variant="outline" :disabled="loading" @click="emit('close')">取消</t-button>
-      <t-button theme="primary" :loading="loading" @click="handleSubmit">{{ editMode ? '保存' : '入库' }}</t-button>
+      <t-button theme="primary" :loading="loading" @click="handleSubmit">{{
+        editMode ? '保存' : '入库'
+      }}</t-button>
     </div>
   </div>
 </template>
@@ -57,6 +59,7 @@ import {
   inferFontMeta,
   normalizeMetaInput
 } from '@/utils/fontMeta'
+import { FontItemWithMeta } from '@/domain/FontItem'
 
 interface FontMetaForm {
   type: string
@@ -98,7 +101,10 @@ const handleSubmit = async () => {
   loading.value = true
   try {
     if (editMode.value && props.font) {
-      const result = await window.preload.font.updateFontMeta(props.font.name, normalizeMetaInput(meta))
+      const result = await window.preload.font.updateFontMeta(
+        props.font.name,
+        normalizeMetaInput(meta)
+      )
       if ('error' in result && result.error) {
         MessageUtil.error(result.error)
         return
@@ -114,7 +120,10 @@ const handleSubmit = async () => {
       if ('error' in result && result.error) failed.push(`${basename(path)}: ${result.error}`)
     }
     const added = files.length - failed.length
-    if (added > 0) MessageUtil.success(`已入库 ${added} 个字体${failed.length ? `，失败 ${failed.length} 个` : ''}`)
+    if (added > 0)
+      MessageUtil.success(
+        `已入库 ${added} 个字体${failed.length ? `，失败 ${failed.length} 个` : ''}`
+      )
     if (failed.length) MessageUtil.error(failed.join('\n'))
     emit('success', { added })
   } finally {

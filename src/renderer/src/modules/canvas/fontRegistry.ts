@@ -11,6 +11,7 @@
  */
 import type { CanvasDoc, CanvasNode } from './canvasTypes'
 import { createFontFaceRegistry } from '@/utils/fontFaceRegistry'
+import type { FontItem } from '@/domain/FontItem'
 
 /** 画布字体同时驻留 document.fonts 的上限 */
 const MAX_REGISTERED_FACES = 50
@@ -43,7 +44,7 @@ export const ensureFontsForDoc = async (doc: CanvasDoc | null | undefined): Prom
   const families = collectFontFamilies(doc)
   if (!families.length) return
   try {
-    const all = await window.preload.font.listFonts()
+    const all: Array<FontItem> = await window.preload.font.listFonts()
     const byName = new Map(all.map((f) => [f.name, f]))
     const pending = families
       .map((family) => byName.get(family))

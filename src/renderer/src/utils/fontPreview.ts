@@ -6,6 +6,7 @@
  * 缓存 key 含 source+name；删除后重新入库同名字体需 clearFontPreviewCache 刷新。
  */
 import { createFontFaceRegistry } from '@/utils/fontFaceRegistry'
+import { FontItem } from '@/domain/FontItem'
 
 /** 预览字体同时驻留 document.fonts 的上限 */
 const MAX_PREVIEW_FACES = 60

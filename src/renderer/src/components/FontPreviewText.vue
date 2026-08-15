@@ -11,6 +11,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue'
 import { ensureFontPreview } from '@/utils/fontPreview'
+import { FontItem } from '@/domain/FontItem'
 
 const props = defineProps<{
   font: Pick<FontItem, 'name' | 'path' | 'source'>

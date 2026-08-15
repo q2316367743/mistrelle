@@ -6,6 +6,17 @@
  * font_list 工具与资源管理页筛选共用本模块，保证过滤语义一致。
  */
 
+import {
+  FontItem,
+  FontItemWithMeta,
+  FontLanguage,
+  FontLicense,
+  FontMeta,
+  FontStyle,
+  FontType,
+  FontWeightCategory
+} from '@/domain/FontItem'
+
 /** 五维过滤参数（含「全部」= 不限；空串 / 缺省同样视为不限）。值以 string 承载，运行时由选项列表约束 */
 export interface FontMetaFilter {
   type?: string
@@ -93,8 +104,9 @@ export const FONT_LANG_OPTIONS: (FontLanguage | '全部')[] = [
 ]
 
 /** t-select 下拉选项：把字符串选项数组映射为 { label, value }（EnumOne 也接受字符串，但 t-select 需要对象） */
-export const toSelectOptions = (options: readonly string[]): Array<{ label: string; value: string }> =>
-  options.map((o) => ({ label: o, value: o }))
+export const toSelectOptions = (
+  options: readonly string[]
+): Array<{ label: string; value: string }> => options.map((o) => ({ label: o, value: o }))
 
 export const FONT_TYPE_SELECT = toSelectOptions(FONT_TYPE_OPTIONS)
 export const FONT_STYLE_SELECT = toSelectOptions(FONT_STYLE_OPTIONS)
@@ -140,7 +152,17 @@ const TYPE_RULES = [
   ruleFor('书法', ['书法', '毛笔', '翰墨', 'calligraphy', 'brush', 'shufa']),
   ruleFor('手写', ['手写', '手札', '手绘', 'hand', 'handwriting', 'script', 'pen']),
   ruleFor('像素', ['像素', '点阵', 'pixel', 'pix', 'dotmatrix']),
-  ruleFor('创意', ['创意', '艺术', '个性', '装饰', 'creative', 'art', 'decorative', 'designer', 'display']),
+  ruleFor('创意', [
+    '创意',
+    '艺术',
+    '个性',
+    '装饰',
+    'creative',
+    'art',
+    'decorative',
+    'designer',
+    'display'
+  ])
 ] as const satisfies ReadonlyArray<{ key: FontType; keywords: string[] }>
 
 const STYLE_RULES = [
@@ -154,7 +176,17 @@ const STYLE_RULES = [
   ruleFor('复古', ['复古', 'retro', 'vintage', 'nostalgia', 'mid-century']),
   ruleFor('活字风', ['活字', 'letterpress', 'woodtype', 'wood-type']),
   ruleFor('花式', ['花式', '装饰', 'fancy', 'swash', 'ornate', 'flourish']),
-  ruleFor('科技感', ['科技', '电子', 'tech', 'cyber', 'digital', 'neon', 'future', 'sci-fi', 'scifi']),
+  ruleFor('科技感', [
+    '科技',
+    '电子',
+    'tech',
+    'cyber',
+    'digital',
+    'neon',
+    'future',
+    'sci-fi',
+    'scifi'
+  ]),
   ruleFor('尖锐', ['尖锐', 'sharp', 'spiky', 'angular']),
   ruleFor('力量', ['力量', '强硬', 'power', 'impact', 'stencil', 'strength']),
   ruleFor('豪放', ['豪放', '狂野', 'rough', 'grunge', 'explosive', 'brush']),
@@ -162,17 +194,26 @@ const STYLE_RULES = [
   ruleFor('稳重', ['稳重', '正式', 'stable', 'solid', 'serious']),
   ruleFor('简约', ['简约', '极简', 'minimal', 'clean', 'simple', 'geometric', 'modern']),
   ruleFor('现代', ['现代', 'contemporary']),
-  ruleFor('AI生成', ['ai生成', 'ai-generated', 'generated', 'ai']),
+  ruleFor('AI生成', ['ai生成', 'ai-generated', 'generated', 'ai'])
 ] as const satisfies ReadonlyArray<{ key: FontStyle; keywords: string[] }>
 
 const WEIGHT_RULES = [
   ruleFor('可变', ['可变', 'variable', 'vf']),
   ruleFor('纤细', ['纤细', '极细', 'thin', 'hairline', 'ultralight', 'ultra-light']),
   ruleFor('细', ['细体', '细', 'light', 'extralight', 'extra-light', 'demilight']),
-  ruleFor('超粗', ['超粗', '特粗', 'black', 'heavy', 'ultrabold', 'ultra-bold', 'extrabold', 'extra-bold']),
+  ruleFor('超粗', [
+    '超粗',
+    '特粗',
+    'black',
+    'heavy',
+    'ultrabold',
+    'ultra-bold',
+    'extrabold',
+    'extra-bold'
+  ]),
   ruleFor('粗', ['粗黑', '粗体', '粗', 'bold', 'semibold', 'semi-bold', 'demibold', 'demi-bold']),
   ruleFor('多字重', ['多字重', '全字重', 'multiweight', 'multi-weight']),
-  ruleFor('正常', ['常规', '标准', '中等', 'regular', 'normal', 'book', 'medium', 'roman']),
+  ruleFor('正常', ['常规', '标准', '中等', 'regular', 'normal', 'book', 'medium', 'roman'])
 ] as const satisfies ReadonlyArray<{ key: FontWeightCategory; keywords: string[] }>
 
 const LICENSE_RULES = [
@@ -188,13 +229,13 @@ const LICENSE_RULES = [
   ruleFor('APR', ['apr']),
   ruleFor('APL', ['apl']),
   ruleFor('YDOFL', ['ydofl']),
-  ruleFor('ISAS', ['isas']),
+  ruleFor('ISAS', ['isas'])
 ] as const satisfies ReadonlyArray<{ key: FontLicense; keywords: string[] }>
 
 const LANG_RULES = [
   ruleFor('繁体中文', ['繁体', '中文繁体', 'tc', 'traditional', 'big5']),
   ruleFor('日文', ['日文', '日本', 'jp', 'japanese', 'jis', 'mincho']),
-  ruleFor('韩文', ['韩文', '韩', 'kr', 'korean', 'hangul', 'malgun', 'batang', 'gulim', 'dotum']),
+  ruleFor('韩文', ['韩文', '韩', 'kr', 'korean', 'hangul', 'malgun', 'batang', 'gulim', 'dotum'])
 ] as const satisfies ReadonlyArray<{ key: FontLanguage; keywords: string[] }>
 
 /** 按字体名启发式推断五维分类（推断失败维度返回各自兜底值） */
@@ -238,13 +279,14 @@ export const normalizeMetaInput = (meta: FontMetaFilter): Partial<FontMeta> | un
 }
 
 /** 按五维过滤字体列表：每个字体先补齐 meta（持久化值 ?? 启发式），再逐维度比对；「全部」/空/缺省 = 不限 */
-export const filterFontsByMeta = (fonts: readonly FontItem[], filter: FontMetaFilter): FontItemWithMeta[] => {
-  return fonts
-    .map(resolveFontMeta)
-    .filter((f) =>
-      FILTER_KEYS.every((k) => {
-        const v = filter[k]
-        return !v || v === '全部' || f.meta[k] === v
-      })
-    )
+export const filterFontsByMeta = (
+  fonts: readonly FontItem[],
+  filter: FontMetaFilter
+): FontItemWithMeta[] => {
+  return fonts.map(resolveFontMeta).filter((f) =>
+    FILTER_KEYS.every((k) => {
+      const v = filter[k]
+      return !v || v === '全部' || f.meta[k] === v
+    })
+  )
 }

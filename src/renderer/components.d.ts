@@ -112,8 +112,6 @@ declare module 'vue' {
     TTag: typeof import('tdesign-vue-next')['Tag']
     TTagInput: typeof import('tdesign-vue-next')['TagInput']
     TTextarea: typeof import('tdesign-vue-next')['Textarea']
-    TTimeline: typeof import('tdesign-vue-next')['Timeline']
-    TTimelineItem: typeof import('tdesign-vue-next')['TimelineItem']
     TTooltip: typeof import('tdesign-vue-next')['Tooltip']
     TTree: typeof import('tdesign-vue-next')['Tree']
     VideoExportContent: typeof import('./src/components/chat/aside/design/VideoExportContent.vue')['default']

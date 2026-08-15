@@ -68,12 +68,7 @@
               <CheckCircleIcon v-if="selected === f.name" class="font-pick__check" />
               <font-preview-text :font="f" class="font-pick__preview" />
               <span class="font-pick__name">{{ f.name }}</span>
-              <t-tag
-                v-if="f.source === 'library'"
-                size="small"
-                variant="light"
-                theme="primary"
-              >
+              <t-tag v-if="f.source === 'library'" size="small" variant="light" theme="primary">
                 资源库
               </t-tag>
             </div>
@@ -112,6 +107,7 @@ import { CheckCircleIcon } from 'tdesign-icons-vue-next'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
 import { normalizeFontPickArgs } from '@/modules/tool/components/design/fontTools'
 import FontPreviewText from '@/components/FontPreviewText.vue'
+import { FontItem } from '@/domain/FontItem'
 
 const props = defineProps({
   content: {
@@ -178,7 +174,8 @@ const isInteractive = computed(
     matched.value
 )
 const isWaiting = computed(
-  () => (props.content.status === 'pending' || props.content.status === 'streaming') && !matched.value
+  () =>
+    (props.content.status === 'pending' || props.content.status === 'streaming') && !matched.value
 )
 const isDone = computed(
   () => props.content.status === 'complete' || props.content.status === 'error'
@@ -265,7 +262,9 @@ const cancel = () => {
       border-radius: var(--td-radius-small);
       border: 1px solid var(--td-component-border);
       cursor: pointer;
-      transition: border-color 0.2s ease, background-color 0.2s ease;
+      transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease;
 
       &--selected {
         border-color: var(--td-brand-color);

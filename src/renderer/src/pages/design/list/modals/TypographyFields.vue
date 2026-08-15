@@ -56,6 +56,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { AiDesignStyleTypography } from '@/entity'
 import FontPreviewText from '@/components/FontPreviewText.vue'
+import { FontItem } from '@/domain/FontItem'
 
 defineProps<{ typography: AiDesignStyleTypography }>()
 
