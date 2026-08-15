@@ -1,5 +1,4 @@
 import {
-  Leafer,
   Rect,
   Ellipse,
   Text,
@@ -21,6 +20,7 @@ import {
   type CanvasLayoutNode
 } from './canvasLayout'
 import { ensureFontsForDoc } from './fontRegistry'
+import { createOffscreenLeafer } from './offscreenCanvas'
 
 export type CanvasRenderNode =
   | Rect
@@ -517,14 +517,7 @@ export const exportCanvasPng = async (
   const r = region ? roundRegion(region) : { x: 0, y: 0, width: doc.width, height: doc.height }
   const width = Math.max(1, r.width)
   const height = Math.max(1, r.height)
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  canvas.style.position = 'absolute'
-  canvas.style.left = '-9999px'
-  canvas.style.top = '0'
-  document.body.appendChild(canvas)
-  const offscreen = new Leafer({ view: canvas, width, height })
+  const { leafer: offscreen, dispose } = createOffscreenLeafer(width, height)
   try {
     const elements = buildDocElements(doc, 1)
     for (const element of elements) {
@@ -538,7 +531,6 @@ export const exportCanvasPng = async (
     if (!(result.data instanceof Blob)) throw new Error('导出图片数据无效')
     return result.data
   } finally {
-    offscreen.destroy()
-    canvas.remove()
+    dispose()
   }
 }

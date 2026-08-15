@@ -10,6 +10,7 @@
  */
 import { Leafer, Image as LeaferImage } from 'leafer-editor'
 import '@leafer-in/animate'
+import { createOffscreenLeafer } from './offscreenCanvas'
 import {
   buildDocElements,
   normalizeRegion,
@@ -264,14 +265,7 @@ export const exportCanvasVideo = async (
 
   const outW = Math.max(1, Math.round(region.width * scale))
   const outH = Math.max(1, Math.round(region.height * scale))
-  const canvas = document.createElement('canvas')
-  canvas.width = outW
-  canvas.height = outH
-  canvas.style.position = 'absolute'
-  canvas.style.left = '-9999px'
-  canvas.style.top = '0'
-  document.body.appendChild(canvas)
-  const offscreen = new Leafer({ view: canvas, width: outW, height: outH })
+  const { leafer: offscreen, dispose } = createOffscreenLeafer(outW, outH)
 
   controller.begin(total)
   try {
@@ -303,8 +297,7 @@ export const exportCanvasVideo = async (
     if (window.preload.fs.existsSync(framesDir)) {
       await window.preload.fs.rm(framesDir)
     }
-    offscreen.destroy()
-    canvas.remove()
+    dispose()
   }
 }
 
