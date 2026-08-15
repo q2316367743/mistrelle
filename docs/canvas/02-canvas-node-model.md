@@ -113,7 +113,9 @@ interface CanvasDoc {
   `line` 的颜色取自 `stroke`（兼容旧数据 `fill` 兜底），并保留 dashPattern / strokeCap。
 - `exportCanvasPng(doc, region?)`：scale=1 复用同一构建，通过 `screenshot` 限定导出矩形—— **缺省严格导出整张画布**（0,0 →
   doc 尺寸，越界元素裁剪，杜绝「导出尺寸 ≠ 画布尺寸」）；传 `region {x,y,width,height}` 可导出指定区域（用于画布内容器 /
-  卡片按设计区域导出）。辅助函数：`computeNodeBounds(doc, id)`（节点含子树包围盒， **复用 computeLayoutBounds 的父链累加，
+  卡片按设计区域导出）。离屏 Leafer 经 `createOffscreenLeafer`（`offscreenCanvas.ts`）挂临时隐藏 `host` 容器：
+  **leafer 初始化会把 canvas 父元素内联设为 `user-select: none` 且销毁不恢复，必须用临时容器隔离，直接挂 body 会永久污染全局选中**。
+  辅助函数：`computeNodeBounds(doc, id)`（节点含子树包围盒， **复用 computeLayoutBounds 的父链累加，
   修复旧版深层节点漏祖先位移的 bug**）、`normalizeRegion(region)`。
 - 预览组件 `CanvasRenderer.vue` 调用 `buildDocElements`（fit/缩放/平移逻辑不变）。
 - **预览交互：双击复制节点 id**（`CanvasRenderer.vue`）：监听 `double_tap`，从命中元素沿 `parent` 链向上取最近带 `id`

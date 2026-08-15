@@ -9,6 +9,8 @@
 > - 渲染器 `../../src/modules/canvas/canvasRender.ts`（`import '@leafer-in/animate'` + 动画属性透传 + PNG 导出
 >   `settleAnimations`）
 > - 逐帧导出管线 `../../src/modules/canvas/canvasVideoExport.ts`（ **新增**，含用户侧入口 `startVideoExport`）
+> - 离屏画布工具 `../../src/modules/canvas/offscreenCanvas.ts`（临时 `host` 容器包裹 Leafer，避免污染 body 的
+>   `user-select`）
 > - 导出状态单例 `../../src/modules/canvas/videoExportState.ts`（ **新增**）
 > - 全局遮罩 `src/components/canvas/VideoExportOverlay.vue`（ **新增**，挂载于 `App.vue` 根）
 > - 导出 UI `src/components/chat/aside/design/VideoExportDialog.tsx` + `VideoExportContent.vue`（ **新增**，
@@ -166,7 +168,7 @@ export const exportCanvasVideo = async (
 |---|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1 | 参数归一     | 计算帧总数 `total = round(fps × duration)`；解析 region（复用 `computeNodeBounds` / `normalizeRegion`）；输出路径缺省拼接沙盒 `outputs/`                                                                                                                                                        |
 | 2 | 建临时帧目录 | `fs.mkdir(sandbox/outputs/.video-frames-{ts}/, true)`（隐藏目录，导出后清理）                                                                                                                                                                                                                   |
-| 3 | 离屏实例     | 复用 `exportCanvasPng` 的离屏模式：`canvas` + `new Leafer({ view: canvas, width, height })`；`buildDocElements(doc, scale)` 后 `add` 全部元素                                                                                                                                                   |
+| 3 | 离屏实例     | 复用 `exportCanvasPng` 的离屏模式：`createOffscreenLeafer(width, height)`（`offscreenCanvas.ts`）创建挂载在临时隐藏 `host` 容器中的 Leafer；`buildDocElements(doc, scale)` 后 `add` 全部元素。**注意**：leafer 初始化会把 canvas 的父元素内联设为 `user-select: none` 且销毁时不会自动恢复，因此不能直接挂 `document.body`，必须挂临时 `host`（`dispose()` 时 `destroy()` + `host.remove()`），否则 body 会被永久污染导致全文无法选中 |
 | 4 | 等图片就绪   | 遍历 image / svg 节点，`await` 元素加载完成（`image.ready` / 一次性监听 `loaded` 事件，超时 5s 兜底跳过）——**防止首帧空白**                                                                                                                                                                     |
 | 5 | 逐帧渲染     | `for frame in 0..total-1`：`t = frame / fps` → 同步动画到 `t`（见 §5.2）→ `await offscreen.export('png', { blob: true, screenshot })` → `writeBinaryFile(frameDir/frame_%05d.png)`；**每帧前检查 `controller.signal.aborted`，命中即抛 CancelledError**；更新进度 `frame / total`（映射 0–90%） |
 | 6 | 合并编码     | 调 `window.preload.ffmpeg.run(args, onProgress)`（见 §6），进度映射 90–100%                                                                                                                                                                                                                     |
