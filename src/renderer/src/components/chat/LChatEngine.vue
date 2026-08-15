@@ -132,8 +132,10 @@ const startResize = (e: MouseEvent) => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
     document.body.style.cursor = ''
+    document.body.style.userSelect = ''
   }
   document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
 }

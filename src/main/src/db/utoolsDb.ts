@@ -33,7 +33,7 @@ class UtoolsDb {
   }
 
   put(doc: Record<string, unknown> & { _id: string }): DbPutResult {
-    const { _id, _rev, ...rest } = doc
+    const { _id, ...rest } = doc
     if (!_id) return { ok: false, id: '', error: true, message: '缺少 _id' }
     this.db.put(_id, rest)
     return { ok: true, id: _id }
@@ -48,9 +48,7 @@ class UtoolsDb {
 
   allDocs<T = unknown>(key?: string | string[]): DbDoc<T>[] {
     if (Array.isArray(key)) {
-      return key
-        .map((id) => this.get<T>(id))
-        .filter((doc): doc is DbDoc<T> => doc !== null)
+      return key.map((id) => this.get<T>(id)).filter((doc): doc is DbDoc<T> => doc !== null)
     }
     if (typeof key === 'string' && key) {
       const docs: DbDoc<T>[] = []
