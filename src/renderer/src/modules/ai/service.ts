@@ -41,7 +41,12 @@ export const createChatCompletion = async (
 ): Promise<AiCompletionResult> => {
   const adapter = createAdapter(params.format)
   const { url, headers, body } = adapter.buildRequest(params, false)
-  const resp = await usePost<unknown>(url, body, { url, headers, signal: params.signal })
+  const resp = await usePost<unknown>(url, body, {
+    url,
+    headers,
+    signal: params.signal,
+    timeout: 30_000
+  })
   return adapter.parseCompletion(resp.data)
 }
 
