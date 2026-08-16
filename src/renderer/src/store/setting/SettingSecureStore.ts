@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed } from 'vue'
 import { useUtoolsDbAsync } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
-import { buildSettingSecure, getDefaultEgoBrowserPath } from '@/entity'
+import { buildSettingSecure, getDefaultEgoBrowserPath } from '@/entity/setting/SettingSecured'
 
 export const useSettingSecureStore = defineStore('SettingSecureStore', () => {
   const state = useUtoolsDbAsync(LocalNameEnum.SETTING_SECURE, buildSettingSecure())

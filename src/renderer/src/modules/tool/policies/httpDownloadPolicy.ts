@@ -1,4 +1,4 @@
-import type { ToolPolicy } from '@/modules/tool'
+import type { ToolPolicy } from '@/modules/tool/toolPolicyTypes'
 import { isPathUnder } from '@/utils/sandbox'
 
 /**
