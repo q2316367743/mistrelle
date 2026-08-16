@@ -56,6 +56,10 @@ export interface AiStreamChunk {
       reasoning_content?: string
       tool_calls?: AiToolCallDelta[]
     }
+    /** 兜底：个别服务端对 `stream: true` 仍返回非流式 JSON（无 delta，只有 message） */
+    message?: {
+      content?: string | null
+    }
   }>
 }
 

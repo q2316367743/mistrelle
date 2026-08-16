@@ -52,7 +52,7 @@ Node http 适配器（无 CORS）
 
 ```ts
 createChatStream(params: AiRequestParams): AsyncGenerator<AiStreamChunk>  // 流式；signal.abort / 提前 break 均取消
-createChatCompletion(params: AiRequestParams): Promise<AiCompletionResult> // 非流式（命名 / 总结）
+createChatCompletion(params: AiRequestParams): Promise<AiCompletionResult> // 非流式（命名 / 总结）；内部走 createChatStream 流式聚合
 listAiModels({ baseURL, apiKey, format }): Promise<Array<{ id: string }>> // GET {base}/models；anthropic 抛「不支持在线拉取」
 ```
 
@@ -60,6 +60,7 @@ listAiModels({ baseURL, apiKey, format }): Promise<Array<{ id: string }>> // GET
 
 - `bodyOverride`：`ChatServiceConfig.onRequest` 返回的 body 覆盖项（格式原生 body，spread 进请求体，优先级最高）。
 - `format` 缺省按 `chat` 处理（`ResolvedChatRequestParams.format ?? 'chat'`，兼容旧配置无 format 字段）。
+- `createChatCompletion` **不再发送 `stream: false`**：部分 OpenAI 兼容服务端（如本地 vLLM / llama.cpp 类）不支持非流式请求，会在传输前关闭连接，axios 抛 `ERR_BAD_RESPONSE`「stream has been aborted」。统一改由 `createChatStream`（`stream: true`）逐帧累积 `delta.content`，契约 `AiCompletionResult` 不变，`UseChatName` / `UseDiscussionName` / `summarize.ts` 调用方零改动。兜底：个别服务端对 `stream: true` 仍回非流式 JSON（无 delta 只有 `message`），`AiStreamChunk.choices[0].message` 字段兜底取完整内容。
 
 ## 关键文件
 
@@ -71,7 +72,7 @@ listAiModels({ baseURL, apiKey, format }): Promise<Array<{ id: string }>> // GET
 | `src/renderer/src/modules/ai/types.ts` | 归一类型（对齐 chat 形状） |
 | `src/renderer/src/modules/ai/sse.ts` | `SseParser`：按空行分帧、多行 data 拼接、`[DONE]` 透传、flush 残余 |
 | `src/renderer/src/modules/ai/transport.ts` | `streamSseFrames`：非 2xx 收集错误体抛 `HTTP {status}: {message}`；TextDecoder 增量解码 |
-| `src/renderer/src/modules/ai/formats/{chat,responses,anthropic}.ts` | 三份 `AiFormatAdapter`（buildRequest / normalizeChunk / parseCompletion）；responses 需实例级状态（pendingArgIndices 对齐 done 事件的索引），anthropic 需实例级 usage 累积 → 用工厂 `createXxxAdapter()` 每请求新建 |
+| `src/renderer/src/modules/ai/formats/{chat,responses,anthropic}.ts` | 三份 `AiFormatAdapter`（buildRequest / normalizeChunk）；responses 需实例级状态（pendingArgIndices 对齐 done 事件的索引），anthropic 需实例级 usage 累积 → 用工厂 `createXxxAdapter()` 每请求新建 |
 | `src/renderer/src/modules/ai/service.ts` | 对外 API + 适配器分发 |
 
 ## 消费方改造

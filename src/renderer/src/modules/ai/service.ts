@@ -1,6 +1,6 @@
-import { useGet, usePost } from '@/plugin/http'
+import { useGet } from '@/plugin/http'
 import type { AiProvideFormat } from '@/entity'
-import type { AiCompletionResult, AiRequestParams, AiStreamChunk } from './types'
+import type { AiCompletionResult, AiRequestParams, AiStreamChunk, AiUsage } from './types'
 import { streamSseFrames } from './transport'
 import { chatAdapter } from './formats/chat'
 import { createResponsesAdapter } from './formats/responses'
@@ -35,19 +35,27 @@ export async function* createChatStream(params: AiRequestParams): AsyncGenerator
 
 /**
  * 统一 AI 非流式对话入口（会话命名 / 总结等短任务）。
+ * 内部走流式通道聚合：部分服务端不支持 `stream: false` 会在传输前关闭连接（axios「stream has been aborted」），
+ * 统一改由 createChatStream（`stream: true`）逐帧累积，契约 AiCompletionResult 不变。
  */
 export const createChatCompletion = async (
   params: AiRequestParams
 ): Promise<AiCompletionResult> => {
-  const adapter = createAdapter(params.format)
-  const { url, headers, body } = adapter.buildRequest(params, false)
-  const resp = await usePost<unknown>(url, body, {
-    url,
-    headers,
-    signal: params.signal,
-    timeout: 30_000
-  })
-  return adapter.parseCompletion(resp.data)
+  let content = ''
+  let finishReason: string | null = null
+  let usage: AiUsage | undefined
+
+  for await (const chunk of createChatStream(params)) {
+    const choice = chunk.choices?.[0]
+    const delta = choice?.delta
+    if (delta?.content) content += delta.content
+    if (delta?.reasoning_content) content += delta.reasoning_content
+    // 兜底：个别服务端对 `stream: true` 仍返回非流式 JSON（只有 message 没有 delta）
+    if (!content && choice?.message?.content) content = choice.message.content
+    if (choice?.finish_reason) finishReason = choice.finish_reason
+    if (chunk.usage) usage = chunk.usage
+  }
+  return { content, finishReason, usage }
 }
 
 /**

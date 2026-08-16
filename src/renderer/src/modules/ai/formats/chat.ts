@@ -1,7 +1,7 @@
-import type { AiCompletionResult, AiRequestParams, AiStreamChunk } from '../types'
+import type { AiRequestParams, AiStreamChunk } from '../types'
 import type { SseFrame } from '../sse'
 import { AiFormatAdapter } from './types'
-import { isRecord, normalizeBase, strField, toUsage } from './util'
+import { isRecord, normalizeBase } from './util'
 
 /**
  * OpenAI Chat Completions（/chat/completions）适配器。
@@ -50,21 +50,5 @@ export const chatAdapter: AiFormatAdapter = {
     }
     if (!isRecord(data)) return []
     return [data as unknown as AiStreamChunk]
-  },
-
-  parseCompletion(body: unknown): AiCompletionResult {
-    if (!isRecord(body)) return { content: '' }
-    const choices = Array.isArray(body['choices']) ? (body['choices'] as unknown[]) : []
-    const choice = isRecord(choices[0]) ? choices[0] : undefined
-    const message = choice
-      ? isRecord(choice['message'])
-        ? choice['message']
-        : undefined
-      : undefined
-    return {
-      content: strField(message ?? {}, 'content') ?? '',
-      finishReason: strField(choice ?? {}, 'finish_reason'),
-      usage: toUsage(body['usage'])
-    }
   }
 }

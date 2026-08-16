@@ -1,4 +1,4 @@
-import type { AiCompletionResult, AiRequestParams, AiStreamChunk, AiUsage } from '../types'
+import type { AiRequestParams, AiStreamChunk, AiUsage } from '../types'
 import type { SseFrame } from '../sse'
 import { AiFormatAdapter } from './types'
 import { isRecord, normalizeBase, safeJsonParse, strField, toUsage } from './util'
@@ -166,22 +166,6 @@ export const createAnthropicAdapter = (): AiFormatAdapter => {
       }
 
       return chunks
-    },
-
-    parseCompletion(body: unknown): AiCompletionResult {
-      if (!isRecord(body)) return { content: '' }
-      const blocks = Array.isArray(body['content']) ? (body['content'] as unknown[]) : []
-      let content = ''
-      for (const block of blocks) {
-        if (isRecord(block) && block['type'] === 'text') {
-          content += strField(block, 'text') ?? ''
-        }
-      }
-      return {
-        content,
-        finishReason: mapStopReason(strField(body, 'stop_reason')),
-        usage: toUsage(body['usage'])
-      }
     }
   }
 }

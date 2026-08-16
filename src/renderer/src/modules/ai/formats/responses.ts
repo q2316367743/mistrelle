@@ -1,4 +1,4 @@
-import type { AiCompletionResult, AiRequestParams, AiStreamChunk, AiToolCallDelta } from '../types'
+import type { AiRequestParams, AiStreamChunk, AiToolCallDelta } from '../types'
 import type { SseFrame } from '../sse'
 import { AiFormatAdapter } from './types'
 import { isRecord, normalizeBase, strField, toUsage } from './util'
@@ -137,31 +137,6 @@ export const createResponsesAdapter = (): AiFormatAdapter => {
       }
 
       return chunks
-    },
-
-    parseCompletion(body: unknown): AiCompletionResult {
-      if (!isRecord(body)) return { content: '' }
-      const output = Array.isArray(body['output']) ? (body['output'] as unknown[]) : []
-      const content = output
-        .map((item) => {
-          if (!isRecord(item) || item['type'] !== 'message') return ''
-          const blocks = Array.isArray(item['content']) ? (item['content'] as unknown[]) : []
-          return blocks
-            .map((block) =>
-              isRecord(block) && block['type'] === 'output_text'
-                ? (strField(block, 'text') ?? '')
-                : ''
-            )
-            .join('')
-        })
-        .join('')
-      const status = strField(body, 'status')
-      return {
-        content,
-        finishReason:
-          status === 'completed' ? 'stop' : status === 'incomplete' ? 'length' : undefined,
-        usage: toUsage(body['usage'])
-      }
     }
   }
 }
