@@ -46,7 +46,7 @@ const gotoNew = () => {
 }
 
 const showChatAdd = computed(() => {
-  if (route.path.startsWith('/design')) return false
+  if (route.path.startsWith('/design/detail/')) return false
 
   return true
 })
