@@ -56,6 +56,7 @@
 | [01-design-style.md](./design/01-design-style.md)             | 设计风格模块：`~/.mistrelle/design/` 落盘（index.json 索引 + `design-{id}.json` 明细）、内置预设（isSystem 只读）、列表 + 明细页、命令式抽屉表单；tokens 细节规范（间距 / 圆角 / 边框 / 阴影 / 动效）+ 提示词固定注入「细节规范」段落（PPT 不跳过） |
 | [02-design-style-chat.md](./design/02-design-style-chat.md)   | 设计风格接入 design 聊天：`designStyleId` 创建后锁定、风格转提示词注入稳定 system 前缀、聊天室工作空间/风格只读展示、列表缓存详情不缓存 |
 | [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手（内置 Agent）：`builtin:design-style` + 4 个 internal 风格工具契约（list/get/create/update）+ `font_list` 查询本机字体、`DesignStyleStore.put` 返回 id 改造 |
+| [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
 
 ### ppt/ —— PPT 专家
 

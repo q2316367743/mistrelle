@@ -1,6 +1,7 @@
 import { isNull } from '@/utils/lang/FieldUtil'
 import { KeyValueUtil } from '@/utils/native/KeyValueUtil'
 import { cloneDeep } from 'es-toolkit'
+import type { Ref } from 'vue'
 
 type initialValueFunc<T> = () => T
 type initialValue<T> = T | initialValueFunc<T>
@@ -15,7 +16,7 @@ export function useUtoolsDbStorage<T extends string | number | boolean | Record<
   return customRef((track, trigger) => ({
     get() {
       track()
-      let res = KeyValueUtil.getItem(key)
+      const res = KeyValueUtil.getItem(key)
       if (isNull(res)) {
         return typeof initial === 'function' ? initial() : initial
       }

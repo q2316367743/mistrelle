@@ -25,6 +25,7 @@ const DESIGN_CANVAS_BEFORE_VISUAL = [
   '- 图片建议显式 width/height；真实素材优先网络获取：logo 用 website_logo 工具、其他真实图片用 image 操作 web 类型（真实 URL 自动下载落盘沙盒）；无真实来源才用 stock/placeholder；禁止随手编随机图片 URL',
   '- group 是唯一容器：区域内 ≥2 个元素必须收进一个 group 并开 layout（horizontal/vertical/wrap）排布，子节点不带 x/y；原子元素可直接自由定位',
   '- 图标默认用 svg 节点写内联 SVG：优先 icon_svg 工具取真实图标 SVG（可 ?color= 上色），也可靠 path 手写；svg 内颜色可写 $token名（落盘时自动替换为调色板实色）；简单单色图形（圆点/分隔线/星标等）仍可用原生节点组合（rect/ellipse/path/line/star/polygon）；path 描边图标设 fill:"none" + stroke；line 颜色写在 stroke',
+  '- 数据可视化图表（柱状/折线/饼图/雷达/热力/桑基/地图等）用 chart_generate(option, width, height) 工具：把 echarts option 渲染成 SVG 落盘沙盒返回 path，填进 svg 节点 imageUrl（或 image 节点）并显式 width/height；支持 echarts 全部内置图表类型；图表为静态矢量图（无动画/交互/tooltip），option 里颜色取画布调色板实色（不走 $token 替换）',
   '- 节点可加 animation 字段描述动效（style 过渡 / keyframes 关键帧），动画 = 节点初始状态 → 目标 style',
   '',
   '### 设计铁律',

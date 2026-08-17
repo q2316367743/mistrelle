@@ -9,7 +9,6 @@
     <div class="ai-workspace__icon active">
       <folder-filled-icon />
     </div>
-    <div class="ai-workspace__text active">{{ workspace ? renderBasename(workspace) : '' }}</div>
   </div>
   <t-dropdown v-else trigger="click" min-column-width="180px" placement="top" @click="handleClick">
     <t-button theme="default" variant="text" class="ai-workspace">
@@ -69,7 +68,7 @@ const workspace = defineModel({
 })
 
 /** 只读展示：会话创建后工作空间锁定，仅显示当前目录，不可再修改 */
-const props = defineProps<{ readonly?: boolean }>()
+defineProps<{ readonly?: boolean }>()
 
 const history = useUtoolsDbAsync(LocalNameEnum.KEY_AI_WORKSPACE, new Array<string>())
 

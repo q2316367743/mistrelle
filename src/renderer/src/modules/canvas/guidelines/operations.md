@@ -189,6 +189,10 @@ type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环
   节点 `imageUrl`（禁止自己画近似 logo）
 - `icon_svg(name | query, color?)`：Iconify 真实 SVG 图标；`name` 形如 `"mdi:home"`（{集合}:{名称}），`query` 为关键词搜索；返回内联
   SVG 字符串 → 填 `svg` 节点（颜色可用 `$token名`）
+- `chart_generate(option, width, height)`：把 echarts option 渲染成专业数据图表（SVG 矢量图）落盘沙盒 outputs/charts/ 返回本地路径
+  → 填 `svg` 节点 `imageUrl`（或 image 节点）；支持 echarts 全部内置图表类型（bar / line / pie / scatter / radar / funnel /
+  gauge / heatmap / tree / treemap / sankey / graph / map / boxplot / candlestick / sunburst / custom 等），option 按 echarts 官方
+  配置书写；图表为静态矢量图（无动画 / tooltip），SVG 内颜色是渲染时写死的固定值（不走 `$token` 替换），须取画布调色板实色
 
 ## 5. 易错点（DO NOT）
 
