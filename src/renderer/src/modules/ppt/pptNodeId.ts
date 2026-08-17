@@ -1,7 +1,7 @@
 /**
  * SlideNode id 生命周期：确保每个节点都有稳定 id（**顶层字段 node.id，与 tag 并列**）。
- * - id 是纯 JSON 层引用标识：不进 attr、不进 POM XML（jsonToPomXml 不写 id），
- *   只服务渲染进程的节点映射 / 引用与 ppt_batch_edit 的 update 等精准编辑
+ * - id 是纯 JSON 层引用标识：不进 attr、不参与布局，服务 vueRender 的节点点选 / 引用
+ *   与 ppt_batch_edit 的 update 等精准编辑
  * - 所有节点（含 Li/Td/TimelineItem 等子元素）都可携带 id，无需担心 POM 未知属性硬错误
  * - attr.id（FlowNode 必填 id / Arrow 端点 id）是 POM 功能型标识，原样保留透传 XML
  * - 批量操作辅助（findNodeWithParent / cloneNodeWithNewIds）供 pptBatchOps 使用
@@ -17,7 +17,7 @@ export const genNodeId = (): string => `n-${nanoid(10)}`
  * 深遍历为缺失 id 的节点补齐顶层 node.id，并保证**同页内** id 唯一（跨页允许重复——
  * ppt_batch_edit 用 (slideId, nodeId) 定位）。attr.id **不删除**：它是 POM 功能型标识
  * （FlowNode 必填的流程节点 id / Arrow 端点 id），原样透传 XML；顶层 node.id 只是 JSON 层
- * 引用标识（jsonToPomXml 不写它进 XML）。就地变异入参；幂等（已有 id 的节点不动）。
+ * 引用标识（仅服务 JSON 编辑与 vueRender 点选）。就地变异入参；幂等（已有 id 的节点不动）。
  */
 export const ensureNodeIds = (page: SlideNode[]): void => {
   const seen = new Set<string>()

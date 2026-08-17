@@ -1,14 +1,14 @@
 /**
  * PPT 专家模块类型定义。
  * 文件存储：沙盒 outputs/{name}.ppt.json（单一文件持续编辑；一个文件含多个 Slide 页面）。
- * 全程 JSON（SlideNode），渲染进程不涉及任何 xml；仅导出时由主进程转换为 POM XML。
+ * 全程 JSON（SlideNode）：渲染层（vueRender 组件）直接消费；导出走「DOM 快照 → 主进程
+ * PptxGenJS 按绝对坐标摆放」（见 vueRender/snapshot.ts 与快照类型）。
  */
 
 /**
- * SlideNode：与 POM XML 标签一一对应的通用节点（tag 即 XML 标签名），
- * child 为字符串表示文本节点内容（如 <Text>Title</Text>）。
- * id 为节点唯一标识（**顶层字段，与 tag 并列**，自动生成）：不进 attr、不参与 POM 布局，
- * 主进程导出时仅对 POM 接受 id 的根标签代写 XML id 属性（Arrow 的 from/to 据此解析）。
+ * SlideNode：通用节点（tag 即 vueRender 组件类型），child 为字符串表示文本内容
+ * （如 Text 节点）。id 为节点唯一标识（**顶层字段，与 tag 并列**，自动生成）：
+ * 不进 attr、不参与布局，服务节点点选引用与 ppt_batch_edit 的精准编辑。
  * 注意：与 preload 的 src/preload/src/channels.ts 形状一致（IPC 契约），修改需同步。
  */
 export interface SlideNode {
@@ -49,11 +49,152 @@ export interface PptCurrentDoc {
   json: PptJsonDoc
 }
 
-/** SVG 渲染状态（自动渲染驱动） */
-export type PptRenderState = 'idle' | 'rendering' | 'error'
-
 /** 渲染尺寸：16:9 标准画布（与 ppt_guidelines 一致） */
 export const PPT_SLIDE_SIZE = { w: 1280, h: 720 } as const
 
 /** Theme 令牌表：token 名 → 6 位 hex 颜色 */
 export type PptTheme = Record<string, string>
+
+// ── 导出快照（预览 DOM 实测 → 主进程 PptxGenJS / PNG） ──────
+// 坐标均为画布像素（原点 = 页左上角）；与 preload 的 src/preload/src/channels.ts 同步。
+
+/** 快照项公共几何 */
+export interface PptItemBase {
+  x: number
+  y: number
+  w: number
+  h: number
+  /** 旋转（度，顺时针，绕中心） */
+  rotate?: number
+  /** 元素不透明度 0-1 */
+  opacity?: number
+  /** zIndex（导出前按其稳定排序决定 z 序） */
+  zIndex?: number
+  /** 来源节点 id（追踪调试用） */
+  nodeId?: string
+}
+
+export interface PptShadowInput {
+  type: 'outer' | 'inner'
+  color: string
+  opacity?: number
+  blur?: number
+  offset?: number
+  angle?: number
+}
+
+export interface PptFillInput {
+  color?: string
+  /** CSS 渐变串（导出侧栅格化为图片） */
+  gradient?: string
+  transparency?: number
+}
+
+export interface PptStrokeInput {
+  color: string
+  width: number
+  dashType?: string
+}
+
+export interface PptTextItem extends PptItemBase {
+  kind: 'text'
+  text: string
+  fontSize: number
+  color: string
+  fontFamily: string
+  bold: boolean
+  italic: boolean
+  strike: boolean
+  underline: boolean
+  align: 'left' | 'center' | 'right'
+  valign: 'top' | 'middle'
+  /** 精确行高（px，= 字号 × 行距倍率） */
+  lineHeightPx: number
+  letterSpacingPx?: number
+  subscript?: boolean
+  superscript?: boolean
+}
+
+export interface PptRectItem extends PptItemBase {
+  kind: 'rect'
+  fill?: PptFillInput
+  radius?: number
+  stroke?: PptStrokeInput
+  shadow?: PptShadowInput
+}
+
+export interface PptEllipseItem extends PptItemBase {
+  kind: 'ellipse'
+  fill?: PptFillInput
+  stroke?: PptStrokeInput
+  shadow?: PptShadowInput
+}
+
+export interface PptShapeItem extends PptItemBase {
+  kind: 'shape'
+  /** 预设形状名（映射 PptxGenJS ShapeType；未知回退 rect） */
+  shapeType: string
+  fill?: PptFillInput
+  stroke?: PptStrokeInput
+  shadow?: PptShadowInput
+}
+
+export interface PptImageItem extends PptItemBase {
+  kind: 'image'
+  /** data URI 或沙盒本地路径（主进程读盘） */
+  src: string
+  sizing?: 'contain' | 'cover'
+}
+
+export interface PptLineItem extends PptItemBase {
+  kind: 'line'
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  color: string
+  width: number
+  dashType?: string
+  beginArrow?: string
+  endArrow?: string
+  nodeId?: string
+}
+
+export interface PptChartSeries {
+  name: string
+  labels: string[]
+  values: number[]
+}
+
+export interface PptChartItem extends PptItemBase {
+  kind: 'chart'
+  chartType: 'bar' | 'line' | 'pie' | 'area' | 'doughnut' | 'radar'
+  data: PptChartSeries[]
+  chartColors?: string[]
+  title?: string
+  showTitle?: boolean
+  showLegend?: boolean
+  sparkline?: boolean
+  radarStyle?: string
+}
+
+export type PptExportItem =
+  | PptTextItem
+  | PptRectItem
+  | PptEllipseItem
+  | PptShapeItem
+  | PptImageItem
+  | PptLineItem
+  | PptChartItem
+
+/** 单页快照（items 数组序 = z 序，导出前已按 zIndex 稳定排序） */
+export interface PptExportSlide {
+  items: PptExportItem[]
+}
+
+/** 整个文档的导出快照（二维：slides × items） */
+export interface PptExportSnapshot {
+  w: number
+  h: number
+  slides: PptExportSlide[]
+}

@@ -38,33 +38,40 @@
       @pointerup="handlePointerUp"
       @pointercancel="handlePointerUp"
       @click="handleClick"
+      @dblclick="handleViewportDblclick"
       @keydown="handleKeydown"
     >
-      <div v-if="renderState === 'rendering'" class="ppt-slide-viewer__loading">渲染中…</div>
-      <div
-        v-else-if="svg"
-        class="ppt-slide-viewer__svg-wrap"
-        :style="{ transform: transformStyle }"
-      >
-        <div ref="svgHostRef" class="ppt-slide-viewer__svg-host"></div>
+      <div v-if="total < 1" class="ppt-slide-viewer__empty">本页暂无内容</div>
+      <div v-else class="ppt-slide-viewer__wrap" :style="{ transform: transformStyle }">
+        <div class="ppt-slide-viewer__fit" :style="{ transform: `scale(${fitScale})` }">
+          <div ref="hostRef" class="ppt-slide-viewer__host">
+            <ppt-slide-surface :slide="nodes ?? []" :theme="theme" />
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
-import type { PptRenderState, SlideNode } from '@/modules/ppt/pptTypes'
+/**
+ * PPT 主视图（vueRender 渲染层）：PptSlideSurface 固定 1280×720，外层两级变换——
+ * fit 层按视口自适应等比缩放（初始即完整可见），pan/zoom 层提供滚轮缩放 + 拖拽平移
+ * （usePptPanZoom 的锚点数学对内层常数缩放不变）。单击选中节点、双击直接注入引用。
+ */
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { PptTheme, SlideNode } from '@/modules/ppt/pptTypes'
+import { PPT_SLIDE_SIZE } from '@/modules/ppt/pptTypes'
+import PptSlideSurface from '@/modules/ppt/vueRender/PptSlideSurface.vue'
 import { usePptPanZoom } from './usePptPanZoom'
 import { usePptNodePick, CLICK_DRAG_THRESHOLD } from './usePptNodePick'
 
 const props = defineProps<{
-  /** 当前页 SVG 字符串（主进程 textOutput:'text' 渲染，含 <text> 可做节点映射） */
-  svg?: string
-  /** 当前页 JSON 根节点数组（映射与回填引用用） */
+  /** 当前页 JSON 根节点数组（渲染与点选摘要来源） */
   nodes?: SlideNode[]
+  /** 文档主题令牌表（$token 解析） */
+  theme: PptTheme
   /** 当前 PPT 文件标识（回填引用用） */
   pptId?: string
-  renderState: PptRenderState
   page: number
   total: number
   sliderMax: number
@@ -88,9 +95,8 @@ const {
   handlePointerUp
 } = usePptPanZoom()
 
-const svgHostRef = ref<HTMLElement | null>(null)
+const hostRef = ref<HTMLElement | null>(null)
 
-const svg = computed(() => props.svg)
 const slide = computed(() => props.nodes)
 const pptId = computed(() => props.pptId)
 const page = computed({
@@ -101,14 +107,34 @@ const page = computed({
 const {
   selected: selectedNode,
   handleViewportClick,
+  handleViewportDblclick,
   confirmPick,
   clearSelection
-} = usePptNodePick({
-  svg,
-  slide,
-  pptId,
-  page,
-  svgHostRef
+} = usePptNodePick({ slide, pptId, page, hostRef })
+
+/** fit 层：视口自适应缩放（内容重渲染时选中态由 usePptNodePick 的 outline 承载） */
+const fitScale = ref(1)
+let fitObserver: ResizeObserver | null = null
+
+const refit = (): void => {
+  const viewport = _viewportRef.value
+  if (!viewport) return
+  const scale = Math.min(
+    viewport.clientWidth / PPT_SLIDE_SIZE.w,
+    viewport.clientHeight / PPT_SLIDE_SIZE.h
+  )
+  fitScale.value = Math.max(0.05, scale)
+  clearSelection()
+}
+
+onMounted(() => {
+  refit()
+  fitObserver = new ResizeObserver(refit)
+  if (_viewportRef.value) fitObserver.observe(_viewportRef.value)
+})
+onBeforeUnmount(() => {
+  fitObserver?.disconnect()
+  fitObserver = null
 })
 
 /** 视口按下时先平移拖拽，再显式聚焦（点击任意位置后即可用方向键翻页） */
@@ -200,17 +226,12 @@ const handleClick = (e: MouseEvent) => {
     }
   }
 
-  &__loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  &__empty {
     color: var(--td-text-color-placeholder);
     font-size: var(--td-font-size-body-small);
   }
 
-  &__svg-wrap {
+  &__wrap {
     width: 100%;
     height: 100%;
     display: flex;
@@ -219,26 +240,18 @@ const handleClick = (e: MouseEvent) => {
     transform-origin: center;
   }
 
-  &__svg-host {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  &__fit {
+    flex-shrink: 0;
+    transform-origin: center;
+  }
 
-    svg {
-      display: block;
-      width: auto;
-      height: auto;
-      max-width: 100%;
-      max-height: 100%;
-      box-shadow: var(--td-shadow-2);
-      border-radius: var(--td-radius-small);
-      background: #fff;
+  &__host {
+    box-shadow: var(--td-shadow-2);
+    border-radius: var(--td-radius-small);
+    overflow: hidden;
 
-      [data-node-id] {
-        cursor: pointer;
-      }
+    :deep([data-node-id]) {
+      cursor: pointer;
     }
   }
 }

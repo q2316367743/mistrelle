@@ -1,24 +1,22 @@
 <template>
   <div class="ppt-renderer">
-    <t-alert
-      v-if="store.renderState.value === 'error' && store.renderError.value"
-      theme="error"
-      class="ppt-renderer__alert"
-      :message="store.renderError.value"
-    />
-    <div v-if="!store.current.value" class="ppt-renderer__empty">暂无 PPT，请先让 AI 创建</div>
+    <div v-if="!currentDoc" class="ppt-renderer__empty">暂无 PPT，请先让 AI 创建</div>
     <div v-else class="ppt-renderer__body">
       <!-- 左侧：缩略图列表（仅全屏显示；非全屏窄侧边栏隐藏，避免挤占主内容） -->
       <div v-if="fullscreen" class="ppt-renderer__thumbs">
         <t-popup
-          v-for="(svg, index) in store.svgs.value"
+          v-for="(slideNodes, index) in currentDoc.json.slide"
           :key="index"
           trigger="hover"
           placement="right"
           :overlay-style="{ padding: 0 }"
         >
           <template #content>
-            <img :src="toDataUrl(svg)" class="ppt-renderer__thumb-pop" alt="预览" />
+            <div class="ppt-renderer__thumb-pop">
+              <div class="ppt-renderer__thumb-pop-scale">
+                <ppt-slide-surface :slide="slideNodes" :theme="currentDoc.json.theme" />
+              </div>
+            </div>
           </template>
           <div
             :ref="(el) => (thumbRefs[index] = el as HTMLElement)"
@@ -26,18 +24,19 @@
             :class="{ 'ppt-renderer__thumb--active': page === index + 1 }"
             @click="goto(index + 1)"
           >
-            <img :src="toDataUrl(svg)" class="ppt-renderer__thumb-img" alt="缩略图" />
+            <div class="ppt-renderer__thumb-scale">
+              <ppt-slide-surface :slide="slideNodes" :theme="currentDoc.json.theme" />
+            </div>
             <span class="ppt-renderer__thumb-num">{{ index + 1 }}</span>
           </div>
         </t-popup>
       </div>
-      <!-- 右侧：主内容（页码拖拽条 + 当前页大图，滚轮缩放 + 拖拽平移 + 节点点选） -->
+      <!-- 右侧：主内容（页码拖拽条 + 当前页画布，滚轮缩放 + 拖拽平移 + 节点点选/双击引用） -->
       <ppt-slide-viewer
         v-model:page="page"
-        :svg="currentPageSvg"
         :nodes="currentPageNodes"
+        :theme="currentDoc.json.theme"
         :ppt-id="currentPptId"
-        :render-state="store.renderState.value"
         :total="total"
         :slider-max="sliderMax"
       />
@@ -45,7 +44,13 @@
   </div>
 </template>
 <script lang="ts" setup>
+/**
+ * PPT 侧边栏主体：缩略图与主视图均直接渲染 vueRender 迷你/全尺寸 PptSlideSurface
+ * （transform 等比缩放，响应式直驱、无 IPC 往返）。
+ */
+import { computed, nextTick, ref, watch } from 'vue'
 import { getPptStore } from '@/modules/ppt'
+import PptSlideSurface from '@/modules/ppt/vueRender/PptSlideSurface.vue'
 import PptSlideViewer from './PptSlideViewer.vue'
 
 const props = withDefaults(
@@ -62,6 +67,8 @@ const props = withDefaults(
 
 const store = computed(() => getPptStore(props.sandbox ?? ''))
 
+const currentDoc = computed(() => store.value.current.value)
+
 /** 当前定位页（与 ppt_select 工具共用同一状态：AI 跳页驱动 UI 联动） */
 const page = computed({
   get: () => store.value.currentPage.value,
@@ -71,36 +78,22 @@ const page = computed({
   }
 })
 
-const total = computed(() => store.value.svgs.value.length)
+const total = computed(() => currentDoc.value?.json.slide.length ?? 0)
 
 /** 页码拖拽条上界（无页时仍可渲染，禁用交互） */
 const sliderMax = computed(() => Math.max(1, total.value))
 
 const thumbRefs = ref<HTMLElement[]>([])
 
-/** 当前页 SVG 字符串（内联渲染 + 节点映射用；缩略图仍经 <img> data URI 展示） */
-const currentPageSvg = computed(() => {
-  const svgs = store.value.svgs.value
-  const index = store.value.currentPage.value - 1
-  return svgs[index]
-})
-
-/** 当前页 JSON 根节点数组（节点映射数据源） */
-const currentPageNodes = computed(() => {
-  const doc = store.value.current.value
-  if (!doc) return undefined
-  return doc.json.slide[store.value.currentPage.value - 1]
-})
+/** 当前页 JSON 根节点数组（渲染与点选数据源） */
+const currentPageNodes = computed(() => currentDoc.value?.json.slide[store.value.currentPage.value - 1])
 
 /** 当前 PPT 文件标识（节点引用回填用） */
-const currentPptId = computed(() => store.value.current.value?.id)
+const currentPptId = computed(() => currentDoc.value?.id)
 
 const goto = (value: number) => {
   page.value = value
 }
-
-const toDataUrl = (svg: string): string =>
-  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 
 /** 左侧缩略图导航滚动定位到当前页 */
 const scrollThumb = (value: number) => {
@@ -125,10 +118,6 @@ watch(
   flex-direction: column;
   gap: 8px;
   overflow: hidden;
-
-  &__alert {
-    flex-shrink: 0;
-  }
 
   &__empty {
     flex: 1;
@@ -159,7 +148,8 @@ watch(
   &__thumb {
     position: relative;
     flex-shrink: 0;
-    aspect-ratio: 16 / 9;
+    width: 88px;
+    height: 88px * 720 / 1280;
     border: 1px solid var(--td-border-level-1-color);
     border-radius: var(--td-radius-small);
     overflow: hidden;
@@ -172,10 +162,10 @@ watch(
     }
   }
 
-  &__thumb-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+  &__thumb-scale {
+    transform: scale(88 / 1280);
+    transform-origin: top left;
+    pointer-events: none;
   }
 
   &__thumb-num {
@@ -191,10 +181,21 @@ watch(
   }
 
   &__thumb-pop {
-    display: block;
-    width: 320px;
+    overflow: hidden;
     border-radius: var(--td-radius-small);
     box-shadow: var(--td-shadow-2);
+    background: #fff;
+  }
+
+  &__thumb-pop-scale {
+    width: 320px;
+    height: 320px * 720 / 1280;
+    overflow: hidden;
+
+    > :deep(*) {
+      transform: scale(320 / 1280);
+      transform-origin: top left;
+    }
   }
 }
 </style>

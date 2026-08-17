@@ -69,7 +69,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_info',
       label: '获取 PPT 信息',
       description:
-        '获取指定 PPT 的文档级信息：id / 名称 / 页面数量 / 主题色板（theme 令牌）+ 渲染状态与最近渲染错误（有错先修正再编辑）',
+        '获取指定 PPT 的文档级信息：id / 名称 / 页面数量 / 主题色板（theme 令牌）',
       parameters: {
         type: 'object',
         properties: {
@@ -110,7 +110,7 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'ppt_get_nodes',
       label: '获取页面元素树',
       description:
-        '返回指定页的完整元素树（SlideNode JSON，含每个节点顶层 id、tag、attr、child），供分析 / 编辑前查看节点结构与 id。ids 给定时只返回命中节点（保留祖先结构），用于聚焦少量元素；缺省返回整页。同页内 id 唯一，编辑用 id 精准定位；附带 theme 与渲染状态',
+        '返回指定页的完整元素树（SlideNode JSON，含每个节点顶层 id、tag、attr、child），供分析 / 编辑前查看节点结构与 id。ids 给定时只返回命中节点（保留祖先结构），用于聚焦少量元素；缺省返回整页。同页内 id 唯一，编辑用 id 精准定位；附带 theme',
       parameters: {
         type: 'object',
         properties: {

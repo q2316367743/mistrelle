@@ -3,28 +3,18 @@
  * - 工具与侧边栏共享同一实例：AI 变更（写沙盒 outputs/{name}.ppt.json）实时驱动渲染
  * - 文件模型：单一文件持续编辑（ppt_create 定文件名 + Theme + 初始页数，之后 addSlide / batchEdit
  *   原地写回，不再产生版本文件）；文件内 slide 数组即多页（每页为空数组或元素数组）
- * - 全程 JSON（SlideNode），渲染进程不涉及 xml：watch(current.json) → 500ms 防抖 →
- *   主进程 jsonToPomXml → buildPptx 渲染每页 SVG；失败保留旧图并记录错误
+ * - 全程 JSON（SlideNode）：预览由 vueRender 组件直接消费（current.json 响应式直驱），
+ *   导出经离屏快照 → 主进程 PptxGenJS（见 vueRender/offscreen.ts 与 pptRender.ts）
  * - 页面编辑链路：ppt_batch_edit 批量操作（insert / copy / update / move / delete，仿 canvas，
  *   单操作容错）→ TypeBox 校验（pptSchemas）→ 原地写回（JSON 存储）
  */
-import { ref, watch } from 'vue'
-import { renderPptxToSvgs } from './pptRender'
+import { ref } from 'vue'
 import { validatePptTheme } from './pptSchemas'
 import { collectPageNodes, ensureNodeIds, filterNodesByIds } from './pptNodeId'
 import type { PptNodeInfo } from './pptNodeId'
 import { executePptBatchOps } from './pptBatchOps'
 import { buildPptFileName, buildPptOutputsDir, errorText, parseDoc, parsePptFile } from './pptFile'
-import type {
-  PptCurrentDoc,
-  PptFileInfo,
-  PptJsonDoc,
-  PptRenderState,
-  PptTheme,
-  SlideNode
-} from './pptTypes'
-import { PPT_SLIDE_SIZE } from './pptTypes'
-import { cloneDeep } from 'es-toolkit'
+import type { PptCurrentDoc, PptFileInfo, PptJsonDoc, PptTheme, SlideNode } from './pptTypes'
 
 /** 页面操作返回（error 或 success + 1 起始 slideId；nodes 为受影响页全部节点摘要，供 AI 引用 id） */
 export type PptPageResult =
@@ -46,25 +36,12 @@ export type PptBatchEditResult =
 export class PptStore {
   /** outputs/ 下的 PPT 文件列表（id = 文件名） */
   readonly files = ref<PptFileInfo[]>([])
-  /** 当前打开的文档（AI / 侧边栏共享，json 变更驱动自动渲染） */
+  /** 当前打开的文档（AI / 侧边栏共享，json 响应式直驱 vueRender 预览） */
   readonly current = ref<PptCurrentDoc | null>(null)
   /** 当前定位页（ppt_select 驱动，渲染器联动跳转） */
   readonly currentPage = ref(1)
-  /** 渲染缓存：每页一个 SVG 字符串 */
-  readonly svgs = ref<string[]>([])
-  readonly renderState = ref<PptRenderState>('idle')
-  /** 最近一次渲染失败的错误文本（AI 经 ppt_info / ppt_get_nodes 读取自行修正） */
-  readonly renderError = ref('')
 
-  private renderTimer: ReturnType<typeof setTimeout> | null = null
-
-  constructor(private readonly sandboxDir: string) {
-    // 文档变更 → 500ms 防抖自动渲染（长生命周期单例，watch 无需手动停止）
-    watch(
-      () => this.current.value?.json,
-      () => this.scheduleRender()
-    )
-  }
+  constructor(private readonly sandboxDir: string) {}
 
   /** 重新扫描 outputs/ 下的 PPT 文件列表 */
   async refreshFiles(): Promise<PptFileInfo[]> {
@@ -102,17 +79,8 @@ export class PptStore {
     return doc
   }
 
-  /** 读取指定 PPT（缺省当前）的完整 JSON（导出工具用），附渲染状态供 AI 自纠。返回 null 表示文件不存在 */
-  async read(id?: string): Promise<
-    | { error: string }
-    | {
-        content: PptJsonDoc
-        id: string
-        renderState: PptRenderState
-        renderError: string
-      }
-    | null
-  > {
+  /** 读取指定 PPT（缺省当前）的完整 JSON（导出工具用）。返回 null 表示文件不存在 */
+  async read(id?: string): Promise<{ error: string } | { content: PptJsonDoc; id: string } | null> {
     const doc = this.current.value
     const targetId = id ?? doc?.id
     if (!targetId) return null
@@ -126,27 +94,13 @@ export class PptStore {
     if ('error' in parsed) return parsed
     const json = parsed.doc
     json.slide.forEach(ensureNodeIds)
-    return {
-      content: json,
-      id: targetId,
-      renderState: this.renderState.value,
-      renderError: this.renderError.value
-    }
+    return { content: json, id: targetId }
   }
 
-  /** 文档级信息（ppt_info 工具）：id / name / 页数 / theme + 渲染状态。返回 null 表示文件不存在 */
-  async info(id?: string): Promise<
-    | { error: string }
-    | {
-        id: string
-        name: string
-        slideCount: number
-        theme: PptTheme
-        renderState: PptRenderState
-        renderError: string
-      }
-    | null
-  > {
+  /** 文档级信息（ppt_info 工具）：id / name / 页数 / theme。返回 null 表示文件不存在 */
+  async info(
+    id?: string
+  ): Promise<{ error: string } | { id: string; name: string; slideCount: number; theme: PptTheme } | null> {
     const doc = this.current.value
     const targetId = id ?? doc?.id
     if (!targetId) return null
@@ -162,30 +116,19 @@ export class PptStore {
       id: targetId,
       name: parsed.doc.name,
       slideCount: parsed.doc.slide.length,
-      theme: parsed.doc.theme,
-      renderState: this.renderState.value,
-      renderError: this.renderError.value
+      theme: parsed.doc.theme
     }
   }
 
   /**
-   * 读取指定页元素树（ppt_get_nodes 工具）：完整 SlideNode 数组（含顶层 id）+ theme + 渲染状态。
+   * 读取指定页元素树（ppt_get_nodes 工具）：完整 SlideNode 数组（含顶层 id）+ theme。
    * ids 给定时只返回命中节点（保留祖先结构），供 AI 聚焦少量元素后再精准编辑。
    */
   async getNodes(
     id: string | undefined,
     slideId: number,
     ids?: string[]
-  ): Promise<
-    | { error: string }
-    | {
-        nodes: SlideNode[]
-        theme: PptTheme
-        renderState: PptRenderState
-        renderError: string
-      }
-    | null
-  > {
+  ): Promise<{ error: string } | { nodes: SlideNode[]; theme: PptTheme } | null> {
     const doc = this.current.value
     const targetId = id ?? doc?.id
     if (!targetId) return null
@@ -204,12 +147,7 @@ export class PptStore {
     const page = json.slide[slideId - 1]
     ensureNodeIds(page)
     const nodes = ids?.length ? filterNodesByIds(page, ids) : page
-    return {
-      nodes,
-      theme: json.theme,
-      renderState: this.renderState.value,
-      renderError: this.renderError.value
-    }
+    return { nodes, theme: json.theme }
   }
 
   /**
@@ -341,18 +279,17 @@ export class PptStore {
     }
     if (this.current.value?.id === id) {
       this.current.value = null
-      this.svgs.value = []
-      this.renderState.value = 'idle'
-      this.renderError.value = ''
+      this.currentPage.value = 1
     }
     await this.refreshFiles()
   }
 
   /** 定位到指定页（渲染器联动跳转；越界给错误反馈，AI 自纠） */
   selectPage(page: number): { error: string } | { success: true } {
+    const total = this.current.value?.json.slide.length ?? 0
     if (page < 1) return { error: `页码越界：${page}（页码从 1 开始）` }
-    if (this.svgs.value.length > 0 && page > this.svgs.value.length) {
-      return { error: `页码越界：${page}（当前共 ${this.svgs.value.length} 页）` }
+    if (total > 0 && page > total) {
+      return { error: `页码越界：${page}（当前共 ${total} 页）` }
     }
     this.currentPage.value = page
     return { success: true }
@@ -405,51 +342,13 @@ export class PptStore {
     try {
       await this.persist({ id: targetId, name: buildPptFileName(targetId), json })
       if (this.current.value?.id === targetId) {
-        // 原地更新当前文档（对象替换触发 watch 自动渲染）
+        // 原地更新当前文档（对象替换驱动 vueRender 响应式重渲染）
         this.current.value = { id: targetId, name: buildPptFileName(targetId), json }
       }
     } catch (err) {
       return { error: `写入失败：${errorText(err)}` } as T
     }
     return result
-  }
-
-  // ─── 内部：渲染 ──────────────────────────────────────
-
-  /** 500ms 防抖自动渲染（watch(current.json) 触发） */
-  private scheduleRender(): void {
-    if (this.renderTimer) clearTimeout(this.renderTimer)
-    this.renderTimer = setTimeout(() => {
-      this.renderTimer = null
-      void this.render()
-    }, 500)
-  }
-
-  /** 渲染当前文档为每页 SVG；失败保留旧图并记录 renderError（AI 经 ppt_info / ppt_get_nodes 读取） */
-  private async render(): Promise<void> {
-    const doc = this.current.value
-    if (!doc) {
-      this.svgs.value = []
-      this.renderState.value = 'idle'
-      this.renderError.value = ''
-      return
-    }
-    this.renderState.value = 'rendering'
-    try {
-      const svgs = await renderPptxToSvgs(cloneDeep(doc.json), PPT_SLIDE_SIZE)
-      this.svgs.value = svgs
-      this.renderState.value = 'idle'
-      this.renderError.value = ''
-      if (this.currentPage.value > svgs.length) this.currentPage.value = Math.max(1, svgs.length)
-    } catch (err) {
-      this.renderState.value = 'error'
-      const message = errorText(err)
-      // POM 布局边界提示：嵌套 HStack 链中文本宽度 NaN（主进程已自动规避，此处兜底说明）
-      this.renderError.value = /addTextBox|finite/.test(message)
-        ? `${message}\n提示：POM 布局边界——嵌套 HStack 中的文本需要显式宽度（w），已自动处理；若仍失败请检查是否有异常布局（如无宽度容器直接嵌套）`
-        : message
-      console.error('[ppt] 渲染失败，保留旧图：', this.renderError.value)
-    }
   }
 
   private async persist(doc: PptCurrentDoc): Promise<void> {

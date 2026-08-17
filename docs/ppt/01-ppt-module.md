@@ -1,4 +1,6 @@
-# PPT 专家（ChatType: 'ppt'）：POM 库调研与实现方案
+# PPT 专家（ChatType: 'ppt'）：SlideNode 设计与 Vue/PptxGenJS 导出
+
+> **架构更新（2026-08-17）**：本文档前半部分保留历史 POM 调研作为决策记录；当前实现以 [04-vue-render-pptxgenjs.md](./04-vue-render-pptxgenjs.md) 为准。POM / pptx-glimpse 已移除，预览使用 Vue 组件，导出使用 DOM 快照 + PptxGenJS。
 
 > 状态： **已实现**（Electron 迁移完成后按本文档第 10 节实施）。本文档基于对 `@hirokisakabe/pom@10.3.0` 的源码级调研写成，
 > 实现时的实测差异见文末「实现记录」。

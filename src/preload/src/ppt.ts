@@ -1,25 +1,23 @@
 /**
- * PPT 渲染桥（preload）：PptJsonDoc → SVG / PPTX / PNG 全部在主进程完成
- * （主进程负责 json → POM XML 转换并调用 POM 库；POM 为 ESM-only，CJS preload 无法直接 require）。
- * 导出（PPTX / PNG）由主进程构建并直接落盘，渲染进程只传 (json, 目标路径)。
+ * PPT 导出桥（preload）：预览由渲染进程 vueRender 直接渲染，不经 IPC。
+ * 导出：PPTX 载荷为 DOM 实测快照（主进程 PptxGenJS 构建落盘）；PNG 由渲染进程
+ * canvas 绘制为 dataURL 后主进程仅落盘。渲染进程不经手 PPTX 字节。
  */
 import { ipcRenderer } from 'electron'
 import {
   PptChannels,
-  PptExportPngOptions,
   PptExportPptxOptions,
-  PptJsonDoc,
-  PptRenderOptions
+  PptExportSnapshot,
+  PptWritePngFilesOptions
 } from '~/channels'
 
 export const pptApi = {
-  /** PptJsonDoc → 每页 SVG 字符串数组（预览渲染） */
-  renderPptxToSvgs: (json: PptJsonDoc, options: PptRenderOptions): Promise<string[]> =>
-    ipcRenderer.invoke(PptChannels.renderPptxToSvgs, json, options),
-  /** PptJsonDoc → 构建 PPTX 并落盘，返回文件路径 */
-  exportPptx: (json: PptJsonDoc, options: PptExportPptxOptions): Promise<string> =>
-    ipcRenderer.invoke(PptChannels.exportPptx, json, options),
-  /** PptJsonDoc → 渲染指定页 PNG 并落盘，返回文件路径列表 */
-  exportPptxToPngs: (json: PptJsonDoc, options: PptExportPngOptions): Promise<string[]> =>
-    ipcRenderer.invoke(PptChannels.exportPptxToPngs, json, options)
+  /** 快照 → 构建 PPTX 并落盘，返回文件路径 */
+  exportPptx: (snapshot: PptExportSnapshot, options: PptExportPptxOptions): Promise<string> =>
+    ipcRenderer.invoke(PptChannels.exportPptx, snapshot, options),
+  /** PNG dataURL 列表落盘，返回文件路径列表 */
+  writePngFiles: (
+    images: string[],
+    options: PptWritePngFilesOptions
+  ): Promise<string[]> => ipcRenderer.invoke(PptChannels.writePngFiles, images, options)
 }
