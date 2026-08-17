@@ -7,7 +7,7 @@ import { ToolFunction, ToolProperty } from '@/domain'
 import { AiAgent, AiAgentForm, buildAiAgentForm } from '@/entity/ai'
 import { useAiAgentStore } from '@/store'
 // 说明：与 @/modules/tool/index.ts 存在模块环依赖，但这些导出仅在 handler 运行时访问（模块均已加载完成），安全
-import { toolMap, toolGroups, defaultTools } from '@/modules/tool'
+import { toolMap, toolGroups, getDefaultTools } from '@/modules/tool'
 
 /** create/update 共用的表单入参（不含 name 的必填约束，由各工具自行声明 required） */
 const FORM_PROPERTIES: Record<string, ToolProperty> = {
@@ -87,7 +87,7 @@ export const agentTools: ToolFunction[] = [
           }))
         })),
         // 常驻工具：每次对话自动注入（shell/文件/http/skill 等），不要写进 tools 字段
-        builtinDefaults: defaultTools.map((t) => ({ name: t.name, label: t.label })),
+        builtinDefaults: getDefaultTools().map((t) => ({ name: t.name, label: t.label })),
         note: '专家的 tools 字段只需填写 groups 中的工具名；builtinDefaults 为对话常驻工具，无需声明。'
       }
     }

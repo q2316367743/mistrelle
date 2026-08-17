@@ -14,7 +14,7 @@ import type { AiChatMode } from '@/entity'
 import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/modules/chat/writingScene'
-import { defaultTools, isShellExecTool, toolMap } from '@/modules/tool'
+import { getDefaultTools, isShellExecTool, toolMap } from '@/modules/tool'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
 import { SUB_AGENT_ALLOW } from '@/modules/subagent/types'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
@@ -162,8 +162,8 @@ export class ToolChat {
       ...this.getTypeTools(),
       // 用户主动选择的工具
       ...selected,
-      // 默认工具
-      ...defaultTools,
+      // 默认工具（动态：如知乎 key 未配置则不含 zhihu_search）
+      ...getDefaultTools(),
       // 待办工具
       createTodoTool(this.todos)
     ]) {

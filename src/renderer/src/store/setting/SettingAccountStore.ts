@@ -49,9 +49,22 @@ export const useSettingAccountStore = defineStore('setting:account', () => {
     }
   })
 
+  /** 知乎开放平台鉴权头；时间戳须在每次请求时现取，故用函数而非静态 computed */
+  const zhihuConfig = (): Partial<HttpRequest> => {
+    if (!state.value.zhihu) return {}
+    return {
+      headers: {
+        Authorization: `Bearer ${state.value.zhihu}`,
+        'X-Request-Timestamp': String(Math.floor(Date.now() / 1000)),
+        'Content-Type': 'application/json'
+      }
+    }
+  }
+
   return {
     state,
     skillhubConfig,
-    context7Config
+    context7Config,
+    zhihuConfig
   }
 })

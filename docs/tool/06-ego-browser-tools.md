@@ -45,7 +45,7 @@ ego-browser 命令**默认不在 PATH 中**（macOS 上 onboarding 注册到 `~/
   `getDefaultEgoBrowserPath()` 平台默认值推断（`buildSettingSecure()` 调用）
 - `src/store/setting/SettingSecureStore.ts` — `egoBrowserPath` getter 兜底链
 - `src/pages/setting/secure/SettingSecurePage.vue` — 「内置运行时」卡片新增 ego-browser 行
-- `src/modules/tool/index.ts` — 注册进 `defaultTools`（全局默认可用）
+- `src/modules/tool/index.ts` — 经 `getDefaultTools()` 注入（全局默认可用）
 
 ## API 契约
 

@@ -18,6 +18,11 @@ export interface SettingAccount {
    * @see <https://context7.com>
    */
   context7: string
+  /**
+   * 知乎数据开放平台 Access Secret（zhihu_search 等接口鉴权）
+   * @see <https://developer.zhihu.com/>
+   */
+  zhihu: string
 }
 
 export function buildSettingAccount(): SettingAccount {
@@ -25,6 +30,7 @@ export function buildSettingAccount(): SettingAccount {
     avatar: '',
     nickname: '用户',
     skillhub: '',
-    context7: ''
+    context7: '',
+    zhihu: ''
   }
 }

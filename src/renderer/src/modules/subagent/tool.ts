@@ -49,5 +49,5 @@ export const createSpawnAgentTool = (
   }
 }
 
-/** 默认（全类型）实例：供 defaultTools 展示 / 兜底；AgentChat 运行期会按聊天类型裁剪替换 */
+/** 默认（全类型）实例：供 getDefaultTools 展示 / 兜底；AgentChat 运行期会按聊天类型裁剪替换 */
 export const spawnAgentTool: ToolFunction = createSpawnAgentTool(['research', 'design'])

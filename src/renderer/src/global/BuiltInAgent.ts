@@ -4,7 +4,7 @@ import { AiAgent } from '@/entity'
  * 内置 Agent 常量。由代码预置、只读，不可编辑或删除。
  * agent-create 绑定「专家管理」工具集（@/modules/tool/components/agent）实现真正的增改查落库；
  * design-style 绑定「设计风格」工具集（@/modules/tool/components/design/designStyleTools）；
- * skill-create 依赖对话默认常驻的 shell/file/skill 工具集（defaultTools），无需重复声明。
+ * skill-create 依赖对话默认常驻的 shell/file/skill 工具集（getDefaultTools），无需重复声明。
  */
 export const BUILTIN_AGENTS: ReadonlyArray<AiAgent> = [
   {

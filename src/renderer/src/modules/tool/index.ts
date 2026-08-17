@@ -12,6 +12,7 @@ import { nativeHttpTools } from './components/native/http'
 import { nativeBrowserAutomationTools } from './components/native/browserAutomation'
 import { browserFetchTools } from './components/native/browserFetch'
 import { egoBrowserTools } from './components/native/egoBrowser'
+import { getNativeSearchTools } from './components/native/search'
 import { skillTools } from './components/skill'
 import { agentTools } from './components/agent'
 import { designStyleTools } from './components/design'
@@ -68,17 +69,24 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify([fontListTool], 'name')
 }
 
-export const defaultTools: ToolFunction[] = [
-  askTool,
-  spawnAgentTool,
-  ...shellTools,
-  ...skillTools,
-  ...fileTools,
-  ...fileParseTools,
-  ...nativeHttpTools,
-  ...browserFetchTools,
-  ...egoBrowserTools
-]
+/**
+ * 对话常驻默认工具（动态组装）。
+ * 调用方须在需要工具列表时调用本方法，勿缓存返回值——部分工具（如 zhihu_search）依赖账号配置。
+ */
+export function getDefaultTools(): ToolFunction[] {
+  return [
+    askTool,
+    spawnAgentTool,
+    ...shellTools,
+    ...skillTools,
+    ...fileTools,
+    ...fileParseTools,
+    ...nativeHttpTools,
+    ...browserFetchTools,
+    ...egoBrowserTools,
+    ...getNativeSearchTools()
+  ]
+}
 
 export {
   resolveToolPolicy,

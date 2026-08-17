@@ -43,6 +43,24 @@
           </div>
         </template>
       </t-list-item>
+      <t-list-item>
+        <t-list-item-meta
+          title="知乎数据开放平台"
+          description="用于 zhihu_search 等知乎开放接口；在个人中心获取 Access Secret"
+        />
+        <template #action>
+          <div class="flex items-center gap-8px">
+            <t-input
+              v-model="state.zhihu"
+              style="width: 400px"
+              placeholder="请输入知乎 Access Secret"
+              type="password"
+              allow-clear
+            />
+            <m-link href="https://developer.zhihu.com/"> 获取 </m-link>
+          </div>
+        </template>
+      </t-list-item>
     </t-list>
   </page-layout>
 </template>
