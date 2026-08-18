@@ -90,7 +90,8 @@
           min-column-width="188px"
         >
           <button class="menu-item" type="button">
-            <t-avatar :image="avatar" size="24px" shape="circle" />
+            <user-woman-icon v-if="avatar === 'woman'" />
+            <user-man-icon v-else />
             <span>{{ nickname }}</span>
           </button>
           <t-dropdown-menu>
@@ -134,6 +135,8 @@ import { useSettingAccountStore } from '@/store'
 import { useBoolState } from '@/hooks'
 import ChatList from './components/ChatList.vue'
 import { Constant } from '@/global/Constant'
+import UserManIcon from '@/assets/icons/UserManIcon.vue'
+import UserWomanIcon from '@/assets/icons/UserWomanIcon.vue'
 
 const router = useRouter()
 const route = useRoute()

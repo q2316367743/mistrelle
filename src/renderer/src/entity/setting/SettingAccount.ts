@@ -2,7 +2,7 @@ export interface SettingAccount {
   /**
    *
    */
-  avatar: string
+  avatar: 'man' | 'woman'
   /**
    * 用户名
    */
@@ -27,7 +27,7 @@ export interface SettingAccount {
 
 export function buildSettingAccount(): SettingAccount {
   return {
-    avatar: '',
+    avatar: 'man',
     nickname: '用户',
     skillhub: '',
     context7: '',

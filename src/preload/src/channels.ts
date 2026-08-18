@@ -51,7 +51,6 @@ export const OsChannels = {
   isWindows: 'os:isWindows',
   isLinux: 'os:isLinux',
   isDev: 'os:isDev',
-  getUser: 'os:getUser',
   getNativeId: 'os:getNativeId',
   getAppVersion: 'os:getAppVersion',
   getAppName: 'os:getAppName',

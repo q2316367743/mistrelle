@@ -207,8 +207,6 @@ export function registerOsIpc(): void {
   ipcMain.handle(OsChannels.isWindows, (): boolean => process.platform === 'win32')
   ipcMain.handle(OsChannels.isLinux, (): boolean => process.platform === 'linux')
   ipcMain.handle(OsChannels.isDev, (): boolean => !app.isPackaged)
-  // utools 用户体系在 Electron 无对应，返回 null（renderer 已有兜底）
-  ipcMain.handle(OsChannels.getUser, () => null)
   ipcMain.handle(OsChannels.getNativeId, () => null)
   ipcMain.handle(OsChannels.getAppVersion, (): string => app.getVersion())
   ipcMain.handle(OsChannels.getAppName, (): string => app.getName())

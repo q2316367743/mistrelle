@@ -79,10 +79,6 @@ interface InjectOs {
   isWindows(): Promise<boolean>
   isLinux(): Promise<boolean>
   isDev(): Promise<boolean>
-  /**
-   * 获取当前登录用户信息。Electron 无 utools 用户体系，恒返回 null。
-   */
-  getUser(): Promise<{ avatar: string; nickname: string; type: string } | null>
   getNativeId(): Promise<string | null>
   getAppVersion(): Promise<string>
   getAppName(): Promise<string>

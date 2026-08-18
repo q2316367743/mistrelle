@@ -5,8 +5,15 @@
         <t-list-item-meta title="用户名" />
         <template #action>
           <div class="flex gap-8px">
+            <t-radio-group v-model="state.avatar" default-value="man">
+              <t-radio value="man">
+                <user-man-icon />
+              </t-radio>
+              <t-radio value="woman">
+                <user-woman-icon />
+              </t-radio>
+            </t-radio-group>
             <t-input v-model="state.nickname" style="width: 200px" allow-clear />
-            <t-button @click="resetNickname">重置</t-button>
           </div>
         </template>
       </t-list-item>
@@ -66,16 +73,10 @@
 </template>
 <script lang="ts" setup>
 import { useSettingAccountStore } from '@/store'
+import UserManIcon from '@/assets/icons/UserManIcon.vue'
+import UserWomanIcon from '@/assets/icons/UserWomanIcon.vue'
 
 const { state } = toRefs(useSettingAccountStore())
-
-const resetNickname = async () => {
-    const user = await window.preload.inject.os.getUser()
-    if (user) {
-      state.value.avatar = user.avatar
-      state.value.nickname = user.nickname
-  }
-}
 </script>
 <style scoped lang="less">
 .setting-list {

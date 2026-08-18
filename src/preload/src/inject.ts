@@ -49,12 +49,6 @@ interface InjectClipboardFile {
   path: string
 }
 
-interface InjectUser {
-  avatar: string
-  nickname: string
-  type: string
-}
-
 // ── shell ──────────────────────────────────────────────────
 
 const shell = {
@@ -104,7 +98,6 @@ const os = {
   isLinux: (): Promise<boolean> => ipcRenderer.invoke(OsChannels.isLinux),
   isDev: (): Promise<boolean> => ipcRenderer.invoke(OsChannels.isDev),
   /** utools 用户体系在 Electron 无对应，恒返回 null（renderer 已有兜底） */
-  getUser: (): Promise<InjectUser | null> => ipcRenderer.invoke(OsChannels.getUser),
   getNativeId: (): Promise<string | null> => ipcRenderer.invoke(OsChannels.getNativeId),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(OsChannels.getAppVersion),
   getAppName: (): Promise<string> => ipcRenderer.invoke(OsChannels.getAppName),
