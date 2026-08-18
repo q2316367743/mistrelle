@@ -72,6 +72,11 @@
         class="design-aside__canvas"
         @select="handleElementSelect"
       />
+      <element-property-panel
+        v-if="fullscreen"
+        :sandbox="sandbox ?? ''"
+        :node-id="selectedId"
+      />
     </div>
   </div>
 </template>
@@ -98,6 +103,7 @@ import {
 import type { ChatStatus } from '@/modules/chat'
 import CanvasRenderer from './CanvasRenderer.vue'
 import CanvasElementTree from './CanvasElementTree.vue'
+import ElementPropertyPanel from './ElementPropertyPanel.vue'
 import { openVideoExportDialog } from './VideoExportDialog'
 
 const props = withDefaults(

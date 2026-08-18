@@ -69,6 +69,16 @@ const { width: containerWidth, height: containerHeight } = useElementSize(contai
 
 let app: App | null = null
 
+/**
+ * 最近一次 pointerdown 是否落在画布视图内：leafer 编辑器对画布外全局点击也会取消选中，
+ * 需以此区分 —— 画布内空白点击才下发取消，点击属性面板等外部 UI 时保持选中
+ */
+let pointerDownInCanvas = true
+const handleWindowPointerDown = (e: PointerEvent) => {
+  const target = e.target
+  pointerDownInCanvas = target instanceof Node ? (canvasHost.value?.contains(target) ?? false) : false
+}
+
 /** 在节点树中按 id 查找节点（含子树） */
 const findNode = (nodes: CanvasNode[], id: string): CanvasNode | null => {
   for (const node of nodes) {
@@ -106,6 +116,8 @@ const handleDoubleTap = async (event: { target?: CanvasTapTarget | null }) => {
 
 onMounted(() => {
   if (!canvasHost.value) return
+  // 须先于 leafer 注册（capture 同阶段按注册顺序执行），保证画布外点击时 flag 先于取消事件更新
+  window.addEventListener('pointerdown', handleWindowPointerDown, true)
   // tree: 'design' 注册 viewport（滚轮缩放 + 空格拖拽平移）；editor 配置自动创建 app.editor（sky 层选中交互）
   // sky 不启用 viewport：编辑器通过监听 tree 渲染变化自行对齐选中框，避免二次变换
   app = new App({
@@ -140,6 +152,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', handleWindowPointerDown, true)
   app?.destroy?.()
   app = null
 })
@@ -196,11 +209,15 @@ const syncEditorTransform = async () => {
   if (changed) await store.value.save()
 }
 
-/** 编辑器选中事件 → 提取单个节点 id 上抛（多选只取首个，空白画布选中为空） */
+/** 编辑器选中事件 → 提取单个节点 id 上抛（多选只取首个）。取消选中分两类：
+ *  画布内空白点击（pointerDownInCanvas 为 true）正常下发；画布外点击触发的取消不下发。
+ *  用毕重置为 true，让无 pointer 前置的程序性 cancel（render 重建 / AI 删除节点）仍能清空选中 */
 const handleEditorSelect = (event: CanvasSelectEvent) => {
   const value = event.value
   const id = Array.isArray(value) ? value[0]?.id : value?.id
-  emit('select', id)
+  if (id) emit('select', id)
+  else if (pointerDownInCanvas) emit('select', undefined)
+  pointerDownInCanvas = true
 }
 
 // 元素树选中 → 画布同步：按 id 找到渲染元素并选中；id 失效时取消选中
