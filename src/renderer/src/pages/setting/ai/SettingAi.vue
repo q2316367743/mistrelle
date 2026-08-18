@@ -1,41 +1,13 @@
 <template>
   <page-layout title="AI 设置">
     <div class="ai-setting-layout">
-      <!-- 左侧：提供方列表 -->
-      <div :class="['ai-setting-sidebar']">
-        <div class="ai-setting-sidebar__list">
-          <t-button theme="primary" block @click="handleAdd">
-            <template #icon><AddIcon /></template>
-            新增
-          </t-button>
-          <t-divider size="8px" />
-          <div
-            v-for="item in items"
-            :key="item.id"
-            :class="[
-              'ai-setting-sidebar__item',
-              { 'is-active': selectedId === item.id, 'is-disabled': !item.enable }
-            ]"
-          >
-            <div class="ai-setting-sidebar__item-content" @click="selectItem(item.id)">
-              <span class="ai-setting-sidebar__item-name">{{ item.name || '未命名' }}</span>
-            </div>
-            <t-switch
-              size="small"
-              :value="item.enable"
-              :default-value="true"
-              @click.stop
-              @change="(val) => handleProvideEnableChange(item.id, Boolean(val))"
-            />
-            <t-popconfirm content="确定删除此提供方？" @confirm="handleDelete(item.id)">
-              <t-button theme="danger" variant="text" size="small">
-                <template #icon><DeleteIcon /></template>
-              </t-button>
-            </t-popconfirm>
-          </div>
-          <t-empty v-if="items.length === 0" description="暂无提供方，点击新增添加" />
-        </div>
-      </div>
+      <setting-ai-sidebar
+        :selected-id="selectedId"
+        @add="handleAdd"
+        @select="selectItem"
+        @enable="handleProvideEnableChange"
+        @delete="handleDelete"
+      />
 
       <!-- 右侧：编辑面板 -->
       <div class="ai-setting-main">
@@ -191,12 +163,12 @@ import {
 } from '@/utils/aiModel'
 import { openModelDialog } from './modals/OpenModelDialog'
 import { fetchModelsDrawer } from './modals/FetchModelsDrawer'
+import SettingAiSidebar from './components/SettingAiSidebar.vue'
 
 const store = useSettingAiStore()
 
 // ---------- 左侧列表 ----------
 
-const items = computed(() => store.items)
 const selectedId = ref<string>('')
 
 const isCreating = ref(false)
@@ -504,74 +476,6 @@ async function handleFetchModels() {
   gap: 16px;
 }
 
-// 左侧：提供方列表
-.ai-setting-sidebar {
-  width: 232px;
-  min-width: 232px;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--td-border-level-1-color);
-  padding-right: 16px;
-  transition: all 0.3s ease-in-out;
-
-  &__header {
-    width: 232px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    padding-right: 8px;
-  }
-
-  &__title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--td-text-color-primary);
-  }
-
-  &__list {
-    width: 232px;
-    min-width: 232px;
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 8px;
-  }
-
-  &__item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: var(--td-radius-default);
-    transition: background-color 0.2s;
-    margin-bottom: 4px;
-
-    &:hover {
-      background-color: var(--td-bg-color-secondaryhover);
-    }
-
-    &.is-active {
-      background-color: var(--td-brand-color-light);
-    }
-  }
-
-  &__item-content {
-    flex: 1;
-    cursor: pointer;
-  }
-
-  &__item-name {
-    font-size: 14px;
-    color: var(--td-text-color-primary);
-  }
-
-  &__item.is-disabled &__item-name {
-    color: var(--td-text-color-placeholder);
-  }
-}
-
-// 右侧：编辑面板
 .ai-setting-main {
   flex: 1;
   overflow-y: auto;

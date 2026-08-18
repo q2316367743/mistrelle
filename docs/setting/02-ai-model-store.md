@@ -12,7 +12,8 @@
 | 文件                                                          | 角色                                            |
 |---------------------------------------------------------------|-------------------------------------------------|
 | `src/modules/setting/service/ModelService.ts`                 | 读写 `model.json` 的 Service（唯一 IO 入口）    |
-| `src/store/setting/SettingAiStore.ts`                         | 设置 Store：内存态 + 计算属性 + 增删改（调用 Service） |
+| `src/store/setting/SettingAiStore.ts`                         | 设置 Store：内存态 + 计算属性 + 增删改 / 拖拽排序（调用 Service） |
+| `src/pages/setting/ai/components/SettingAiSidebar.vue`        | 提供方侧边栏：启用开关 + sortablejs 拖拽排序 |
 | `src/global/Constant.ts`（`getModelPath`）                    | 文件路径工厂                                    |
 | `src/entity/setting/SettingAi.ts`（`AiProvide`）              | 数据结构契约                                    |
 
@@ -77,7 +78,8 @@ export const getModelPath = () => window.preload.path.join(dataFolder, 'model.js
 - `options` / `vectorOptions` / `imageOptions`：仅含 **已启用提供方** 下 **已启用且类型匹配** 的模型分组
 - `optionMap`：同上过滤后的 `${provideId}:${identifier}` → `AiProvideOption`
 - `ready` / `initPromise`：初始化完成状态
-- `put(form: AiProvideForm)` / `remove(id: string)`：新增 / 更新 / 删除，操作后全量 `modelSave`
+- `put(form: AiProvideForm)` / `remove(id: string)` / `reorder(from, to)`：新增 / 更新 / 删除 / 拖拽排序，操作后全量 `modelSave`
+- 提供方顺序即 `model.json` 数组顺序；侧边栏拖拽后 `options` 分组顺序同步变化
 
 移除项：`rev` 冲突控制、`DbStorageUtil` / `LocalNameEnum.SETTING_AI` 依赖。
 

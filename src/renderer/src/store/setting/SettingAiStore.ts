@@ -110,6 +110,17 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
     await modelSave(items.value)
   }
 
+  const reorder = async (from: number, to: number) => {
+    if (from === to) return
+    const list = items.value.slice()
+    if (from < 0 || to < 0 || from >= list.length || to >= list.length) return
+    const [moved] = list.splice(from, 1)
+    if (!moved) return
+    list.splice(to, 0, moved)
+    items.value = list
+    await modelSave(items.value)
+  }
+
   return {
     items,
     options,
@@ -119,6 +130,7 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
     ready,
     initPromise,
     put,
-    remove
+    remove,
+    reorder
   }
 })
