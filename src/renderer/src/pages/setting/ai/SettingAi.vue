@@ -12,11 +12,21 @@
           <div
             v-for="item in items"
             :key="item.id"
-            :class="['ai-setting-sidebar__item', { 'is-active': selectedId === item.id }]"
+            :class="[
+              'ai-setting-sidebar__item',
+              { 'is-active': selectedId === item.id, 'is-disabled': !item.enable }
+            ]"
           >
             <div class="ai-setting-sidebar__item-content" @click="selectItem(item.id)">
               <span class="ai-setting-sidebar__item-name">{{ item.name || '未命名' }}</span>
             </div>
+            <t-switch
+              size="small"
+              :value="item.enable"
+              :default-value="true"
+              @click.stop
+              @change="(val) => handleProvideEnableChange(item.id, Boolean(val))"
+            />
             <t-popconfirm content="确定删除此提供方？" @confirm="handleDelete(item.id)">
               <t-button theme="danger" variant="text" size="small">
                 <template #icon><DeleteIcon /></template>
@@ -262,7 +272,10 @@ async function handleSave() {
       baseUrl: form.baseUrl,
       key: form.key,
       models: form.models,
-      format: form.format
+      format: form.format,
+      enable: form.id
+        ? (store.items.find((item) => item.id === form.id)?.enable ?? true)
+        : true
     })
     // 新增完成后，选中刚刚保存的项，退出创建模式
     if (isCreating.value) {
@@ -329,6 +342,22 @@ function handleAdd() {
   form.key = ''
   form.models = []
   selectedId.value = ''
+}
+
+// ---------- 启用 / 删除提供方 ----------
+
+async function handleProvideEnableChange(id: string, val: boolean) {
+  const item = store.items.find((i) => i.id === id)
+  if (!item) return
+  await store.put({
+    id: item.id,
+    name: item.name,
+    baseUrl: item.baseUrl,
+    key: item.key,
+    models: item.models,
+    format: item.format,
+    enable: val
+  })
 }
 
 // ---------- 删除提供方 ----------
@@ -512,6 +541,7 @@ async function handleFetchModels() {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     padding: 8px 12px;
     border-radius: var(--td-radius-default);
     transition: background-color 0.2s;
@@ -534,6 +564,10 @@ async function handleFetchModels() {
   &__item-name {
     font-size: 14px;
     color: var(--td-text-color-primary);
+  }
+
+  &__item.is-disabled &__item-name {
+    color: var(--td-text-color-placeholder);
   }
 }
 

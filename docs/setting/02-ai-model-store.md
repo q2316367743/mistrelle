@@ -38,6 +38,7 @@ export const getModelPath = () => window.preload.path.join(dataFolder, 'model.js
     "name": "DeepSeek",
     "baseUrl": "https://api.deepseek.com/v1",
     "key": "sk-...",
+    "enable": true,
     "models": [
       {
         "identifier": "deepseek-chat",
@@ -52,8 +53,9 @@ export const getModelPath = () => window.preload.path.join(dataFolder, 'model.js
 ]
 ```
 
-字段契约见 `src/entity/setting/SettingAi.ts`：`AiProvide extends BaseEntity, AiProvideCore`，
-其中 `AiModel.enable` 为可选旧字段，初始化时归一化为 `enable ?? true`。
+字段契约见 `src/entity/setting/SettingAi.ts`：`AiProvide extends BaseEntity, AiProvideCore`。
+`AiProvide.enable` / `AiModel.enable` 均为可选旧字段，初始化时归一化为 `enable ?? true`。
+提供方关闭后：`options` / `vectorOptions` / `imageOptions` 与 `optionMap` 均不包含其模型。
 
 ## Service API
 
@@ -72,8 +74,8 @@ export const getModelPath = () => window.preload.path.join(dataFolder, 'model.js
 `SettingAiStore`（`useSettingAiStore`）对外暴露，以下调用方不受影响：
 
 - `items`：全部提供方（响应式）
-- `options` / `vectorOptions` / `imageOptions`：`chat` / `vector` / `image` 三类模型下拉分组
-- `optionMap`：`${provideId}:${identifier}` → `AiProvideOption`（含 `baseUrl` / `key` / `model` 上下文）
+- `options` / `vectorOptions` / `imageOptions`：仅含 **已启用提供方** 下 **已启用且类型匹配** 的模型分组
+- `optionMap`：同上过滤后的 `${provideId}:${identifier}` → `AiProvideOption`
 - `ready` / `initPromise`：初始化完成状态
 - `put(form: AiProvideForm)` / `remove(id: string)`：新增 / 更新 / 删除，操作后全量 `modelSave`
 

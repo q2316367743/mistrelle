@@ -20,6 +20,7 @@ export const handleModelOption = (
 ): Array<SelectOptionGroup> => {
   const list = new Array<SelectOptionGroup>()
   for (const item of items) {
+    if (!item.enable) continue
     const models = item.models
       .filter((model) => model.enable && model.type === type)
       .map((model) => ({
@@ -53,7 +54,8 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
 
   const optionMap = computed<Map<string, AiProvideOption>>(() => {
     const map = new Map<string, AiProvideOption>()
-    items.value.forEach((item) =>
+    items.value.forEach((item) => {
+      if (!item.enable) return
       item.models
         .filter((model) => model.enable)
         .forEach((model) => {
@@ -63,13 +65,14 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
             provideId: item.id
           })
         })
-    )
+    })
     return map
   })
 
   const init = async () => {
     items.value = (await modelList()).map((item) => ({
       ...item,
+      enable: item.enable ?? true,
       models: item.models.map((model) => ({
         ...model,
         enable: model.enable ?? true

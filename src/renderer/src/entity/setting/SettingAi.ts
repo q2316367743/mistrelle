@@ -44,6 +44,12 @@ export interface AiProvideCore {
   models: Array<AiModel>
 
   /**
+   * 是否启用该提供方。关闭后其模型不出现在选择列表中。
+   * @default true
+   */
+  enable: boolean
+
+  /**
    * API 格式
    * 默认 Chat Completions
    * @default 'chat'
