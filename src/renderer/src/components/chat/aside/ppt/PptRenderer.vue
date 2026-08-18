@@ -149,7 +149,8 @@ watch(
     position: relative;
     flex-shrink: 0;
     width: 88px;
-    height: 88px * 720 / 1280;
+    // 高度按宽度锁定 16:9（LESS 非括号除法不计算，原 88px * 720 / 1280 产物非法致高度回退内容高）
+    aspect-ratio: 1280 / 720;
     border: 1px solid var(--td-border-level-1-color);
     border-radius: var(--td-radius-small);
     overflow: hidden;
@@ -163,7 +164,7 @@ watch(
   }
 
   &__thumb-scale {
-    transform: scale(88 / 1280);
+    transform: scale((88 / 1280));
     transform-origin: top left;
     pointer-events: none;
   }
@@ -189,11 +190,11 @@ watch(
 
   &__thumb-pop-scale {
     width: 320px;
-    height: 320px * 720 / 1280;
+    aspect-ratio: 1280 / 720;
     overflow: hidden;
 
     > :deep(*) {
-      transform: scale(320 / 1280);
+      transform: scale((320 / 1280));
       transform-origin: top left;
     }
   }

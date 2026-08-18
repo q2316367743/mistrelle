@@ -1,5 +1,10 @@
 <template>
-  <div ref="hostRef" class="ppt-surface" :data-ppt-surface="size.w + 'x' + size.h" :style="surfaceStyle">
+  <div
+    ref="hostRef"
+    class="ppt-surface"
+    :data-ppt-surface="size.w + 'x' + size.h"
+    :style="surfaceStyle"
+  >
     <div class="ppt-surface__roots">
       <ppt-node v-for="(root, i) in roots" :key="root.id ?? i" :node="root" :theme="theme" />
     </div>
@@ -67,9 +72,7 @@ const collectByTag = (tags: string[]): SlideNode[] => {
 
 const isOverlayTag = (tag: string): boolean => tag === 'Line' || tag === 'Arrow'
 
-const roots = computed<SlideNode[]>(() =>
-  props.slide.filter((node) => !isOverlayTag(node.tag))
-)
+const roots = computed<SlideNode[]>(() => props.slide.filter((node) => !isOverlayTag(node.tag)))
 
 interface OverlayItem {
   key: string

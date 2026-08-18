@@ -6,9 +6,12 @@
    完整元素树（含每个节点顶层 `id`）。编辑前先看元素树，拿到要操作的节点 id。
 3. **ppt_batch_edit (pptId, slideId, operations)**：对指定页做**元素级批量操作**（insert / copy / update / move /
    delete，≤15 个/批，单操作容错）。语法速查读 `ppt_guidelines("operations")`。
-4. **ppt_add_slide (pptId)**：末尾加空白页；**ppt_delete_slide (pptId, slideId)**：删页（不可恢复）。
-5. **ppt_set_theme (pptId, theme)**：整体换肤（更新 theme 令牌，$token 全篇联动）。
-6. **ppt_select (page)**：定位侧边栏预览视角，与用户浏览同步。
-7. 需要时 **ppt_export_pptx / ppt_export_png** 导出给用户确认；用户要求新版本时再 **ppt_create** 新文件。
-8. 语法 / 布局 / 样式不确定时先读指南：operations（批量操作）/ layout（布局模式）/ nodes（节点属性）/
+4. **ppt_inspect (pptId, slideId, ids?)**：返回节点渲染后的**画布绝对包围盒**（与预览 / 导出视觉一致）。flex 布局后
+   子节点的真实位置 / 尺寸由渲染决定（attr 只是输入）——编辑后核对元素位置、间距、对齐，或排查元素错位 / 溢出时用它；
+   一次查 2~5 个关心节点直接相减即可算间距。
+5. **ppt_add_slide (pptId)**：末尾加空白页；**ppt_delete_slide (pptId, slideId)**：删页（不可恢复）。
+6. **ppt_set_theme (pptId, theme)**：整体换肤（更新 theme 令牌，$token 全篇联动）。
+7. **ppt_select (page)**：定位侧边栏预览视角，与用户浏览同步。
+8. 需要时 **ppt_export_pptx / ppt_export_png** 导出给用户确认；用户要求新版本时再 **ppt_create** 新文件。
+9. 语法 / 布局 / 样式不确定时先读指南：operations（批量操作）/ layout（布局模式）/ nodes（节点属性）/
    styling（配色字体样式）/ json（存储结构速查）。

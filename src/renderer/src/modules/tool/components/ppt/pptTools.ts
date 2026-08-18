@@ -8,7 +8,7 @@
 import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
 import { isPathUnder } from '@/utils/sandbox'
-import { buildPptOutputsDir, exportPptx, exportPptxToPngs, getPptStore } from '@/modules/ppt'
+import { buildPptOutputsDir, exportPptx, exportPptxToPngs, getPptStore, inspectSlideBounds } from '@/modules/ppt'
 import {
   PPT_GUIDELINE_TOPICS,
   PPT_GUIDELINES,
@@ -138,10 +138,56 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       }
     },
     {
+      name: 'ppt_inspect',
+      label: '检查渲染几何',
+      description:
+        '返回指定页各节点渲染后的画布绝对包围盒（x / y / width / height / centerX / centerY + tag / parentId / depth，1280×720 画布坐标，与预览 / 导出视觉一致），供核对元素实际位置、尺寸、间距与对齐。注意：flex 布局后子节点的最终位置由渲染决定（attr 里的坐标 / 尺寸只是输入，实际还有 gap / padding / 收缩偏移），ppt_get_nodes 的 attr 不能直接推算几何——需要精确位置时请用本工具。一次传关心的 2~5 个节点 ids（如标题与卡片），直接相减即可算出相对位置与间距；缺省返回该页全部节点',
+      parameters: {
+        type: 'object',
+        properties: {
+          pptId: { type: 'string', description: 'PPT 文件标识（ppt_list / ppt_create 获取）' },
+          slideId: { type: 'number', description: '目标页码（1 起始）' },
+          ids: {
+            type: 'array',
+            items: { type: 'string', description: '节点 id' },
+            description: '可选：只返回指定 id 节点的包围盒（缺省返回该页全部）'
+          }
+        },
+        required: ['pptId', 'slideId']
+      },
+      internal: true,
+      risk: 'safe',
+      handler: async (...params: unknown[]) => {
+        const { pptId, slideId, ids } = params[0] as {
+          pptId: string
+          slideId: number
+          ids?: string[]
+        }
+        const doc = await store().read(pptId)
+        if (doc === null) return { error: `未找到 PPT「${pptId}」（可能未创建，先 ppt_create 或 ppt_list）` }
+        if ('error' in doc) return { error: doc.error }
+        if (!Number.isInteger(slideId) || slideId < 1 || slideId > doc.content.slide.length) {
+          return { error: `页码 ${slideId} 越界（共 ${doc.content.slide.length} 页，1 起始）` }
+        }
+        const all = await inspectSlideBounds(doc.content, slideId - 1)
+        const nodes = ids?.length ? all.filter((n) => ids.includes(n.id)) : all
+        const missing = ids?.filter((id) => !nodes.some((n) => n.id === id)) ?? []
+        return {
+          canvas: { width: PPT_SLIDE_SIZE.w, height: PPT_SLIDE_SIZE.h },
+          nodes,
+          note: !ids?.length
+            ? '返回该页全部节点'
+            : missing.length
+              ? `已按 ids 过滤；未命中：${missing.join('、')}（请用 ppt_get_nodes 确认节点 id）`
+              : '已按 ids 过滤'
+        }
+      }
+    },
+    {
       name: 'ppt_batch_edit',
       label: '批量编辑页面元素',
       description:
-        '核心编辑工具：对指定页（slideId 1 起始）的元素做批量操作（insert / copy / update / move / delete，≤15 个/批），按节点 id 精准增删改查，非整页覆盖。单操作非法只让该操作失败并返回错误（results 内联），其余照常执行；同批可用 as 绑定名（insert / copy 声明，后续 op 用 parent:"@绑定名" 引用刚创建的节点）。构建顺序建议 背景→主视觉→装饰→文字。语法速查与示例详见 ppt_guidelines("operations")',
+        '核心编辑工具：对指定页（slideId 1 起始）的元素做批量操作（insert / copy / update / move / delete，≤15 个/批），按节点 id 精准增删改查，非整页覆盖。构建层级优先在一个 insert 的 node.child 递归嵌套整棵子树（文字内容写在节点顶层 child 字符串，不在 attr 内）。单操作非法只让该操作失败并返回错误（results 内联），其余照常执行；同批可用 as 绑定名（insert / copy 声明，后续 op 用 parent:"@绑定名" 引用刚创建的节点）。构建顺序建议 背景→主视觉→装饰→文字。语法速查与示例详见 ppt_guidelines("operations")',
       parameters: {
         type: 'object',
         properties: {
@@ -231,7 +277,8 @@ export const createPptTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
     {
       name: 'ppt_select',
       label: '定位预览页',
-      description: '将侧边栏预览定位到指定页（页码从 1 开始），与用户浏览视角联动；不影响文件内容',
+      description:
+        '将侧边栏预览定位到指定页（页码从 1 开始），与用户浏览视角联动；不影响文件内容。ppt_batch_edit / ppt_add_slide / ppt_delete_slide 成功后预览会自动定位到操作页，一般无需手动调用本工具',
       parameters: {
         type: 'object',
         properties: { page: { type: 'number', description: '目标页码（1 起始）' } },
@@ -373,6 +420,7 @@ export const PPT_TOOL_NAMES = [
   'ppt_info',
   'ppt_open',
   'ppt_get_nodes',
+  'ppt_inspect',
   'ppt_batch_edit',
   'ppt_add_slide',
   'ppt_delete_slide',

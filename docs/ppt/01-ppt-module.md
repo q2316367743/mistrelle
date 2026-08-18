@@ -155,6 +155,7 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 | `ppt_info`         | `pptId`（必填）                                   | 文档级信息：id / name / 页数 / theme + 渲染状态 / 错误                                |
 | `ppt_open`         | `pptId`（必填）                                   | 打开指定文件为当前（驱动侧边栏/渲染器切换）                                           |
 | `ppt_get_nodes`    | `pptId`、`slideId`（必填）、`ids?`                | 指定页完整元素树（含节点顶层 id）+ theme + 渲染状态；`ids` 只返回命中节点（保留祖先） |
+| `ppt_inspect`      | `pptId`、`slideId`（必填）、`ids?`                | 指定页各节点**渲染后**的画布绝对包围盒（离屏实测，与预览 / 导出一致；缺省全部节点）   |
 | `ppt_batch_edit`   | `pptId`、`slideId`（1 起始）、`operations`（≤15） | 对指定页做元素级批量操作（insert / copy / update / move / delete，单操作容错）        |
 | `ppt_add_slide`    | `pptId`（必填）                                   | 文件末尾加空白页，返回 **1 起始**页索引与总页数                                       |
 | `ppt_delete_slide` | `pptId`、`slideId`（必填）                        | 删除一页（不可恢复），返回总页数                                                      |
@@ -169,15 +170,19 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 ### 5.1 `ppt_batch_edit` 的批量操作规范（仿 canvas，元素级增删改查）
 
 - `operations` 为操作数组（ **1-15 个/批，硬性上限**——元素过多 AI 生成的 JSON 容易出错），按顺序执行：
-  - `insert`：`{op, as?, parent: "root"/容器id/"@绑定名", node: SlideNode}` —— 插入页根或容器子元素
+  - `insert`：`{op, as?, parent: "root"/容器id/"@绑定名", node: SlideNode}` —— 插入页根或容器子元素；构建层级**首选在 node.child 递归嵌套整棵子树**（文字内容 = 节点顶层 child 字符串；无操作级 child、无 attr.child）
   - `copy`：`{op, as?, id, parent, overrides?: {attr?, text?}}` —— 深拷贝节点（子树 id 重生成）
   - `update`：`{op, id, patch: {attr?, text?, child?}}` —— 按节点 id 精准编辑（attr 点表示法合并 / text 覆盖 / child 替换）
   - `move`：`{op, id, parent?, index?}` —— 移动 / 重排（可跨容器）
   - `delete`：`{op, id}` —— 删除节点（含子树）
-- **as 绑定名**：同批内 `insert` / `copy` 可声明，后续 op 用 `parent:"@绑定名"` 引用刚创建的节点（搭层级用）；仅本批有效。
+- **as 绑定名**（分步插入的**补充**用法：同批后续 op 需引用刚创建节点时才用）：`insert` / `copy` 可声明，后续 op 用
+  `parent:"@绑定名"` 引用；仅本批有效。
 - **TypeBox 严格校验**（`pptSchemas.ts` 的 `pptBatchOpSchemaT`，单一数据源同时喂给模型参数描述）：op 判别联合、attr
   `additionalProperties: false` 拒绝未知字段、node 递归校验； **单操作非法只让该操作失败**（错误写入返回的 `results`
   ），其余照常执行并整体落盘。
+  **child 写错位置专属指路（2026-08）**：模型惯性高发两类错——子树写在**操作级**（与 node 平级的 child）或文字写在
+  `attr.child`；`validatePptBatchOp` 的 insert 分支检测后追加正确写法提示（子树嵌 `node.child` 数组 / 文字写顶层
+  child 字符串），严格校验不变、不做自动迁移（静默迁移会掩盖错误模式）。
   **落盘防护（2026-08）**：`PptStore` 对同一沙盒的读-改-写加队列锁，避免模型并行 `ppt_batch_edit` 读到同一份旧文件后互相覆盖
   （表现为「工具返回 success / 有节点，但磁盘仍是空页」）。整批操作全部失败时 **不写文件**，顶层返回 `error`（不再 `success: true`
   带着全失败 results 误导并冲掉其它页的成功写入）。
@@ -436,6 +441,42 @@ canvas_batch_edit 重构为 **元素级批量操作**：
    `nodes.md` §0 交叉引用并纠正 attr 值可为 number/boolean。workflow / json 指南按新契约改写；删除未加载的过时
    `guidelines/pom-xml-guide.md`；`pptPrompt.ts` 工作流段重写；
    `agentContext` 的 PPT 节点 pinned 上下文改为引导 `ppt_get_nodes` + update 操作。
+
+### 12.7 child 教学转向与报错指路（2026-08）
+
+- 背景：实测模型构建层级时按训练惯性把子树写在**操作级 child**（与 node 平级）或把文字写在 **`attr.child`**，连错两次后
+  放弃；而 `node.child` 递归嵌套整棵子树本就是合法契约（schema 递归联合 + `ensureNodeIds` 递归补 id），此前指南只教
+  as/@绑定名 两段式、从未示范整树嵌套。
+- 教学转向：`operations.md` §2 示例改为「一个 insert 嵌套整棵树」首选（as/@绑定名 降级为补充写法）、§3 契约表与 §4 易错点
+  补「child 只在节点顶层 / 无操作级 child / 无 attr.child」；`pptPrompt.ts` 工作流 + 设计铁律、`ppt_batch_edit` 工具
+  description 同步「优先 node.child 嵌套整树（文字 = 顶层 child 字符串）」。
+- 报错指路：`pptSchemas.ts` `validatePptBatchOp` 的 insert 分支检测到 op 级 `child` 键或错误消息含 `attr.child` 时，
+  追加正确写法提示；严格校验不变、不做校验前自动迁移（静默迁移会掩盖错误模式，模型收指路后一次重试即改对）。
+
+### 12.8 ppt_inspect：渲染几何检查（2026-08）
+
+- 动机：对齐 canvas_inspect——PPT 布局真相在渲染进程 CSS，flex 布局后子节点的真实位置 / 尺寸（含 gap / padding /
+  收缩偏移）只有渲染后才知道，模型无法拿 attr 推算，需要工具核对元素位置 / 间距 / 对齐。
+- 实现（纯渲染进程，无 IPC / 主进程改动）：`vueRender/offscreen.ts` 抽出共用 `mountOffscreen` + `waitStable`（快照与
+  测量同管线），新增 `measureSlideBounds(slide, theme, size)`——**只挂目标一页**，等资源稳定后 DFS 走 JSON 树（携带
+  parentId / depth），逐节点 `querySelector('[data-node-id]')` + `localRect` 实测（容器 / 复合节点子项 / overlay 的
+  Line / Arrow 均可测）；`pptRender.ts` 提供 `inspectSlideBounds(json, slideIndex)` 薄门面。
+- 契约：`ppt_inspect(pptId, slideId, ids?)` → `{ canvas: {width, height}, nodes, note }`；节点字段对齐 canvas_inspect：
+  `{ id, tag, text?, parentId?, depth, x, y, width, height, centerX, centerY }`（画布绝对坐标，2 位小数）；`ids` 未命中
+  在 note 标注供自纠；`risk: safe`、策略 allow。
+- 不用导出快照 items 聚合的原因：一个节点可产出多条 item（Text 装饰 + 文本、Icon rect + image）需求并集，且容器节点
+  无 item；DOM 根元素直测天然覆盖全部节点形态，且与预览视觉严格一致。
+
+### 12.9 预览页联动与缩略图定高（2026-08）
+
+- **编辑页联动预览**：`withPages` 落盘成功且操作的是当前展示文档（`current.id === targetId`）时，
+  `currentPage` 联动到 `result.slideId`（batch_edit 编辑哪页看哪页 / add_slide 跳新页 / delete_slide 跳到被删页前移
+  后的位置，删到 0 页收敛回 1）。统一放 `withPages` 尾部而非各回调内：跨文件编辑不误切另一文档页码（原 deleteSlide
+  回调内收敛有此瑕疵，一并移除）；全批失败不落盘不联动；用户手动翻页不经此路径不受影响。`ppt_select` 工具描述已注明
+  编辑工具自动定位、一般无需手动调用。
+- **缩略图定高**：`PptRenderer.vue` 原写法 `height: 88px * 720 / 1280` 在 LESS 4（`parens-division`）下编译产物为
+  `63360px / 1280`（非法 CSS 被浏览器丢弃）→ 高度回退 auto 被内容 720px 撑开。改为 `width + aspect-ratio: 1280 / 720`
+  （高度按宽度锁定 16:9）；hover 弹层同修；`scale()` 内除法补括号（`scale((88 / 1280))` → `scale(0.06875)`）。
 
 ### 12.3 已知限制（第一版范围）
 

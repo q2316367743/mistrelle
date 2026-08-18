@@ -320,7 +320,7 @@ export const validatePptBatchOp = (op: unknown): string[] => {
 
   if (opName === 'insert') {
     const rec = op as { node?: unknown }
-    return [
+    const messages = [
       ...collectErrors(variant, op, {
         ignore: (e) => e.path === '/node' && e.message === 'Expected union value'
       }),
@@ -328,6 +328,18 @@ export const validatePptBatchOp = (op: unknown): string[] => {
         ? validatePptElement(rec.node).map((m) => nestFieldError('node', m))
         : [])
     ]
+    // child 写错位置的专属指路（模型惯性高发：子树写到操作级、文字写到 attr.child）
+    if ('child' in rec) {
+      messages.push(
+        'insert 无操作级 child 字段：子元素请嵌套在 node.child 数组内（支持一次递归嵌套整棵子树）'
+      )
+    }
+    if (messages.some((m) => m.includes('attr.child'))) {
+      messages.push(
+        '文本内容应写在节点顶层 child 字符串（如 {"tag":"Text","attr":{...},"child":"文字"}），attr 内没有 child 键'
+      )
+    }
+    return messages
   }
 
   if (opName === 'update') {

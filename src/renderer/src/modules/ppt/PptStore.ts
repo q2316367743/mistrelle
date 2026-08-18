@@ -216,7 +216,6 @@ export class PptStore {
         return { error: `页码越界：${slideId}（当前共 ${slide.length} 页，从 1 开始）` }
       }
       slide.splice(slideId - 1, 1)
-      if (this.currentPage.value > slide.length) this.currentPage.value = Math.max(1, slide.length)
       return { success: true, slideId: Math.min(slideId, slide.length), total: slide.length }
     })
   }
@@ -377,6 +376,12 @@ export class PptStore {
         if (this.current.value?.id === targetId) {
           // 原地更新当前文档（对象替换驱动 vueRender 响应式重渲染）
           this.current.value = { id: targetId, name: buildPptFileName(targetId), json }
+          // AI 编辑哪页就展示哪页：成功操作的目标页联动预览 currentPage（同 ppt_select）。
+          // 仅当前展示文档生效（跨文件编辑不误切另一文档页码）；删到 0 页收敛回 1
+          this.currentPage.value =
+            result.slideId >= 1
+              ? Math.min(result.slideId, Math.max(1, json.slide.length))
+              : 1
         }
       } catch (err) {
         return { error: `写入失败：${errorText(err)}` } as T

@@ -8,7 +8,7 @@
 
 | op       | 作用                     | 关键参数                                                                     |
 |----------|--------------------------|------------------------------------------------------------------------------|
-| `insert` | 插入元素到页根或容器子元素 | `parent`: "root" / 容器节点 id / "@绑定名"；`node`: SlideNode；`as`: 绑定名 |
+| `insert` | 插入元素到页根或容器子元素 | `parent`: "root" / 容器节点 id / "@绑定名"；`node`: SlideNode（`child` 可递归嵌套整棵子树）；`as`: 绑定名 |
 | `copy`   | 深拷贝节点（子树 id 重生成） | `id`, `parent`, `overrides?`: {attr?, text?}                                |
 | `update` | 按节点 id 精准编辑       | `id`, `patch`: {attr?, text?, child?}                                       |
 | `move`   | 移动 / 重排（可跨容器）   | `id`, `parent?`, `index?`                                                    |
@@ -37,16 +37,32 @@
 
 ## 2. 示例：单批构建一页（封面）
 
+**首选写法：一个 insert 嵌套整棵树**——容器内容直接写在 `node.child` 数组里递归下去，
+文字内容是**节点顶层 `child` 字符串**（不在 attr 里）：
+
+```jsonc
+[
+  { "op": "insert", "parent": "root", "node": {
+    "tag": "VStack", "attr": { "w": "100%", "h": "100%", "padding": 48, "gap": 24, "backgroundColor": "$surface", "justifyContent": "center", "alignItems": "center" },
+    "child": [
+      { "tag": "Shape", "attr": { "shapeType": "ellipse", "w": 280, "h": 280, "backgroundColor": "$accent", "opacity": 0.15, "position": "absolute", "top": 40, "right": 40 } },
+      { "tag": "Text", "attr": { "fontSize": 40, "bold": true, "color": "$textMain" }, "child": "产品发布会" },
+      { "tag": "Text", "attr": { "fontSize": 16, "color": "$textMuted" }, "child": "2026 年度战略与新品亮相" }
+    ]
+  }}
+]
+```
+
+**补充写法：as 绑定名分步插入**——同批后续 op（update / move / 再 insert）需要引用刚插入的
+节点时才用：先 `as:"root"`，后续 `parent:"@root"`：
+
 ```jsonc
 [
   { "op": "insert", "as": "root", "parent": "root", "node": {
-    "tag": "VStack", "attr": { "w": "100%", "h": "100%", "padding": 48, "gap": 24, "backgroundColor": "$surface", "justifyContent": "center", "alignItems": "center" }, "child": []
+    "tag": "VStack", "attr": { "w": "100%", "h": "100%", "gap": 24 }, "child": []
   }},
-  { "op": "insert", "parent": "@root", "node": {
-    "tag": "Shape", "attr": { "shapeType": "ellipse", "w": 280, "h": 280, "backgroundColor": "$accent", "opacity": 0.15, "position": "absolute", "top": 40, "right": 40 }
-  }},
-  { "op": "insert", "parent": "@root", "node": { "tag": "Text", "attr": { "fontSize": 40, "bold": true, "color": "$textMain" }, "child": "产品发布会" } },
-  { "op": "insert", "parent": "@root", "node": { "tag": "Text", "attr": { "fontSize": 16, "color": "$textMuted" }, "child": "2026 年度战略与新品亮相" } }
+  { "op": "insert", "parent": "@root", "node": { "tag": "Text", "attr": { "fontSize": 40 }, "child": "标题" } },
+  { "op": "update", "id": "@root", "patch": { "attr": { "backgroundColor": "$surface" } } }
 ]
 ```
 
@@ -66,7 +82,7 @@
 | 点表示法 | 对象属性用扁平点键：`margin.top` / `padding.left` / `border.color`；也可用 `marginTop` 等别名（自动转） |
 | 文本加粗 | 优先 `bold`；写 `fontWeight: 700` 也会自动变成 `bold: true` |
 | Shape | `attr.shapeType` **必填**（如 `rect` / `roundRect` / `ellipse`）；线宽装饰常用矮 `Shape` 而不是 `Line` |
-| child | Text / Shape / Li / Td → **字符串**；VStack / HStack / Layer / Ul … → **子节点数组**；不要混用 |
+| child | **只在节点顶层**（与 tag / attr 平级）：Text / Shape / Li / Td → **字符串**（文字内容）；VStack / HStack / Layer / Ul … → **子节点数组**（可递归嵌套整棵树）；**没有操作级 child，也没有 attr.child**；不要混用 |
 | id | insert 时省略（系统生成）；不要手写撞名 |
 
 **自动转换的别名**（写入前规范化，落盘为规范键）：
@@ -103,6 +119,8 @@
 | update 改 id                              | 只改样式 / 文本 / 子元素        | id 由系统管理，改则忽略并提示                              |
 | 页面根元素不是 VStack / HStack            | 根用布局容器                   | 页面根必须 flexbox 布局，禁止散落裸 Text / Shape            |
 | 文本节点用 `child` 数组更新               | 用 `patch.text`                | text 只适用于 child 为字符串的节点                         |
+| `child` 写在操作级（与 node 平级）         | 嵌套进 `node.child` 数组       | insert 无操作级 child 字段；子树一律写在 node.child 内     |
+| 文字内容写成 `attr.child`                 | 节点顶层 `"child": "文字"`     | attr 是样式属性（无 child 键）；文字内容是节点顶层字段      |
 | `parent` 指向文本节点                     | 指向容器节点                   | 文本节点无法插入子元素                                     |
 | 未知 attr 键（非别名表）                  | 用 nodes 指南中的键            | `fontWeight` / `marginTop` 等会自动转；其余仍报未定义 |
 | Shape 省略 `shapeType`                    | 必填 `shapeType`               | 缺省直接校验失败                                           |
