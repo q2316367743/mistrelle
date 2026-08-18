@@ -30,7 +30,6 @@ const FILTER_KEYS = ['type', 'style', 'weight', 'license', 'language'] as const
 
 /** 各维度选项（含「全部」），font_list 工具 enum 与资源管理页下拉共用 */
 export const FONT_TYPE_OPTIONS: (FontType | '全部')[] = [
-  '全部',
   '黑体',
   '宋体',
   '圆体',
@@ -46,7 +45,6 @@ export const FONT_TYPE_OPTIONS: (FontType | '全部')[] = [
   '其它'
 ]
 export const FONT_STYLE_OPTIONS: (FontStyle | '全部')[] = [
-  '全部',
   '简约',
   '现代',
   '古典',
@@ -69,7 +67,6 @@ export const FONT_STYLE_OPTIONS: (FontStyle | '全部')[] = [
   '其它'
 ]
 export const FONT_WEIGHT_OPTIONS: (FontWeightCategory | '全部')[] = [
-  '全部',
   '纤细',
   '细',
   '正常',
@@ -79,7 +76,6 @@ export const FONT_WEIGHT_OPTIONS: (FontWeightCategory | '全部')[] = [
   '可变'
 ]
 export const FONT_LICENSE_OPTIONS: (FontLicense | '全部')[] = [
-  '全部',
   '作者声明',
   'OFL',
   'IPA',
@@ -96,11 +92,10 @@ export const FONT_LICENSE_OPTIONS: (FontLicense | '全部')[] = [
   'ISAS'
 ]
 export const FONT_LANG_OPTIONS: (FontLanguage | '全部')[] = [
-  '全部',
   '简体中文',
   '繁体中文',
   '日文',
-  '韩文'
+  '英文'
 ]
 
 /** t-select 下拉选项：把字符串选项数组映射为 { label, value }（EnumOne 也接受字符串，但 t-select 需要对象） */
@@ -235,7 +230,7 @@ const LICENSE_RULES = [
 const LANG_RULES = [
   ruleFor('繁体中文', ['繁体', '中文繁体', 'tc', 'traditional', 'big5']),
   ruleFor('日文', ['日文', '日本', 'jp', 'japanese', 'jis', 'mincho']),
-  ruleFor('韩文', ['韩文', '韩', 'kr', 'korean', 'hangul', 'malgun', 'batang', 'gulim', 'dotum'])
+  ruleFor('英文', ['英文', 'en', 'english', 'latine', 'roman'])
 ] as const satisfies ReadonlyArray<{ key: FontLanguage; keywords: string[] }>
 
 /** 按字体名启发式推断五维分类（推断失败维度返回各自兜底值） */

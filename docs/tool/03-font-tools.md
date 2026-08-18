@@ -16,8 +16,8 @@
 > - preload 字体模块 `src-utools/src/font.js`（Node 环境，系统字体扫描 / 资源库管理 / 元数据持久化）
 > - preload 挂载 `src-utools/preload.js`（`window.preload.font`）
 > - 类型声明 `src/types/font.d.ts` + `src/vite-env.d.ts`
-> - 资源管理页 `src/pages/setting/assets/SettingAssetPage.vue`（路由 `/setting/assets`）
-> - 资源管理弹窗 `src/pages/setting/assets/modals/FontMetaDialog.tsx` + `FontMetaContent.vue`
+> - 字体管理页 `src/pages/design/font/DesignFontPage.vue`（路由 `/design/font`）
+> - 字体元数据弹窗 `src/pages/design/font/modals/FontMetaDialog.tsx` + `FontMetaContent.vue`
 > - 渲染接入点 `canvasRender.ts`（exportCanvasPng）/ `CanvasRenderer.vue`（预览）
 
 ---
@@ -148,24 +148,23 @@
   保证预览 / `ctx.measureText`（canvasLayout.ts）与导出 PNG 用同一已加载字体源。
 - `document.fonts` 不可用时静默降级为默认字体，不阻塞渲染导出。
 
-## 8. 资源管理页（/setting/assets）
+## 8. 字体管理页（/design/font）
 
-- `page-layout` + `t-tabs`：「字体」tab 用 `t-table` 展示全部字体（name / 预览 / 来源 tag / 类型 / 字重 / 语言 /
+- `page-layout` + `t-table`：`DesignFontPage.vue` 展示全部字体（name / 预览 / 来源 tag / 类型 / 字重 / 语言 /
   操作），支持添加、编辑、删除、打开目录、刷新。
 - **预览列**：`FontPreviewText.vue` + `fontPreview.ts` 懒加载——system 字体走 CSS `font-family` 原生渲染；
   library 字体经共享注册器（FontFace **URL 源** + `pathToHref`，浏览器按 file:// 异步加载并 `document.fonts.add`；
   按 source+name 内存缓存去重、上限 60 超限 LRU 淘汰，不经 IPC 读整包字节）；加载前半透明占位；
   `reload` 时清缓存保证重新入库后刷新。
-- **五维筛选**：表格上方 5 个 `t-select`（类型/风格/字重/授权/语言），选项复用 `fontMeta.ts` 常量，
-  数据经 `filterFontsByMeta` 派生，显示「命中 / 总数」。
+- **筛选与排序**：表格上方 `t-input` 按名称关键字搜索（trim + 小写子串包含，与 `font_list.query` / 选字面板一致）+
+  5 个 `t-select`（类型/风格/字重/授权/语言），选项复用 `fontMeta.ts` 常量，数据经 `filterFontsByMeta` 派生后按
+  `localeCompare(name, 'zh')` 排序，显示「命中 / 总数」。
 - **添加字体**：`inject.dialog.open` 多选文件 → `openFontMetaDialog({ files })` 命令式弹窗
   （`FontMetaDialog.tsx` 外壳 + `FontMetaContent.vue` 内容，逐文件一行 + 5 个下拉，启发式按文件名预填）→
   逐文件 `addFont(path, meta)` 入库。
 - **编辑**：每行「编辑」按钮（资源库与系统字体均支持）→ 复用元数据弹窗 → `updateFontMeta` 持久化，
   保存值对 `font_list` / 画布渲染立即生效。
-- 「插图素材」tab 为占位（预留）。
-- 侧边栏入口：`AppSide.vue` `settingOptions` 新增「资源管理」（`FolderFilledIcon`）。
-- 路由：`src/plugin/router.ts` `/setting/assets`；枚举：`LocalNameEnum.SETTING_ASSETS`。
+- 路由：`src/plugin/router.ts` `/design/font`。
 
 ## 9. 注意事项
 

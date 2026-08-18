@@ -61,7 +61,7 @@ export type FontLicense =
   | 'ISAS'
 
 /** 字体语言（缺省「简体中文」；含 SC/TC/JP/KR 等语言标记时覆盖） */
-export type FontLanguage = '简体中文' | '繁体中文' | '日文' | '韩文'
+export type FontLanguage = '简体中文' | '繁体中文' | '日文' | '英文'
 
 /** 字体五维分类元数据（资源库/系统缓存可持久化；缺失时渲染层按名称启发式推断） */
 export interface FontMeta {

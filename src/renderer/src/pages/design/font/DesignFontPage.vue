@@ -1,58 +1,72 @@
 <template>
   <page-layout title="字体管理">
-    <div class="font-toolbar px-8px">
-      <t-button theme="primary" variant="outline" @click="openFolder">
-        <template #icon><FolderOpenIcon /></template>
-        打开字体目录
-      </t-button>
-      <t-button theme="primary" @click="addFont">
-        <template #icon><AddIcon /></template>
-        添加字体
-      </t-button>
-      <t-radio-group
-        v-model="sourceFilter"
-        theme="button"
-        variant="default-filled"
-        class="font-toolbar__radio"
-      >
-        <t-radio-button value="all">全部</t-radio-button>
-        <t-radio-button value="system">系统字体</t-radio-button>
-        <t-radio-button value="library">资源库</t-radio-button>
-      </t-radio-group>
+    <template #extra>
+      <div class="font-toolbar">
+        <t-radio-group v-model="sourceFilter" theme="button" variant="default-filled">
+          <t-radio-button value="all">全部</t-radio-button>
+          <t-radio-button value="system">系统字体</t-radio-button>
+          <t-radio-button value="library">资源库</t-radio-button>
+        </t-radio-group>
+        <t-button theme="primary" variant="outline" shape="square" @click="openFolder">
+          <template #icon><FolderOpenIcon /></template>
+        </t-button>
+        <t-button theme="primary" @click="addFont">
+          <template #icon><AddIcon /></template>
+          添加字体
+        </t-button>
+      </div>
+    </template>
+
+    <div class="font-filterbar px-8px">
+      <div class="flex gap-8px shrink-0">
+        <t-input
+          v-model="keyword"
+          clearable
+          placeholder="搜索字体名称"
+          class="font-filterbar__search"
+        >
+          <template #prefix-icon><SearchIcon /></template>
+        </t-input>
+        <t-select
+          v-model="filter.type"
+          :options="FONT_TYPE_SELECT"
+          placeholder="类型"
+          class="w-80px shrink-0"
+          clearable
+        />
+        <t-select
+          v-model="filter.style"
+          :options="FONT_STYLE_SELECT"
+          placeholder="风格"
+          class="w-90px shrink-0"
+          clearable
+        />
+        <t-select
+          v-model="filter.weight"
+          :options="FONT_WEIGHT_SELECT"
+          placeholder="字重"
+          class="w-90px shrink-0"
+          clearable
+        />
+        <t-select
+          v-model="filter.license"
+          :options="FONT_LICENSE_SELECT"
+          placeholder="授权"
+          class="w-120px shrink-0"
+          clearable
+        />
+        <t-select
+          v-model="filter.language"
+          :options="FONT_LANG_SELECT"
+          placeholder="语言"
+          class="w-120px shrink-0"
+          clearable
+        />
+      </div>
       <t-button theme="primary" variant="text" class="ml-auto" @click="reload">
         <template #icon><RefreshIcon /></template>
         刷新
       </t-button>
-    </div>
-
-    <div class="font-filterbar px-8px">
-      <t-select v-model="filter.type" :options="FONT_TYPE_SELECT" size="small" placeholder="类型" />
-      <t-select
-        v-model="filter.style"
-        :options="FONT_STYLE_SELECT"
-        size="small"
-        placeholder="风格"
-      />
-      <t-select
-        v-model="filter.weight"
-        :options="FONT_WEIGHT_SELECT"
-        size="small"
-        placeholder="字重"
-      />
-      <t-select
-        v-model="filter.license"
-        :options="FONT_LICENSE_SELECT"
-        size="small"
-        placeholder="授权"
-      />
-      <t-select
-        v-model="filter.language"
-        :options="FONT_LANG_SELECT"
-        size="small"
-        placeholder="语言"
-      />
-      <t-button v-if="hasFilter" variant="text" theme="primary" @click="resetFilter">重置</t-button>
-      <span class="font-filterbar__count">{{ tableData.length }} / {{ fonts.length }} 个字体</span>
     </div>
 
     <t-table
@@ -63,7 +77,7 @@
       size="medium"
       :pagination="pagination"
       hover
-      max-height="calc(100vh - 216px)"
+      max-height="calc(100vh - 160px)"
       :table-layout="'fixed'"
       class="px-8px"
     >
@@ -91,7 +105,7 @@
 </template>
 
 <script lang="ts" setup>
-import { AddIcon, FolderOpenIcon, RefreshIcon } from 'tdesign-icons-vue-next'
+import { AddIcon, FolderOpenIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import { MessageUtil } from '@/utils/modal'
 import {
   FONT_LANG_SELECT,
@@ -109,29 +123,27 @@ import { FontItem, FontItemWithMeta } from '@/domain/FontItem'
 
 const fonts = ref<FontItem[]>([])
 const loading = ref(false)
+const keyword = ref('')
 /** 来源筛选：all 全部 / system 系统字体 / library 我上传的 */
 const sourceFilter = ref<'all' | 'system' | 'library'>('library')
 
-const FILTER_DIM_KEYS = ['type', 'style', 'weight', 'license', 'language'] as const
 const filter = reactive<FontMetaFilter>({
-  type: '全部',
-  style: '全部',
-  weight: '全部',
-  license: '全部',
-  language: '全部'
+  type: '',
+  style: '',
+  weight: '',
+  license: '',
+  language: ''
 })
-const hasFilter = computed(() => FILTER_DIM_KEYS.some((k) => filter[k] && filter[k] !== '全部'))
-
-const resetFilter = () => {
-  for (const k of FILTER_DIM_KEYS) filter[k] = '全部'
-}
 
 /** 过滤后展平 meta 到顶层，便于表格直接读 type/weight/language 列 */
-const tableData = computed(() =>
-  filterFontsByMeta(fonts.value, filter)
+const tableData = computed(() => {
+  const kw = keyword.value.trim().toLowerCase()
+  return filterFontsByMeta(fonts.value, filter)
     .filter((f) => sourceFilter.value === 'all' || f.source === sourceFilter.value)
+    .filter((f) => !kw || f.name.toLowerCase().includes(kw))
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh'))
     .map((f) => ({ ...f, ...f.meta }))
-)
+})
 
 const pagination = computed(() => ({
   defaultCurrent: 1,
@@ -236,10 +248,6 @@ onMounted(reload)
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-
-  .t-select {
-    width: 110px;
-  }
 
   &__count {
     margin-left: auto;
