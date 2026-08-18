@@ -31,6 +31,7 @@ declare global {
       font: FontApi
       ppt: PptApi
       aiStream: AiStreamApi
+      safeStorage: SafeStorageApi
       shellExec: {
         cliRun(
           command: string,

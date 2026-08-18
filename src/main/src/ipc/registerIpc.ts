@@ -10,6 +10,7 @@ import { registerFfmpegIpc } from './ffmpegIpc'
 import { registerSharpIpc } from './sharpIpc'
 import { registerPptIpc } from './pptIpc'
 import { registerBrowserToolIpc } from './browserToolIpc'
+import { registerSafeStorageIpc } from './safeStorageIpc'
 
 export function registerIpc(): void {
   registerShellIpc()
@@ -26,4 +27,5 @@ export function registerIpc(): void {
   registerSharpIpc()
   registerPptIpc()
   registerBrowserToolIpc()
+  registerSafeStorageIpc()
 }

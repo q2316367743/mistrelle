@@ -1,26 +1,21 @@
 import { defineStore } from 'pinia'
-import { LocalNameEnum } from '@/global/LocalNameEnum'
-import { buildSettingAccount, SettingAccount } from '@/entity'
+import { buildSettingAccount } from '@/entity'
 import { HttpRequest } from '@/domain'
-import { getFromOneByAsync, saveOneByAsync } from '@/utils/native'
+import { accountLoad, accountSave } from '@/modules/setting/service/SettingAccountService'
 import { useLog } from '@/hooks/UseLog'
 
 export const useSettingAccountStore = defineStore('setting:account', () => {
   const logger = useLog({ name: 'setting:account' })
   const state = ref(buildSettingAccount())
-  const rev = ref<string>()
 
   ;(async () => {
-    const res = await getFromOneByAsync<SettingAccount>(LocalNameEnum.SETTING_ACCOUNT)
-    if (res.record) {
-      state.value = res.record
-      rev.value = res.rev
-    }
+    const account = await accountLoad()
+    if (account) state.value = account
 
     watch(
       state,
       async (val) => {
-        rev.value = await saveOneByAsync(LocalNameEnum.SETTING_ACCOUNT, val, rev.value)
+        await accountSave(val)
       },
       { deep: true }
     )

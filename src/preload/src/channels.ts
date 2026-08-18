@@ -480,3 +480,9 @@ export interface BrowserToolResult {
   /** 错误消息 */
   message?: string
 }
+
+// ── safeStorage ────────────────────────────────────────────
+export const SafeStorageChannels = {
+  encrypt: 'safeStorage:encrypt',
+  decrypt: 'safeStorage:decrypt'
+} as const
