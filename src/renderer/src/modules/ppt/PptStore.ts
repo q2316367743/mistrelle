@@ -43,6 +43,18 @@ export class PptStore {
 
   constructor(private readonly sandboxDir: string) {}
 
+  /** 串行化同一 store 的读-改-写，避免并行 ppt_batch_edit 互相覆盖 */
+  private fileLock: Promise<void> = Promise.resolve()
+
+  private enqueueFileOp<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.fileLock.then(task, task)
+    this.fileLock = run.then(
+      () => undefined,
+      () => undefined
+    )
+    return run
+  }
+
   /** 重新扫描 outputs/ 下的 PPT 文件列表 */
   async refreshFiles(): Promise<PptFileInfo[]> {
     const dir = buildPptOutputsDir(this.sandboxDir)
@@ -180,8 +192,10 @@ export class PptStore {
       slide: Array.from({ length: slideCount }, () => [])
     }
     const doc: PptCurrentDoc = { id: name, name: buildPptFileName(name), json }
-    await this.persist(doc)
-    this.current.value = doc
+    await this.enqueueFileOp(async () => {
+      await this.persist(doc)
+      this.current.value = doc
+    })
     this.currentPage.value = 1
     await this.refreshFiles()
     return { success: true, id: name, path: doc.name }
@@ -221,7 +235,10 @@ export class PptStore {
       if (!Number.isInteger(slideId) || slideId < 1 || slideId > slide.length) {
         return { error: `页码越界：${slideId}（当前共 ${slide.length} 页，从 1 开始）` }
       }
-      if (!Array.isArray(ops) || ops.length === 0) {
+      if (!Array.isArray(ops)) {
+        return { error: 'operations 必须是 JSON 数组（不要把整个数组 JSON.stringify 成字符串）' }
+      }
+      if (ops.length === 0) {
         return { error: 'operations 不能为空：至少 1 个操作' }
       }
       if (ops.length > 15) {
@@ -230,6 +247,19 @@ export class PptStore {
         }
       }
       const { results, potentialIssues } = executePptBatchOps(slide[slideId - 1], ops)
+      const failed = results.filter(
+        (item): item is { error: string } =>
+          !!item && typeof item === 'object' && 'error' in item && typeof item.error === 'string'
+      )
+      if (failed.length === results.length && results.length > 0) {
+        const hint = failed
+          .slice(0, 3)
+          .map((item) => item.error)
+          .join('；')
+        return {
+          error: `全部 ${results.length} 个操作失败，未写入文件。${hint}`
+        }
+      }
       return { success: true, slideId, total: slide.length, results, potentialIssues }
     })
   }
@@ -241,34 +271,36 @@ export class PptStore {
   ): Promise<{ error: string } | { success: true; id: string }> {
     const themeErrors = validatePptTheme(theme)
     if (themeErrors.length) return { error: themeErrors.join('；') }
-    const doc = this.current.value
-    const targetId = id ?? doc?.id
-    if (!targetId) return { error: '未指定 PPT，且当前没有打开的 PPT（先 ppt_create 或 ppt_open）' }
-    const path = window.preload.path.join(
-      buildPptOutputsDir(this.sandboxDir),
-      buildPptFileName(targetId)
-    )
-    if (!window.preload.fs.existsSync(path)) return { error: `未找到 PPT「${targetId}」` }
-    let text: string
-    try {
-      text = await window.preload.fs.readTextFile(path)
-    } catch (err) {
-      return { error: `读取失败：${errorText(err)}` }
-    }
-    const parsed = parseDoc(text)
-    if ('error' in parsed) return parsed
-    const json = parsed.doc
-    json.theme = theme
-    json.updatedAt = Date.now()
-    try {
-      await this.persist({ id: targetId, name: buildPptFileName(targetId), json })
-      if (this.current.value?.id === targetId) {
-        this.current.value = { id: targetId, name: buildPptFileName(targetId), json }
+    return this.enqueueFileOp(async () => {
+      const doc = this.current.value
+      const targetId = id ?? doc?.id
+      if (!targetId) return { error: '未指定 PPT，且当前没有打开的 PPT（先 ppt_create 或 ppt_open）' }
+      const path = window.preload.path.join(
+        buildPptOutputsDir(this.sandboxDir),
+        buildPptFileName(targetId)
+      )
+      if (!window.preload.fs.existsSync(path)) return { error: `未找到 PPT「${targetId}」` }
+      let text: string
+      try {
+        text = await window.preload.fs.readTextFile(path)
+      } catch (err) {
+        return { error: `读取失败：${errorText(err)}` }
       }
-    } catch (err) {
-      return { error: `写入失败：${errorText(err)}` }
-    }
-    return { success: true, id: targetId }
+      const parsed = parseDoc(text)
+      if ('error' in parsed) return parsed
+      const json = parsed.doc
+      json.theme = theme
+      json.updatedAt = Date.now()
+      try {
+        await this.persist({ id: targetId, name: buildPptFileName(targetId), json })
+        if (this.current.value?.id === targetId) {
+          this.current.value = { id: targetId, name: buildPptFileName(targetId), json }
+        }
+      } catch (err) {
+        return { error: `写入失败：${errorText(err)}` }
+      }
+      return { success: true, id: targetId }
+    })
   }
 
   /** 删除指定 PPT 文件（删除的是当前文档时清空当前态） */
@@ -305,50 +337,52 @@ export class PptStore {
     id: string | undefined,
     apply: (slide: SlideNode[][]) => T
   ): Promise<T> {
-    const doc = this.current.value
-    const targetId = id ?? doc?.id
-    if (!targetId)
-      return { error: '未指定 PPT，且当前没有打开的 PPT（先 ppt_create 或 ppt_open）' } as T
-    const path = window.preload.path.join(
-      buildPptOutputsDir(this.sandboxDir),
-      buildPptFileName(targetId)
-    )
-    if (!window.preload.fs.existsSync(path)) {
-      return { error: `未找到 PPT「${targetId}」` } as T
-    }
-    let text: string
-    try {
-      text = await window.preload.fs.readTextFile(path)
-    } catch (err) {
-      return { error: `读取失败：${errorText(err)}` } as T
-    }
-    const parsed = parseDoc(text)
-    if ('error' in parsed) return parsed as T
-    const json = parsed.doc
-    let result: T
-    try {
-      result = apply(json.slide)
-    } catch (err) {
-      return { error: errorText(err) } as T
-    }
-    if ('error' in result) return result
-    // 写回前为全部页面补齐节点 id（新元素 / AI 手写文件统一），并把受影响页节点摘要返回给 AI 引用
-    json.slide.forEach(ensureNodeIds)
-    if (result.slideId >= 1 && result.slideId <= json.slide.length) {
-      const enriched = result as PptPageResult & { nodes?: PptNodeInfo[] }
-      enriched.nodes = collectPageNodes(json.slide[result.slideId - 1])
-    }
-    json.updatedAt = Date.now()
-    try {
-      await this.persist({ id: targetId, name: buildPptFileName(targetId), json })
-      if (this.current.value?.id === targetId) {
-        // 原地更新当前文档（对象替换驱动 vueRender 响应式重渲染）
-        this.current.value = { id: targetId, name: buildPptFileName(targetId), json }
+    return this.enqueueFileOp(async () => {
+      const doc = this.current.value
+      const targetId = id ?? doc?.id
+      if (!targetId)
+        return { error: '未指定 PPT，且当前没有打开的 PPT（先 ppt_create 或 ppt_open）' } as T
+      const path = window.preload.path.join(
+        buildPptOutputsDir(this.sandboxDir),
+        buildPptFileName(targetId)
+      )
+      if (!window.preload.fs.existsSync(path)) {
+        return { error: `未找到 PPT「${targetId}」` } as T
       }
-    } catch (err) {
-      return { error: `写入失败：${errorText(err)}` } as T
-    }
-    return result
+      let text: string
+      try {
+        text = await window.preload.fs.readTextFile(path)
+      } catch (err) {
+        return { error: `读取失败：${errorText(err)}` } as T
+      }
+      const parsed = parseDoc(text)
+      if ('error' in parsed) return parsed as T
+      const json = parsed.doc
+      let result: T
+      try {
+        result = apply(json.slide)
+      } catch (err) {
+        return { error: errorText(err) } as T
+      }
+      if ('error' in result) return result
+      // 写回前为全部页面补齐节点 id（新元素 / AI 手写文件统一），并把受影响页节点摘要返回给 AI 引用
+      json.slide.forEach(ensureNodeIds)
+      if (result.slideId >= 1 && result.slideId <= json.slide.length) {
+        const enriched = result as PptPageResult & { nodes?: PptNodeInfo[] }
+        enriched.nodes = collectPageNodes(json.slide[result.slideId - 1])
+      }
+      json.updatedAt = Date.now()
+      try {
+        await this.persist({ id: targetId, name: buildPptFileName(targetId), json })
+        if (this.current.value?.id === targetId) {
+          // 原地更新当前文档（对象替换驱动 vueRender 响应式重渲染）
+          this.current.value = { id: targetId, name: buildPptFileName(targetId), json }
+        }
+      } catch (err) {
+        return { error: `写入失败：${errorText(err)}` } as T
+      }
+      return result
+    })
   }
 
   private async persist(doc: PptCurrentDoc): Promise<void> {

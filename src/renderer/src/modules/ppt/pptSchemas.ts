@@ -4,10 +4,18 @@
  * - pptElementSchema / pptElementsSchema：喂给模型的 ToolProperty 参数描述
  * - validatePptElement / validatePptElements / validatePptTheme：入参拦截（中文报错反馈模型自纠）
  */
-import { collectErrors, toToolProperty } from '@/modules/tool/typeboxUtil'
+import {
+  collectErrors,
+  nestFieldError,
+  toToolProperty,
+  type ValueErrorLike
+} from '@/modules/tool/typeboxUtil'
 import type { ToolProperty } from '@/domain'
 import { pptElementSchemaT, pptElementVariants, pptElementsSchemaT } from './pptElementSchemas'
+import { normalizePptNodeTree } from './pptAttrNormalize'
 import { Type } from '@sinclair/typebox'
+import type { TSchema } from '@sinclair/typebox'
+import { Value } from '@sinclair/typebox/value'
 
 /** 元素 schema（供模型了解 batch_edit 的 elements 元素结构） */
 export const pptElementSchema: ToolProperty = toToolProperty(pptElementSchemaT)
@@ -40,12 +48,111 @@ export const pptElementPatchSchema: ToolProperty = toToolProperty(pptElementPatc
 /** 可用元素类型清单（错误提示用） */
 const PPT_ELEMENT_TYPES = Object.keys(pptElementVariants)
 
+const isPptElementTag = (tag: unknown): tag is string =>
+  typeof tag === 'string' && tag in pptElementVariants
+
+const typeboxPathToField = (path: string): string =>
+  path.replace(/\//g, '.').replace(/^\./, '')
+
+/** 按 TypeBox 路径取子值（如 `/child/0`） */
+const valueAtTypeboxPath = (root: unknown, path: string): unknown => {
+  if (path === '') return root
+  let cur: unknown = root
+  for (const part of path.split('/').filter(Boolean)) {
+    if (cur == null || typeof cur !== 'object') return undefined
+    cur = (cur as Record<string, unknown>)[part]
+  }
+  return cur
+}
+
+/**
+ * 展开 Expected union value：
+ * - 目标是数组且联合含 array 分支（child = string | SlideNode[]）→ 逐项按 tag 展开
+ * - 目标是 ppt 元素（tag ∈ pptElementVariants）→ validatePptElement
+ * - 否则按 anyOf 分支的 tag const 匹配后精确校验（Table Col/Tr、Ul Li 等）
+ */
+const expandUnionError = (e: ValueErrorLike, root: unknown): string[] => {
+  const target = valueAtTypeboxPath(root, e.path)
+  const prefix = typeboxPathToField(e.path)
+  const withPrefix = (msgs: string[]): string[] =>
+    msgs.map((m) => (prefix ? nestFieldError(prefix, m) : m))
+
+  // childUnion（string | array）：子项非法时 TypeBox 只在 /child 报 union，不进 /child/0
+  if (Array.isArray(target)) {
+    const itemsSchema = (e.schema?.anyOf ?? []).find((b) => b.type === 'array')?.items
+    return target.flatMap((item, index) => {
+      const itemPrefix = prefix ? `${prefix}.${index}` : String(index)
+      if (
+        item &&
+        typeof item === 'object' &&
+        !Array.isArray(item) &&
+        isPptElementTag((item as { tag?: unknown }).tag)
+      ) {
+        return validatePptElement(item).map((m) => nestFieldError(itemPrefix, m))
+      }
+      if (itemsSchema?.anyOf) {
+        return expandUnionError(
+          {
+            path: `${e.path}/${index}`,
+            message: 'Expected union value',
+            schema: itemsSchema
+          },
+          root
+        )
+      }
+      return [`字段 ${itemPrefix} 取值不合法`]
+    })
+  }
+
+  if (
+    target &&
+    typeof target === 'object' &&
+    isPptElementTag((target as { tag?: unknown }).tag)
+  ) {
+    return withPrefix(validatePptElement(target))
+  }
+
+  const matched = (e.schema?.anyOf ?? []).find((branch) => {
+    const tagConst = branch.properties?.tag?.const
+    return (
+      tagConst !== undefined &&
+      target !== null &&
+      typeof target === 'object' &&
+      !Array.isArray(target) &&
+      (target as { tag?: unknown }).tag === tagConst
+    )
+  })
+  if (!matched) {
+    return withPrefix(
+      collectErrors(Type.Union((e.schema?.anyOf ?? []).map((b) => Type.Unsafe(b))), target)
+    )
+  }
+
+  const branchSchema = Type.Unsafe(matched) as TSchema
+  try {
+    const nestedRaw = [...Value.Errors(branchSchema, target)] as unknown as ValueErrorLike[]
+    return [
+      ...collectErrors(branchSchema, target, {
+        ignore: (ne) => ne.message === 'Expected union value'
+      }).map((m) => (prefix ? nestFieldError(prefix, m) : m)),
+      ...nestedRaw
+        .filter((ne) => ne.message === 'Expected union value')
+        .flatMap((ne) => expandUnionError({ ...ne, path: `${e.path}${ne.path}` }, root))
+    ]
+  } catch {
+    // Recursive $ref 解引用失败时退回 opaque（极少见；ppt 元素路径已由 variants 覆盖）
+    return withPrefix([`取值不合法（允许：${PPT_ELEMENT_TYPES.join(' / ')}）`])
+  }
+}
+
 /**
  * 校验单个元素：先按 tag 判别到对应分支 schema（未知 tag / 缺 tag 给出明确提示），
- * 再做精确字段校验（含 child 递归，递归内错误定位到子元素位置）。
+ * 再做精确字段校验。child 递归按 tag 展开——TypeBox Recursive Union 失败时只报
+ * Expected union value，无法定位到 attr.xxx，故不能直接 collectErrors(递归联合)。
  */
 export const validatePptElement = (value: unknown): string[] => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return ['元素必须是 JSON 对象']
+  normalizePptNodeTree(value)
   const tag = (value as { tag?: unknown }).tag
   if (typeof tag !== 'string') {
     return [`元素缺少 tag 字段（可用：${PPT_ELEMENT_TYPES.join(' / ')}）`]
@@ -54,7 +161,13 @@ export const validatePptElement = (value: unknown): string[] => {
   if (!variant) {
     return [`未知元素类型「${tag}」（可用：${PPT_ELEMENT_TYPES.join(' / ')}）`]
   }
-  return collectErrors(variant, value)
+
+  const raw = [...Value.Errors(variant, value)] as unknown as ValueErrorLike[]
+  const unionErrs = raw.filter((e) => e.message === 'Expected union value')
+  return [
+    ...collectErrors(variant, value, { ignore: (e) => e.message === 'Expected union value' }),
+    ...unionErrs.flatMap((e) => expandUnionError(e, value))
+  ]
 }
 
 /** 校验元素数组（1..N，每元素按 type 判别精确校验） */
@@ -90,6 +203,25 @@ export const validatePptTheme = (theme: unknown): string[] => {
   return errors
 }
 
+/** 校验 patch：非 child 字段走 TypeBox；child 数组逐项 validatePptElement */
+const validatePptElementPatch = (patch: unknown, fieldPrefix: string): string[] => {
+  if (patch === undefined) return []
+  normalizePptNodeTree(patch)
+  const errors = collectErrors(pptElementPatchSchemaT, patch, {
+    ignore: (e) => e.message === 'Expected union value' && e.path.startsWith('/child/')
+  }).map((m) => nestFieldError(fieldPrefix, m))
+
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return errors
+  const child = (patch as { child?: unknown }).child
+  if (!Array.isArray(child)) return errors
+  child.forEach((item, index) => {
+    errors.push(
+      ...validatePptElement(item).map((m) => nestFieldError(`${fieldPrefix}.child.${index}`, m))
+    )
+  })
+  return errors
+}
+
 // ── 批量操作 schema（ppt_batch_edit 用；op 判别联合，仿 canvas canvasSchemas.batchOpSchemaT） ──
 
 const insertOpSchemaT = Type.Object(
@@ -114,9 +246,7 @@ const copyOpSchemaT = Type.Object(
       description: '被复制节点 id（本页内；可用 "@绑定名" 引用同批刚创建的节点）'
     }),
     parent: Type.String({ description: '目标父位置："root" 或容器节点 id 或 "@绑定名"' }),
-    overrides: Type.Optional(
-      pptElementPatchSchemaT
-    )
+    overrides: Type.Optional(pptElementPatchSchemaT)
   },
   { additionalProperties: false, description: '深拷贝节点到目标父（子树 id 重新生成）' }
 )
@@ -187,6 +317,39 @@ export const validatePptBatchOp = (op: unknown): string[] => {
   if (typeof opName !== 'string') return ['缺少 op 字段']
   const variant = opSchemaMap[opName as keyof typeof opSchemaMap]
   if (!variant) return [`op 必须是 insert / copy / update / move / delete 之一，收到 ${opName}`]
+
+  if (opName === 'insert') {
+    const rec = op as { node?: unknown }
+    return [
+      ...collectErrors(variant, op, {
+        ignore: (e) => e.path === '/node' && e.message === 'Expected union value'
+      }),
+      ...(rec.node !== undefined
+        ? validatePptElement(rec.node).map((m) => nestFieldError('node', m))
+        : [])
+    ]
+  }
+
+  if (opName === 'update') {
+    const rec = op as { patch?: unknown }
+    // patch 整段改由 validatePptElementPatch（否则 child 递归联合只报 opaque）
+    const shell = collectErrors(variant, op, {
+      ignore: (e) => e.path === '/patch' || e.path.startsWith('/patch/')
+    })
+    if (!('patch' in rec)) return [...shell, '字段 patch 缺少必填']
+    return [...shell, ...validatePptElementPatch(rec.patch, 'patch')]
+  }
+
+  if (opName === 'copy') {
+    const rec = op as { overrides?: unknown }
+    return [
+      ...collectErrors(variant, op, {
+        ignore: (e) => e.path === '/overrides' || e.path.startsWith('/overrides/')
+      }),
+      ...validatePptElementPatch(rec.overrides, 'overrides')
+    ]
+  }
+
   return collectErrors(variant, op)
 }
 

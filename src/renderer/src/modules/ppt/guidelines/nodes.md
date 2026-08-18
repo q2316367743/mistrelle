@@ -3,18 +3,21 @@
 ## 0. 文档结构
 
 - 元素统一为 SlideNode：`{ tag, attr, child }`——tag 即标签名，attr 为属性对象，child 为子元素数组或文本字符串。
-- `attr` 值统一写字符串（数字 / 布尔也写字符串，如 `"fontSize": "28"`、`"bold": "true"`）；对象属性用点表示法
+- **attr 键名优先匹配本表**；常见 CSS 别名（`fontWeight`→`bold`、`marginTop`→`margin.top`、`paddingBottom`→`padding.bottom` 等）校验前会自动转换，详见 `ppt_guidelines("operations")`。间距单侧规范键为
+  `margin.top` / `padding.left`；加粗规范键为 `bold`。
+- `attr` 值允许 number / boolean / string（如 `fontSize: 28`、`bold: true`，亦可写字符串）；对象属性用点表示法
   （`border.color`、`shadow.blur`、`padding.top`）。
 - 颜色属性（以 Color/Colors 结尾、fill/glow 等对象里的 color 键、highlight、渐变色标）可用 `$token` 引用 theme 令牌；
   **令牌名以字母开头，可含字母 / 数字 / _ / -**；未知令牌会报错。
 - 文本写在 child 字符串（Text / Shape / Li / Td）；容器子元素写在 child 数组；无子元素可省略 child。
+- `Shape` 的 `shapeType` **必填**（见 §3）。
 
 ## 1. 公共属性（attr，所有节点）
 
 | 类别 | 属性                                                                                                                       |
 |------|----------------------------------------------------------------------------------------------------------------------------|
 | 尺寸 | `w` / `h`（数字 \| "max" \| "50%"）、`grow`、`minW/maxW/minH/maxH`                                                         |
-| 间距 | `padding`（统一或 `padding.top` 单侧）、`margin`                                                                           |
+| 间距 | `padding`（统一或 `padding.top` 单侧）、`margin`（统一或 `margin.top` / `margin.right` / …；**不是** `marginTop`） |
 | 背景 | `backgroundColor`、`backgroundGradient`（CSS 渐变）、`backgroundImage.src` + `backgroundImage.sizing`（cover/contain）       |
 | 边框 | `border.color` / `border.width` / `border.dashType`、`borderTop/Right/Bottom/Left`（单边，逐字段覆盖）、`borderRadius`      |
 | 定位 | `position`（relative/absolute）、`top/right/bottom/left`、`zIndex`、`alignSelf`                                            |
@@ -39,7 +42,7 @@
 
 ## 3. 图形类：Shape / Line / Arrow
 
-- `Shape`：`shapeType`（roundRect / ellipse / triangle / diamond / star / heart / 流程图形状等 178 种）；文本写在 child；
+- `Shape`：`shapeType` **必填**（roundRect / ellipse / triangle / diamond / star / heart / 流程图形状等 178 种）；文本写在 child；
   `fill.color` + `fill.transparency`（0-1，蒙层用）；`line.color/width/dashType` 描边；`glow` / `outline`（原生特效）。
 - `Line`：`x1/y1/x2/y2` 绝对坐标（必填）+ `color` / `lineWidth` / `dashType` / `beginArrow` / `endArrow`； **不参与布局**。
 - `Arrow`：`from` / `to` 引用节点 `id`（必填，Text 或 rect/roundRect/ellipse Shape），自动吸附连接点；找不到 id 会报

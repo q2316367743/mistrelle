@@ -20,6 +20,41 @@ const normalizeAttrValues = (node: SlideNode): void => {
   if (Array.isArray(node.child)) node.child.forEach(normalizeAttrValues)
 }
 
+/** 是否铺满幻灯片高度的根容器（隐式纵向叠放时一个就占满 720，再插兄弟必越界） */
+const isFullHeightRoot = (node: SlideNode): boolean => {
+  if (node.tag !== 'VStack' && node.tag !== 'HStack') return false
+  const h = String(node.attr.h ?? '')
+  return h === '100%' || h === 'max' || h === '100'
+}
+
+/** 页根已有满高容器时，禁止再向 parent:"root" 插入（多根纵向叠放会超出 1280×720） */
+const assertCanInsertAtPageRoot = (page: SlideNode[]): void => {
+  const existing = page.filter(isFullHeightRoot)
+  if (existing.length === 0) return
+  const id = existing[0]?.id || '(无 id)'
+  throw new Error(
+    `页已有满高根容器「${id}」（h=100% / max）。禁止再向 parent:"root" 插入——多个根会纵向叠放超出画布。` +
+      `请 parent:"${id}" 或同批 insert 时 as:"root" 后用 parent:"@root"；若要重建整页请先 delete 旧根。`
+  )
+}
+
+/** 批结束后扫描页根结构，给出越界风险提示（不阻断，供模型自纠） */
+const collectRootOverflowIssues = (page: SlideNode[]): string[] => {
+  const issues: string[] = []
+  const full = page.filter(isFullHeightRoot)
+  if (full.length > 1) {
+    issues.push(
+      `页根有 ${full.length} 个满高容器（${full.map((n) => n.id || n.tag).join(' / ')}），会纵向叠放越界；请只保留一个并 delete 其余`
+    )
+  }
+  if (full.length >= 1 && page.length > full.length) {
+    issues.push(
+      `页根在满高容器外还有 ${page.length - full.length} 个兄弟节点，会叠出画布；请改插入到满高容器 id 内或删除多余根`
+    )
+  }
+  return issues
+}
+
 /** 节点摘要（返回给 AI 引用 id） */
 const nodeInfo = (node: SlideNode): PptNodeInfo => ({
   id: node.id ?? '',
@@ -105,6 +140,7 @@ const executeOp = (
   switch (op.op) {
     case 'insert': {
       if (op.parent == null || op.node == null) throw new Error('insert 缺少 parent 或 node')
+      if (op.parent === 'root') assertCanInsertAtPageRoot(page)
       const parent = resolveParentList(page, op.parent, bindings)
       ensureNodeIds([op.node])
       normalizeAttrValues(op.node)
@@ -114,6 +150,7 @@ const executeOp = (
     }
     case 'copy': {
       if (op.id == null || op.parent == null) throw new Error('copy 缺少 id 或 parent')
+      if (op.parent === 'root') assertCanInsertAtPageRoot(page)
       const source = findNodeById(page, resolveTargetId(op.id, bindings))
       if (!source) throw new Error(`未找到被复制节点 ${op.id}`)
       const clone = cloneNodeWithNewIds(source)
@@ -181,5 +218,6 @@ export const executePptBatchOps = (
       results.push({ error: `第 ${i + 1} 个操作失败：${err instanceof Error ? err.message : String(err)}` })
     }
   }
+  potentialIssues.push(...collectRootOverflowIssues(page))
   return { results, potentialIssues }
 }

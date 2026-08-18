@@ -31,7 +31,9 @@
 
 - `tag` 即 XML 标签名（区分大小写）：Text / VStack / HStack / Icon / Shape / Image / Ul / Ol / Layer /
   Line / Arrow / Table / Chart / Timeline / Flow / Tree / Matrix / Pyramid / ProcessArrow / Svg。
-- `attr` 为属性对象：**值统一为字符串**（数字 / 布尔也写字符串，如 `"fontSize": "28"`、`"bold": "true"`）。
+- `attr` 为属性对象：**键名严格匹配 nodes 指南**（无 `fontWeight` / `marginTop` 等别名；单侧用 `margin.top`）；
+  **值允许 number / boolean / string**（如 `fontSize: 28`、`bold: true`，落盘前统一转字符串）。
+  batch_edit 写入铁律见 `ppt_guidelines("operations")` §3。
 - **顶层 `id` = 节点唯一标识**（`{ id, tag, attr, child }`，与 tag 并列）：写入时自动生成（`n-` + nanoid），无需 AI 手动指定；
   用户点选节点后 AI 用它做**精准编辑**（见 §7 update 操作）。所有节点（含 Li/Td/TimelineItem 等子元素）都有 id；
   id 不进 attr、不参与 POM 布局。

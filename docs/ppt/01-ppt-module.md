@@ -178,6 +178,9 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 - **TypeBox 严格校验**（`pptSchemas.ts` 的 `pptBatchOpSchemaT`，单一数据源同时喂给模型参数描述）：op 判别联合、attr
   `additionalProperties: false` 拒绝未知字段、node 递归校验； **单操作非法只让该操作失败**（错误写入返回的 `results`
   ），其余照常执行并整体落盘。
+  **落盘防护（2026-08）**：`PptStore` 对同一沙盒的读-改-写加队列锁，避免模型并行 `ppt_batch_edit` 读到同一份旧文件后互相覆盖
+  （表现为「工具返回 success / 有节点，但磁盘仍是空页」）。整批操作全部失败时 **不写文件**，顶层返回 `error`（不再 `success: true`
+  带着全失败 results 误导并冲掉其它页的成功写入）。
 - **页面根元素必须是 VStack / HStack 布局容器**（flexbox 先布局后内容）：一页 = SlideNode 数组，导出时包进 `<Slide>`。
 - 实现链路：JSON 读文件 → 逐 op 校验执行（`pptBatchOps.ts` 纯页面逻辑，仿 canvas `CanvasStore.batchEdit`）→ JSON 写回（ **无
   xml round-trip**）。
@@ -323,6 +326,9 @@ canvas 的一组图片）。重构为：
    页码一致）。
 4. **TypeBox 工具提取**：`toToolProperty` / `collectErrors` 提取到 `src/renderer/src/modules/tool/typeboxUtil.ts`
    （canvas / ppt 共用），canvasSchemas 行为不变。
+   **anyOf 类型推断修复（2026-08）**：原先非全 const 的 Union 一律标 `type: "string"`，导致喂给模型的
+   `operations.items` / `node` 变成「string + anyOf 对象」——模型会把整个 operations 数组 JSON.stringify 成字符串，
+   运行时 `Array.isArray` 失败却报成「operations 不能为空」。现按分支共识推断（对象联合 → `object`，避免双重编码）。
 5. **经验指南**：基于 POM 官方三文档（nodes / layout-system / styling-guide）转写为经验提示词（layout.md / nodes.md /
    styling.md），`ppt_guidelines` topics 扩展为 layout / nodes / styling / pom-xml / workflow。
 6. 提示词强化： **页面根元素必须是 VStack / HStack 布局容器**（flexbox 先布局后内容）；字号分级按官方规范（标题 28-40 / 小标题
@@ -407,6 +413,17 @@ canvas_batch_edit 重构为 **元素级批量操作**：
    `src/renderer/src/modules/ppt/pptBatchOps.ts`（纯页面逻辑，as 绑定名 + `parent:"@绑定名"` 引用，仿 canvas
    `CanvasStore.batchEdit`）；schema 与校验在 `pptSchemas.ts`（`pptBatchOpSchemaT` 判别联合 + `validatePptBatchOp(s)`，复用
    `pptElementPatchSchemaT` 作 update.patch / copy.overrides）。
+   **Recursive Union 错误展开（2026-08）**：TypeBox 对 `pptElementSchemaT`（Recursive + Union）校验失败时只报
+   `Expected union value`，`collectErrors` 会变成无用的「字段 node 取值不合法（允许：对象）」；且 `child` 为
+   `string | SlideNode[]` 时子项非法只停在 `/child` 层。现由 `validatePptElement` 按 `tag` 走 `pptElementVariants` 递归展开，
+   `validatePptBatchOp` 的 insert.node / update.patch.child / copy.overrides.child 同路径，错误可定位到
+   `node.child.1.attr.fontWeight 未定义的字段` 等，供模型自纠。`typeboxUtil.collectErrors` 增加 `ignore` /
+   `nestFieldError`，Expected union 在有 const 判别时优先列出允许的字面量。
+   **单根满高防越界（2026-08）**：页根隐式纵向 flex；多个 `h=100%/max` 根或「满高根 + 根外兄弟」会超出 720 画布。
+   `pptBatchOps` 在 `parent:"root"` 且页已有满高根时拒绝插入；批结束后 `potentialIssues` 提示多根结构。
+   **attr 别名规范化（2026-08）**：`pptAttrNormalize.ts` 在校验前把 `fontWeight`→`bold`、
+   `paddingBottom`→`padding.bottom`、`marginTop`→`margin.top` 等常见 CSS/React 键转成 schema 键，并把
+   `"16"` 类数字字符串收成 number；未知键仍严格拒绝。指南 operations / nodes 已同步说明。
 2. **工具面精简**：移除 `ppt_read`（被 `ppt_info` + `ppt_get_nodes` 取代）与 `ppt_edit_element`（被 batch 的 update 操作取代）；新增
    `ppt_info`（文档级信息）、`ppt_get_nodes`（单页元素树，ids 可选过滤）、`ppt_delete_slide`（删页）、`ppt_set_theme`（更新 theme
    令牌，canvas_set_palette 类比）。
@@ -415,7 +432,9 @@ canvas_batch_edit 重构为 **元素级批量操作**：
 4. **无兼容处理**：模块未发布、无历史数据——旧文件 / 旧工具 / attr.id 兼容回退（`findNodeById` / `ensureNodeIds` 只认顶层
    node.id）直接清理，不写迁移逻辑。
 5. **指南同步**：`ppt_guidelines` 新增 topic `operations`（`guidelines/operations.md`，5 种 op 语法 + as 绑定 +
-   易错点）；workflow / json 指南按新契约改写；删除未加载的过时 `guidelines/pom-xml-guide.md`；`pptPrompt.ts` 工作流段重写；
+   易错点）；**§3 insert.node 严格契约**（禁止 fontWeight/marginTop 等 CSS 别名、Shape 必填 shapeType、child 字符串/数组分工）；
+   `nodes.md` §0 交叉引用并纠正 attr 值可为 number/boolean。workflow / json 指南按新契约改写；删除未加载的过时
+   `guidelines/pom-xml-guide.md`；`pptPrompt.ts` 工作流段重写；
    `agentContext` 的 PPT 节点 pinned 上下文改为引导 `ppt_get_nodes` + update 操作。
 
 ### 12.3 已知限制（第一版范围）
