@@ -16,7 +16,6 @@ export const LocalNameEnum = {
   SETTING_SECURE: '/setting/secure',
   SETTING_ASSETS: '/setting/assets',
 
-  LIST_AI_AGENT: '/list/ai/group',
   LIST_AI_DISCUSSION: '/list/ai/discussion',
   LIST_AI_PROMPT: '/list/ai/prompt',
   LIST_NOTE_TRACE: '/list/note/trace',

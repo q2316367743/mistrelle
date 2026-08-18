@@ -82,6 +82,9 @@ export const getAppData2Design = () => {
 // AI 模型配置文件路径：~/.mistrelle/model.json
 export const getModelPath = () => window.preload.path.join(dataFolder, 'model.json')
 
+// AI Agent 配置文件路径：~/.mistrelle/agent.json
+export const getAgentPath = () => window.preload.path.join(dataFolder, 'agent.json')
+
 export const ASIDE_PADDING_LEFT = 156
 
 // 单个工具结果的最大字节数，超出则截断，避免超大输出撑爆上下文窗口
