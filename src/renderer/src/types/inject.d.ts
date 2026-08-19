@@ -75,9 +75,9 @@ interface InjectClipboard {
 
 interface InjectOs {
   isDarkColors(): Promise<boolean>
-  isMacOS(): Promise<boolean>
-  isWindows(): Promise<boolean>
-  isLinux(): Promise<boolean>
+  isMacOS(): boolean
+  isWindows(): boolean
+  isLinux(): boolean
   isDev(): Promise<boolean>
   getNativeId(): Promise<string | null>
   getAppVersion(): Promise<string>

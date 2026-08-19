@@ -12,7 +12,7 @@
         @change="handleMessagesChange"
         @view-sub-agent="handleViewSubAgent"
       />
-      <sub-agent-tabs
+      <sub-agent-tabs-comp
         v-if="subAgentTabs.length > 1 || activeAgentId !== 'main'"
         :tabs="subAgentTabs"
         :active-id="activeAgentId"
@@ -76,18 +76,17 @@
   </t-layout>
 </template>
 <script lang="ts" setup>
-import SubAgentTabs from '@/components/chat/SubAgentTabs.vue'
+import SubAgentTabsComp from '@/components/chat/SubAgentTabs.vue'
 import TodoProgressButton from '@/components/chat/TodoProgressButton.vue'
 import RChatList from './RChatList.vue'
 import LChatSender from './sender/LChatSender.vue'
 import LChatAside from './aside/LChatAside.vue'
 import { useChatSession } from './useChatSession'
 import { collapsed, toggleCollapsed } from '@/global/BeanFactory'
-import { useBoolState, useUtoolsKvStorage } from '@/hooks'
+import { useBoolState, useTitlePadding, useUtoolsKvStorage } from '@/hooks'
 import { LocalNameEnum } from '@/global/LocalNameEnum'
 import AsideRightIcon from '@/assets/icons/AsideRightIcon.vue'
 import { Fullscreen1Icon, FullscreenExit1Icon } from 'tdesign-icons-vue-next'
-import { ASIDE_PADDING_LEFT } from '@/global/Constant'
 
 const props = withDefaults(
   defineProps<{
@@ -194,7 +193,9 @@ watch(
   { immediate: true }
 )
 
-const paddingLeft = computed(() => `${ASIDE_PADDING_LEFT}px`)
+const { l2, r1 } = useTitlePadding()
+const paddingLeft = computed(() => `${l2}px`)
+const paddingRight = computed(() => `${8 + r1}px`)
 </script>
 <style scoped lang="less">
 .l-chat-tool {
@@ -223,7 +224,7 @@ const paddingLeft = computed(() => `${ASIDE_PADDING_LEFT}px`)
     height: 48px;
     box-sizing: border-box;
     color: var(--td-text-color-primary);
-    padding: 8px;
+    padding: 8px v-bind(paddingRight);
     transition: padding-left 0.1s ease-in-out;
     border-bottom: 1px solid var(--td-border-level-1-color);
 

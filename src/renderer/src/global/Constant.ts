@@ -104,8 +104,6 @@ export const getSettingDefaultPath = () => window.preload.path.join(dataFolder, 
 export const getWorkspaceHistoryPath = () =>
   window.preload.path.join(dataFolder, 'workspace-history.json')
 
-export const ASIDE_PADDING_LEFT = 156
-
 // 单个工具结果的最大字节数，超出则截断，避免超大输出撑爆上下文窗口
 export const MAX_TOOL_RESULT_BYTES = 128 * 1024
 

@@ -8,8 +8,7 @@ interface RoleMention {
 }
 
 export type ChatSenderSegment =
-  | { type: 'text'; content: string }
-  | { type: 'at'; roleId: string; content: string }
+  { type: 'text'; content: string } | { type: 'at'; roleId: string; content: string }
 
 type TagType = 'skill' | 'file' | 'role'
 type TagData = LocalSkill | ChatFileRef | RoleMention
@@ -255,7 +254,12 @@ export const useChatSender = (options: UseChatSenderOptions) => {
         syncFromEditor()
         return
       }
-      if (child && isSpacerTextNode(child) && child.previousSibling && isTagNode(child.previousSibling)) {
+      if (
+        child &&
+        isSpacerTextNode(child) &&
+        child.previousSibling &&
+        isTagNode(child.previousSibling)
+      ) {
         event.preventDefault()
         removeTagNode(child.previousSibling)
         ensureTrailingTextNode(editor)
@@ -264,7 +268,10 @@ export const useChatSender = (options: UseChatSenderOptions) => {
       }
     }
 
-    if (!inputValue.value && (selectedSkills.value.length || selectedFiles.value.length || selectedRoles.value.length)) {
+    if (
+      !inputValue.value &&
+      (selectedSkills.value.length || selectedFiles.value.length || selectedRoles.value.length)
+    ) {
       event.preventDefault()
       const last = editor.lastChild
       if (last && isTagNode(last)) {

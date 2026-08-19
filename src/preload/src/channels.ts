@@ -47,9 +47,6 @@ export const ClipboardChannels = {
 // ── os ─────────────────────────────────────────────────────
 export const OsChannels = {
   isDarkColors: 'os:isDarkColors',
-  isMacOS: 'os:isMacOS',
-  isWindows: 'os:isWindows',
-  isLinux: 'os:isLinux',
   isDev: 'os:isDev',
   getNativeId: 'os:getNativeId',
   getAppVersion: 'os:getAppVersion',

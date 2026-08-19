@@ -33,6 +33,7 @@
 <script lang="ts" setup>
 import { collapsed, toggleCollapsed } from '@/global/BeanFactory'
 import { appData, dataFolder } from '@/global/Constant'
+import { useTitlePadding } from '@/hooks'
 import AppSide from '@/pages/app/AppSide.vue'
 import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
 import VideoExportOverlay from '@/components/canvas/VideoExportOverlay.vue'
@@ -40,6 +41,9 @@ import { ChatAddIcon } from 'tdesign-icons-vue-next'
 
 const route = useRoute()
 const router = useRouter()
+
+const { l1 } = useTitlePadding()
+const operatorLeft = computed(() => `${l1}px`)
 
 const gotoNew = () => {
   router.push('/new')
@@ -106,7 +110,7 @@ onMounted(() => {
 .common-operator {
   position: fixed;
   top: 8px;
-  left: 76px;
+  left: v-bind(operatorLeft);
   z-index: 60;
   display: flex;
   gap: 8px;

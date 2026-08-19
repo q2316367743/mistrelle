@@ -1,5 +1,5 @@
 <template>
-  <page-layout :pl="`${ASIDE_PADDING_LEFT - 40}px`">
+  <page-layout :pl="`${l3}px`">
     <template #title>
       <div class="flex gap-8px items-center">
         <t-button theme="default" variant="text" shape="square" class="detail-btn" @click="goList">
@@ -112,11 +112,13 @@ import { openDesignStylePut } from '@/pages/design/list/modals/DesignStylePutDia
 import StylePaletteBlock from './components/StylePaletteBlock.vue'
 import StyleTypographyBlock from './components/StyleTypographyBlock.vue'
 import StyleTokenBlock from './components/StyleTokenBlock.vue'
-import { ASIDE_PADDING_LEFT } from '@/global/Constant'
+import { useTitlePadding } from '@/hooks'
 
 const route = useRoute()
 const router = useRouter()
 const store = useDesignStyleStore()
+
+const { l3 } = useTitlePadding()
 
 const id = computed(() => String(route.params.id))
 const loading = ref(true)

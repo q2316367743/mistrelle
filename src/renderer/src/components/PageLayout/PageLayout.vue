@@ -3,11 +3,11 @@
     <header class="page-header" :class="{ collapsed: collapsed }">
       <div class="page-header__left">
         <div class="page-header__title">
-          <slot name="title" v-if="slots['title']"></slot>
+          <slot v-if="slots['title']" name="title"></slot>
           <span v-else-if="title">{{ title }}</span>
         </div>
       </div>
-      <div class="page-header__right" v-if="slots['extra']">
+      <div v-if="slots['extra']" class="page-header__right">
         <slot name="extra"></slot>
       </div>
     </header>
@@ -19,16 +19,16 @@
 </template>
 <script lang="ts" setup>
 import { collapsed } from '@/global/BeanFactory'
-import { ASIDE_PADDING_LEFT } from '@/global/Constant'
+import { useTitlePadding } from '@/hooks'
 
-defineProps({
+const props = defineProps({
   title: String,
-  pl: {
-    type: String,
-    default: `${ASIDE_PADDING_LEFT}px`
-  }
+  pl: String
 })
 const slots = defineSlots()
+const { l2, r1 } = useTitlePadding()
+const paddingLeft = computed(() => props.pl ?? `${l2}px`)
+const paddingRight = computed(() => `${24 + r1}px`)
 </script>
 <style scoped lang="less">
 .page-layout {
@@ -41,14 +41,14 @@ const slots = defineSlots()
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 24px 8px 8px;
+    padding: 8px v-bind(paddingRight) 8px 8px;
     height: 48px;
     box-sizing: border-box;
     color: var(--td-text-color-primary);
     transition: padding-left 0.1s ease-in-out;
 
     &.collapsed {
-      padding-left: v-bind(pl);
+      padding-left: v-bind(paddingLeft);
     }
 
     &__left {

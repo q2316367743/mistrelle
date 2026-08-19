@@ -203,9 +203,6 @@ const resolveOsPath = (name: string): string => {
 
 export function registerOsIpc(): void {
   ipcMain.handle(OsChannels.isDarkColors, (): boolean => nativeTheme.shouldUseDarkColors)
-  ipcMain.handle(OsChannels.isMacOS, (): boolean => process.platform === 'darwin')
-  ipcMain.handle(OsChannels.isWindows, (): boolean => process.platform === 'win32')
-  ipcMain.handle(OsChannels.isLinux, (): boolean => process.platform === 'linux')
   ipcMain.handle(OsChannels.isDev, (): boolean => !app.isPackaged)
   ipcMain.handle(OsChannels.getNativeId, () => null)
   ipcMain.handle(OsChannels.getAppVersion, (): string => app.getVersion())

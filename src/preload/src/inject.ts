@@ -89,9 +89,9 @@ const clipboard = {
 
 const os = {
   isDarkColors: (): Promise<boolean> => ipcRenderer.invoke(OsChannels.isDarkColors),
-  isMacOS: (): Promise<boolean> => ipcRenderer.invoke(OsChannels.isMacOS),
-  isWindows: (): Promise<boolean> => ipcRenderer.invoke(OsChannels.isWindows),
-  isLinux: (): Promise<boolean> => ipcRenderer.invoke(OsChannels.isLinux),
+  isMacOS: (): boolean => process.platform === 'darwin',
+  isWindows: (): boolean => process.platform === 'win32',
+  isLinux: (): boolean => process.platform === 'linux',
   isDev: (): Promise<boolean> => ipcRenderer.invoke(OsChannels.isDev),
   /** utools 用户体系在 Electron 无对应，恒返回 null（renderer 已有兜底） */
   getNativeId: (): Promise<string | null> => ipcRenderer.invoke(OsChannels.getNativeId),
