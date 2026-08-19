@@ -85,6 +85,7 @@
 | [09-user-message-expand.md](./chat/09-user-message-expand.md)       | 用户消息折叠 / 展开：默认最多 2 行（-webkit-line-clamp）、溢出检测决定「更多/收起」按钮显隐 |
 | [10-ai-workspace.md](./chat/10-ai-workspace.md)                     | AiWorkspace 工作目录选择器：非只读 dropdown 选择/清除/历史，只读锁定态点击 shell.openPath 打开目录（cursor default 无动画） |
 | [11-stream-retry.md](./chat/11-stream-retry.md)                     | 流式请求自动重试：agent 层指数退避（2s→4s→8s，默认 3 次）、失败清半截内容防重复、`ext.retryKey` 提示块随消息持久化显示重试次数 |
+| [12-agent-context-compaction.md](./chat/12-agent-context-compaction.md) | 历史工具上下文紧凑化：请求构建时按 `toolContextRules` 注册表删除写类 args 大字段（结果侧附省略注记）+ 同资源读取仅保留最新（写入使旧读过期），仅历史消息生效、持久化原文不动；含「占位串被模型复读」故障记录（args 侧禁止放假值）；取代失效的 `stripFields` 机制 |
 
 ### memory/ —— 记忆
 

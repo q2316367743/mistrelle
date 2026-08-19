@@ -10,25 +10,16 @@ import type {
   ToolCallContent,
   ToolContent
 } from '@/domain'
-import { toolMap } from '@/modules/tool'
 import type { AssistantRequestMessage } from './agentTypes'
+import {
+  appendOmittedArgsNote,
+  buildToolCallCompactPlan,
+  EXPIRED_TOOL_RESULT_PLACEHOLDER,
+  type ToolCallCompactPlan
+} from './agentContextCompact'
 
 // 不进入历史回传的工具调用：避免旧参数 / 旧结果污染上下文，其状态由每轮独立注入提供
 const SKILL_TOOL_NAMES = new Set(['load_skill', 'read_skill_file', 'update_todo'])
-
-/** 根据 tool 定义的 stripFields 剥离历史 args 中的冗余字段（如写入内容），节省 token */
-const slimToolArgs = (toolName: string, args: string | undefined): string => {
-  const raw = args ?? '{}'
-  const stripFields = toolMap[toolName]?.stripFields
-  if (!stripFields || stripFields.length === 0) return raw
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>
-    for (const field of stripFields) delete parsed[field]
-    return JSON.stringify(parsed)
-  } catch {
-    return raw
-  }
-}
 
 const getText = (contents: AIMessageContent[]): string =>
   contents
@@ -45,7 +36,8 @@ const getReasoning = (contents: AIMessageContent[]): string =>
 const appendAssistantStep = (
   out: AiMessageParam[],
   contents: AIMessageContent[],
-  filterSkillTools: boolean
+  filterSkillTools: boolean,
+  compactPlan: ToolCallCompactPlan
 ): void => {
   const toolContents = contents.filter(
     (item): item is ToolCallContent =>
@@ -67,17 +59,22 @@ const appendAssistantStep = (
       type: 'function',
       function: {
         name: item.data.toolCallName,
-        arguments: slimToolArgs(item.data.toolCallName, item.data.args)
+        arguments: compactPlan.slimmedArgs.get(item.data.toolCallId) ?? item.data.args ?? '{}'
       }
     }))
   }
   out.push(assistantMessage)
 
   for (const item of toolContents) {
+    const omittedFields = compactPlan.omittedArgFields.get(item.data.toolCallId)
     out.push({
       role: 'tool',
       tool_call_id: item.data.toolCallId,
-      content: item.data.result ?? ''
+      content: compactPlan.expiredToolCallIds.has(item.data.toolCallId)
+        ? EXPIRED_TOOL_RESULT_PLACEHOLDER
+        : omittedFields
+          ? appendOmittedArgsNote(item.data.result ?? '', omittedFields)
+          : (item.data.result ?? '')
     })
   }
 }
@@ -85,14 +82,15 @@ const appendAssistantStep = (
 const appendAssistantMessage = (
   out: AiMessageParam[],
   message: AIMessage,
-  filterSkillTools: boolean
+  filterSkillTools: boolean,
+  compactPlan: ToolCallCompactPlan
 ): void => {
   const contents = message.content ?? []
   let step: AIMessageContent[] = []
   let stepId: string | undefined
 
   const flush = () => {
-    appendAssistantStep(out, step, filterSkillTools)
+    appendAssistantStep(out, step, filterSkillTools, compactPlan)
     step = []
     stepId = undefined
   }
@@ -176,6 +174,7 @@ export const toAgentRequestMessages = (
     (message) => message.id === activeAssistantMessageId
   )
   const activeUserIndex = activeAssistantIndex > 0 ? activeAssistantIndex - 1 : -1
+  const compactPlan = buildToolCallCompactPlan(messages, activeAssistantMessageId)
 
   for (const [index, message] of messages.entries()) {
     if (message.role === 'user') {
@@ -208,7 +207,7 @@ export const toAgentRequestMessages = (
       continue
     }
 
-    appendAssistantMessage(out, message, message.id !== activeAssistantMessageId)
+    appendAssistantMessage(out, message, message.id !== activeAssistantMessageId, compactPlan)
   }
 
   return out
