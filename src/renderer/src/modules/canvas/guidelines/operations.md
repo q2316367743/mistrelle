@@ -120,6 +120,12 @@
 type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环）；stops 可为纯色字符串（自动均分）或
 `{"offset":0,"color":"#fff"}`。
 
+**from / to 方位只允许这 9 个**（与 Leafer `IAlign` 一致）：`top-left` / `top` / `top-right` / `right` / `bottom-right` / `bottom` / `bottom-left` / `left` / `center`。也可写 `{x,y}`。
+
+- 垂直渐变：`from:"top"` → `to:"bottom"`（不要写 `top-center` / `bottom-center`，校验会拒绝，存量文件渲染层会映射成 top/bottom）
+- 水平渐变：`from:"left"` → `to:"right"`
+- 对角：`from:"top-left"` → `to:"bottom-right"`
+
 ### 动画（节点 animation 字段）
 
 给任意节点加 `animation` 字段即可描述动效（预览自动播放；导出由用户在画布面板操作）：

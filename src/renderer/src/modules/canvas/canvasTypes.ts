@@ -23,8 +23,26 @@ export type CanvasNodeType =
 /** 布局组内尺寸关键字（仅 group 且 layout 非 none 时可用） */
 export type CanvasLayoutSize = 'fill_container' | 'hug_contents'
 
-/** 渐变起止点：方位名（如 'top-left' / 'bottom-right' / 'center'）或 {x,y} 坐标 */
-export type CanvasPointRef = string | { x: number; y: number }
+/**
+ * Leafer 渐变 from/to 合法方位（AroundHelper Direction9）。
+ * 不含 top-center / bottom-center：写了会在布局阶段读 undefined.x 崩溃。
+ */
+export const CANVAS_ALIGNS = [
+  'top-left',
+  'top',
+  'top-right',
+  'right',
+  'bottom-right',
+  'bottom',
+  'bottom-left',
+  'left',
+  'center'
+] as const
+
+export type CanvasAlign = (typeof CANVAS_ALIGNS)[number]
+
+/** 渐变起止点：上述 9 个方位名，或 {x,y} 坐标 */
+export type CanvasPointRef = CanvasAlign | { x: number; y: number }
 
 /** 渐变色标：纯色字符串自动均分 offset，或带 offset 的显式色标 */
 export type CanvasGradientStop = string | { offset: number; color: string }
