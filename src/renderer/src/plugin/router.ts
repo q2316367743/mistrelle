@@ -145,6 +145,11 @@ export const routes: Array<RouteRecordRaw> = [
     name: '设置/记忆',
     path: '/setting/soul',
     component: () => import('@/pages/setting/soul/SoulSettingPage.vue')
+  },
+  {
+    name: '设置/个性化',
+    path: '/setting/personalize',
+    component: () => import('@/pages/setting/personalize/PersonalizePage.vue')
   }
 ]
 

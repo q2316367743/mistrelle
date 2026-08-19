@@ -78,8 +78,12 @@ export const getAppData2Design = () => {
   return window.preload.path.join(dataFolder, 'design')
 }
 
-// ~/.mistrelle/soul：记忆系统（长期记忆 / 每日短期记忆 / 记忆状态）
+// ~/.mistrelle/soul：记忆系统（长期记忆 / 每日短期记忆 / 记忆状态）+ 个性化设定文件
 export const getSoulDir = () => window.preload.path.join(dataFolder, 'soul')
+
+// soul/ 下的个性化设定文件（IDENTITY.md / DESIGN.md / WRITE.md / AGENT.md / USER.md）
+export const getSoulFilePath = (fileName: string) =>
+  window.preload.path.join(getSoulDir(), fileName)
 
 // 长期记忆：~/.mistrelle/soul/MEMORY.md
 export const getSoulMemoryPath = () => window.preload.path.join(getSoulDir(), 'MEMORY.md')

@@ -16,6 +16,7 @@ import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/modules/chat/writingScene'
 import { getDefaultTools, isShellExecTool, toolMap } from '@/modules/tool'
 import { buildMemoryPrompt, buildMemoryToolPrompt } from '@/modules/memory'
+import { buildPersonalizePrompt } from '@/modules/personalize'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
 import { SUB_AGENT_ALLOW } from '@/modules/subagent/types'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
@@ -341,10 +342,13 @@ export class ToolChat {
     this.lastSkillCatalogPrompt = catalogPrompt
     const workspacePrompt = this.buildWorkspacePrompt()
     const workspaceSettingsPrompt = await this.buildWorkspaceSettingsPrompt()
+    // 个性化设定（soul/*.md，用户手编、极少变化 → 稳定可缓存；子 Agent 任务作用域不注入）
+    const personalizePrompt = this.isSubAgent ? '' : await buildPersonalizePrompt(this.chatType)
     // system 前缀保持稳定的可缓存内容；skill 正文由 load_skill 工具按需在对话中加载，不进 system
     const systemPrompt = [
       this.systemPrompt,
       agentPrompt,
+      personalizePrompt,
       catalogPrompt,
       buildTodoPrompt(),
       workspacePrompt,

@@ -10,6 +10,8 @@
 ├── memory/
 │   └── YYYY-MM-DD.md    # 每日短期记忆：每行一条 `- [HH:mm] [类别] 内容`，≤ 2000 字/天
 └── state.json           # { memoryEnabled, lastConsolidateDate, extracted: Record<storageKey, 消息数> }
+
+# 同目录下的个性化设定文件（IDENTITY/DESIGN/WRITE/AGENT/USER.md）属个性化系统，@see docs/personalize
 ```
 
 路径工厂：`global/Constant.ts` 的 `getSoulDir / getSoulMemoryPath / getSoulMemoryDir / getSoulMemoryDayPath / getSoulStatePath`。

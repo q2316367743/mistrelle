@@ -114,7 +114,6 @@
 <script lang="ts" setup>
 import {
   AiArticleIcon,
-  AiIcon,
   ChatIcon,
   PenIcon,
   InternetIcon,
@@ -129,7 +128,8 @@ import {
   AbilityOpenIcon,
   Palette1Icon,
   TextformatColorIcon,
-  BookmarkIcon
+  BookmarkIcon,
+  UserCircleIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
@@ -150,7 +150,7 @@ const settingOptions = [
   { label: '系统设置', icon: Setting1Icon, value: 'global' },
   { label: '账户设置', icon: UserIcon, value: 'account' },
   { label: '智能体设置', icon: AiArticleIcon, value: 'default' },
-  { label: '个性化～', icon: AiIcon, value: 'ai' },
+  { label: '个性化', icon: UserCircleIcon, value: 'personalize' },
   { label: '记忆', icon: BookmarkIcon, value: 'soul' },
   { label: '模型', icon: AppIcon, value: 'ai' },
   { label: '安全中心', icon: SecuredIcon, value: 'secure' },
