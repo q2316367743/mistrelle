@@ -13,6 +13,7 @@ import {
   type NoteNode
 } from '@/modules/note'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
+import type { Ref } from 'vue'
 
 const SAVE_DEBOUNCE = 800
 
@@ -42,7 +43,9 @@ export const useNotePage = (projectId: Ref<string>) => {
   const activeTab = computed<NoteTab | undefined>(() =>
     tabs.value.find((t) => t.key === activeKey.value)
   )
-  const baseDir = computed(() => (activeTab.value ? noteKeyDirAbs(root.value, activeTab.value.key) : ''))
+  const baseDir = computed(() =>
+    activeTab.value ? noteKeyDirAbs(root.value, activeTab.value.key) : ''
+  )
 
   /** t-tabs v-model 兼容：无激活时映射为空串（此时 tab 条不渲染） */
   const activeTabValue = computed<string>({
