@@ -13,7 +13,6 @@ export const Constant = {
   repo: ''
 }
 
-
 export const LOADING_TEXTS = [
   '正在努力思考中…',
   '正在思考人生…',
@@ -79,30 +78,50 @@ export const getAppData2Design = () => {
   return window.preload.path.join(dataFolder, 'design')
 }
 
-// AI 模型配置文件路径：~/.mistrelle/model.json
-export const getModelPath = () => window.preload.path.join(dataFolder, 'model.json')
+// ~/.mistrelle/soul：记忆系统（长期记忆 / 每日短期记忆 / 记忆状态）
+export const getSoulDir = () => window.preload.path.join(dataFolder, 'soul')
 
-// AI Agent 配置文件路径：~/.mistrelle/agent.json
-export const getAgentPath = () => window.preload.path.join(dataFolder, 'agent.json')
+// 长期记忆：~/.mistrelle/soul/MEMORY.md
+export const getSoulMemoryPath = () => window.preload.path.join(getSoulDir(), 'MEMORY.md')
 
-// 账户配置文件路径：~/.mistrelle/account.json（整文件 safeStorage 加密存储）
-export const getAccountPath = () => window.preload.path.join(dataFolder, 'account.json')
+// 每日短期记忆目录：~/.mistrelle/soul/memory/YYYY-MM-DD.md
+export const getSoulMemoryDir = () => window.preload.path.join(getSoulDir(), 'memory')
 
-// 设置-网络配置文件路径：~/.mistrelle/network.json
-export const getSettingNetworkPath = () => window.preload.path.join(dataFolder, 'network.json')
+// 指定日期的短期记忆文件
+export const getSoulMemoryDayPath = (date: string) =>
+  window.preload.path.join(getSoulMemoryDir(), `${date}.md`)
 
-// 设置-全局配置文件路径：~/.mistrelle/global.json
-export const getSettingGlobalPath = () => window.preload.path.join(dataFolder, 'global.json')
+// 记忆系统状态：~/.mistrelle/soul/state.json
+export const getSoulStatePath = () => window.preload.path.join(getSoulDir(), 'state.json')
 
-// 设置-安全配置文件路径：~/.mistrelle/secure.json
-export const getSettingSecurePath = () => window.preload.path.join(dataFolder, 'secure.json')
+// AI 模型配置文件路径：~/.mistrelle/setting/model.json
+export const getModelPath = () => window.preload.path.join(dataFolder, 'setting', 'model.json')
 
-// 设置-默认模型配置文件路径：~/.mistrelle/default.json
-export const getSettingDefaultPath = () => window.preload.path.join(dataFolder, 'default.json')
+// AI Agent 配置文件路径：~/.mistrelle/setting/agent.json
+export const getAgentPath = () => window.preload.path.join(dataFolder, 'setting', 'agent.json')
 
-// 打开过的 AI 工作空间路径历史：~/.mistrelle/workspace-history.json
+// 账户配置文件路径：~/.mistrelle/setting/account.json（整文件 safeStorage 加密存储）
+export const getAccountPath = () => window.preload.path.join(dataFolder, 'setting', 'account.json')
+
+// 设置-网络配置文件路径：~/.mistrelle/setting/network.json
+export const getSettingNetworkPath = () =>
+  window.preload.path.join(dataFolder, 'setting', 'network.json')
+
+// 设置-全局配置文件路径：~/.mistrelle/setting/global.json
+export const getSettingGlobalPath = () =>
+  window.preload.path.join(dataFolder, 'setting', 'global.json')
+
+// 设置-安全配置文件路径：~/.mistrelle/setting/secure.json
+export const getSettingSecurePath = () =>
+  window.preload.path.join(dataFolder, 'setting', 'secure.json')
+
+// 设置-默认模型配置文件路径：~/.mistrelle/setting/default.json
+export const getSettingDefaultPath = () =>
+  window.preload.path.join(dataFolder, 'setting', 'default.json')
+
+// 打开过的 AI 工作空间路径历史：~/.mistrelle/data/workspace-history.json
 export const getWorkspaceHistoryPath = () =>
-  window.preload.path.join(dataFolder, 'workspace-history.json')
+  window.preload.path.join(dataFolder, 'data', 'workspace-history.json')
 
 // 单个工具结果的最大字节数，超出则截断，避免超大输出撑爆上下文窗口
 export const MAX_TOOL_RESULT_BYTES = 128 * 1024

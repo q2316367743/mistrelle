@@ -32,7 +32,7 @@ export interface FontItem {
 
 const HOME = homedir()
 const DATA_DIR = join(HOME, '.mistrelle')
-const FONT_CACHE_PATH = join(DATA_DIR, 'font-cache.json')
+const FONT_CACHE_PATH = join(DATA_DIR, 'data', 'font-cache.json')
 const ASSETS_DIR = join(DATA_DIR, 'assets')
 const LIB_FONTS_DIR = join(ASSETS_DIR, 'fonts')
 const LIB_INDEX_PATH = join(ASSETS_DIR, 'index.json')
@@ -95,7 +95,8 @@ const walkFontDirs = async (dirs: string[], depth = 0): Promise<string[]> => {
     for (const entry of entries) {
       const full = join(dir, entry.name)
       if (entry.isDirectory() && depth < 3) out.push(...(await walkFontDirs([full], depth + 1)))
-      else if (entry.isFile() && FONT_EXT.includes(extname(entry.name).toLowerCase())) out.push(full)
+      else if (entry.isFile() && FONT_EXT.includes(extname(entry.name).toLowerCase()))
+        out.push(full)
     }
   }
   return out
@@ -294,7 +295,9 @@ const addFont = async (
 }
 
 /** 从资源库移除字体：删 index 条目 + 删文件 */
-const removeFont = async (name: string): Promise<{ removed?: boolean; name?: string; error?: string }> => {
+const removeFont = async (
+  name: string
+): Promise<{ removed?: boolean; name?: string; error?: string }> => {
   return withIndexLock(async () => {
     const fonts = await readIndex()
     const idx = fonts.findIndex((f) => f.name === name)

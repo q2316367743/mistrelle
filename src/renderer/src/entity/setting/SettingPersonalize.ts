@@ -27,42 +27,48 @@ export interface SettingPersonalize {
   /**
    * 基本风格和语调
    * > 设置 插件 回复你的风格和语调。这不会影响 插件 的功能。
+   * > path: ~/.mistrelle/soul/IDENTITY.md
    */
   style: string
 
   /**
    * 自定义指令
    * > 「设计创意」类型的对话才会加载
+   * > path: ~/.mistrelle/soul/DESIGN.md
    */
   design: string
 
   /**
    * 自定义指令
    * > 「写作风格」类型的对话才会加载
+   * > path: ~/.mistrelle/soul/WRITE.md
    */
   write: string
 
   /**
    * 自定义指令
    * > 告诉 插件 你希望它始终遵循的规则和偏好，这会直接影响所有对话。
+   * > path: ~/.mistrelle/soul/AGENT.md
    */
   AGENTS: string
 
   /**
    * USER.md
    * > 关于我自己
+   * > path: ~/.mistrelle/soul/USER.md
    */
   USER: string
 
   /**
    * MEMORY.md
    * > 长期记忆
+   * > path: ~/.mistrelle/soul/MEMORY.md
    */
   MEMORY: string
 
   /**
    * 短期记忆
-   * memory/YYYY-MM-DD.md
+   * > path: ~/.mistrelle/soul/memory/YYYY-MM-DD.md
    */
   MEMORY_SHORT: string
 }

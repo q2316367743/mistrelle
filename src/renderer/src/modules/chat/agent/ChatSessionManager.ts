@@ -5,6 +5,7 @@ import type { AiChatMode } from '@/entity/ai'
 import { aiChatContentGet, aiChatContentSet } from '@/modules/chat/service/ChatService'
 import { buildDesignStylePrompt } from '@/modules/design'
 import { useDesignStyleStore } from '@/store'
+import { extractSessionNow, scheduleExtraction } from '@/modules/memory'
 import { ToolChat } from './AgentChat'
 
 /** 空闲会话自动回收 TTL：组件已关闭且非运行中的会话在超时后销毁并释放内存 */
@@ -143,8 +144,10 @@ export class ChatSession {
     this.unWatchStatus = watch(this.chat.status, () => {
       if (this.isRunning) {
         this.cancelIdleReclaim()
-      } else if (this.activeCount === 0) {
-        this.scheduleIdleReclaim()
+      } else {
+        // 一轮回复结束：安排空闲防抖的短期记忆提取（期间继续对话会自动顺延）
+        scheduleExtraction(this.storageKey)
+        if (this.activeCount === 0) this.scheduleIdleReclaim()
       }
     })
     // 新会话首轮发送草稿；否则恢复上次挂起的 ask/confirm 决策（sendUserMessage 后 status
@@ -224,6 +227,8 @@ export const getChatSession = (
   let session = sessions.get(storageKey)
   if (!session) {
     const created = new ChatSession({ storageKey, ...options }, () => {
+      // 空闲回收前尽力提取未决记忆（提取读磁盘消息文件，会话销毁不影响进行中的提取）
+      extractSessionNow(storageKey)
       created.destroy()
       sessions.delete(storageKey)
     })

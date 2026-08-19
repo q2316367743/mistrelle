@@ -34,6 +34,7 @@
 import { collapsed, toggleCollapsed } from '@/global/BeanFactory'
 import { appData, dataFolder } from '@/global/Constant'
 import { useTitlePadding } from '@/hooks'
+import { initMemorySystem } from '@/modules/memory'
 import AppSide from '@/pages/app/AppSide.vue'
 import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
 import VideoExportOverlay from '@/components/canvas/VideoExportOverlay.vue'
@@ -62,6 +63,8 @@ onMounted(() => {
   console.log(`插件已启动:
 程序目录：${appData}
 数据目录：${dataFolder}`)
+  // 记忆系统：长期记忆合并的启动检查 + 每小时跨天检查（会话提取钩子在 ChatSessionManager 内）
+  initMemorySystem()
 })
 </script>
 <style scoped lang="less">

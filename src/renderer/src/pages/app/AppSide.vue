@@ -128,7 +128,8 @@ import {
   LightbulbIcon,
   AbilityOpenIcon,
   Palette1Icon,
-  TextformatColorIcon
+  TextformatColorIcon,
+  BookmarkIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
@@ -150,7 +151,7 @@ const settingOptions = [
   { label: '账户设置', icon: UserIcon, value: 'account' },
   { label: '智能体设置', icon: AiArticleIcon, value: 'default' },
   { label: '个性化～', icon: AiIcon, value: 'ai' },
-  { label: '记忆～', icon: AiIcon, value: 'ai' },
+  { label: '记忆', icon: BookmarkIcon, value: 'soul' },
   { label: '模型', icon: AppIcon, value: 'ai' },
   { label: '安全中心', icon: SecuredIcon, value: 'secure' },
   { label: '网络设置', icon: InternetIcon, value: 'network' }

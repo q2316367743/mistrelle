@@ -86,6 +86,12 @@
 | [10-ai-workspace.md](./chat/10-ai-workspace.md)                     | AiWorkspace 工作目录选择器：非只读 dropdown 选择/清除/历史，只读锁定态点击 shell.openPath 打开目录（cursor default 无动画） |
 | [11-stream-retry.md](./chat/11-stream-retry.md)                     | 流式请求自动重试：agent 层指数退避（2s→4s→8s，默认 3 次）、失败清半截内容防重复、`ext.retryKey` 提示块随消息持久化显示重试次数 |
 
+### memory/ —— 记忆
+
+| 文档                                                          | 描述                                                                                                    |
+|---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| [01-memory-system.md](./memory/01-memory-system.md)           | 记忆系统（`~/.mistrelle/soul/`）：短期记忆空闲防抖提取 + `record_memory` 主动记录 + 设置页手动立即提取 → 每日 LLM 合并长期记忆（4000 字上限硬保护，合并前兜底补提）→ 主 Agent 独立 system 消息注入；state.json 提取进度与合并边界语义（消费最大日期）、首启基线不回溯 |
+
 ### setting/ —— 设置
 
 | 文档                                                   | 描述                                                                                          |

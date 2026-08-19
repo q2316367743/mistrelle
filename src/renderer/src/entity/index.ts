@@ -9,15 +9,13 @@ export * from './project'
 
 ~/.mistrelle
 
-|- awareness                  # 意识
-  |- main
-    |- AGENTS.md              # 全局上下文：定义助手的工作规范和行为准则
-    |- memory                 # 短期记忆：按天记录的对话摘要和临时笔记
-      |- 2026-07-21.md
-      |- 2026-07-22.md
-      |- ...
-    |- MEMORY.md              # 长期记忆：跨会话持久保存的重要指示和结论
-    |- USER.md                # 用户信息
+|- soul                      # 记忆系统（@see modules/memory）
+  |- MEMORY.md               # 长期记忆：LLM 每日合并短期记忆生成，≤ 4000 字
+  |- memory                  # 短期记忆：按天累积的提取条目与对话主动记录
+    |- 2026-08-18.md
+    |- 2026-08-19.md
+    |- ...
+  |- state.json              # 记忆状态：开关 / 合并边界 / 各会话提取进度
 |- project                    # 项目目录 @see project
 |- workspace                  # 工作空间 @see ai
 |- design                     # 设计风格 @see AiDesignStyle

@@ -24,15 +24,7 @@ import { ensureFontsForDoc } from './fontRegistry'
 import { createOffscreenLeafer } from './offscreenCanvas'
 
 export type CanvasRenderNode =
-  | Rect
-  | Ellipse
-  | Text
-  | Line
-  | LeaferImage
-  | Polygon
-  | Star
-  | Path
-  | Group
+  Rect | Ellipse | Text | Line | LeaferImage | Polygon | Star | Path | Group
 
 /** 动画属性透传：无动画节点不产生任何开销 */
 const buildAnimationProps = (node: CanvasNode): Record<string, unknown> =>

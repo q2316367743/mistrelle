@@ -19,6 +19,8 @@ import { designStyleTools } from './components/design'
 import { fontListTool } from './components/design/fontTools'
 import { askTool } from './components/ask'
 import { spawnAgentTool } from '@/modules/subagent/tool'
+// 叶子导入（勿改用 @/modules/memory 桶）：避免经 memory/index 拉入 ChatService/store 全量图（@see docs/tool/07-tool-policy.md）
+import { recordMemoryTool } from '@/modules/memory/memoryTool'
 import { objectify } from '@/utils/lang'
 
 interface ToolOption {
@@ -77,6 +79,7 @@ export function getDefaultTools(): ToolFunction[] {
   return [
     askTool,
     spawnAgentTool,
+    recordMemoryTool,
     ...shellTools,
     ...skillTools,
     ...fileTools,

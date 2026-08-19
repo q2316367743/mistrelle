@@ -15,6 +15,7 @@ import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/modules/chat/writingScene'
 import { getDefaultTools, isShellExecTool, toolMap } from '@/modules/tool'
+import { buildMemoryPrompt, buildMemoryToolPrompt } from '@/modules/memory'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
 import { SUB_AGENT_ALLOW } from '@/modules/subagent/types'
 import { useAiAgentStore, useSettingAiStore } from '@/store'
@@ -350,6 +351,8 @@ export class ToolChat {
       workspaceSettingsPrompt,
       // 聊天类型固定提示词 + writing 子场景提示词（类型与场景创建后锁定 → 前缀稳定可缓存；子 Agent 只读，无需类型指导）
       this.buildTypePrompt(),
+      // 记忆工具使用指导仅主 Agent 注入（record_memory 随默认工具注册，子 Agent 任务作用域不记全局记忆）
+      this.isSubAgent ? '' : buildMemoryToolPrompt(),
       // 子 Agent 使用指导仅主 Agent 注入（子 Agent 的 spawn_agent 已被过滤，指导无意义且会诱导嵌套）
       this.isSubAgent ? '' : this.buildSubAgentGuidancePrompt()
     ]
@@ -366,6 +369,12 @@ export class ToolChat {
     // 当前待办状态同样作为独立 system 消息注入，让模型跨轮次感知进度而不依赖历史工具调用
     const todoStatePrompt = this.buildTodoStatePrompt()
     if (todoStatePrompt) systemMessages.push({ role: 'system', content: todoStatePrompt })
+    // 记忆（长期 + 近期短期）作为独立 system 消息注入：内容按日变化，不污染稳定前缀；
+    // 子 Agent 任务作用域隔离，不注入全局记忆。内部按 mtime 缓存，agent loop 每轮调用无额外读盘
+    if (!this.isSubAgent) {
+      const memoryPrompt = await buildMemoryPrompt()
+      if (memoryPrompt) systemMessages.push({ role: 'system', content: memoryPrompt })
+    }
     const messages = toAgentRequestMessages(
       this.messages.value,
       assistantMessageId,
