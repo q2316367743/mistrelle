@@ -453,13 +453,23 @@ const editor = useEditor({
       }
 
       const plainText = data.getData('text/plain')
-      if (plainText) {
-        editor.value?.chain().focus().insertContent(plainText).run()
-        event.preventDefault()
-        return true
+      // 复制文件后粘贴：部分平台 clipboardData 不会带上文件条目（只剩文件名纯文本），
+      // 先读主进程文件剪贴板，命中则插入文件引用，否则才回退纯文本插入
+      event.preventDefault()
+      const insertPlainFallback = (): void => {
+        if (plainText) editor.value?.chain().focus().insertContent(plainText).run()
       }
-
-      return false
+      void window.preload.inject.clipboard
+        .getCopyedFiles()
+        .then((copied) => {
+          if (copied.length > 0) {
+            for (const c of copied) insertFileByPath(c.path)
+          } else {
+            insertPlainFallback()
+          }
+        })
+        .catch(insertPlainFallback)
+      return true
     }
   },
   onUpdate: ({ editor: ed }) => {
@@ -538,12 +548,19 @@ const insertFileByPath = (filePath: string) => {
 }
 
 const resolveFilePath = async (file: File): Promise<string | null> => {
-  if ('path' in file && typeof file.path === 'string' && file.path) {
-    return file.path
+  // Electron 32+ 已移除 File.path，经 webUtils.getPathForFile 还原磁盘路径（拖入 / 粘贴的磁盘文件）
+  try {
+    const diskPath = window.preload.webUtils.getPathForFile(file)
+    if (diskPath) return diskPath
+  } catch {
+    // 非磁盘 File（如剪贴板截图）会抛错，走下方案兜底
   }
   if (!props.sandboxDir) return null
   const arrayBuffer = await file.arrayBuffer()
   const tmpDir = window.preload.path.join(props.sandboxDir, 'tmp')
+  if (!window.preload.fs.existsSync(tmpDir)) {
+    await window.preload.fs.mkdir(tmpDir, true)
+  }
   const fileName = `${Date.now()}_${file.name || 'unnamed'}`
   const filePath = window.preload.path.join(tmpDir, fileName)
   await window.preload.fs.writeBinaryFile(filePath, arrayBuffer)

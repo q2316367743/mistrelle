@@ -23,10 +23,6 @@ import {
   SharpChannels,
   SharpRegion,
   SharpColorMapResult,
-  DbChannels,
-  DbDoc,
-  DbPutResult,
-  DbRemoveResult,
   FfmpegProgress,
   FfmpegRunResult,
   FfmpegDonePayload,
@@ -232,23 +228,6 @@ const sharp = {
     ipcRenderer.invoke(SharpChannels.colorMap, input, gridSize, top)
 }
 
-// ── db（简化版：无 _rev、无附件） ──────────────────────────
-
-const db = {
-  promises: {
-    get: <T = unknown>(id: string): Promise<DbDoc<T> | null> =>
-      ipcRenderer.invoke(DbChannels.get, id),
-    put: (doc: Record<string, unknown> & { _id: string }): Promise<DbPutResult> =>
-      ipcRenderer.invoke(DbChannels.put, doc),
-    remove: (idOrDoc: string | Record<string, unknown>): Promise<DbRemoveResult> =>
-      ipcRenderer.invoke(DbChannels.remove, idOrDoc),
-    bulkDocs: (docs: Array<Record<string, unknown> & { _id: string }>): Promise<DbPutResult[]> =>
-      ipcRenderer.invoke(DbChannels.bulkDocs, docs),
-    allDocs: <T = unknown>(key?: string | string[]): Promise<DbDoc<T>[]> =>
-      ipcRenderer.invoke(DbChannels.allDocs, key)
-  }
-}
-
 // ── 对外输出 ───────────────────────────────────────────────
 
 /**
@@ -278,6 +257,5 @@ export const injectApi = {
   runBrowser,
 
   ffmpeg,
-  sharp,
-  db
+  sharp
 }

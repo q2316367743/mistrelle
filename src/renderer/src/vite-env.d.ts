@@ -32,6 +32,7 @@ declare global {
       ppt: PptApi
       aiStream: AiStreamApi
       safeStorage: SafeStorageApi
+      webUtils: WebUtilsApi
       shellExec: {
         cliRun(
           command: string,

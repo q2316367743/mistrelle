@@ -88,6 +88,22 @@ export const getAgentPath = () => window.preload.path.join(dataFolder, 'agent.js
 // 账户配置文件路径：~/.mistrelle/account.json（整文件 safeStorage 加密存储）
 export const getAccountPath = () => window.preload.path.join(dataFolder, 'account.json')
 
+// 设置-网络配置文件路径：~/.mistrelle/network.json
+export const getSettingNetworkPath = () => window.preload.path.join(dataFolder, 'network.json')
+
+// 设置-全局配置文件路径：~/.mistrelle/global.json
+export const getSettingGlobalPath = () => window.preload.path.join(dataFolder, 'global.json')
+
+// 设置-安全配置文件路径：~/.mistrelle/secure.json
+export const getSettingSecurePath = () => window.preload.path.join(dataFolder, 'secure.json')
+
+// 设置-默认模型配置文件路径：~/.mistrelle/default.json
+export const getSettingDefaultPath = () => window.preload.path.join(dataFolder, 'default.json')
+
+// 打开过的 AI 工作空间路径历史：~/.mistrelle/workspace-history.json
+export const getWorkspaceHistoryPath = () =>
+  window.preload.path.join(dataFolder, 'workspace-history.json')
+
 export const ASIDE_PADDING_LEFT = 156
 
 // 单个工具结果的最大字节数，超出则截断，避免超大输出撑爆上下文窗口

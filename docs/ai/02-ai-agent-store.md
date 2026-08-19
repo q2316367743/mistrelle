@@ -82,4 +82,4 @@ export const getAgentPath = () => window.preload.path.join(dataFolder, 'agent.js
 - 文件读写是全量覆写（无差分合并），单实例运行下安全。
 - store 创建即异步 `init()`，init 完成前 `all` 仅含内置 Agent（与旧方案行为一致，消费方已兼容）。
 - `LocalNameEnum.LIST_AI_AGENT` 已删除，`/list/ai/group` 的 lmdb 残留数据不再被读取（不清理）。
-- 其余仍走 DbStorage 的模块（`AiDiscussionStore`、各 Setting store 等）待后续任务迁移。
+- lmdb 已全量移除：各 Setting store、AiWorkspace 等剩余模块已于本地 JSON 迁移收尾，见 [migration/03-lmdb-to-json.md](../migration/03-lmdb-to-json.md)。

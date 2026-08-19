@@ -1,28 +1,25 @@
 import { defineStore } from 'pinia'
 import { buildSettingNetwork, SettingNetwork } from '@/entity'
-import { getFromOneByAsync, saveOneByAsync } from '@/utils/native'
+import { readJsonFile, writeJsonFile } from '@/utils/native'
 import { AxiosProxyConfig, AxiosRequestConfig } from 'axios'
-import { LocalNameEnum } from '@/global/LocalNameEnum'
+import { getSettingNetworkPath } from '@/global/Constant'
 import { useLog } from '@/hooks/UseLog'
 
 export const useSettingNetworkStore = defineStore('setting:network', () => {
   const logger = useLog({ name: 'store:setting-network' })
   const setting = ref<SettingNetwork>(buildSettingNetwork())
-  const rev = ref<string>()
 
-  watchDebounced(
-    setting,
-    async () => {
-      rev.value = await saveOneByAsync(LocalNameEnum.SETTING_NETWORK, setting.value, rev.value)
-    },
-    { debounce: 300, deep: true }
-  )
   ;(async () => {
-    const res = await getFromOneByAsync<SettingNetwork>(LocalNameEnum.SETTING_NETWORK)
-    rev.value = res?.rev
-    if (res.record) {
-      setting.value = res.record
-    }
+    const network = await readJsonFile<SettingNetwork>(getSettingNetworkPath())
+    if (network) setting.value = network
+
+    watchDebounced(
+      setting,
+      async (val) => {
+        await writeJsonFile(getSettingNetworkPath(), val)
+      },
+      { debounce: 300, deep: true }
+    )
   })()
     .then(() => logger.debug('设置-网络 初始化成功'))
     .catch((e) => logger.error('设置-网络 初始化失败', e))

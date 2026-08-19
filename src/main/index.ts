@@ -72,6 +72,16 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // 拦截窗口内导航：拖入文件落在非输入区时默认会让 webContents 导航到磁盘文件（file://）劫持窗口。
+  // 只放行应用自身地址（dev 同源以保 HMR 刷新，prod 允许自身 index.html），其余一律吞掉。
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const devUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : ''
+    const allowed = devUrl
+      ? url.startsWith(new URL(devUrl).origin)
+      : url.startsWith(`file://${join(__dirname, '../renderer/index.html')}`)
+    if (!allowed) event.preventDefault()
+  })
+
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {

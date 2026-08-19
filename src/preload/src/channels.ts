@@ -132,35 +132,6 @@ export const FontChannels = {
   readFont: 'font:readFont'
 } as const
 
-// ── db ─────────────────────────────────────────────────────
-export const DbChannels = {
-  get: 'db:get',
-  put: 'db:put',
-  remove: 'db:remove',
-  bulkDocs: 'db:bulkDocs',
-  allDocs: 'db:allDocs'
-} as const
-
-/** 简化后的文档形态：无 _rev / 无附件（utools 兼容层只保留 value 语义） */
-export interface DbDoc<T = unknown> {
-  _id: string
-  value?: T
-}
-
-export interface DbPutResult {
-  ok: boolean
-  id: string
-  error?: boolean
-  message?: string
-}
-
-export interface DbRemoveResult {
-  ok: boolean
-  id: string
-  error?: boolean
-  message?: string
-}
-
 // ── ffmpeg ─────────────────────────────────────────────────
 export const FfmpegChannels = {
   run: 'ffmpeg:run',

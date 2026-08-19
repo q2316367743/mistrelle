@@ -304,42 +304,6 @@ interface InjectSharp {
   colorMap(input: string, gridSize: number, top: number): Promise<InjectSharpColorMapResult>
 }
 
-// ── db（简化版：无 _rev、无附件） ──────────────────────────
-
-/** 文档：_id 必填，其余字段（含 value）随调用方任意（保持与 utools 一致的结构化文档语义） */
-type InjectDbDoc<T extends Record<string, any> = Record<string, any>> = {
-  _id: string
-  /** 兼容字段：Electron 实现忽略，put 直接覆盖 */
-  _rev?: string
-} & T
-
-interface InjectDbReturn {
-  ok?: boolean
-  id?: string
-  rev?: string
-  error?: boolean
-  name?: string
-  message?: string
-}
-
-interface InjectDbPromises {
-  /** 直接覆盖（无冲突检测），返回 { ok, id } */
-  put(doc: InjectDbDoc): Promise<InjectDbReturn>
-  get<T extends Record<string, any> = Record<string, any>>(
-    id: string
-  ): Promise<InjectDbDoc<T> | null>
-  remove(doc: string | InjectDbDoc): Promise<InjectDbReturn>
-  bulkDocs(docs: InjectDbDoc[]): Promise<InjectDbReturn[]>
-  /** key 为字符串时前缀匹配，数组时精确批量 */
-  allDocs<T extends Record<string, any> = Record<string, any>>(
-    key?: string | string[]
-  ): Promise<InjectDbDoc<T>[]>
-}
-
-interface InjectDb {
-  promises: InjectDbPromises
-}
-
 // ── browserTool（浏览器工具） ────────────────────────────────
 
 /** runBrowser 载荷：browser_fetch（隐藏窗口抓取网页内容） */
@@ -395,5 +359,4 @@ interface InjectApi {
 
   ffmpeg: InjectFfmpeg
   sharp: InjectSharp
-  db: InjectDb
 }

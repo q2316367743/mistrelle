@@ -116,3 +116,23 @@ sharp（metadata/crop/removeBackground）
 - **`getPlatform()` 恒返回 `'electron'`**；`os.getUser()` / `os.getNativeId()` 恒返回 `null`（renderer 已有兜底）
 - **改动边界**：`src-utools/` 目录保留未动（何时删除由你决定）
 - 原始 `typecheck:web` 基线有 1025 个历史错误（TSX 组件类型等，与迁移无关），本次迁移未新增任何错误
+
+## 十、文件拖拽 / 粘贴路径解析（`File.path` 移除迁移）
+
+Electron 32+ 已移除 `File.path`。聊天输入框 `resolveFilePath` 原先首选 `File.path` 恒失败，导致「拖文件进窗口 / 粘贴复制的文件」都无响应。官方替代为 `webUtils.getPathForFile`（仅渲染 / preload 进程可调用，入参是拖入或粘贴得到的 File 对象，返回真实磁盘路径；非磁盘 File 如剪贴板截图返回空串）。
+
+### 链路
+
+| 环节 | 文件 | 说明 |
+|------|------|------|
+| 桥 | `src/preload/src/webUtils.ts` + `src/preload/index.ts` | 暴露 `window.preload.webUtils.getPathForFile(file)`（非 IPC，webUtils 只能在渲染/preload 进程调用） |
+| 类型 | `src/renderer/src/types/webUtils.d.ts` + `vite-env.d.ts` | `Window.preload.webUtils: WebUtilsApi` |
+| 消费 | `LChatSender.vue` `resolveFilePath` | 优先 `getPathForFile`；未命中再走 sandbox `tmp/` 字节拷贝兜底（`existsSync + mkdir` 保证目录存在） |
+| 粘贴兜底 | `LChatSender.vue` `handlePaste` | 复制文件后粘贴，部分平台 `clipboardData` 不带文件条目，末尾纯文本分支改为异步先读 `inject.clipboard.getCopyedFiles()`，命中则逐个插入文件引用，否则回退纯文本 |
+| 导航防护 | `src/main/index.ts` `createWindow` | `webContents.on('will-navigate')` 只放行应用自身地址（dev 同源保 HMR、prod 允许 index.html），其余 `preventDefault`，防止文件拖到非输入区导航到 `file://` 劫持窗口 |
+
+### 注意
+
+- `webUtils` 参数类型在 preload 用 `Parameters<typeof webUtils.getPathForFile>[0]`：preload tsconfig 无 DOM lib，直接写全局 `File` 会报未定义，也不为此引入 DOM lib 扩大全局作用域
+- 拖入 / 粘贴磁盘文件的场景在 `ProjectFooterPanel` / `PageNew` 这两个不传 `sandboxDir` 的调用点同样恢复正常（getPathForFile 直接给出路径）；剪贴板截图（无磁盘路径、无 sandbox）在这些调用点仍返回 null，属既有行为
+- `NoteEditor` / `ArticleEditor` 走 `file.arrayBuffer()` 落盘，不依赖 `File.path`，无需迁移

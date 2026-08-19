@@ -58,8 +58,8 @@
 <script lang="ts" setup>
 import { CloseIcon, FolderAdd1Icon, FolderFilledIcon, HistoryIcon } from 'tdesign-icons-vue-next'
 import type { DropdownOption } from 'tdesign-vue-next'
-import { useUtoolsDbAsync } from '@/hooks'
-import { LocalNameEnum } from '@/global/LocalNameEnum'
+import { readJsonFile, writeJsonFile } from '@/utils/native'
+import { getWorkspaceHistoryPath } from '@/global/Constant'
 import { debounce } from 'es-toolkit'
 
 const workspace = defineModel({
@@ -70,7 +70,10 @@ const workspace = defineModel({
 /** 只读展示：会话创建后工作空间锁定，仅显示当前目录，不可再修改 */
 defineProps<{ readonly?: boolean }>()
 
-const history = useUtoolsDbAsync(LocalNameEnum.KEY_AI_WORKSPACE, new Array<string>())
+const history = ref(new Array<string>())
+readJsonFile<Array<string>>(getWorkspaceHistoryPath()).then((list) => {
+  if (list) history.value = list
+})
 
 const active = computed(() => !!workspace.value)
 
@@ -83,6 +86,7 @@ const selectWorkspace = async () => {
   workspace.value = paths[0]
   if (paths[0] && !history.value.includes(paths[0])) {
     history.value.push(paths[0])
+    await writeJsonFile(getWorkspaceHistoryPath(), history.value)
   }
 }
 const clearAndSelect = () => {

@@ -3,7 +3,6 @@ export * from './AiDesignStyle'
 export * from './AiGroupChat'
 
 export * from './AiAgent'
-export * from './AiWorkspace'
 
 /*
 ## AI 聊天记录

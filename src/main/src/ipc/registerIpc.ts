@@ -5,7 +5,6 @@ import { registerShellIpc, registerDialogIpc, registerClipboardIpc, registerOsIp
 import { registerFsIpc } from './fsIpc'
 import { registerShellExecIpc } from './shellExecIpc'
 import { registerFontIpc } from './fontIpc'
-import { registerDbIpc } from './dbIpc'
 import { registerFfmpegIpc } from './ffmpegIpc'
 import { registerSharpIpc } from './sharpIpc'
 import { registerPptIpc } from './pptIpc'
@@ -22,7 +21,6 @@ export function registerIpc(): void {
   registerFsIpc()
   registerShellExecIpc()
   registerFontIpc()
-  registerDbIpc()
   registerFfmpegIpc()
   registerSharpIpc()
   registerPptIpc()

@@ -1,11 +1,28 @@
 import { defineStore } from 'pinia'
 import { computed } from 'vue'
-import { useUtoolsDbAsync } from '@/hooks'
-import { LocalNameEnum } from '@/global/LocalNameEnum'
 import { buildSettingSecure, getDefaultEgoBrowserPath } from '@/entity/setting/SettingSecured'
+import { readJsonFile, writeJsonFile } from '@/utils/native'
+import { getSettingSecurePath } from '@/global/Constant'
+import { useLog } from '@/hooks/UseLog'
 
 export const useSettingSecureStore = defineStore('SettingSecureStore', () => {
-  const state = useUtoolsDbAsync(LocalNameEnum.SETTING_SECURE, buildSettingSecure())
+  const logger = useLog({ name: 'store:setting-secure' })
+  const state = ref(buildSettingSecure())
+
+  ;(async () => {
+    const secure = await readJsonFile<ReturnType<typeof buildSettingSecure>>(getSettingSecurePath())
+    if (secure) state.value = secure
+
+    watch(
+      state,
+      async (val) => {
+        await writeJsonFile(getSettingSecurePath(), val)
+      },
+      { deep: true }
+    )
+  })()
+    .then(() => logger.debug('设置-安全 初始化成功'))
+    .catch((e) => logger.error('设置-安全 初始化失败', e))
 
   const pythonPath = computed(() => state.value.runtime.python || 'python3')
   const nodePath = computed(() => state.value.runtime.node || 'node')

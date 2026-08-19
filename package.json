@@ -27,7 +27,6 @@
     "axios": "1.15.2",
     "electron-updater": "^6.3.9",
     "iconv-lite": "^0.7.3",
-    "lmdb": "^3.3.3",
     "lucide-vue-next": "^1.0.0",
     "pptxgenjs": "^4.0.1",
     "sharp": "^0.34.2",
