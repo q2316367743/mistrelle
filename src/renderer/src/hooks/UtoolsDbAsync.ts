@@ -1,23 +1,22 @@
-import {ref, Ref, shallowRef, toValue, watch} from "vue";
-import {getFromOneByAsync, removeOneByAsync, saveOneByAsync} from "@/utils/native/DbStorageUtil";
-
+import { ref, Ref, shallowRef, toValue, watch } from 'vue'
+import { getFromOneByAsync, removeOneByAsync, saveOneByAsync } from '@/utils/native/DbStorageUtil'
 
 export interface UseUtoolsDbOptions {
-  flush?: 'pre' | 'post' | 'sync';
-  deep?: boolean;
-  writeDefaults?: boolean;
-  shallow?: boolean;
+  flush?: 'pre' | 'post' | 'sync'
+  deep?: boolean
+  writeDefaults?: boolean
+  shallow?: boolean
 
-  onError?(e: any): void;
+  onError?(e: any): void
 }
 
 /**
  * 异步对象存储
  */
-export function useUtoolsDbAsync<T extends (string | number | boolean | object | null)>(
+export function useUtoolsDbAsync<T extends string | number | boolean | object | null>(
   key: string,
   initialValue: T,
-  options: UseUtoolsDbOptions = {},
+  options: UseUtoolsDbOptions = {}
 ): Ref<T> {
   const {
     flush = 'pre',
@@ -26,43 +25,41 @@ export function useUtoolsDbAsync<T extends (string | number | boolean | object |
     shallow,
     onError = (e) => {
       console.error(e)
-    },
+    }
   } = options
 
   const rawInit: T = toValue(initialValue)
-  let rev: string | undefined = undefined;
+  let rev: string | undefined = undefined
 
   const data = (shallow ? shallowRef : ref)(initialValue) as Ref<T>
 
   async function getItem(key: string) {
-    const doc = await getFromOneByAsync(key);
+    const doc = await getFromOneByAsync(key)
     if (doc) {
-      rev = doc.rev;
-      return doc.record;
+      rev = doc.rev
+      return doc.record
     }
-    return null;
+    return null
   }
 
   async function setItem<T = any>(key: string, value: T) {
-    rev = await saveOneByAsync(key, value, rev);
+    rev = await saveOneByAsync(key, value, rev)
   }
 
   async function removeItem(key: string) {
-    await removeOneByAsync(key);
+    await removeOneByAsync(key)
   }
 
   async function read(event?: StorageEvent) {
-    if (event && event.key !== key)
-      return
+    if (event && event.key !== key) return
 
     try {
       const rawValue = event ? event.newValue : await getItem(key)
       if (rawValue == null) {
         data.value = rawInit
-        if (writeDefaults && rawInit !== null)
-          await setItem(key, rawInit)
+        if (writeDefaults && rawInit !== null) await setItem(key, rawInit)
       } else {
-        data.value = rawValue;
+        data.value = rawValue
       }
     } catch (e) {
       onError(e)
@@ -71,23 +68,20 @@ export function useUtoolsDbAsync<T extends (string | number | boolean | object |
 
   read()
 
-
   watch(
     data,
     async () => {
       try {
-        if (data.value == null)
-          await removeItem(key)
-        else
-          await setItem(key, data.value)
+        if (data.value == null) await removeItem(key)
+        else await setItem(key, data.value)
       } catch (e) {
         onError(e)
       }
     },
     {
       flush,
-      deep,
-    },
+      deep
+    }
   )
 
   return data as Ref<T>

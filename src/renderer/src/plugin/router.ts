@@ -34,11 +34,6 @@ export const routes: Array<RouteRecordRaw> = [
     path: '/chat/:id',
     component: () => import('@/pages/chat/PageChat.vue')
   },
-  {
-    name: '讨论组',
-    path: '/discussion/:id',
-    component: () => import('@/pages/discussion/PageDiscussion.vue')
-  },
 
   // --------------------------------- 项目相关 ---------------------------------
 

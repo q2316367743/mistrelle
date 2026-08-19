@@ -6,7 +6,6 @@ export * from './setting/SettingNetworkStore'
 export * from './setting/SettingSecureStore'
 
 export * from '@/store/ai/AiChatStore'
-export * from '@/store/ai/AiDiscussionStore'
 export * from '@/store/ai/AiAgentStore'
 
 export * from './project/ProjectStore'

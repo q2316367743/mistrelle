@@ -1,6 +1,5 @@
 export * from './AiChat'
 export * from './AiDesignStyle'
-export * from './AiDiscussion'
 export * from './AiGroupChat'
 
 export * from './AiAgent'
