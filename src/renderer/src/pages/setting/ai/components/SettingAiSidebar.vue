@@ -1,9 +1,11 @@
 <template>
   <div class="ai-setting-sidebar">
-    <t-button theme="primary" block @click="emit('add')">
-      <template #icon><AddIcon /></template>
-      新增
-    </t-button>
+    <div class="px-8px">
+      <t-button theme="primary" block @click="emit('add')">
+        <template #icon><AddIcon /></template>
+        新增
+      </t-button>
+    </div>
     <t-divider size="8px" />
     <div ref="listRef" class="ai-setting-sidebar__list">
       <div
@@ -100,7 +102,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--td-border-level-1-color);
-  padding-right: 16px;
 
   &__list {
     flex: 1;
