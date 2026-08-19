@@ -71,7 +71,7 @@ listAiModels({ baseURL, apiKey, format }): Promise<Array<{ id: string }>> // GET
 | `src/renderer/src/plugin/http.ts` | `requestStream(config)：Promise<{status, headers, stream}>`；队列异步迭代器 + signal→streamAbort + 提前退出自动取消 |
 | `src/renderer/src/modules/ai/types.ts` | 归一类型（对齐 chat 形状） |
 | `src/renderer/src/modules/ai/sse.ts` | `SseParser`：按空行分帧、多行 data 拼接、`[DONE]` 透传、flush 残余 |
-| `src/renderer/src/modules/ai/transport.ts` | `streamSseFrames`：非 2xx 收集错误体抛 `HTTP {status}: {message}`；TextDecoder 增量解码 |
+| `src/renderer/src/modules/ai/transport.ts` | `streamSseFrames`：非 2xx 收集错误体抛 `HttpError`（`HTTP {status}: {message}`，附带 `status` 字段，导出 `isHttpError` 守卫供重试策略判 429/5xx）；TextDecoder 增量解码 |
 | `src/renderer/src/modules/ai/formats/{chat,responses,anthropic}.ts` | 三份 `AiFormatAdapter`（buildRequest / normalizeChunk）；responses 需实例级状态（pendingArgIndices 对齐 done 事件的索引），anthropic 需实例级 usage 累积 → 用工厂 `createXxxAdapter()` 每请求新建 |
 | `src/renderer/src/modules/ai/service.ts` | 对外 API + 适配器分发 |
 

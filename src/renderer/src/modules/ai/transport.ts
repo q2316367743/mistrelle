@@ -44,8 +44,14 @@ export async function* streamSseFrames(options: StreamTransportOptions): AsyncGe
   }
 }
 
+/** 非 2xx 错误体响应构造的错误，携带 HTTP 状态码（供上层重试策略区分 429/5xx 与其余 4xx） */
+export type HttpError = Error & { status: number }
+
+export const isHttpError = (error: unknown): error is HttpError =>
+  error instanceof Error && 'status' in error && typeof error.status === 'number'
+
 /** 从错误响应体中提取服务端 message，构造可读错误 */
-function buildHttpError(status: number, body: string): Error {
+function buildHttpError(status: number, body: string): HttpError {
   let message: string | undefined
   try {
     const parsed = JSON.parse(body) as Record<string, unknown>
@@ -58,7 +64,7 @@ function buildHttpError(status: number, body: string): Error {
   } catch {
     // 非 JSON 错误体，退化为原文
   }
-  if (message) return new Error(`HTTP ${status}: ${message}`)
+  if (message) return Object.assign(new Error(`HTTP ${status}: ${message}`), { status })
   const snippet = body.replace(/\s+/g, ' ').trim().slice(0, 200)
-  return new Error(`HTTP ${status}${snippet ? `: ${snippet}` : ''}`)
+  return Object.assign(new Error(`HTTP ${status}${snippet ? `: ${snippet}` : ''}`), { status })
 }

@@ -25,6 +25,10 @@
         <RefreshIcon class="continue-hint__icon" />
         <span class="continue-hint__text">已到达本轮连续工具调用上限，点击继续推进</span>
       </button>
+      <div v-else-if="isRetryNotice(contentItem)" class="retry-notice">
+        <RefreshIcon class="retry-notice__icon" />
+        <span>{{ contentItem.data }}</span>
+      </div>
       <ChatContent
         v-else-if="contentItem.type === 'text' || contentItem.type === 'markdown'"
         :content="contentItem.data"
@@ -94,6 +98,10 @@ const emit = defineEmits(['change', 'continue', 'view-sub-agent'])
 const isContinueHint = (item: AIMessageContent): boolean =>
   item.type === 'text' && item.ext?.continueHint === true
 
+/** 流式请求自动重试的状态提示块（ext.retryKey 由 streamAgentStep 写入，随消息持久化） */
+const isRetryNotice = (item: AIMessageContent): boolean =>
+  item.type === 'text' && typeof item.ext?.retryKey === 'string'
+
 const isLoading = computed(
   () =>
     (props.message.status === 'pending' || props.message.status === 'streaming') &&
@@ -111,12 +119,12 @@ const isCompleted = computed(
 
 // ─── 完成后过程折叠 ────────────────────────────────────────────────
 
-/** 最终回复：content 中最后一条非 continueHint 的 text/markdown（agent 循环最后一步的输出） */
+/** 最终回复：content 中最后一条非 continueHint / retryNotice 的 text/markdown（agent 循环最后一步的输出） */
 const finalContent = computed<AIMessageContent | undefined>(() => {
   const contents = props.message.content ?? []
   for (let i = contents.length - 1; i >= 0; i--) {
     const item = contents[i]
-    if ((item.type === 'text' || item.type === 'markdown') && !isContinueHint(item)) {
+    if ((item.type === 'text' || item.type === 'markdown') && !isContinueHint(item) && !isRetryNotice(item)) {
       return item
     }
   }
@@ -310,6 +318,21 @@ const handleViewSubAgent = (subAgentId: string) => {
     flex-shrink: 0;
     font-size: var(--td-font-size-body-medium);
     color: var(--td-error-color);
+  }
+}
+
+.retry-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--td-comp-margin-xs);
+  margin: var(--td-comp-margin-xs) 0;
+  color: var(--td-text-color-secondary);
+  font: var(--td-font-body-small);
+
+  &__icon {
+    flex-shrink: 0;
+    font-size: var(--td-font-size-body-medium);
+    color: var(--td-warning-color);
   }
 }
 

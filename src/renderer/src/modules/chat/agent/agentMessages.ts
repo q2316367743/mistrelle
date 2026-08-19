@@ -78,6 +78,44 @@ export const appendAssistantContent = (
   }
 }
 
+/** 移除指定步骤已写入的全部 content（流式重试前清理失败尝试的半截内容，避免重试成功后文本重复） */
+export const removeStepContents = (
+  messages: Ref<ChatMessage[]>,
+  messageId: string,
+  stepId: string
+): void => {
+  const assistant = getAssistant(messages, messageId)
+  if (!assistant?.content) return
+  assistant.content = assistant.content.filter((item) => item.stepId !== stepId)
+}
+
+/**
+ * 写入步骤级提示（如重试状态）：已存在同 retryKey 的块则原地更新 data（重试收尾时
+ * 该块可能已被恢复后的正文盖住，需全量查找），否则追加到末尾。
+ * retryKey 每个重试序列唯一，续跑同一消息时不会覆盖历史提示。
+ */
+export const upsertStepNotice = (
+  messages: Ref<ChatMessage[]>,
+  messageId: string,
+  retryKey: string,
+  data: string
+): void => {
+  const assistant = getAssistant(messages, messageId)
+  const existing = assistant?.content?.find(
+    (item) => item.type === 'text' && item.ext?.retryKey === retryKey
+  )
+  if (existing && existing.type === 'text') {
+    existing.data = data
+    return
+  }
+  appendAssistantContent(messages, messageId, {
+    type: 'text',
+    data,
+    time: Date.now(),
+    ext: { retryKey }
+  })
+}
+
 export const updateToolCallContent = (
   messages: Ref<ChatMessage[]>,
   messageId: string,

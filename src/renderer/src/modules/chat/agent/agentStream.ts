@@ -1,5 +1,5 @@
 import type { AiMessageParam, AiTool } from '@/modules/ai'
-import { createChatStream } from '@/modules/ai'
+import { createChatStream, isHttpError } from '@/modules/ai'
 import type { Ref } from 'vue'
 import type { ChatMessage, ChatUsage } from '@/domain'
 import {
@@ -10,8 +10,18 @@ import {
   type SSEChunkData
 } from '@/modules/chat'
 import { nanoid } from 'nanoid'
-import { appendAssistantContent, setAssistantStatus } from './agentMessages'
+import {
+  appendAssistantContent,
+  removeStepContents,
+  setAssistantStatus,
+  upsertStepNotice
+} from './agentMessages'
 import type { StreamStepResult, ToolCall } from './agentTypes'
+
+/** 单步请求失败后的最大自动重试次数（不含首次请求），ChatServiceConfig.maxRetries 可覆盖 */
+const DEFAULT_MAX_RETRIES = 3
+/** 重试退避基准间隔（毫秒），实际等待 retryInterval * 2^已重试次数（2s → 4s → 8s） */
+const DEFAULT_RETRY_INTERVAL = 2000
 
 type StreamOptions = {
   messages: Ref<ChatMessage[]>
@@ -24,6 +34,30 @@ type StreamOptions = {
   seq: number
   currentSeq: () => number
 }
+
+/** 可重试错误：网络/流中断（无状态码的普通 Error）与 HTTP 429/5xx；其余 4xx 为鉴权/参数错误，重试无意义 */
+const isRetryableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false
+  if (error.name === 'AbortError') return false
+  if (isHttpError(error)) return error.status === 429 || error.status >= 500
+  return true
+}
+
+/** 可被 signal 打断的延时：中止时抛 AbortError，交由上层走既有「停止」路径 */
+const abortableDelay = (ms: number, signal: AbortSignal): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer)
+      const reason = signal.reason
+      reject(reason instanceof Error ? reason : new DOMException('Aborted', 'AbortError'))
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    if (signal.aborted) onAbort()
+    else signal.addEventListener('abort', onAbort, { once: true })
+  })
 
 const toStringHeaders = (headers: unknown): Record<string, string> => {
   if (headers instanceof Headers) {
@@ -47,9 +81,8 @@ const toStringHeaders = (headers: unknown): Record<string, string> => {
 }
 
 export const streamAgentStep = async (options: StreamOptions): Promise<StreamStepResult> => {
-  const stepId = nanoid()
-
-  // onRequest 覆盖：body 为格式原生覆盖项（chat 透传 thinking 等），headers 透传
+  // onRequest 覆盖：body 为格式原生覆盖项（chat 透传 thinking 等），headers 透传。
+  // 每个重试序列仅计算一次，重试复用相同请求参数
   let bodyOverride: Record<string, unknown> | undefined
   let requestHeaders: Record<string, string> = {}
   const modified = await options.config.onRequest?.(options.requestParams)
@@ -63,102 +96,156 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
 
   options.config.onStart?.('')
   setAssistantStatus(options.messages, options.assistantMessageId, 'streaming')
-  const stream = createChatStream({
-    baseURL: options.requestParams.baseURL,
-    apiKey: options.requestParams.apiKey,
-    format: options.requestParams.format ?? 'chat',
-    model: options.requestParams.message.model,
-    messages: options.apiMessages,
-    tools: options.tools,
-    thinking:
-      typeof options.requestParams.message.thinking === 'boolean'
-        ? options.requestParams.message.thinking
-        : undefined,
-    reasoningEffort: options.requestParams.message.reasoning_effort,
-    signal: options.signal,
-    headers: requestHeaders,
-    bodyOverride
-  })
 
-  const accumulated = new Map<number, { id: string; name: string; args: string }>()
-  let finishReason: string | null | undefined
-  let usage: ChatUsage | undefined
-  for await (const chunk of stream) {
-    if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
-    // usage 常出现在末个 chunk（choices 为空），需在跳过前捕获
-    if (chunk.usage) {
-      usage = {
-        promptTokens: chunk.usage.prompt_tokens,
-        completionTokens: chunk.usage.completion_tokens,
-        totalTokens: chunk.usage.total_tokens
+  const maxRetries = options.config.maxRetries ?? DEFAULT_MAX_RETRIES
+  const retryInterval = options.config.retryInterval ?? DEFAULT_RETRY_INTERVAL
+  // 重试提示块标识：同一重试序列内原地更新同一块，跨步骤 / 续跑不串扰；首次失败时生成
+  let retryKey = ''
+
+  /** 单次尝试：发起请求并消费流。stepId 每次尝试新生成，失败重试前按它清理已写入的半截内容 */
+  const runOnce = async (stepId: string): Promise<StreamStepResult> => {
+    const stream = createChatStream({
+      baseURL: options.requestParams.baseURL,
+      apiKey: options.requestParams.apiKey,
+      format: options.requestParams.format ?? 'chat',
+      model: options.requestParams.message.model,
+      messages: options.apiMessages,
+      tools: options.tools,
+      thinking:
+        typeof options.requestParams.message.thinking === 'boolean'
+          ? options.requestParams.message.thinking
+          : undefined,
+      reasoningEffort: options.requestParams.message.reasoning_effort,
+      signal: options.signal,
+      headers: requestHeaders,
+      bodyOverride
+    })
+
+    const accumulated = new Map<number, { id: string; name: string; args: string }>()
+    let finishReason: string | null | undefined
+    let usage: ChatUsage | undefined
+    for await (const chunk of stream) {
+      if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
+      // usage 常出现在末个 chunk（choices 为空），需在跳过前捕获
+      if (chunk.usage) {
+        usage = {
+          promptTokens: chunk.usage.prompt_tokens,
+          completionTokens: chunk.usage.completion_tokens,
+          totalTokens: chunk.usage.total_tokens
+        }
+      }
+      const choice = chunk.choices?.[0]
+      if (!choice) continue
+      const sseChunk: SSEChunkData = { data: chunk, event: 'data' }
+      if (options.config.isValidChunk && !options.config.isValidChunk(sseChunk)) continue
+      finishReason = choice.finish_reason
+      const delta = choice.delta
+      const reasoning = extractReasoningContent(delta)
+      if (reasoning) {
+        appendAssistantContent(options.messages, options.assistantMessageId, {
+          type: 'thinking',
+          stepId,
+          data: { text: reasoning, title: '正在思考' },
+          status: 'streaming',
+          time: Date.now()
+        })
+      }
+      if (delta.content) {
+        appendAssistantContent(options.messages, options.assistantMessageId, {
+          type: 'markdown',
+          stepId,
+          data: delta.content,
+          status: 'streaming',
+          time: Date.now()
+        })
+      }
+      for (const toolCall of delta.tool_calls ?? []) {
+        const index = toolCall.index
+        const current = accumulated.get(index) ?? { id: '', name: '', args: '' }
+        if (toolCall.id) current.id = toolCall.id
+        if (toolCall.function?.name) current.name = toolCall.function.name
+        if (toolCall.function?.arguments) current.args += toolCall.function.arguments
+        accumulated.set(index, current)
       }
     }
-    const choice = chunk.choices?.[0]
-    if (!choice) continue
-    const sseChunk: SSEChunkData = { data: chunk, event: 'data' }
-    if (options.config.isValidChunk && !options.config.isValidChunk(sseChunk)) continue
-    finishReason = choice.finish_reason
-    const delta = choice.delta
-    const reasoning = extractReasoningContent(delta)
-    if (reasoning) {
+
+    if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
+    const toolCalls: ToolCall[] = Array.from(accumulated.values()).map((call) => ({
+      toolCallId: call.id || `call_${nanoid()}`,
+      toolCallName: call.name,
+      args: call.args,
+      stepId,
+      parentMessageId: options.assistantMessageId
+    }))
+    for (const call of toolCalls) {
       appendAssistantContent(options.messages, options.assistantMessageId, {
-        type: 'thinking',
+        type: 'toolcall',
         stepId,
-        data: { text: reasoning, title: '正在思考' },
-        status: 'streaming',
+        status: 'pending',
+        data: {
+          toolCallId: call.toolCallId,
+          toolCallName: call.toolCallName,
+          args: call.args
+        },
         time: Date.now()
       })
     }
-    if (delta.content) {
-      appendAssistantContent(options.messages, options.assistantMessageId, {
-        type: 'markdown',
-        stepId,
-        data: delta.content,
-        status: 'streaming',
-        time: Date.now()
-      })
+    // 存在待执行的工具调用时保持「执行中」：部分厂商在带 tool_calls 的返回里 finish_reason 仍是
+    // stop，若按 finishReason 置为 complete，会让整条 assistant 消息在工具真正执行前就显示已完成
+    if (toolCalls.length > 0) {
+      setAssistantStatus(options.messages, options.assistantMessageId, 'streaming')
+    } else {
+      setAssistantStatus(
+        options.messages,
+        options.assistantMessageId,
+        finishReasonToStatus(finishReason)
+      )
     }
-    for (const toolCall of delta.tool_calls ?? []) {
-      const index = toolCall.index
-      const current = accumulated.get(index) ?? { id: '', name: '', args: '' }
-      if (toolCall.id) current.id = toolCall.id
-      if (toolCall.function?.name) current.name = toolCall.function.name
-      if (toolCall.function?.arguments) current.args += toolCall.function.arguments
-      accumulated.set(index, current)
-    }
+    return { cancelled: false, finishReason, toolCalls, usage }
   }
 
-  if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
-  const toolCalls: ToolCall[] = Array.from(accumulated.values()).map((call) => ({
-    toolCallId: call.id || `call_${nanoid()}`,
-    toolCallName: call.name,
-    args: call.args,
-    stepId,
-    parentMessageId: options.assistantMessageId
-  }))
-  for (const call of toolCalls) {
-    appendAssistantContent(options.messages, options.assistantMessageId, {
-      type: 'toolcall',
-      stepId,
-      status: 'pending',
-      data: {
-        toolCallId: call.toolCallId,
-        toolCallName: call.toolCallName,
-        args: call.args
-      },
-      time: Date.now()
-    })
+  for (let attempt = 0; ; attempt++) {
+    const stepId = nanoid()
+    try {
+      const result = await runOnce(stepId)
+      if (attempt > 0) {
+        upsertStepNotice(
+          options.messages,
+          options.assistantMessageId,
+          retryKey,
+          `已自动重试 ${attempt} 次，请求恢复`
+        )
+      }
+      return result
+    } catch (error) {
+      // 中止不重试（走既有「停止」路径）；过期请求（新一轮已开始）静默取消
+      if (options.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+        throw error
+      }
+      if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [] }
+      const message = error instanceof Error ? error.message : String(error)
+      if (attempt >= maxRetries || !isRetryableError(error)) {
+        if (retryKey) {
+          upsertStepNotice(
+            options.messages,
+            options.assistantMessageId,
+            retryKey,
+            `已自动重试 ${attempt} 次，仍未成功`
+          )
+        }
+        throw error
+      }
+      if (!retryKey) retryKey = nanoid()
+      // 清掉本次失败尝试已写入的半截内容，否则重试成功后同段文本出现两遍
+      removeStepContents(options.messages, options.assistantMessageId, stepId)
+      const delay = retryInterval * 2 ** attempt
+      upsertStepNotice(
+        options.messages,
+        options.assistantMessageId,
+        retryKey,
+        `请求出错（${message}），${Math.round(delay / 1000)} 秒后自动重试（第 ${attempt + 1}/${maxRetries} 次）`
+      )
+      await abortableDelay(delay, options.signal)
+    }
   }
-  // 存在待执行的工具调用时保持「执行中」：部分厂商在带 tool_calls 的返回里 finish_reason 仍是
-  // stop，若按 finishReason 置为 complete，会让整条 assistant 消息在工具真正执行前就显示已完成
-  if (toolCalls.length > 0) {
-    setAssistantStatus(options.messages, options.assistantMessageId, 'streaming')
-  } else {
-    setAssistantStatus(
-      options.messages,
-      options.assistantMessageId,
-      finishReasonToStatus(finishReason)
-    )
-  }
-  return { cancelled: false, finishReason, toolCalls, usage }
 }
