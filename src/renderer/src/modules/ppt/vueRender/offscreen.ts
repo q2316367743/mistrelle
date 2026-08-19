@@ -82,12 +82,10 @@ export const snapshotDoc = async (
   }
 }
 
-/** 节点渲染几何（画布绝对坐标，ppt_inspect 返回；字段对齐 canvas_inspect 的节点包围盒） */
+/** 节点渲染几何（画布绝对坐标，ppt_inspect 返回；纯几何与定位字段，不含内容——内容看 ppt_get_nodes） */
 export interface PptNodeBounds {
   id: string
   tag: string
-  /** 文本内容（child 为字符串的节点附带，便于对照） */
-  text?: string
   parentId?: string
   depth: number
   x: number
@@ -126,7 +124,6 @@ export const measureSlideBounds = async (
           result.push({
             id: node.id ?? '',
             tag: node.tag,
-            text: typeof node.child === 'string' ? node.child : undefined,
             parentId,
             depth,
             x: round2(rect.x),

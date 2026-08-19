@@ -461,8 +461,9 @@ canvas_batch_edit 重构为 **元素级批量操作**：
   测量同管线），新增 `measureSlideBounds(slide, theme, size)`——**只挂目标一页**，等资源稳定后 DFS 走 JSON 树（携带
   parentId / depth），逐节点 `querySelector('[data-node-id]')` + `localRect` 实测（容器 / 复合节点子项 / overlay 的
   Line / Arrow 均可测）；`pptRender.ts` 提供 `inspectSlideBounds(json, slideIndex)` 薄门面。
-- 契约：`ppt_inspect(pptId, slideId, ids?)` → `{ canvas: {width, height}, nodes, note }`；节点字段对齐 canvas_inspect：
-  `{ id, tag, text?, parentId?, depth, x, y, width, height, centerX, centerY }`（画布绝对坐标，2 位小数）；`ids` 未命中
+- 契约：`ppt_inspect(pptId, slideId, ids?)` → `{ canvas: {width, height}, nodes, note }`；节点字段
+  `{ id, tag, parentId?, depth, x, y, width, height, centerX, centerY }`（画布绝对坐标，2 位小数）——纯几何与定位，
+  不回传文本（内容走 ppt_get_nodes，避免 token 浪费与把几何数据挤出工具结果 128KB 截断线）；`ids` 未命中
   在 note 标注供自纠；`risk: safe`、策略 allow。
 - 不用导出快照 items 聚合的原因：一个节点可产出多条 item（Text 装饰 + 文本、Icon rect + image）需求并集，且容器节点
   无 item；DOM 根元素直测天然覆盖全部节点形态，且与预览视觉严格一致。
