@@ -7,6 +7,7 @@
 > - 数据模型 `../../src/modules/canvas/canvasTypes.ts`
 > - 布局引擎 `../../src/modules/canvas/canvasLayout.ts`
 > - 存储与批量编辑 `../../src/modules/canvas/CanvasStore.ts`
+> - 画笔解析 `../../src/modules/canvas/canvasPaint.ts`（渐变方位归一化，避免 Leafer Layouter 读 undefined.x）
 > - 渲染器 `../../src/modules/canvas/canvasRender.ts`
 > - 工具集 `src/modules/tool/components/canvas/canvasTools.ts`
 > - **输入 schema（TypeBox 单一源）** `../../src/modules/canvas/canvasSchemas.ts`
@@ -62,7 +63,9 @@ interface CanvasDoc {
 - **自动布局（group 可选）**：`layout: none|horizontal|vertical|wrap`、`gap`、`padding`（数值 / `[垂直,水平]`（`[a,b]` → 上下 a、左右 b，见 `canvasLayout.resolvePadding`）/ `[上,右,下,左]`，多边距场景一律推荐四元素）、
   `primaryAxisAlignItems` / `counterAxisAlignItems`（大写枚举）、`layoutGrow`
 - **样式**：`fill` / `stroke`（纯色 / 渐变对象 / `$token名`）、`strokeWidth`、`dashPattern`、`cornerRadius`、`effects[]`
-  （drop-shadow / inner-shadow / layer-blur / background-blur）
+  （drop-shadow / inner-shadow / layer-blur / background-blur）。渐变 `from` / `to` **仅允许** Leafer 的 9 个方位
+  （`top-left` / `top` / `top-right` / `right` / `bottom-right` / `bottom` / `bottom-left` / `left` / `center`）或 `{x,y}`；
+  垂直渐变写 `top` → `bottom`，禁止 `top-center`（任意 string 曾能通过 TypeBox，Leafer 布局阶段会 `undefined.x` 崩溃）
 - **文本**：`text`、`fontSize`、`fontFamily`、`fontWeight`（数字或 "400"~"900"）、`italic`、`letterSpacing`、`lineHeight`（数值 =
   行高倍率，如 1.5 = 1.5×字号；缺省 / `AUTO` = 真实字形高度，按字体实际测量）、`textAlign`（left/center/right）、`textCase`
   （none/upper/lower）；文字颜色 =
@@ -99,7 +102,7 @@ interface CanvasDoc {
   `verticalAlign:'middle'`，使字形在布局框内垂直居中 → **布局几何 = 渲染几何 = 屏幕视觉**，不再有 ≈height/8 的垂直偏差。
 - **预览与导出共用同一实现**（单一事实源）。
 
-## 5. 渲染器（canvasRender.ts）
+## 5. 渲染器（canvasRender.ts + canvasPaint.ts）
 
 - `buildDocElements(doc, scale, offsetX, offsetY) → [rootGroup]`：背景 + 全部根图层包在 **一个根 Group**，缩放/平移用根
   Group 变换，元素坐标保持文档空间 → Path 不再需要二次 scale、阴影/模糊随组自动缩放。
@@ -111,6 +114,9 @@ interface CanvasDoc {
   已是 URL（`file:` / `http(s):` / `data:` / `blob:`）原样透传，否则按本地路径 `pathToHref` 转 file href 交给 Leafer。
 - **渲染语义**：`fill` / `stroke` 为 `"none"` 时表示显式无填充 / 无描边（渲染时省略属性，避免给 Canvas 赋非法颜色导致状态泄漏）；
   `line` 的颜色取自 `stroke`（兼容旧数据 `fill` 兜底），并保留 dashPattern / strokeCap。
+- **渐变方位归一化（`canvasPaint.normalizePointRef`）**：`resolvePaint` 在交给 Leafer 前把 `from` / `to` 收成合法方位。
+  写路径由 TypeBox 9 值枚举拦截（`canvasSchemas.pointRefSchema`）；已落盘脏数据（如 `top-center`）映射为 `top` / `bottom` 等，
+  未知字符串丢弃（Leafer 默认 top→bottom）。崩溃发生在元素 add 进树之后的 Layouter，`buildNode` 的 try/catch 接不住，必须在传 fill 前清掉。
 - `exportCanvasPng(doc, region?)`：scale=1 复用同一构建，通过 `screenshot` 限定导出矩形—— **缺省严格导出整张画布**（0,0 →
   doc 尺寸，越界元素裁剪，杜绝「导出尺寸 ≠ 画布尺寸」）；传 `region {x,y,width,height}` 可导出指定区域（用于画布内容器 /
   卡片按设计区域导出）。离屏 Leafer 经 `createOffscreenLeafer`（`offscreenCanvas.ts`）挂临时隐藏 `host` 容器：

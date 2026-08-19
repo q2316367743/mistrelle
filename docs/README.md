@@ -47,7 +47,7 @@
 
 | 文档                                                                    | 描述                                                                                               |
 |-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| [02-canvas-node-model.md](./canvas/02-canvas-node-model.md)             | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill；text 行高绝对测量，布局几何 = 渲染几何 |
+| [02-canvas-node-model.md](./canvas/02-canvas-node-model.md)             | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill；text 行高绝对测量；渐变 from/to 仅 9 个 Leafer 方位（渲染层归一化存量脏数据） |
 | [03-canvas-animation-export.md](./canvas/03-canvas-animation-export.md) | 画布动画与视频导出（v3）：声明式动画、逐帧渲染 + ffmpeg 导出、剪映式全屏进度遮罩；离屏 Leafer 挂临时容器避免污染 body 的 `user-select` |
 | [04-canvas-element-tree.md](./canvas/04-canvas-element-tree.md)         | 画布元素树：设计侧边栏全屏左栏，`selectedId` 驱动元素树 ↔ 画布双向选中联动                      |
 | [05-canvas-property-panel.md](./canvas/05-canvas-property-panel.md)     | 画布元素属性面板：全屏三栏第三栏，本地草稿 +「保存」按钮显式写回（batchEdit update，与 AI 同链路）；x/y 禁改、渐变/$token/布局关键字降级策略、按类型字段矩阵 |

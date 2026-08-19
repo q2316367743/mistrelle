@@ -12,13 +12,14 @@ import {
 } from 'leafer-editor'
 // 注册动画能力到 Leafer 元素（依赖 @leafer-in/animate@2.2.9，leafer-editor 不含动画插件）
 import '@leafer-in/animate'
-import type { CanvasDoc, CanvasEffect, CanvasNode, CanvasPaint } from './canvasTypes'
+import type { CanvasDoc, CanvasNode, CanvasPaint } from './canvasTypes'
 import {
   computeLayoutBounds,
   layoutCanvasDoc,
   measureTextLineHeight,
   type CanvasLayoutNode
 } from './canvasLayout'
+import { compact, resolvePaint, toEffectsProps } from './canvasPaint'
 import { ensureFontsForDoc } from './fontRegistry'
 import { createOffscreenLeafer } from './offscreenCanvas'
 
@@ -32,15 +33,6 @@ export type CanvasRenderNode =
   | Star
   | Path
   | Group
-
-/** 过滤 undefined 字段，避免给 Leafer 传空值 */
-const compact = (obj: Record<string, unknown>): Record<string, unknown> => {
-  const out: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined) out[key] = value
-  }
-  return out
-}
 
 /** 动画属性透传：无动画节点不产生任何开销 */
 const buildAnimationProps = (node: CanvasNode): Record<string, unknown> =>
@@ -58,84 +50,6 @@ const resolveImageHref = (value: string | undefined): string | undefined => {
   if (!value) return undefined
   if (/^(file|https?|data|blob):/i.test(value)) return value
   return window.preload.net.pathToHref(value)
-}
-
-/** 解析 $name 调色板引用（纯色字符串或渐变 stops 内的颜色） */
-const resolveColorString = (value: string, palette: Record<string, string>): string => {
-  if (value.startsWith('$')) {
-    const color = palette[value.slice(1)]
-    if (color) return color
-  }
-  return value
-}
-
-const resolvePaint = (
-  paint: CanvasPaint | undefined,
-  palette: Record<string, string>
-): CanvasPaint | undefined => {
-  if (paint == null) return undefined
-  if (typeof paint === 'string') {
-    // 显式 'none' = 无填充 / 无描边：直接省略属性，避免给 Canvas 赋非法颜色导致状态泄漏
-    if (paint.trim() === 'none') return undefined
-    return resolveColorString(paint, palette)
-  }
-  // 防御：渐变对象必须是合法结构（stops 数组），否则视为无效填充，避免渲染崩溃
-  if (typeof paint !== 'object' || !Array.isArray(paint.stops) || paint.stops.length === 0)
-    return undefined
-  return {
-    ...paint,
-    stops: paint.stops.map((stop) =>
-      typeof stop === 'string'
-        ? resolveColorString(stop, palette)
-        : { ...stop, color: resolveColorString(stop.color, palette) }
-    )
-  }
-}
-
-/** 效果数组 → Leafer shadow / innerShadow / blur / backgroundBlur 属性 */
-const toEffectsProps = (effects: CanvasEffect[] | undefined): Record<string, unknown> => {
-  if (!Array.isArray(effects) || effects.length === 0) return {}
-  const shadow: Array<Record<string, unknown>> = []
-  const innerShadow: Array<Record<string, unknown>> = []
-  const props: Record<string, unknown> = {}
-  for (const effect of effects) {
-    if (effect.visible === false) continue
-    switch (effect.type) {
-      case 'drop-shadow':
-        shadow.push(
-          compact({
-            x: effect.x ?? 0,
-            y: effect.y ?? 0,
-            blur: effect.radius ?? 0,
-            spread: effect.spread,
-            color: effect.color ?? 'rgba(0,0,0,0.3)',
-            visible: true
-          })
-        )
-        break
-      case 'inner-shadow':
-        innerShadow.push(
-          compact({
-            x: effect.x ?? 0,
-            y: effect.y ?? 0,
-            blur: effect.radius ?? 0,
-            spread: effect.spread,
-            color: effect.color ?? 'rgba(0,0,0,0.3)',
-            visible: true
-          })
-        )
-        break
-      case 'layer-blur':
-        props.blur = { radius: effect.radius ?? 0 }
-        break
-      case 'background-blur':
-        props.backgroundBlur = { radius: effect.radius ?? 0 }
-        break
-    }
-  }
-  if (shadow.length) props.shadow = shadow
-  if (innerShadow.length) props.innerShadow = innerShadow
-  return props
 }
 
 /** 节点公共属性（几何 + 变换 + 效果 + 动画），坐标为文档空间 */

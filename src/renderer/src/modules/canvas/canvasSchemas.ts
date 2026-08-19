@@ -1,6 +1,7 @@
 import { Type } from '@sinclair/typebox'
 import { collectErrors, toToolProperty } from '@/modules/tool/typeboxUtil'
 import type { ToolProperty } from '@/domain'
+import { CANVAS_ALIGNS } from './canvasTypes'
 
 /**
  * 画布节点 / 批量操作 schema —— TypeBox 单一源：
@@ -12,10 +13,23 @@ import type { ToolProperty } from '@/domain'
 
 // ── 基础子 schema ──────────────────────────────────────────
 
-const pointRefSchema = Type.Union([
-  Type.String({ description: '方位名，如 top-left / bottom-right / center' }),
-  Type.Object({ x: Type.Number(), y: Type.Number() }, { additionalProperties: false })
-])
+const pointRefSchema = Type.Union(
+  [
+    Type.Literal('top-left'),
+    Type.Literal('top'),
+    Type.Literal('top-right'),
+    Type.Literal('right'),
+    Type.Literal('bottom-right'),
+    Type.Literal('bottom'),
+    Type.Literal('bottom-left'),
+    Type.Literal('left'),
+    Type.Literal('center'),
+    Type.Object({ x: Type.Number(), y: Type.Number() }, { additionalProperties: false })
+  ],
+  {
+    description: `渐变起止点：方位名（仅 ${CANVAS_ALIGNS.join(' / ')}）或 {x,y}。垂直渐变用 top→bottom，禁止 top-center / bottom-center`
+  }
+)
 
 const gradientStopSchema = Type.Union([
   Type.String({ description: '纯色，自动均分 offset' }),
