@@ -12,7 +12,6 @@ import type {
 } from '@/domain'
 import type { AssistantRequestMessage } from './agentTypes'
 import {
-  appendOmittedArgsNote,
   buildToolCallCompactPlan,
   EXPIRED_TOOL_RESULT_PLACEHOLDER,
   type ToolCallCompactPlan
@@ -42,6 +41,7 @@ const appendAssistantStep = (
   const toolContents = contents.filter(
     (item): item is ToolCallContent =>
       item.type === 'toolcall' &&
+      !compactPlan.droppedToolCallIds.has(item.data.toolCallId) &&
       (!filterSkillTools || !SKILL_TOOL_NAMES.has(item.data.toolCallName))
   )
   const text = getText(contents)
@@ -59,22 +59,19 @@ const appendAssistantStep = (
       type: 'function',
       function: {
         name: item.data.toolCallName,
-        arguments: compactPlan.slimmedArgs.get(item.data.toolCallId) ?? item.data.args ?? '{}'
+        arguments: item.data.args ?? '{}'
       }
     }))
   }
   out.push(assistantMessage)
 
   for (const item of toolContents) {
-    const omittedFields = compactPlan.omittedArgFields.get(item.data.toolCallId)
     out.push({
       role: 'tool',
       tool_call_id: item.data.toolCallId,
       content: compactPlan.expiredToolCallIds.has(item.data.toolCallId)
         ? EXPIRED_TOOL_RESULT_PLACEHOLDER
-        : omittedFields
-          ? appendOmittedArgsNote(item.data.result ?? '', omittedFields)
-          : (item.data.result ?? '')
+        : (item.data.result ?? '')
     })
   }
 }

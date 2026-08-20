@@ -5,9 +5,9 @@
  * 仅覆盖活跃 assistant 消息之前的历史：当前轮完整回传，保证轮内消息序列字节稳定
  * （对 prompt 前缀缓存友好），避免进行中任务被自己刚写入的占位参数打断。
  *
- * 写类参数只做「字段删除」：模型会模仿历史 tool_calls 的参数形态，args 中出现
- * 类型不符的占位串会被原样复制进新调用；省略说明放在配对工具 result 末尾
- * （role:'tool' 为自由文本，无格式污染）。
+ * 写类必须「整对处理」：tool_calls 与配对 tool result 要么整对回传原文、要么整对剔除，
+ * 禁止改写 args 的任何中间态——模型会模仿历史 tool_calls 的参数形态，占位串、
+ * 删字段后的空 `{}` 都会被原样复制进新调用（两轮实测撞墙，见 docs/chat/12 §5）。
  */
 import type { ChatMessage } from '@/domain'
 import { toolContextRules, type ContextWalkState } from '@/modules/tool/contextRules'
@@ -19,17 +19,15 @@ export const EXPIRED_TOOL_RESULT_PLACEHOLDER =
 export interface ToolCallCompactPlan {
   /** result 替换为过期提示的 toolCallId 集合 */
   expiredToolCallIds: Set<string>
-  /** toolCallId → 删除大字段后的 args 字符串 */
-  slimmedArgs: Map<string, string>
-  /** toolCallId → 被删除的字段名（回传时在配对工具结果末尾追加省略注记） */
-  omittedArgFields: Map<string, string[]>
+  /** 整对剔除（tool_calls 与配对 tool result 均不回传）的 toolCallId 集合 */
+  droppedToolCallIds: Set<string>
 }
 
 interface ResourceEvent {
   kind: 'read' | 'write'
   key: string
   toolCallId: string
-  /** read 事件对应的原始结果，用于排除失败读取 */
+  /** 事件对应的原始结果，用于排除失败读取 / 判定写类成败 */
   result?: string
 }
 
@@ -44,22 +42,9 @@ const parseArgs = (raw: string | undefined): Record<string, unknown> | undefined
   }
 }
 
-/** 失败读取不承载资源内容、也不改变资源状态（错误前缀由 serializeResult / runSingleTool 产出） */
+/** 失败调用不承载资源内容、也不改变资源状态（错误前缀由 serializeResult / runSingleTool 产出） */
 const isFailedResult = (result: string | undefined): boolean =>
   !result || result.startsWith('{"error"') || result.startsWith('错误')
-
-/** 在工具结果末尾追加参数省略注记（result 侧自由文本，可安全携带说明与防模仿指令） */
-export const appendOmittedArgsNote = (result: string, fields: string[]): string => {
-  const note =
-    `[系统注：为节省上下文，该历史调用的 ${fields.join('、')} 参数原文已省略，本条参数不完整；` +
-    '新调用请按工具 schema 重新构造完整参数，切勿复用或参照本条参数形态]'
-  return result ? `${result}\n${note}` : note
-}
-
-const stripArgFields = (parsed: Record<string, unknown>, fields: string[]): string => {
-  for (const field of fields) delete parsed[field]
-  return JSON.stringify(parsed)
-}
 
 export const buildToolCallCompactPlan = (
   messages: ChatMessage[],
@@ -67,8 +52,7 @@ export const buildToolCallCompactPlan = (
 ): ToolCallCompactPlan => {
   const plan: ToolCallCompactPlan = {
     expiredToolCallIds: new Set(),
-    slimmedArgs: new Map(),
-    omittedArgFields: new Map()
+    droppedToolCallIds: new Set()
   }
   const events: ResourceEvent[] = []
   const state: ContextWalkState = {}
@@ -90,20 +74,13 @@ export const buildToolCallCompactPlan = (
       }
       if (rule.writeResource) {
         const key = rule.writeResource(args, state)
-        if (key) events.push({ kind: 'write', key, toolCallId: call.toolCallId })
+        if (key) events.push({ kind: 'write', key, toolCallId: call.toolCallId, result: call.result })
       }
       if (rule.track) rule.track(args, state)
-      if (rule.stripArgs && call.args) {
-        const present = rule.stripArgs.filter((field) => parsedHas(args, field))
-        if (present.length > 0) {
-          plan.slimmedArgs.set(call.toolCallId, stripArgFields(args, present))
-          plan.omittedArgFields.set(call.toolCallId, present)
-        }
-      }
     }
   }
 
-  // 每个 key 的最后事件决定新鲜度：最终是成功读取 → 该次保留原文，其余同 key 读取过期
+  // 每个 key 的最后事件决定读类新鲜度：最终是成功读取 → 该次保留原文，其余同 key 读取过期
   const lastByKey = new Map<string, ResourceEvent>()
   for (const event of events) lastByKey.set(event.key, event)
   const freshToolCallIds = new Set(
@@ -116,8 +93,18 @@ export const buildToolCallCompactPlan = (
       plan.expiredToolCallIds.add(event.toolCallId)
     }
   }
+
+  // 写类：每个 key 仅保留最后一次成功写的完整原文（正确参数形态的参照样本），
+  // 其余写（更早的成功写、全部失败写）整对剔除
+  const lastOkWriteByKey = new Map<string, ResourceEvent>()
+  for (const event of events) {
+    if (event.kind === 'write' && !isFailedResult(event.result)) {
+      lastOkWriteByKey.set(event.key, event)
+    }
+  }
+  for (const event of events) {
+    if (event.kind !== 'write') continue
+    if (lastOkWriteByKey.get(event.key) !== event) plan.droppedToolCallIds.add(event.toolCallId)
+  }
   return plan
 }
-
-const parsedHas = (args: Record<string, unknown>, field: string): boolean =>
-  Object.prototype.hasOwnProperty.call(args, field) && args[field] !== undefined
