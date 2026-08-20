@@ -123,8 +123,17 @@ export interface CanvasNode {
   layout?: 'none' | 'horizontal' | 'vertical' | 'wrap'
   gap?: number
   padding?: number | number[]
-  primaryAxisAlignItems?: 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN' | 'SPACE_EVENLY'
-  counterAxisAlignItems?: 'MIN' | 'CENTER' | 'MAX' | 'BASELINE'
+  /** START≡MIN（起点）、END≡MAX（终点） */
+  primaryAxisAlignItems?:
+    | 'MIN'
+    | 'START'
+    | 'CENTER'
+    | 'MAX'
+    | 'END'
+    | 'SPACE_BETWEEN'
+    | 'SPACE_EVENLY'
+  /** START≡MIN（起点）、END≡MAX（终点）；BASELINE 暂等同 MIN */
+  counterAxisAlignItems?: 'MIN' | 'START' | 'CENTER' | 'MAX' | 'END' | 'BASELINE'
   layoutGrow?: number
   // ── 填充 / 描边 / 质感 ──
   /** 填充：纯色 / 渐变对象 / $name 调色板引用 */

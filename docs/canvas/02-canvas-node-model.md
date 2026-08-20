@@ -61,7 +61,9 @@ interface CanvasDoc {
 - **定位**：`x/y`（绝对坐标）、`width/height`（数值，布局组内可 `fill_container` / `hug_contents`）、`rotation`、`opacity`、
   `visible`、`blendMode`、`layoutPositioning`（布局父内 AUTO / ABSOLUTE）
 - **自动布局（group 可选）**：`layout: none|horizontal|vertical|wrap`、`gap`、`padding`（数值 / `[垂直,水平]`（`[a,b]` → 上下 a、左右 b，见 `canvasLayout.resolvePadding`）/ `[上,右,下,左]`，多边距场景一律推荐四元素）、
-  `primaryAxisAlignItems` / `counterAxisAlignItems`（大写枚举）、`layoutGrow`
+  `primaryAxisAlignItems`（`MIN`/`START` | `CENTER` | `MAX`/`END` | `SPACE_BETWEEN` | `SPACE_EVENLY`）/
+  `counterAxisAlignItems`（`MIN`/`START` | `CENTER` | `MAX`/`END` | `BASELINE`），`START≡MIN`、`END≡MAX`（布局引擎
+  `normalizeAlign` 归一化；`BASELINE` 暂等同 `MIN`）、`layoutGrow`
 - **样式**：`fill` / `stroke`（纯色 / 渐变对象 / `$token名`）、`strokeWidth`、`dashPattern`、`cornerRadius`、`effects[]`
   （drop-shadow / inner-shadow / layer-blur / background-blur）。渐变 `from` / `to` **仅允许** Leafer 的 9 个方位
   （`top-left` / `top` / `top-right` / `right` / `bottom-right` / `bottom` / `bottom-left` / `left` / `center`）或 `{x,y}`；

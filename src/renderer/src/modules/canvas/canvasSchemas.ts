@@ -169,14 +169,35 @@ const nodeFieldSchema = {
   ),
   primaryAxisAlignItems: Type.Optional(
     Type.Union(
-      [Type.Literal('MIN'), Type.Literal('CENTER'), Type.Literal('MAX'), Type.Literal('SPACE_BETWEEN'), Type.Literal('SPACE_EVENLY')],
-      { description: '布局组主轴对齐' }
+      [
+        Type.Literal('MIN'),
+        Type.Literal('START'),
+        Type.Literal('CENTER'),
+        Type.Literal('MAX'),
+        Type.Literal('END'),
+        Type.Literal('SPACE_BETWEEN'),
+        Type.Literal('SPACE_EVENLY')
+      ],
+      {
+        description:
+          '布局组主轴对齐：MIN/START 靠起点、CENTER、MAX/END 靠终点、SPACE_BETWEEN、SPACE_EVENLY（START≡MIN、END≡MAX）'
+      }
     )
   ),
   counterAxisAlignItems: Type.Optional(
     Type.Union(
-      [Type.Literal('MIN'), Type.Literal('CENTER'), Type.Literal('MAX'), Type.Literal('BASELINE')],
-      { description: '布局组交叉轴对齐' }
+      [
+        Type.Literal('MIN'),
+        Type.Literal('START'),
+        Type.Literal('CENTER'),
+        Type.Literal('MAX'),
+        Type.Literal('END'),
+        Type.Literal('BASELINE')
+      ],
+      {
+        description:
+          '布局组交叉轴对齐：MIN/START 靠起点、CENTER、MAX/END 靠终点、BASELINE（START≡MIN、END≡MAX；BASELINE 暂等同 MIN）'
+      }
     )
   ),
   layoutGrow: Type.Optional(Type.Number({ description: '布局组内伸展权重' })),

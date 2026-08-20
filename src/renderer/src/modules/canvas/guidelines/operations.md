@@ -55,7 +55,8 @@
 - **主轴 `fill_container`**：需要组有确定的主轴尺寸（显式 / 父约束）；hug 容器主轴无剩余空间时不拉伸（flexbox 标准）
 - **hug 组交叉轴** = max (非 fill 子节点交叉轴) + padding，交叉轴对齐（CENTER/MAX）自动生效，矮元素相对最高元素居中
 - 文本子节点不要手写 width/height，交引擎按内容估算
-- group 有背景（fill）时建议显式 `padding`，文字才不会贴边；**padding 两元素数组 = `[垂直, 水平]`**（`[a,b]` → 上下 a、左右 b），方向易误读，多边距场景一律用四元素 `[上, 右, 下, 左]`
+- group 有背景（fill）时建议显式 `padding`，文字才不会贴边； **padding 两元素数组 = `[垂直, 水平]`**（`[a,b]` → 上下 a、左右
+  b），方向易误读，多边距场景一律用四元素 `[上, 右, 下, 左]`
 - **多行正文禁止一个 text 写 `\n`**：拆成多个独立单行 text + 容器 `layout:"vertical"` + gap 堆叠，单行高度精确、容器不溢出（引擎对含
   `\n` 的 text 行数测量不稳定）
 
@@ -66,6 +67,22 @@
 - `wrap`：徽章墙、多图拼贴（行内交叉轴对齐暂未实现，行内元素按顶部对齐）
 - **svg 图标嵌圆底 ≠ horizontal/vertical**（排布语义会并排）：group 不开 layout + 图标 `layoutPositioning:"ABSOLUTE"`
   用圆心反推坐标叠放
+
+**对齐枚举（大写）**：
+
+| 字段                              | 取值            | 语义                                              |
+|-----------------------------------|-----------------|---------------------------------------------------|
+| `primaryAxisAlignItems`（主轴）   | `MIN` / `START` | 靠起点（horizontal→左，vertical→顶）；`START≡MIN` |
+|                                   | `CENTER`        | 居中                                              |
+|                                   | `MAX` / `END`   | 靠终点（horizontal→右，vertical→底）；`END≡MAX`   |
+|                                   | `SPACE_BETWEEN` | 两端对齐，中间均分剩余                            |
+|                                   | `SPACE_EVENLY`  | 两端与间隙均分剩余                                |
+| `counterAxisAlignItems`（交叉轴） | `MIN` / `START` | 靠起点（horizontal→顶，vertical→左）；`START≡MIN` |
+|                                   | `CENTER`        | 居中                                              |
+|                                   | `MAX` / `END`   | 靠终点（horizontal→底，vertical→右）；`END≡MAX`   |
+|                                   | `BASELINE`      | 基线对齐（引擎暂等同 `MIN`）                      |
+
+缺省均为 `MIN`（起点）。勿写小写 `start` / `center` / `end`。
 
 ## 2. 节点类型
 
@@ -120,9 +137,11 @@
 type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环）；stops 可为纯色字符串（自动均分）或
 `{"offset":0,"color":"#fff"}`。
 
-**from / to 方位只允许这 9 个**（与 Leafer `IAlign` 一致）：`top-left` / `top` / `top-right` / `right` / `bottom-right` / `bottom` / `bottom-left` / `left` / `center`。也可写 `{x,y}`。
+**from / to 方位只允许这 9 个**（与 Leafer `IAlign` 一致）：`top-left` / `top` / `top-right` / `right` / `bottom-right` /
+`bottom` / `bottom-left` / `left` / `center`。也可写 `{x,y}`。
 
-- 垂直渐变：`from:"top"` → `to:"bottom"`（不要写 `top-center` / `bottom-center`，校验会拒绝，存量文件渲染层会映射成 top/bottom）
+- 垂直渐变：`from:"top"` → `to:"bottom"`（不要写 `top-center` / `bottom-center`，校验会拒绝，存量文件渲染层会映射成
+  top/bottom）
 - 水平渐变：`from:"left"` → `to:"right"`
 - 对角：`from:"top-left"` → `to:"bottom-right"`
 
@@ -195,10 +214,11 @@ type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环
   节点 `imageUrl`（禁止自己画近似 logo）
 - `icon_svg(name | query, color?)`：Iconify 真实 SVG 图标；`name` 形如 `"mdi:home"`（{集合}:{名称}），`query` 为关键词搜索；返回内联
   SVG 字符串 → 填 `svg` 节点（颜色可用 `$token名`）
-- `chart_generate(option, width, height)`：把 echarts option 渲染成专业数据图表（SVG 矢量图）落盘沙盒 outputs/charts/ 返回本地路径
-  → 填 `svg` 节点 `imageUrl`（或 image 节点）；支持 echarts 全部内置图表类型（bar / line / pie / scatter / radar / funnel /
-  gauge / heatmap / tree / treemap / sankey / graph / map / boxplot / candlestick / sunburst / custom 等），option 按 echarts 官方
-  配置书写；图表为静态矢量图（无动画 / tooltip），SVG 内颜色是渲染时写死的固定值（不走 `$token` 替换），须取画布调色板实色
+- `chart_generate(option, width, height)`：把 echarts option 渲染成专业数据图表（SVG 矢量图）落盘沙盒 outputs/charts/
+  返回本地路径 → 填 `svg` 节点 `imageUrl`（或 image 节点）；支持 echarts 全部内置图表类型（bar / line / pie / scatter /
+  radar / funnel / gauge / heatmap / tree / treemap / sankey / graph / map / boxplot / candlestick / sunburst / custom
+  等），option 按 echarts 官方 配置书写；图表为静态矢量图（无动画 / tooltip），SVG 内颜色是渲染时写死的固定值（不走 `$token`
+  替换），须取画布调色板实色
 
 ## 5. 易错点（DO NOT）
 
@@ -209,6 +229,8 @@ type 支持 linear（线性）/ radial（径向光晕）/ angular（角度色环
 | `borderRadius:8`                          | `cornerRadius:8`                                                 | 圆角字段名                                                                     |
 | `fontWeight:"bold"`                       | `fontWeight:"700"`                                               | 用数字                                                                         |
 | `alignItems:"center"`                     | `primaryAxisAlignItems:"CENTER"`                                 | 布局组内对齐用大写枚举                                                         |
+| `counterAxisAlignItems:"start"`（小写）   | `"START"` 或 `"MIN"`                                             | `START≡MIN` 可用；勿写小写 `start` / `end`                                     |
+| `counterAxisAlignItems:"start"`（小写）   | `"MIN"` / `"START"`（大写）                                      | `START≡MIN`、`END≡MAX` 已合法；勿写 CSS 小写                                   |
 | 手写节点 `id`                             | 省略，系统自动生成                                               | insert 的 node 不要带 id                                                       |
 | update 改 `id/type/children`              | 报错并自纠                                                       | 这些字段不可 patch，改则整个 update 操作失败                                   |
 | 数值字段传字符串（如 `width:"500"`）      | 传数字 `width:500`                                               | width/height 是数字（布局组内才可用 fill_container / hug_contents）            |

@@ -28,7 +28,9 @@ const FILL = 'fill_container'
 const isFill = (v: unknown): v is 'fill_container' => v === FILL
 
 /** 解析 padding：number | [h,v] | [t,r,b,l] → [top,right,bottom,left] */
-const resolvePadding = (padding: number | number[] | undefined): [number, number, number, number] => {
+const resolvePadding = (
+  padding: number | number[] | undefined
+): [number, number, number, number] => {
   if (padding == null) return [0, 0, 0, 0]
   if (typeof padding === 'number') return [padding, padding, padding, padding]
   if (padding.length === 2) return [padding[0], padding[1], padding[0], padding[1]]
@@ -49,7 +51,8 @@ export const measureTextLineHeight = (node: CanvasNode, fontSize: number): numbe
   const text = node.text ?? ''
   if (text) {
     const family = node.fontFamily || 'sans-serif'
-    const weight = typeof node.fontWeight === 'number' ? String(node.fontWeight) : node.fontWeight || '400'
+    const weight =
+      typeof node.fontWeight === 'number' ? String(node.fontWeight) : node.fontWeight || '400'
     try {
       const ctx = document.createElement('canvas').getContext('2d')
       if (ctx) {
@@ -71,7 +74,8 @@ const measureTextWidth = (node: CanvasNode, fontSize: number): number => {
   const text = node.text ?? ''
   if (!text) return 0
   const family = node.fontFamily || 'sans-serif'
-  const weight = typeof node.fontWeight === 'number' ? String(node.fontWeight) : node.fontWeight || '400'
+  const weight =
+    typeof node.fontWeight === 'number' ? String(node.fontWeight) : node.fontWeight || '400'
   const spacing = node.letterSpacing ?? 0
   let width: number
   try {
@@ -90,7 +94,10 @@ const measureTextWidth = (node: CanvasNode, fontSize: number): number => {
 }
 
 const estimateTextWidth = (text: string, fontSize: number): number => {
-  return [...text].reduce((acc, ch) => acc + (/[\u4e00-\u9fff]/.test(ch) ? fontSize : fontSize * 0.55), 0)
+  return [...text].reduce(
+    (acc, ch) => acc + (/[\u4e00-\u9fff]/.test(ch) ? fontSize : fontSize * 0.55),
+    0
+  )
 }
 
 /**
@@ -120,7 +127,7 @@ const resolveLeafHug = (node: CanvasNode, parentW?: number): { width: number; he
         typeof node.width === 'number'
           ? node.width
           : node.width === FILL
-            ? parentW ?? textWidth
+            ? (parentW ?? textWidth)
             : textWidth
       const rows = Math.max(1, Math.ceil(textWidth / Math.max(availW, 1)))
       return { width: textWidth, height: rows * lineHeight }
@@ -137,6 +144,15 @@ const resolveLeafHug = (node: CanvasNode, parentW?: number): { width: number; he
 const isGroup = (node: CanvasNode): boolean => node.type === 'group'
 const hasLayout = (node: CanvasNode): boolean => isGroup(node) && (node.layout ?? 'none') !== 'none'
 
+/** START≡MIN、END≡MAX；其余原样（BASELINE 等未单独实现的值按起点处理） */
+const normalizeAlign = (
+  v: CanvasNode['primaryAxisAlignItems'] | CanvasNode['counterAxisAlignItems'] | undefined
+): 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN' | 'SPACE_EVENLY' | 'BASELINE' => {
+  if (v === 'START') return 'MIN'
+  if (v === 'END') return 'MAX'
+  return v ?? 'MIN'
+}
+
 // ── 阶段一：measureTree（测量自然尺寸） ──────────────────────
 
 /**
@@ -144,7 +160,11 @@ const hasLayout = (node: CanvasNode): boolean => isGroup(node) && (node.layout ?
  * - fill 轴返回「父约束或自身内容」（用于父决定 hug 尺寸时排除 fill 子贡献）
  * - hug 组交叉轴 = max(非 fill 子交叉轴自然尺寸) + padding（flexbox 语义）
  */
-const measureTree = (node: CanvasNode, parentW: number | undefined, parentH: number | undefined): { width: number; height: number } => {
+const measureTree = (
+  node: CanvasNode,
+  parentW: number | undefined,
+  parentH: number | undefined
+): { width: number; height: number } => {
   const children = Array.isArray(node.children) ? node.children : []
   const pad = resolvePadding(node.padding)
 
@@ -173,8 +193,10 @@ const measureTree = (node: CanvasNode, parentW: number | undefined, parentH: num
   }
 
   // 自动布局组
-  const defW = typeof node.width === 'number' ? node.width : isFill(node.width) ? (parentW ?? 0) : undefined
-  const defH = typeof node.height === 'number' ? node.height : isFill(node.height) ? (parentH ?? 0) : undefined
+  const defW =
+    typeof node.width === 'number' ? node.width : isFill(node.width) ? (parentW ?? 0) : undefined
+  const defH =
+    typeof node.height === 'number' ? node.height : isFill(node.height) ? (parentH ?? 0) : undefined
   const contentW = defW != null ? defW - pad[1] - pad[3] : undefined
   const contentH = defH != null ? defH - pad[0] - pad[2] : undefined
 
@@ -211,8 +233,12 @@ const measureTree = (node: CanvasNode, parentW: number | undefined, parentH: num
   // hug 尺寸：主轴 = 非 fill 流元素和 + gap + padding；交叉轴 = 非 fill 流元素 max + padding
   const flowMain = mainSum + gap * Math.max(flowCount - 1, 0) + mainPad
   const flowCross = crossMax + crossPad
-  const hugW = horizontal ? Math.max(flowMain, absMaxX + pad[1] + pad[3]) : Math.max(flowCross, absMaxX + pad[1] + pad[3])
-  const hugH = horizontal ? Math.max(flowCross, absMaxY + pad[0] + pad[2]) : Math.max(flowMain, absMaxY + pad[0] + pad[2])
+  const hugW = horizontal
+    ? Math.max(flowMain, absMaxX + pad[1] + pad[3])
+    : Math.max(flowCross, absMaxX + pad[1] + pad[3])
+  const hugH = horizontal
+    ? Math.max(flowCross, absMaxY + pad[0] + pad[2])
+    : Math.max(flowMain, absMaxY + pad[0] + pad[2])
 
   return {
     width: resolveAxisSize(node.width, parentW, hugW),
@@ -253,7 +279,14 @@ const arrangeTree = (
   const children = Array.isArray(node.children) ? node.children : []
   const pad = resolvePadding(node.padding)
   const size = measureTree(node, parentW, parentH)
-  const result: CanvasLayoutNode = { node, x: posX, y: posY, width: size.width, height: size.height, children: [] }
+  const result: CanvasLayoutNode = {
+    node,
+    x: posX,
+    y: posY,
+    width: size.width,
+    height: size.height,
+    children: []
+  }
 
   if (!hasLayout(node)) {
     // 自由定位容器（含叶子）：子节点按自身 x/y 绝对定位
@@ -261,7 +294,13 @@ const arrangeTree = (
     const contentW = parentW != null && parentW > 0 ? parentW - pad[1] - pad[3] : undefined
     const contentH = parentH != null && parentH > 0 ? parentH - pad[0] - pad[2] : undefined
     for (const child of children) {
-      const c = arrangeTree(child, contentW, contentH, pad[3] + (child.x ?? 0), pad[0] + (child.y ?? 0))
+      const c = arrangeTree(
+        child,
+        contentW,
+        contentH,
+        pad[3] + (child.x ?? 0),
+        pad[0] + (child.y ?? 0)
+      )
       result.children.push(c)
     }
     return result
@@ -271,8 +310,8 @@ const arrangeTree = (
   const contentW = size.width - pad[1] - pad[3]
   const contentH = size.height - pad[0] - pad[2]
   const horizontal = node.layout === 'horizontal' || node.layout === 'wrap'
-  const primary = node.primaryAxisAlignItems ?? 'MIN'
-  const counter = node.counterAxisAlignItems ?? 'MIN'
+  const primary = normalizeAlign(node.primaryAxisAlignItems)
+  const counter = normalizeAlign(node.counterAxisAlignItems)
   const gap = node.gap ?? 0
 
   const plans: ChildPlan[] = children.map((child) => ({
@@ -288,7 +327,15 @@ const arrangeTree = (
 
   // 主轴尺寸：fill 子均分剩余（hug 容器无剩余 → fill 不拉伸，flexbox 标准）
   const fixedTotal = flow.reduce(
-    (m, p) => m + (horizontal ? (isFill(p.child.width) ? 0 : p.base.width) : isFill(p.child.height) ? 0 : p.base.height),
+    (m, p) =>
+      m +
+      (horizontal
+        ? isFill(p.child.width)
+          ? 0
+          : p.base.width
+        : isFill(p.child.height)
+          ? 0
+          : p.base.height),
     0
   )
   const fillCount = flow.filter((p) => isFill(horizontal ? p.child.width : p.child.height)).length
@@ -329,7 +376,8 @@ const arrangeTree = (
     let mainStep = gap
     if (primary === 'CENTER') mainStart = free / 2
     else if (primary === 'MAX') mainStart = free
-    else if (primary === 'SPACE_BETWEEN' && flow.length > 1) mainStep = gap + free / (flow.length - 1)
+    else if (primary === 'SPACE_BETWEEN' && flow.length > 1)
+      mainStep = gap + free / (flow.length - 1)
     else if (primary === 'SPACE_EVENLY' && flow.length > 0) {
       mainStart = free / (flow.length + 1)
       mainStep = gap + free / (flow.length + 1)
@@ -413,7 +461,9 @@ const arrangeTree = (
 
 /** 布局整张画布：返回根图层（根节点坐标 = 相对画布的绝对坐标；子节点相对父盒） */
 export const layoutCanvasDoc = (doc: CanvasDoc): CanvasLayoutNode[] => {
-  return (doc.nodes ?? []).map((node) => arrangeTree(node, doc.width, doc.height, node.x ?? 0, node.y ?? 0))
+  return (doc.nodes ?? []).map((node) =>
+    arrangeTree(node, doc.width, doc.height, node.x ?? 0, node.y ?? 0)
+  )
 }
 
 // ── 渲染后绝对包围盒（供 AI 核对几何，与预览/导出共用同一布局事实源） ──────
