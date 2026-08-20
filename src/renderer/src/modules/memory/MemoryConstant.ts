@@ -29,6 +29,12 @@ export const toDateKey = (date = new Date()): string => {
   return `${y}-${m}-${d}`
 }
 
+/** 日期串进位到下一天（月末 / 年末由 Date 构造自动进位） */
+export const nextDayKey = (dateKey: string): string => {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  return toDateKey(new Date(y, m - 1, d + 1))
+}
+
 /** 本地时区时刻串（HH:mm），标注记忆条目的提取时间 */
 export const toTimeKey = (date = new Date()): string =>
   `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`

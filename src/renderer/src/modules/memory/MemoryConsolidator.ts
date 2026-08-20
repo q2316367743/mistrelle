@@ -1,5 +1,5 @@
 import { useLog } from '@/hooks/UseLog'
-import { MEMORY_MAX_CHARS, toDateKey } from './MemoryConstant'
+import { MEMORY_MAX_CHARS, nextDayKey, toDateKey } from './MemoryConstant'
 import { MEMORY_CONSOLIDATE_PROMPT } from './MemoryPrompt'
 import { extractPendingSessions } from './MemoryExtractor'
 import {
@@ -26,10 +26,15 @@ export interface ConsolidateResult {
  * 兜底补提漏提取会话 → 读取「日期 > lastConsolidateDate 且 < 今天」的每日文件 →
  * 与现有 MEMORY.md 一起交由 LLM 合并去重 → 长度硬保护后写回。
  *
- * lastConsolidateDate 语义为「已完全消费的最大文件日期」：合并后推进到本次消费的最大日期
- * （而非今天），同日稍后追加的条目次日仍会被重新消费，不丢内容。
+ * lastConsolidateDate 语义为「下一个待消费日期（含边界）」：合并后推进到本次消费最大日期的
+ * 下一天，消费条件为「日期 >= 该值 且 < 今天」，每个日期的文件恰好被消费一次。
+ * 旧版语义（已消费最大日期 + 严格大于）的存量值可直接兼容：基线日文件至多被重新消费一次，
+ * 由合并提示词去重吸收，无需数据迁移。注意：合并完成后若该日期文件又被追加（跨零点防抖
+ * 落盘竞态），追加部分不会被再次消费。
  */
-export const runConsolidation = async (options: { manual?: boolean } = {}): Promise<ConsolidateResult> => {
+export const runConsolidation = async (
+  options: { manual?: boolean } = {}
+): Promise<ConsolidateResult> => {
   if (consolidating) return { ok: false, message: '整理进行中，请稍候' }
   consolidating = true
   try {
@@ -41,7 +46,7 @@ export const runConsolidation = async (options: { manual?: boolean } = {}): Prom
     // 尾段永远漏提。补提产物写入今日文件，仍按 < 今天 的规则次日消费，不破坏合并边界
     await extractPendingSessions()
     const pending = (await listDayMemoryDates()).filter(
-      (d) => d > state.lastConsolidateDate && d < today
+      (d) => d >= state.lastConsolidateDate && d < today
     )
     if (pending.length === 0) return { ok: true, message: '暂无待合并的短期记忆' }
 
@@ -52,7 +57,7 @@ export const runConsolidation = async (options: { manual?: boolean } = {}): Prom
     }
     if (sections.length === 0) {
       // 有待合并日期但文件全为空：只推进边界，避免每日空跑
-      state.lastConsolidateDate = pending[pending.length - 1]
+      state.lastConsolidateDate = nextDayKey(pending[pending.length - 1])
       await writeSoulState()
       return { ok: true, message: '暂无新增短期记忆' }
     }
@@ -68,7 +73,10 @@ export const runConsolidation = async (options: { manual?: boolean } = {}): Prom
 
     let merged = await memoryChatCompletion(MEMORY_CONSOLIDATE_PROMPT, user)
     // 模型可能无视指令带代码块围栏，剥掉
-    merged = merged.replace(/^```(?:markdown)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '').trim()
+    merged = merged
+      .replace(/^```(?:markdown)?\s*\n?/, '')
+      .replace(/\n?\s*```\s*$/, '')
+      .trim()
     if (!merged) throw new Error('模型未返回内容')
 
     // 长度硬保护：超上限按行（条目）截断，单行超长时直接字符截断
@@ -81,7 +89,7 @@ export const runConsolidation = async (options: { manual?: boolean } = {}): Prom
     }
 
     await writeLongTermMemory(merged)
-    state.lastConsolidateDate = pending[pending.length - 1]
+    state.lastConsolidateDate = nextDayKey(pending[pending.length - 1])
     await writeSoulState()
     logger.info(`长期记忆已更新（合并 ${sections.length} 天短期记忆）`)
     return { ok: true, message: `已合并 ${sections.length} 天短期记忆` }

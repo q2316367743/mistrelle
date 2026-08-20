@@ -49,7 +49,9 @@
     <div class="memory-section">
       <div class="section-header">
         <span class="section-title">长期记忆</span>
-        <span class="section-tip">MEMORY.md · 跨会话持久保留，整理时自动去重淘汰，上限 {{ MEMORY_MAX_CHARS }} 字</span>
+        <span class="section-tip"
+          >MEMORY.md · 跨会话持久保留，整理时自动去重淘汰，上限 {{ MEMORY_MAX_CHARS }} 字</span
+        >
       </div>
       <t-textarea
         v-model="longTermDraft"
@@ -131,9 +133,7 @@ const dates = ref<string[]>([])
 const selectedDate = ref('')
 const dayContent = ref('')
 
-const dayOptions = computed(() =>
-  [...dates.value].reverse().map((d) => ({ label: d, value: d }))
-)
+const dayOptions = computed(() => [...dates.value].reverse().map((d) => ({ label: d, value: d })))
 
 const loadDayContent = async () => {
   dayContent.value = selectedDate.value ? await readDayMemory(selectedDate.value) : ''

@@ -32,9 +32,9 @@ MemoryExtractor.extractSession(storageKey)
 每日合并（App 启动 15 秒后检查 + 每小时跨天检查，或设置页手动）
 MemoryConsolidator.runConsolidation()
   先执行 extractPendingSessions 兜底补提（含 app 退出时丢在防抖窗口内的尾段）
-  → 消费「日期 > lastConsolidateDate 且 < 今天」的每日文件（今日文件不消费，天然与追加无竞争）
+  → 消费「日期 >= lastConsolidateDate 且 < 今天」的每日文件（今日文件不消费，天然与追加无竞争）
   → 现有 MEMORY.md + 待合并文件 → LLM 合并去重/淘汰过时
-  → 超长按行截断硬保护 → 写回 MEMORY.md → lastConsolidateDate 推进到本次消费的最大日期
+  → 超长按行截断硬保护 → 写回 MEMORY.md → lastConsolidateDate 推进到本次消费最大日期的下一天（nextDayKey）
 
 新对话（主 Agent 每轮请求）
 AgentChat.buildRequestMessages
@@ -46,8 +46,9 @@ AgentChat.buildRequestMessages
 
 ## 关键设计
 
-- **lastConsolidateDate 语义**：已完全消费的最大文件日期（严格大于它的每日文件待消费）。合并后推进到本次消费的最大日期而非今天——同日稍后追加的条目次日仍会被重新消费，不丢内容。
-- **首启基线**：state.json 首次创建时 `lastConsolidateDate = 今天`，不回溯提取历史会话，记忆从启用日开始积累。
+- **lastConsolidateDate 语义**：下一个待消费日期（含边界，消费条件「日期 >= 该值 且 < 今天」）。合并后经 `nextDayKey` 推进到本次消费最大日期的下一天，每个日期的文件恰好被消费一次、不重复。注意：合并完成后该日期文件若再被追加（跨零点防抖落盘竞态），追加部分不会被再次消费。
+  - 旧版语义为「已消费最大日期 + 严格大于」，存在启用当天（首启基线日）文件永不消费的缺陷；旧存量值在新语义下基线日文件至多被重新消费一次，由合并提示词去重吸收，无需数据迁移。
+- **首启基线**：state.json 首次创建时 `lastConsolidateDate = 今天`，不回溯提取历史会话，记忆从启用日开始积累，启用当天的每日文件自次日起可被合并消费。
 - **模型**：提取与合并走 `defaultSummaryModel || defaultQuickModel` 兜底链（同订阅总结），`createChatCompletion` 非流式调用。
 - **长度上限（MemoryConstant.ts）**：长期 4000 字（合并输出超限按行截断兜底）、单日 2000 字（追加时丢最旧）、注入每日预算 4000 字、提取输入 30k 字符。
 - **注入缓存**：buildMemoryPrompt 按「开关 + MEMORY.md mtime + 各每日文件 mtime」签名缓存，agent loop 每轮调用无额外读盘；所有写入操作自动失效缓存。

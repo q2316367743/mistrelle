@@ -12,7 +12,7 @@ import { DAY_MEMORY_MAX_CHARS, INJECT_DAY_BUDGET, toDateKey } from './MemoryCons
 /** 记忆系统状态（soul/state.json）：开关、合并边界、各会话提取进度 */
 export interface SoulState {
   memoryEnabled: boolean
-  /** 最近一次合并完成的日期（YYYY-MM-DD）；每日文件仅消费「日期 > 该值 且 < 今天」的 */
+  /** 下一个待消费日期（YYYY-MM-DD，含边界）；每日文件仅消费「日期 >= 该值 且 < 今天」的 */
   lastConsolidateDate: string
   /** storageKey（会话消息文件路径）→ 已提取的消息数量 */
   extracted: Record<string, number>
@@ -28,7 +28,8 @@ const persistState = async (): Promise<void> => {
 
 /**
  * 读取记忆状态（进程内缓存）。
- * 首次初始化时合并基线定为今天：不回溯提取历史会话，记忆从启用日开始积累。
+ * 首次初始化时合并基线定为今天：不回溯提取历史会话，记忆从启用日开始积累，
+ * 启用当天的每日文件自次日起可被合并消费。
  */
 export const readSoulState = async (): Promise<SoulState> => {
   if (stateCache) return stateCache
@@ -159,8 +160,8 @@ export const buildMemoryPrompt = async (): Promise<string> => {
     return memoryPromptCache.content
   }
 
-  // 未合并每日文件 = 日期 > lastConsolidateDate（合并只消费 < 今天的文件，今天的一律未合并）
-  const pending = dates.filter((d) => d > state.lastConsolidateDate)
+  // 未合并每日文件 = 日期 >= lastConsolidateDate（合并只消费 < 今天的文件，今天的一律未合并）
+  const pending = dates.filter((d) => d >= state.lastConsolidateDate)
   const daySections: string[] = []
   let budget = INJECT_DAY_BUDGET
   for (const date of [...pending].reverse()) {
