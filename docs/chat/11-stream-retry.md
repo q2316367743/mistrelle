@@ -22,6 +22,7 @@
 | AbortError / `signal.aborted` | 不重试，原样上抛（走既有「停止」路径） |
 | HTTP 429、5xx（`isHttpError` 且 status 匹配） | 重试 |
 | 其余 HTTP 4xx（401/403/400…） | 不重试，立即上抛（鉴权 / 参数错误，重试无意义） |
+| axios 空壳 4xx（消息形如 `Request failed with status code 403`，尚无 `status` 字段） | 不重试；与 HttpError 4xx 同等对待 |
 | 网络 / 流中断错误（无 status 的普通 Error） | 重试 |
 | 非 Error 抛出值 | 不重试 |
 

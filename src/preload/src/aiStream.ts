@@ -44,7 +44,11 @@ export const aiStreamApi = {
         // 期间（AI 思考 / 长回答常远超默认 30s）触发并 request.destroy()，导致流迭代抛 AbortError，
         // 被渲染层误判为主动取消。超时与取消统一由渲染层 AbortSignal（streamAbort）控制。
         timeout: 0,
-        signal: controller.signal
+        signal: controller.signal,
+        // 4xx/5xx 必须走 onStart + 字节流，由渲染层 transport 提取错误体。
+        // axios 默认 validateStatus 会直接抛「Request failed with status code 403」，
+        // 错误体是 Node stream，过不了 contextBridge，调用方只能看到这句空壳。
+        validateStatus: () => true
       })
       onStart?.({
         requestId,

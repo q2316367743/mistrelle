@@ -88,10 +88,11 @@ listAiModels({ baseURL, apiKey, format }): Promise<Array<{ id: string }>> // GET
 ## 注意事项
 
 - 流式请求必须禁用 axios 整体超时：`aiStream.streamRequest` 强制 `timeout: 0`。axios 的 timeout 定时器在响应头到达后不会清除，会在响应体读取期间（AI 思考 / 长回答远超默认 30s）触发并 `request.destroy()`，导致流迭代抛 `AbortError`，被渲染层误判为主动取消（消息显示「已停止」）。流式超时 / 取消统一由渲染层 `AbortSignal` → `streamAbort` 控制（如 `AbortSignal.timeout(ms)`）。
+- `aiStream.streamRequest` 必须 `validateStatus: () => true`：axios 默认把 4xx/5xx 当异常抛出，错误体是 Node stream，过不了 contextBridge，渲染层只剩「Request failed with status code 403」。放行后由 `transport.buildHttpError` 抽出服务端 `error.message`（如区域限制），并带上 `status` 供重试策略跳过普通 4xx。
 - `http.ts` 的 `usePost` / `useGet` 第三参 `config` 类型要求 `url` 必填，需把 url 同时放进 config（沿用 `ImageGenerate.ts` 的写法）。
 - 认证头由适配器缺省注入：chat / responses → `Authorization: Bearer {apiKey}`；anthropic → `x-api-key`。`AiRequestParams.headers`（`onRequest` 覆盖）优先级更高，可覆盖缺省认证。
 - anthropic baseURL 归一：去尾部 `/`；若以 `/v1` 结尾再去掉，避免拼出 `/v1/v1/messages`。
 - responses 的工具调用 id/name 只在 `output_item.done`（无 index）出现：用 `pendingArgIndices` 队列按完成顺序对齐 `function_call_arguments.delta` 的 output_index。
 - 流式 `for await` 消费中 `return`（如 `seq` 抢占）会触发 generator finally → 自动 `streamAbort`，不会悬挂。
-- 非 2xx（如 401）在 transport 层收集错误体并抛错，调用方无需感知流式/非流式差异。
+- 非 2xx（如 401/403）在 transport 层收集错误体并抛 `HttpError`（`HTTP {status}: {message}`），调用方无需感知流式/非流式差异。agent 流式重试只跟 429/5xx，其余 4xx 立即失败。
 - AI 请求同样经 `httpRequestToAxiosConfig` 注入全局网络代理设置（`fillAxiosConfig`）与 User-Agent。

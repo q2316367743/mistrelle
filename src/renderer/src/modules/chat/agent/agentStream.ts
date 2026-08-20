@@ -40,6 +40,12 @@ const isRetryableError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false
   if (error.name === 'AbortError') return false
   if (isHttpError(error)) return error.status === 429 || error.status >= 500
+  // axios 未走 HttpError 时仍可能是「Request failed with status code 403」；4xx 重试无意义
+  const statusMatch = error.message.match(/status code (\d{3})/i)
+  if (statusMatch) {
+    const status = Number(statusMatch[1])
+    return status === 429 || status >= 500
+  }
   return true
 }
 

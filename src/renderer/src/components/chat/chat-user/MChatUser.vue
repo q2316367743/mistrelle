@@ -1,82 +1,93 @@
 <template>
   <div class="m-chat-user">
     <!-- 用户消息内联展示：文本为文字，skill/file 为不同色与图标的标签，整行内联。
-         默认折叠为最多 2 行，点击"更多"展开全部，再次点击"收起"折叠 -->
+         默认折叠限高、底部逐渐模糊，模糊区中央向下箭头展开；展开后内容下方居中向上箭头收起 -->
     <div
-      ref="contentRef"
-      class="r-chat-list__user-content"
-      :class="{ 'is-collapsed': collapsed }"
+      class="content-wrap"
+      :class="{ 'is-collapsed': collapsed, 'is-faded': isOverflow }"
     >
-      <template v-for="(item, index) in message.content" :key="item.id || index">
-        <span v-if="item.type === 'text'" class="r-chat-list__text">{{ item.data }}</span>
-        <t-tag
-          v-else-if="item.type === 'skill'"
-          theme="primary"
-          variant="light"
-          :title="item.data.path"
-          size="small"
-          class="r-chat-list__inline-tag mr-4px"
-        >
-          <template #icon><CodeIcon /></template>
-          {{ item.data.name }}
-        </t-tag>
-        <t-tag
-          v-else-if="item.type === 'tool'"
-          theme="warning"
-          variant="light"
-          :title="item.data.label"
-          size="small"
-          class="r-chat-list__inline-tag mr-4px"
-        >
-          <template #icon><ToolsIcon /></template>
-          {{ item.data.label }}
-        </t-tag>
-        <template v-else-if="item.type === 'attachment'">
+      <div ref="contentRef" class="r-chat-list__user-content">
+        <template v-for="(item, index) in message.content" :key="item.id || index">
+          <span v-if="item.type === 'text'" class="r-chat-list__text">{{ item.data }}</span>
           <t-tag
-            v-for="(file, fi) in item.data"
-            :key="file.url || fi"
-            theme="success"
+            v-else-if="item.type === 'skill'"
+            theme="primary"
             variant="light"
-            :title="file.url"
-            class="r-chat-list__inline-tag"
+            :title="item.data.path"
+            size="small"
+            class="r-chat-list__inline-tag mr-4px"
           >
-            <template #icon><FileIcon /></template>
-            @{{ file.name }}
+            <template #icon><CodeIcon /></template>
+            {{ item.data.name }}
+          </t-tag>
+          <t-tag
+            v-else-if="item.type === 'tool'"
+            theme="warning"
+            variant="light"
+            :title="item.data.label"
+            size="small"
+            class="r-chat-list__inline-tag mr-4px"
+          >
+            <template #icon><ToolsIcon /></template>
+            {{ item.data.label }}
+          </t-tag>
+          <template v-else-if="item.type === 'attachment'">
+            <t-tag
+              v-for="(file, fi) in item.data"
+              :key="file.url || fi"
+              theme="success"
+              variant="light"
+              :title="file.url"
+              class="r-chat-list__inline-tag"
+            >
+              <template #icon><FileIcon /></template>
+              @{{ file.name }}
+            </t-tag>
+          </template>
+          <t-tag
+            v-else-if="item.type === 'canvas'"
+            theme="default"
+            variant="light"
+            :title="`画布 canvas-${item.data.version} 节点 ${item.data.nodeId}`"
+            size="small"
+            class="r-chat-list__inline-tag mr-4px"
+          >
+            <template #icon><LayersIcon /></template>
+            画布(canvas-{{ item.data.version }})节点({{ item.data.label || item.data.nodeId }})
+          </t-tag>
+          <t-tag
+            v-else-if="item.type === 'ppt'"
+            theme="warning"
+            variant="light"
+            :title="`PPT「${item.data.pptId}」第 ${item.data.slide} 页节点 ${item.data.nodeId}`"
+            size="small"
+            class="r-chat-list__inline-tag mr-4px"
+          >
+            <template #icon><SlideshowIcon /></template>
+            PPT({{ item.data.pptId }})节点({{ item.data.label || item.data.nodeId }})
           </t-tag>
         </template>
-        <t-tag
-          v-else-if="item.type === 'canvas'"
-          theme="default"
-          variant="light"
-          :title="`画布 canvas-${item.data.version} 节点 ${item.data.nodeId}`"
-          size="small"
-          class="r-chat-list__inline-tag mr-4px"
-        >
-          <template #icon><LayersIcon /></template>
-          画布(canvas-{{ item.data.version }})节点({{ item.data.label || item.data.nodeId }})
-        </t-tag>
-        <t-tag
-          v-else-if="item.type === 'ppt'"
-          theme="warning"
-          variant="light"
-          :title="`PPT「${item.data.pptId}」第 ${item.data.slide} 页节点 ${item.data.nodeId}`"
-          size="small"
-          class="r-chat-list__inline-tag mr-4px"
-        >
-          <template #icon><SlideshowIcon /></template>
-          PPT({{ item.data.pptId }})节点({{ item.data.label || item.data.nodeId }})
-        </t-tag>
-      </template>
+      </div>
+      <!-- 折叠态：悬浮在底部模糊区中央的向下箭头，点击展开 -->
+      <button
+        v-if="collapsed && isOverflow"
+        class="toggle-arrow toggle-arrow--down"
+        type="button"
+        title="展开"
+        @click="toggle"
+      >
+        <ChevronDownIcon />
+      </button>
     </div>
+    <!-- 展开态：内容下方居中的向上箭头，点击收起 -->
     <button
-      v-if="canToggle"
-      class="show-more"
+      v-if="!collapsed"
+      class="toggle-arrow toggle-arrow--up"
       type="button"
+      title="收起"
       @click="toggle"
     >
-      <ChevronDownIcon v-if="collapsed" class="show-more__icon" />
-      <ChevronUpIcon v-else class="show-more__icon" />
-      <span>{{ collapsed ? '更多' : '收起' }}</span>
+      <ChevronUpIcon />
     </button>
     <div class="footer">
       <RChatActionbar
@@ -88,7 +99,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { UserMessage } from '@/domain'
 import {
   ChevronDownIcon,
@@ -112,19 +123,17 @@ const getUserText = (message: UserMessage) => {
   return message.content.find((item) => item.type === 'text')?.data ?? ''
 }
 
-// ─── 内容折叠 / 展开（默认最多 2 行，点击"更多"展开全部，再次点击"收起"折叠） ───
+// ─── 内容折叠 / 展开（默认限高 + 底部渐变模糊，箭头展开 / 收起） ───
 
 const contentRef = ref<HTMLElement>()
 /** 是否处于折叠态（默认折叠） */
 const collapsed = ref(true)
-/** 折叠态下内容是否超过两行一屏（否则无需"更多"按钮） */
+/** 折叠态下内容是否溢出限高（否则无需"展开"箭头） */
 const isOverflow = ref(false)
 
-const canToggle = computed(() => !collapsed.value || isOverflow.value)
-
 /**
- * 检测折叠内容是否存在溢出（scrollHeight 不受 -webkit-line-clamp 影响，返回完整内容高度，
- * 因此只需在折叠态下比较 scrollHeight 与 clientHeight 即可判断是否需要"更多"）。
+ * 检测折叠内容是否存在溢出（scrollHeight 不受 max-height 影响，返回完整内容高度，
+ * 因此只需在折叠态下比较 scrollHeight 与 clientHeight 即可判断是否需要"展开"箭头）。
  */
 const checkOverflow = () => {
   const el = contentRef.value
@@ -141,7 +150,7 @@ watch(collapsed, () => nextTick(checkOverflow))
 let resizeObserver: ResizeObserver | undefined
 onMounted(() => {
   nextTick(checkOverflow)
-  // 容器/窗口尺寸变化后重新判断是否需要"更多"（如聊天窗口宽度影响换行高度）
+  // 容器/窗口尺寸变化后重新判断是否需要"展开"箭头（如聊天窗口宽度影响换行高度）
   resizeObserver = new ResizeObserver(checkOverflow)
   if (contentRef.value) resizeObserver.observe(contentRef.value)
 })
@@ -155,6 +164,32 @@ onUnmounted(() => {
   width: fit-content;
   max-width: 100%;
   margin-left: auto;
+  // 内容外壳：折叠态承载限高与底部渐变模糊，箭头按钮须在模糊层之外定位
+  .content-wrap {
+    position: relative;
+
+    // 折叠态：限高 3 行（66px）；仅当内容溢出时底部逐渐模糊（短消息限高无副作用，但不能被无故糊掉）
+    &.is-collapsed {
+      .r-chat-list__user-content {
+        max-height: 66px;
+        overflow: hidden;
+      }
+
+      // 底部模糊覆盖层：backdrop-filter 模糊内容，自身 mask 渐变使模糊强度自上而下递增
+      &.is-faded::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 30px;
+        backdrop-filter: blur(6px);
+        mask-image: linear-gradient(to bottom, transparent, black 90%);
+        pointer-events: none;
+      }
+    }
+  }
+
   // 用户消息内容：文本与标签像一段文字内联排列，自然换行
   .r-chat-list__user-content {
     padding: 8px;
@@ -164,40 +199,45 @@ onUnmounted(() => {
     display: block;
     line-height: 22px;
 
-    // 折叠态：限制为最多 2 行，超出省略号截断
-    &.is-collapsed {
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      overflow: hidden;
-    }
-
     .r-chat-list__text {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
   }
-  .show-more {
-    display: inline-flex;
+  // 圆形毛玻璃箭头钮：折叠态悬浮于模糊区中央（向下展开），展开态居中排在内容下方（向上收起）
+  .toggle-arrow {
+    display: flex;
     align-items: center;
-    gap: var(--td-comp-margin-xxs);
-    margin-top: var(--td-comp-margin-xxs);
-    padding: 0 var(--td-comp-paddingLR-xxs);
-    border: none;
-    background: none;
-    color: var(--td-text-color-placeholder);
-    font: var(--td-font-body-small);
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--td-component-border);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--td-bg-color-container) 72%, transparent);
+    backdrop-filter: blur(8px);
+    color: var(--td-text-color-secondary);
     cursor: pointer;
-    user-select: none;
-    transition: color 120ms ease-out;
+    transition:
+      color 120ms ease-out,
+      background 120ms ease-out,
+      box-shadow 120ms ease-out;
 
     &:hover {
       color: var(--td-brand-color);
+      background: var(--td-brand-color-light);
+      box-shadow: var(--td-shadow-1);
     }
 
-    &__icon {
-      flex-shrink: 0;
-      font-size: var(--td-font-size-body-medium);
+    &--down {
+      position: absolute;
+      left: 50%;
+      bottom: 4px;
+      transform: translateX(-50%);
+    }
+
+    &--up {
+      margin: 6px auto 0;
     }
   }
   .footer {

@@ -1,29 +1,30 @@
 # 用户消息折叠 / 展开（MChatUser）
 
-> 用户消息内容默认最多显示 2 行，超出时显示「更多」按钮，点击展开全部；再次点击「收起」折叠回 2 行。
+> 用户消息内容默认折叠限高（3 行），底部逐渐模糊；模糊区中央向下箭头展开全部；展开后内容下方居中的向上箭头收起。
 
 ## 关键文件
 
 | 文件 | 职责 |
 |------|------|
-| `src/components/chat/chat-user/MChatUser.vue` | 用户消息组件：折叠态样式、溢出检测、更多/收起交互 |
+| `src/components/chat/chat-user/MChatUser.vue` | 用户消息组件：折叠限高与渐变模糊、溢出检测、箭头展开 / 收起交互 |
 
-## 折叠与展开逻辑
+## 交互结构
 
-- **折叠态（默认）**：内容容器 `.r-chat-list__user-content` 叠加 `is-collapsed` class，使用 `display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden` 将内容限制为最多 2 行并省略号截断。
-- **展开态**：移除 `is-collapsed`，容器恢复 `display: block`，渲染全部内容。
-- **`collapsed` ref** 默认 `true`，控制 `is-collapsed` class 与按钮文案/图标：
-  - 折叠时按钮显示 `ChevronDownIcon` +「更多」
-  - 展开时按钮显示 `ChevronUpIcon` +「收起」
-- **`toggle()`**：切换 `collapsed`。
+- 内容外包一层 `.content-wrap`（承担 `is-collapsed` class 与 `position: relative`），箭头按钮与模糊覆盖层都挂在 wrapper 上——箭头不能放在被模糊遮罩影响的容器内。
+- **折叠态（默认）**：
+  - 内容容器 `.r-chat-list__user-content` 设 `max-height: 66px; overflow: hidden`（行高 22px × 3 行；项目全局为 content-box，66px 恰好限 3 行文字，padding 不受限）。
+  - wrapper（`.is-collapsed.is-faded`）`::after` 底部 30px 覆盖层：`backdrop-filter: blur(6px)` 模糊内容，覆盖层自身 `mask-image: linear-gradient(to bottom, transparent, black 90%)` 使模糊强度自上而下递增，形成"逐渐模糊"效果（替代省略号截断）。模糊层仅在 `isOverflow` 时出现（`is-faded`）——限高对 2~3 行短消息无副作用，但不能被无故糊掉。
+  - `.toggle-arrow--down`（`ChevronDownIcon`）：绝对定位 `left: 50%; bottom: 4px; translateX(-50%)`，悬浮于模糊区中央，点击展开。
+- **展开态**：移除 `is-collapsed`，容器不限高渲染全部内容；`.toggle-arrow--up`（`ChevronUpIcon`）以 `margin: 6px auto 0` 居中排在内容下方，点击收起。
+- **`collapsed` ref** 默认 `true`，`toggle()` 切换。
 
-## 溢出检测（是否需要按钮）
+## 溢出检测（是否需要箭头）
 
-- **`isOverflow`**：折叠态下 `scrollHeight > clientHeight + 1` 判定内容是否存在换行溢出（超 2 行）。
-  - 原理：`scrollHeight` 不受 `-webkit-line-clamp` 影响，返回完整内容高度；`clientHeight` 为 clamp 后的可视高度。仅在折叠态下比较两者即可判断是否需要「更多」按钮。
-- **`canToggle`** = `!collapsed || isOverflow`：
-  - 展开态恒显「收起」；
-  - 折叠态仅当存在溢出才显示「更多」，单行/两行以内的消息不显示按钮。
+- **`isOverflow`**：折叠态下 `scrollHeight > clientHeight + 1` 判定内容是否溢出限高。
+  - 原理：`scrollHeight` 不受 `max-height` 影响，返回完整内容高度；`clientHeight` 为限高后的可视高度。仅在折叠态下比较两者即可判断是否需要"展开"箭头。
+- **按钮显隐条件**：
+  - 折叠箭头：`collapsed && isOverflow`（短消息不显示任何箭头）；
+  - 收起箭头：`!collapsed`（能进入展开态必然溢出过，无需再看 `isOverflow`）。
 - **触发时机**：
   - `onMounted` → `nextTick` 后首次检测；
   - `watch(collapsed)` → `nextTick` 后重新检测；
@@ -31,6 +32,7 @@
 
 ## 注意事项
 
-- 内容为文本与 `t-tag` 标签内联混排，折叠态使用 `-webkit-box` 仍可正常内联换行，布局语义不变。
-- 文案、图标、样式均沿用 tdesign token（字体：`--td-font-body-small`；颜色：默认 `--td-text-color-placeholder`、hover `--td-brand-color`；间距：`--td-comp-*` 系列），禁止裸色值。
-- 按钮使用原生 `<button>` 实现（非业务弹窗场景），图标统一使用 tdesign icons。
+- 内容为文本与 `t-tag` 标签内联混排，限高仅裁剪高度、不改布局语义，内联换行不受影响。
+- 逐渐模糊依赖 `backdrop-filter` + `mask-image` 渐变，Electron（Chromium）环境完全支持。
+- 样式均沿用 tdesign token（边框 `--td-component-border`；背景 `color-mix(in srgb, var(--td-bg-color-container) 72%, transparent)` 半透明毛玻璃；hover `--td-brand-color` / `--td-brand-color-light` / `--td-shadow-1`），禁止裸色值。
+- 箭头按钮使用原生 `<button>` 实现（非业务弹窗场景），图标统一使用 tdesign icons。
