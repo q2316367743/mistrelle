@@ -21,6 +21,34 @@ declare interface FileStat {
   birthtime: number
 }
 
+declare interface FsGlobOptions {
+  path: string
+  pattern: string
+}
+
+declare interface FsGlobResult {
+  files: string[]
+  truncated: boolean
+}
+
+declare interface FsGrepOptions {
+  path: string
+  pattern: string
+  include?: string
+  ignoreCase?: boolean
+}
+
+declare interface FsGrepMatch {
+  file: string
+  line: number
+  text: string
+}
+
+declare interface FsGrepResult {
+  matches: FsGrepMatch[]
+  truncated: boolean
+}
+
 declare interface FsApi {
   readDir: (path: string) => Promise<Array<FileItem>>
   writeTextFile: (path: string, text: string) => Promise<void>
@@ -33,4 +61,6 @@ declare interface FsApi {
   rename: (src: string, dest: string) => Promise<void>
   writeBinaryFile: (path: string, arrayBuffer: ArrayBuffer) => Promise<void>
   stat: (path: string) => Promise<FileStat>
+  glob: (opts: FsGlobOptions) => Promise<FsGlobResult>
+  grep: (opts: FsGrepOptions) => Promise<FsGrepResult>
 }

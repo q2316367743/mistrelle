@@ -181,5 +181,64 @@ export const fileTools: ToolFunction[] = [
         return { error: `无法获取文件信息：${path}（路径不存在或无法访问）` }
       }
     }
+  },
+  {
+    name: 'file_glob',
+    label: '匹配查找文件',
+    description:
+      '按 glob 模式递归查找文件，返回匹配的文件绝对路径列表（不含目录）。模式语法：** 匹配任意层级（如 **/*.vue 匹配所有 .vue 文件），* 匹配单层内任意字符（不含 /），? 匹配单个字符，{a,b} 多选一。自动忽略 node_modules/.git/dist 等目录；结果超上限会截断，请收窄模式后重试',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: '搜索起始目录' },
+        pattern: { type: 'string', description: 'glob 模式，如 **/*.vue、src/**/*.ts、*.{json,md}' }
+      },
+      required: ['path', 'pattern']
+    },
+    risk: 'safe',
+    handler: async (...params: unknown[]) => {
+      const { path, pattern } = params[0] as { path: string; pattern: string }
+      const error = checkBlacklist(path)
+      if (error) return { error }
+      if (!window.preload.fs.existsSync(path)) return { error: `目录不存在：${path}` }
+      try {
+        return await window.preload.fs.glob({ path, pattern })
+      } catch (e) {
+        return { error: `查找文件失败：${e instanceof Error ? e.message : String(e)}` }
+      }
+    }
+  },
+  {
+    name: 'file_grep',
+    label: '搜索文件内容',
+    description:
+      '在指定目录下递归搜索文件内容（正则表达式逐行匹配），返回文件路径、行号与该行内容。可用 include 按文件名过滤（如 *.ts）。只搜索文本文件（跳过二进制与超大文件），自动忽略 node_modules/.git/dist 等目录；结果超上限会截断，请收窄 pattern 或 include 后重试',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: '搜索起始目录' },
+        pattern: { type: 'string', description: '要搜索的正则表达式' },
+        include: { type: 'string', description: '文件名 glob 过滤（如 *.ts、*.vue），可选' },
+        ignoreCase: { type: 'boolean', description: '是否忽略大小写，默认 false' }
+      },
+      required: ['path', 'pattern']
+    },
+    risk: 'safe',
+    handler: async (...params: unknown[]) => {
+      const { path, pattern, include, ignoreCase } = params[0] as {
+        path: string
+        pattern: string
+        include?: string
+        ignoreCase?: boolean
+      }
+      const error = checkBlacklist(path)
+      if (error) return { error }
+      if (!window.preload.fs.existsSync(path)) return { error: `目录不存在：${path}` }
+      try {
+        return await window.preload.fs.grep({ path, pattern, include, ignoreCase })
+      } catch (e) {
+        return { error: `搜索文件内容失败：${e instanceof Error ? e.message : String(e)}` }
+      }
+    }
   }
 ]

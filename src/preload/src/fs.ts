@@ -5,7 +5,13 @@
  */
 import { ipcRenderer } from 'electron'
 import {existsSync} from 'node:fs'
-import { FsChannels } from './channels'
+import {
+  FsChannels,
+  type FsGlobOptions,
+  type FsGlobResult,
+  type FsGrepOptions,
+  type FsGrepResult
+} from './channels'
 
 interface FileEntry {
   name: string
@@ -44,5 +50,7 @@ export const fsApi = {
     ipcRenderer.invoke(FsChannels.rename, src, dest),
   writeBinaryFile: (path: string, arrayBuffer: ArrayBuffer): Promise<void> =>
     ipcRenderer.invoke(FsChannels.writeBinaryFile, path, arrayBuffer),
-  stat: (path: string): Promise<FileEntry> => ipcRenderer.invoke(FsChannels.stat, path)
+  stat: (path: string): Promise<FileEntry> => ipcRenderer.invoke(FsChannels.stat, path),
+  glob: (opts: FsGlobOptions): Promise<FsGlobResult> => ipcRenderer.invoke(FsChannels.glob, opts),
+  grep: (opts: FsGrepOptions): Promise<FsGrepResult> => ipcRenderer.invoke(FsChannels.grep, opts)
 }
