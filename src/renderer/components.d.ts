@@ -53,6 +53,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SegmentedControl: typeof import('./src/components/ui/SegmentedControl.vue')['default']
     ShellChatTool: typeof import('./src/components/chat/chat-assistant/tool/ShellChatTool.vue')['default']
+    ShinyText: typeof import('./src/components/bits/ShinyText.vue')['default']
     SkillChatTool: typeof import('./src/components/chat/chat-assistant/tool/SkillChatTool.vue')['default']
     SubAgentChatTool: typeof import('./src/components/chat/chat-assistant/tool/SubAgentChatTool.vue')['default']
     SubAgentTabs: typeof import('./src/components/chat/SubAgentTabs.vue')['default']

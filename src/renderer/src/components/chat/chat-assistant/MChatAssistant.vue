@@ -47,7 +47,17 @@
     <FileProductList :message="message" />
 
     <div v-if="isLoading" class="loading-indicator">
-      <span class="loading-dots">{{ loadingText }}</span>
+      <ShinyText
+        :text="loadingText"
+        :speed="2"
+        :delay="0"
+        color="var(--td-text-color-placeholder)"
+        shine-color="var(--td-text-color-primary)"
+        :spread="120"
+        direction="left"
+        :yoyo="false"
+        :pause-on-hover="false"
+      />
     </div>
 
     <div v-else-if="isCompleted" class="footer-info">
@@ -124,7 +134,11 @@ const finalContent = computed<AIMessageContent | undefined>(() => {
   const contents = props.message.content ?? []
   for (let i = contents.length - 1; i >= 0; i--) {
     const item = contents[i]
-    if ((item.type === 'text' || item.type === 'markdown') && !isContinueHint(item) && !isRetryNotice(item)) {
+    if (
+      (item.type === 'text' || item.type === 'markdown') &&
+      !isContinueHint(item) &&
+      !isRetryNotice(item)
+    ) {
       return item
     }
   }
@@ -341,6 +355,7 @@ const handleViewSubAgent = (subAgentId: string) => {
   align-items: center;
   gap: 8px;
   padding: 8px 0;
+  font-size: 0.95rem;
   &::after {
     content: '';
     display: inline-block;
