@@ -184,6 +184,13 @@ export async function requestStream(config: StreamRequestOptions): Promise<Strea
   const _config = httpRequestToAxiosConfig(rest)
   _config.responseType = 'stream'
 
+  const requestUrl = `${_config.method} ${_config.baseURL || ''}${_config.url}`
+  logger.debug(`发起流式请求: ${requestUrl}`)
+  const startTime = Date.now()
+  let receivedBytes = 0
+  // 主动取消（外部 abort / 消费方提前退出）导致的失败不算错误
+  let cancelled = false
+
   let infoResolved = false
   let resolveInfo!: (info: {
     requestId: string
@@ -218,9 +225,11 @@ export async function requestStream(config: StreamRequestOptions): Promise<Strea
     {
       onStart: (info) => {
         infoResolved = true
+        logger.debug(`流式响应到达: ${requestUrl}`, { status: info.status, headers: info.headers })
         resolveInfo(info)
       },
       onChunk: (chunk) => {
+        receivedBytes += chunk.byteLength
         queue.push(new Uint8Array(chunk))
         wake()
       }
@@ -229,11 +238,27 @@ export async function requestStream(config: StreamRequestOptions): Promise<Strea
   donePromise.then(
     () => {
       settled = true
+      logger.debug(`流式请求完成: ${requestUrl}`, {
+        receivedBytes,
+        duration: Date.now() - startTime
+      })
       wake()
     },
     (error: unknown) => {
       settled = true
       streamError = error
+      if (cancelled) {
+        logger.debug(`流式请求已取消: ${requestUrl}`, {
+          receivedBytes,
+          duration: Date.now() - startTime
+        })
+      } else {
+        logger.error(`流式请求失败: ${requestUrl}`, {
+          receivedBytes,
+          duration: Date.now() - startTime,
+          error
+        })
+      }
       if (!infoResolved) rejectInfo(error)
       wake()
     }
@@ -245,9 +270,13 @@ export async function requestStream(config: StreamRequestOptions): Promise<Strea
   let removeAbortListener: (() => void) | null = null
   if (signal) {
     if (signal.aborted) {
+      cancelled = true
       window.preload.aiStream.streamAbort(info.requestId)
     } else {
-      const onAbort = (): void => window.preload.aiStream.streamAbort(info.requestId)
+      const onAbort = (): void => {
+        cancelled = true
+        window.preload.aiStream.streamAbort(info.requestId)
+      }
       signal.addEventListener('abort', onAbort, { once: true })
       removeAbortListener = () => signal.removeEventListener('abort', onAbort)
     }
@@ -269,7 +298,10 @@ export async function requestStream(config: StreamRequestOptions): Promise<Strea
     } finally {
       removeAbortListener?.()
       // 消费方提前退出（break / return / 异常）时取消底层请求，避免悬挂
-      if (!settled) window.preload.aiStream.streamAbort(info.requestId)
+      if (!settled) {
+        cancelled = true
+        window.preload.aiStream.streamAbort(info.requestId)
+      }
     }
   }
 

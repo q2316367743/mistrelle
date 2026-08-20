@@ -1,7 +1,7 @@
 import type { AiRequestParams, AiStreamChunk, AiToolCallDelta } from '../types'
 import type { SseFrame } from '../sse'
 import { AiFormatAdapter } from './types'
-import { isRecord, normalizeBase, strField, toUsage } from './util'
+import { isRecord, normalizeBase, strField, toStreamError, toUsage } from './util'
 
 /**
  * OpenAI Responses API（/responses）适配器（DeepSeek 亦兼容此协议）。
@@ -126,6 +126,10 @@ export const createResponsesAdapter = (): AiFormatAdapter => {
           if (name) toolCall.function = { name }
           chunks.push({ choices: [{ delta: { tool_calls: [toolCall] } }] })
         }
+      } else if (type === 'response.failed') {
+        // 失败事件转可见错误（response.error 含 code/message，code 非数字则按普通 Error 可重试）
+        const response = isRecord(data['response']) ? data['response'] : undefined
+        throw toStreamError(response?.['error'] ?? data)
       } else if (type === 'response.completed') {
         const response = isRecord(data['response']) ? data['response'] : undefined
         chunks.push({

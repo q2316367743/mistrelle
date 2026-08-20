@@ -1,7 +1,7 @@
 import type { AiRequestParams, AiStreamChunk, AiUsage } from '../types'
 import type { SseFrame } from '../sse'
 import { AiFormatAdapter } from './types'
-import { isRecord, normalizeBase, safeJsonParse, strField, toUsage } from './util'
+import { isRecord, normalizeBase, safeJsonParse, strField, toStreamError, toUsage } from './util'
 
 /** Anthropic 缺省 max_tokens（Messages API 必填） */
 const DEFAULT_MAX_TOKENS = 4096
@@ -101,6 +101,8 @@ export const createAnthropicAdapter = (): AiFormatAdapter => {
       }
       if (!isRecord(data)) return []
       const type = strField(data, 'type') ?? ''
+      // 错误事件帧转可见错误；Anthropic 错误帧无 HTTP code，走普通 Error（按可重试处理）
+      if (type === 'error') throw toStreamError(data['error'])
       const chunks: AiStreamChunk[] = []
 
       if (type === 'message_start') {

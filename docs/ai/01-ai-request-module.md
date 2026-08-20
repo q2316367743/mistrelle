@@ -69,11 +69,11 @@ listAiModels({ baseURL, apiKey, format }): Promise<Array<{ id: string }>> // GET
 |---|---|
 | `src/preload/src/aiStream.ts` | 薄桥：`streamRequest(config, {onStart,onChunk})` + `streamAbort(requestId)`；AbortController 按 requestId 管理；Buffer 拷贝为独立 ArrayBuffer 再过桥 |
 | `src/renderer/src/types/aiStream.d.ts` + `vite-env.d.ts` | `window.preload.aiStream` 类型 |
-| `src/renderer/src/plugin/http.ts` | `requestStream(config)：Promise<{status, headers, stream}>`；队列异步迭代器 + signal→streamAbort + 提前退出自动取消 |
+| `src/renderer/src/plugin/http.ts` | `requestStream(config)：Promise<{status, headers, stream}>`；队列异步迭代器 + signal→streamAbort + 提前退出自动取消；全生命周期日志（发起 / 响应到达 / 完成 / 失败 / 已取消，含字节数与耗时，取消与失败分级区分） |
 | `src/renderer/src/modules/ai/types.ts` | 归一类型（对齐 chat 形状） |
 | `src/renderer/src/modules/ai/sse.ts` | `SseParser`：按空行分帧、多行 data 拼接、`[DONE]` 透传、flush 残余 |
 | `src/renderer/src/modules/ai/transport.ts` | `streamSseFrames`：非 2xx 收集错误体抛 `HttpError`（`HTTP {status}: {message}`，附带 `status` 字段，导出 `isHttpError` 守卫供重试策略判 429/5xx）；TextDecoder 增量解码 |
-| `src/renderer/src/modules/ai/formats/{chat,responses,anthropic}.ts` | 三份 `AiFormatAdapter`（buildRequest / normalizeChunk）；responses 需实例级状态（pendingArgIndices 对齐 done 事件的索引），anthropic 需实例级 usage 累积 → 用工厂 `createXxxAdapter()` 每请求新建 |
+| `src/renderer/src/modules/ai/formats/{chat,responses,anthropic}.ts` | 三份 `AiFormatAdapter`（buildRequest / normalizeChunk）；responses 需实例级状态（pendingArgIndices 对齐 done 事件的索引），anthropic 需实例级 usage 累积 → 用工厂 `createXxxAdapter()` 每请求新建；三格式均识别服务端错误帧并抛可见错误（chat `error` 字段 / anthropic `event:error` / responses `response.failed`，经 `toStreamError` 构造，chat code 为数字时附带 status 供重试分类，message 超 200 字截断） |
 | `src/renderer/src/modules/ai/service.ts` | 对外 API + 适配器分发 |
 
 ## 消费方改造

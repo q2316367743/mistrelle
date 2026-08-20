@@ -11,6 +11,6 @@ export interface AiFormatAdapter {
     headers: Record<string, string>
     body: Record<string, unknown>
   }
-  /** 把一个 SSE 帧归一成 0..n 个 AiStreamChunk */
+  /** 把一个 SSE 帧归一成 0..n 个 AiStreamChunk；服务端错误帧抛 Error（chat 格式 code 为数字时带 status 供重试分类） */
   normalizeChunk(frame: SseFrame): AiStreamChunk[]
 }

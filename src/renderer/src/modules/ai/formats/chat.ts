@@ -1,7 +1,7 @@
 import type { AiRequestParams, AiStreamChunk } from '../types'
 import type { SseFrame } from '../sse'
 import { AiFormatAdapter } from './types'
-import { isRecord, normalizeBase } from './util'
+import { isRecord, normalizeBase, toStreamError } from './util'
 
 /**
  * OpenAI Chat Completions（/chat/completions）适配器。
@@ -49,6 +49,11 @@ export const chatAdapter: AiFormatAdapter = {
       return []
     }
     if (!isRecord(data)) return []
+    // 服务端错误帧（200 + {"error":{...}}，无 choices）：转可见错误抛出。
+    // 此前被消费层 !choice 静默丢弃，界面无声终止且无任何日志（实测：代理校验历史 toolcall
+    // 参数失败回 500 错误帧，仅 471 字节）。code 为数字时附带 status 供重试策略分类
+    const error = data['error']
+    if (error) throw toStreamError(error)
     return [data as unknown as AiStreamChunk]
   }
 }

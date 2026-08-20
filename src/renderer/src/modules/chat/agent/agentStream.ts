@@ -10,6 +10,7 @@ import {
   type SSEChunkData
 } from '@/modules/chat'
 import { nanoid } from 'nanoid'
+import { useLog } from '@/hooks/UseLog'
 import {
   appendAssistantContent,
   removeStepContents,
@@ -22,6 +23,8 @@ import type { StreamStepResult, ToolCall } from './agentTypes'
 const DEFAULT_MAX_RETRIES = 3
 /** 重试退避基准间隔（毫秒），实际等待 retryInterval * 2^已重试次数（2s → 4s → 8s） */
 const DEFAULT_RETRY_INTERVAL = 2000
+
+const logger = useLog({ name: 'chat:agent-stream' })
 
 type StreamOptions = {
   messages: Ref<ChatMessage[]>
@@ -130,6 +133,8 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
     const accumulated = new Map<number, { id: string; name: string; args: string }>()
     let finishReason: string | null | undefined
     let usage: ChatUsage | undefined
+    // 是否收到过可渲染内容（正文 / 思考 / 工具调用增量），用于空流告警
+    let receivedContent = false
     for await (const chunk of stream) {
       if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
       // usage 常出现在末个 chunk（choices 为空），需在跳过前捕获
@@ -148,6 +153,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
       const delta = choice.delta
       const reasoning = extractReasoningContent(delta)
       if (reasoning) {
+        receivedContent = true
         appendAssistantContent(options.messages, options.assistantMessageId, {
           type: 'thinking',
           stepId,
@@ -157,6 +163,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
         })
       }
       if (delta.content) {
+        receivedContent = true
         appendAssistantContent(options.messages, options.assistantMessageId, {
           type: 'markdown',
           stepId,
@@ -176,6 +183,27 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
     }
 
     if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
+    // 流体面正常结束但一无所获：无内容、无工具调用、无 finish_reason（典型：200 + 非 SSE 响应体
+    // 被解析为 0 帧、或服务端空补全；错误帧已由适配器转抛，不会走到这里），不告警则用户只能看到界面无声终止
+    if (!receivedContent && !finishReason && accumulated.size === 0) {
+      logger.warn('流正常结束但未收到任何有效内容', {
+        model: options.requestParams.message.model,
+        baseURL: options.requestParams.baseURL
+      })
+    }
+    // 工具参数落历史前校验 JSON：模型偶发生成非法参数（多余引号/语法残缺），一旦入库，
+    // 本会话后续每轮请求都会被服务端以参数解析失败拒绝（实测 200 + error 帧循环失败，会话 brick）。
+    // 非法按普通 Error 抛出走既有重试，重掷大概率得到合法 JSON；空串放行（无参工具，执行器回退 {}）
+    for (const call of accumulated.values()) {
+      if (!call.args) continue
+      try {
+        JSON.parse(call.args)
+      } catch (e) {
+        throw new Error(
+          `工具调用参数 JSON 非法（${call.name || '未知工具'}）：${e instanceof Error ? e.message : String(e)}`
+        )
+      }
+    }
     const toolCalls: ToolCall[] = Array.from(accumulated.values()).map((call) => ({
       toolCallId: call.id || `call_${nanoid()}`,
       toolCallName: call.name,

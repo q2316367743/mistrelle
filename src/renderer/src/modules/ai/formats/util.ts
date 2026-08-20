@@ -46,3 +46,22 @@ export const isRecord = (value: unknown): value is Record<string, unknown> =>
 /** 提取字符串字段 */
 export const strField = (record: Record<string, unknown>, key: string): string | undefined =>
   typeof record[key] === 'string' ? (record[key] as string) : undefined
+
+/**
+ * 服务端错误对象（SSE 错误帧内的 error 字段）转可抛出的可见错误。
+ * - message 超长截断（错误帧常内嵌完整请求参数回显，全文进 UI 提示不可读）；
+ * - code 为数字或数字串时附带 status（HttpError 形状），供重试策略按 429/5xx 分类。
+ */
+export const toStreamError = (error: unknown): Error => {
+  if (!isRecord(error)) return new Error(String(error))
+  const raw = strField(error, 'message') ?? strField(error, 'type') ?? '服务端返回错误'
+  const message = raw.length > 200 ? `${raw.slice(0, 200)}…` : raw
+  const code = error['code']
+  const status =
+    typeof code === 'number'
+      ? code
+      : typeof code === 'string' && /^\d+$/.test(code)
+        ? Number(code)
+        : undefined
+  return status === undefined ? new Error(message) : Object.assign(new Error(message), { status })
+}

@@ -10,7 +10,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/renderer/src/modules/chat/agent/agentStream.ts` | 重试循环：`runOnce(stepId)` 单次尝试（原流消费逻辑）+ 外层 attempt 循环、`isRetryableError`、`abortableDelay` |
+| `src/renderer/src/modules/chat/agent/agentStream.ts` | 重试循环：`runOnce(stepId)` 单次尝试（原流消费逻辑）+ 外层 attempt 循环、`isRetryableError`、`abortableDelay`；流正常结束但无内容 / 无工具调用 / 无 finish_reason 时 `logger.warn` 空流告警（典型：200 + 非 SSE 响应体解析为 0 帧、服务端空补全）；工具参数 JSON 落历史前校验，非法抛可重试错误（见错误分类表） |
 | `src/renderer/src/modules/chat/agent/agentMessages.ts` | `removeStepContents`（按 stepId 清半截内容）、`upsertStepNotice`（提示块原地更新 / 追加） |
 | `src/renderer/src/modules/ai/transport.ts` | `HttpError = Error & { status }` 与 `isHttpError` 守卫（`buildHttpError` 构造时附带状态码） |
 | `src/renderer/src/components/chat/chat-assistant/MChatAssistant.vue` | `isRetryNotice` 分支：提示块渲染为 `RefreshIcon` + 灰色状态行 |
@@ -24,6 +24,8 @@
 | 其余 HTTP 4xx（401/403/400…） | 不重试，立即上抛（鉴权 / 参数错误，重试无意义） |
 | axios 空壳 4xx（消息形如 `Request failed with status code 403`，尚无 `status` 字段） | 不重试；与 HttpError 4xx 同等对待 |
 | 网络 / 流中断错误（无 status 的普通 Error） | 重试 |
+| 服务端错误帧（200 + SSE `error` 帧，chat 格式 code 为数字） | 转 `HttpError` 按状态码分类：429/5xx 重试，其余 4xx 上抛 |
+| 工具调用参数 JSON 非法（`runOnce` 落历史前校验） | 重试（重掷大概率得到合法 JSON；防止非法参数污染历史导致会话 brick） |
 | 非 Error 抛出值 | 不重试 |
 
 ## 重试流程（attempt 循环）
