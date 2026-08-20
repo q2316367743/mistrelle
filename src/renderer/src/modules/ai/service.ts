@@ -37,6 +37,7 @@ export async function* createChatStream(params: AiRequestParams): AsyncGenerator
  * 统一 AI 非流式对话入口（会话命名 / 总结等短任务）。
  * 内部走流式通道聚合：部分服务端不支持 `stream: false` 会在传输前关闭连接（axios「stream has been aborted」），
  * 统一改由 createChatStream（`stream: true`）逐帧累积，契约 AiCompletionResult 不变。
+ * 只累积 `delta.content` 正文；思考增量（`reasoning_content`）不混入——调用方均为短任务，思考全文只会污染标题 / 总结。
  */
 export const createChatCompletion = async (
   params: AiRequestParams
@@ -49,7 +50,6 @@ export const createChatCompletion = async (
     const choice = chunk.choices?.[0]
     const delta = choice?.delta
     if (delta?.content) content += delta.content
-    if (delta?.reasoning_content) content += delta.reasoning_content
     // 兜底：个别服务端对 `stream: true` 仍返回非流式 JSON（只有 message 没有 delta）
     if (!content && choice?.message?.content) content = choice.message.content
     if (choice?.finish_reason) finishReason = choice.finish_reason

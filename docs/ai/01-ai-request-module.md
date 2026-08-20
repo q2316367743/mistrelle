@@ -61,6 +61,7 @@ listAiModels({ baseURL, apiKey, format }): Promise<Array<{ id: string }>> // GET
 - `bodyOverride`：`ChatServiceConfig.onRequest` 返回的 body 覆盖项（格式原生 body，spread 进请求体，优先级最高）。
 - `format` 缺省按 `chat` 处理（`ResolvedChatRequestParams.format ?? 'chat'`，兼容旧配置无 format 字段）。
 - `createChatCompletion` **不再发送 `stream: false`**：部分 OpenAI 兼容服务端（如本地 vLLM / llama.cpp 类）不支持非流式请求，会在传输前关闭连接，axios 抛 `ERR_BAD_RESPONSE`「stream has been aborted」。统一改由 `createChatStream`（`stream: true`）逐帧累积 `delta.content`，契约 `AiCompletionResult` 不变，`UseChatName` / `UseDiscussionName` / `summarize.ts` 调用方零改动。兜底：个别服务端对 `stream: true` 仍回非流式 JSON（无 delta 只有 `message`），`AiStreamChunk.choices[0].message` 字段兜底取完整内容。
+- `createChatCompletion` **只累积 `delta.content` 正文，思考增量（`delta.reasoning_content`）不混入**：该入口服务命名 / 总结等短任务，思考型模型（未显式关思考时默认开启）的思考全文若拼进结果，会把标题 / 总结污染成"对用户输入的分析与回答"。`UseChatName` / `UseDiscussionName` 另显式传 `thinking: false` 关闭思考（chat 格式 → `body.thinking={type:'disabled'}`，与主链路用户关思考同路径，兼容性已验证）。
 
 ## 关键文件
 

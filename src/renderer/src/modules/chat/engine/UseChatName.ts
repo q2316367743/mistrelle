@@ -22,6 +22,8 @@ export const useChatName = async (content: string): Promise<string> => {
       apiKey: option.key,
       format: option.format ?? 'chat',
       model: option.model,
+      // 标题生成无需思考：显式关闭，避免思考型模型输出长思考拖慢且偏离指令
+      thinking: false,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content }
