@@ -37,6 +37,12 @@
 | [02-local-protocol.md](./migration/02-local-protocol.md)                       | `mistrelle://` 本地资源协议：渲染层 URL 加载本地字体/图片，规避 dev 下 http 页面加载 file:// 被 Chromium 拦截；`registerLocalSchemes` 须在 app ready 前注册、handler 读盘返回 |
 | [03-lmdb-to-json.md](./migration/03-lmdb-to-json.md)                           | lmdb → 本地 JSON 收尾迁移：剩余消费点（network/global/secure/default setting、workspace 历史）映射与行为变化（rev 删除、不预写空文件、init 后注册 watch、孤儿 AiWorkspaceStore 直接删除）、lmdb 全链路删除清单、`~/.mistrelle/` JSON 存储全景 |
 
+### data/ —— 数据存储
+
+| 文档                                                        | 描述                                                                                 |
+|-------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| [01-sqlite-storage.md](./data/01-sqlite-storage.md)         | SQLite 存储层：Drizzle + better-sqlite3（主进程持有全部 DB 逻辑）、DB 路径 `~/.mistrelle/db/mistrelle.db`、schema、IPC 领域方法契约、aihot 去重/分页、旧 selected.json 丢弃重引导、后续模块复用步骤 |
+
 ### browserTool/ —— 浏览器工具
 
 | 文档                                                              | 描述                                                                                                                       |

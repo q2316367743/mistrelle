@@ -33,6 +33,7 @@ declare global {
       aiStream: AiStreamApi
       safeStorage: SafeStorageApi
       webUtils: WebUtilsApi
+      db: DbApi
       shellExec: {
         cliRun(
           command: string,

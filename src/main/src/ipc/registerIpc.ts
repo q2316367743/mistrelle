@@ -10,6 +10,7 @@ import { registerSharpIpc } from './sharpIpc'
 import { registerPptIpc } from './pptIpc'
 import { registerBrowserToolIpc } from './browserToolIpc'
 import { registerSafeStorageIpc } from './safeStorageIpc'
+import { registerDbIpc } from './dbIpc'
 
 export function registerIpc(): void {
   registerShellIpc()
@@ -26,4 +27,5 @@ export function registerIpc(): void {
   registerPptIpc()
   registerBrowserToolIpc()
   registerSafeStorageIpc()
+  registerDbIpc()
 }

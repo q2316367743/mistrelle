@@ -45,7 +45,7 @@
 
     <div class="aihot-items__status">
       <template v-if="isLocal">
-        <span>本地精选 {{ filtered.length }} 条</span>
+        <span>本地精选 {{ total }} 条</span>
         <span v-if="syncedAt">同步于 {{ aihotRelativeTime(syncedAt) }}</span>
         <span v-else>首次同步中…</span>
       </template>
@@ -53,7 +53,7 @@
     </div>
 
     <div class="aihot-items__body">
-      <t-loading :loading="listLoading" size="small" class="aihot-items__loading">
+      <t-loading :loading="viewLoading" size="small" class="aihot-items__loading">
         <aihot-timeline-list
           v-if="displayItems.length > 0"
           :groups="displayGroups"
@@ -62,7 +62,7 @@
           class="px-8px"
         />
         <empty-result
-          v-else-if="!listLoading"
+          v-else-if="!viewLoading"
           title="暂无资讯"
           tip="试试调整筛选条件或换个关键词"
         />
@@ -73,8 +73,8 @@
       <t-button
         v-if="displayHasMore"
         variant="dashed"
-        :loading="moreLoading"
-        :disabled="listLoading"
+        :loading="footerLoading"
+        :disabled="viewLoading"
         @click="loadMore"
       >
         加载更多
@@ -130,13 +130,13 @@ const isLocal = computed(() => mode.value === 'selected')
 
 // ====================================== 本地精选数据源 ======================================
 const {
-  ready,
-  syncing,
   manualSyncing,
   syncedAt,
-  filtered,
-  visible,
+  list,
+  total,
   hasMore: localHasMore,
+  loading: localLoading,
+  moreLoading: listMoreLoading,
   init,
   sync,
   resetShown,
@@ -187,16 +187,13 @@ const loadOnline = async (reset: boolean) => {
 }
 
 // ====================================== 统一展示出口 ======================================
-const displayItems = computed(() => (isLocal.value ? visible.value : onlineList.value))
+const displayItems = computed(() => (isLocal.value ? list.value : onlineList.value))
 const displayGroups = computed(() => groupAihotItemsByDay(displayItems.value, by.value))
 const displayHasMore = computed(() => (isLocal.value ? localHasMore.value : onlineHasMore.value))
-/** 首开无缓存时引导同步遮罩；已有数据则静默同步不打断浏览 */
-const listLoading = computed(() => {
-  if (isLocal.value) {
-    return !ready.value || (syncing.value && filtered.value.length === 0 && !syncedAt.value)
-  }
-  return onlineLoading.value
-})
+/** 首屏遮罩（本地为 DB 首查 / 首次同步引导，在线为在线查询加载态） */
+const viewLoading = computed(() => (isLocal.value ? localLoading.value : onlineLoading.value))
+/** 「加载更多」按钮 loading：本地走 DB 续页，在线走游标续页 */
+const footerLoading = computed(() => (isLocal.value ? listMoreLoading.value : moreLoading.value))
 
 const refresh = () => (isLocal.value ? sync(true) : loadOnline(true))
 

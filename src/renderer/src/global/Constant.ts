@@ -134,13 +134,6 @@ export const getWorkspaceHistoryPath = () =>
 // 缓存类数据根目录：~/.mistrelle/cache（可再生、可整体清理，不污染数据根目录）
 export const getCacheDir = () => window.preload.path.join(dataFolder, 'cache')
 
-// AIHOT 精选集缓存目录：~/.mistrelle/cache/aihot
-export const getCacheAihotDir = () => window.preload.path.join(getCacheDir(), 'aihot')
-
-// AIHOT 精选集缓存文件：~/.mistrelle/cache/aihot/selected.json
-export const getCacheAihotSelectedPath = () =>
-  window.preload.path.join(getCacheAihotDir(), 'selected.json')
-
 // 单个工具结果的最大字节数，超出则截断，避免超大输出撑爆上下文窗口
 export const MAX_TOOL_RESULT_BYTES = 128 * 1024
 

@@ -26,14 +26,13 @@
 ## 关键文件
 
 ```
-global/Constant.ts                        # +getCacheDir/getCacheAihotDir/getCacheAihotSelectedPath
 modules/aihot/
-├── AihotSelectedService.ts               # 精选集本地缓存 + snapshot/changes 同步状态机
+├── AihotSelectedService.ts               # 精选集 DB 存储 + snapshot/changes 同步状态机
 └── AihotRequestError.ts                  # 请求异常统一处理（状态码/Retry-After 提示）
 pages/attachment/aihot/
 ├── AttachmentAihotPage.vue               # 壳：page-layout + t-tabs
 ├── aihot-page-utils.ts                   # 分类映射 / storyIdFromLink / 相对时间 / 时间轴分组
-├── useAihotSelectedItems.ts              # 本地数据源 composable（本地筛选/排序/分片）
+├── useAihotSelectedItems.ts              # 本地数据源 composable（DB 分页查询/筛选/排序）
 └── components/
     ├── AihotItemsView.vue                # 资讯：双数据源 + 筛选栏 + 时间轴 + 加载更多
     ├── AihotTimelineList.vue             # 时间轴列表（日期分组/粘性组头/时间线）
@@ -49,30 +48,25 @@ pages/attachment/aihot/
 
 API 层复用 `modules/api/aihot`（全量 8 端点，`requestJson` 走 preload axios 桥，匿名无鉴权；增量游标在响应体内，无需改造 http 层）。
 
-## 精选集本地缓存与增量同步（AihotSelectedService）
+## 精选集本地存储与增量同步（AihotSelectedService）
 
-落盘文件：`~/.mistrelle/cache/aihot/selected.json`（缓存类数据收口在 `~/.mistrelle/cache` 子目录，不污染数据根目录）。
+存储层（v2）：精选集迁至 SQLite（`~/.mistrelle/db/mistrelle.db`，Drizzle + better-sqlite3，主进程 DAO，详见 [data/01-sqlite-storage.md](../data/01-sqlite-storage.md)）。旧 `~/.mistrelle/cache/aihot/selected.json` 已丢弃（可再生，下次同步从 snapshot 重建），渲染侧不再持有全量数组。
 
-缓存结构：
+DB 结构（`aihot_item` 存完整 JSON + 筛选/排序标量列，`aihot_meta` 存 schemaVersion / fields / cursor 水位 / syncedAt）：
 
-```ts
-interface AihotSelectedCache {
-  schemaVersion: 1
-  fields: 'default'   // 含 summary（时间轴卡片需要摘要），changes 增量跟随同一字段集
-  cursor: string | null   // 账本水位；null = 尚未引导
-  items: Array<AihotItem>
-  syncedAt: string | null
-}
+```sql
+aihot_item(id PK, title, category, discovered_at, published_at, search_text, data NOT NULL)
+aihot_meta(key PK, value)
 ```
 
 同步状态机（`syncAihotSelected`，in-flight promise 去重）：
 
-1. **cursor 为空 → snapshot 引导**：`{ fields: 'default', limit: 1000 }` 翻页（上页 `nextPage` → 下页 `page`，直到 `hasMore=false`）；**保留第一页返回的 cursor** 作为增量水位（API 文档语义）。
-2. **cursor 存在 → changes 增量循环**：`{ cursor, limit: 100 }`，按文档「先应用页面再保存新 cursor」：upsert 按 id 替换/插入、remove 按 id 删除，**每页应用后即落盘**（崩溃后从上次水位续传）；`hasMore` 继续下一页。
-3. **409 snapshot_required** → 游标失效，重置空壳自动重新引导一次。
-4. **网络失败** → 保留缓存原样并提示；进程内缓存（`stateCache`）避免重复读盘，返回新引用视图供 Vue 响应式替换。
+1. **cursor 为空 → snapshot 引导**：`{ fields: 'default', limit: 1000 }` 翻页（上页 `nextPage` → 下页 `page`，直到 `hasMore=false`）；**保留第一页返回的 cursor** 作为增量水位（API 文档语义），最终一次性 `applyBatch`（含全部插入 + cursor/syncedAt）原子落库。
+2. **cursor 存在 → changes 增量循环**：`{ cursor, limit: 100 }`，按文档「先应用页面再保存新 cursor」：upsert 按 id `ON CONFLICT DO UPDATE`、remove 按 id DELETE，**每页一个事务原子应用**（`applyBatch`，崩溃后从上次水位续传）；`hasMore` 继续下一页。
+3. **409 snapshot_required** → 游标失效，`clear()` 清库自动重新引导一次。
+4. **网络失败** → 保留数据原样并提示；同步完成后调用方重新查询分页列表。
 
-UI 侧（`useAihotSelectedItems`）：`init()` 读缓存即时渲染 + 自动增量同步；首开无缓存时同步期间显示 loading 遮罩，已有数据则静默同步不打断浏览（状态行显示「同步于 x 分钟前」）。自动同步约定：
+UI 侧（`useAihotSelectedItems`）：`init()` 读 meta + DB 分页查询即时渲染 + 自动增量同步（筛选/排序/分页在 SQL 内完成，不持有全量数组）；首开无数据时同步期间显示 loading 遮罩，已有数据则静默同步不打断浏览（状态行显示「同步于 x 分钟前」）。自动同步约定：
 
 - **静默**：自动同步不驱动刷新按钮转圈（`manualSyncing` 仅手动触发置 true）；手动点刷新立即增量同步并转圈，若恰有自动同步在途则跟随至结束。
 - **节流**：距上次成功同步（`syncedAt`）< 5 分钟时 `init()` 跳过自动增量（首开无 syncedAt 必同步；手动刷新不受限；同步失败 syncedAt 不更新，节流窗口过后自动重试）。
