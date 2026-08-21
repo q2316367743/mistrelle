@@ -108,6 +108,12 @@
 | [03-window-glass-titlebar.md](./setting/03-window-glass-titlebar.md) | 窗口配置：三平台隐藏标题栏（macOS hiddenInset + trafficLightPosition 下移交通灯 / 其他 titleBarOverlay）+ 系统级毛玻璃（vibrancy / acrylic）；毛玻璃需透明背景才可见；useTitlePadding 跨平台标题边距（macOS 左避交通灯 / Windows 右避 overlay，l1/l2/l3/r1 数值推导与消费方） |
 | [04-account-store.md](./setting/04-account-store.md) | 账户配置存储：`~/.mistrelle/account.json`（`SettingAccountService` 读写 + safeStorage 整文件加密，含明文降级）；Store 契约 `state` + 三个鉴权配置不变 |
 
+### skill/ —— 本地 Skill
+
+| 文档                                                     | 描述                                                                                                            |
+|----------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| [01-skill-enable.md](./skill/01-skill-enable.md)         | Skill 启用/禁用：`~/.mistrelle/setting/skill.json` 仅记录禁用项（key=`agentKey/dirName`，缺省即启用）；禁用=仅不默认注入 `<available_skills>` 目录（唯一过滤点），`/` 提及仍可显式指定并标注「已禁用」、`load_skill` 不拦截；列表项右上角 t-switch + 三态筛选（全部/已启用/已禁用）；孤儿 key 继承语义 |
+
 ### subagent/ —— 子 Agent
 
 | 文档                                                      | 描述                                                                               |

@@ -164,7 +164,11 @@ const parseSkillMd = (content: string): SkillMeta => {
  */
 const buildSkillMd = (name: string, description: string, body: string) => {
   const descLine = description.includes('\n')
-    ? `description: |\n${description.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`).join('\n')}\n`
+    ? `description: |\n${description
+        .replace(/\n+$/, '')
+        .split('\n')
+        .map((l) => `  ${l}`)
+        .join('\n')}\n`
     : `description: ${description}\n`
   return `---\nname: ${name}\n${descLine}---\n\n${body}`
 }
@@ -174,7 +178,7 @@ const buildSkillMd = (name: string, description: string, body: string) => {
  */
 const readSkillMetaVersion = async (dirPath: string): Promise<string | undefined> => {
   const metaPath = window.preload.path.join(dirPath, '_meta.json')
-  if (!(window.preload.fs.existsSync(metaPath))) return undefined
+  if (!window.preload.fs.existsSync(metaPath)) return undefined
   try {
     const meta = JSON.parse(await window.preload.fs.readTextFile(metaPath))
     return typeof meta?.version === 'string' ? meta.version : undefined
@@ -184,7 +188,7 @@ const readSkillMetaVersion = async (dirPath: string): Promise<string | undefined
 }
 
 const listAgentSkills = async (agent: SkillAgent): Promise<Array<LocalSkill>> => {
-  if (!(window.preload.fs.existsSync(agent.path))) return []
+  if (!window.preload.fs.existsSync(agent.path)) return []
   const items = await window.preload.fs.readDir(agent.path)
   const list: Array<LocalSkill> = []
   for (const item of items) {
@@ -223,7 +227,10 @@ export const localSkillCacheClear = () => {
 /**
  * 获取本地 Skill 列表，传入 agentKey 时只扫描指定 agent
  */
-export const localSkillList = async (agentKey?: string, forceRefresh = false): Promise<Array<LocalSkill>> => {
+export const localSkillList = async (
+  agentKey?: string,
+  forceRefresh = false
+): Promise<Array<LocalSkill>> => {
   if (!forceRefresh && skillList.value) {
     return agentKey ? skillList.value.filter((e) => e.agentKey === agentKey) : skillList.value
   }
@@ -296,7 +303,7 @@ export const localSkillFiles = async (skill: LocalSkill): Promise<Array<LocalSki
   const ignoreDirs = new Set(useSettingDefaultStore().state.skillIgnoreDirs)
   const result: Array<LocalSkillFile> = []
   const walk = async (dir: string, relative: string) => {
-    if (!(window.preload.fs.existsSync(dir))) return
+    if (!window.preload.fs.existsSync(dir)) return
     const items = await window.preload.fs.readDir(dir)
     for (const item of items) {
       const full = window.preload.path.join(dir, item.name)

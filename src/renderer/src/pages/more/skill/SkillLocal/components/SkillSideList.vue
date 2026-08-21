@@ -25,7 +25,7 @@
         </template>
       </t-button>
     </div>
-    <div style="width: calc(100% - 16px)">
+    <div class="skill-side__filters">
       <t-input
         v-model="keyword"
         placeholder="搜索 Skill"
@@ -37,6 +37,12 @@
           <search-icon />
         </template>
       </t-input>
+      <t-select
+        v-model="enableFilter"
+        :options="enableOptions"
+        size="small"
+        class="skill-side__enable-filter"
+      />
     </div>
     <div class="skill-side__list">
       <t-loading :loading="loading" size="small">
@@ -45,10 +51,21 @@
           v-for="skill in filteredList"
           :key="skill.agentKey + '/' + skill.dirName"
           class="skill-item"
-          :class="{ active: selectedKey === skill.agentKey + '/' + skill.dirName }"
+          :class="{
+            active: selectedKey === skill.agentKey + '/' + skill.dirName,
+            disabled: !skillStore.isSkillEnabled(skill)
+          }"
           @click="emit('select', skill)"
         >
-          <div class="skill-item__name">{{ skill.name }}</div>
+          <div class="skill-item__head">
+            <div class="skill-item__name">{{ skill.name }}</div>
+            <t-switch
+              size="small"
+              :value="skillStore.isSkillEnabled(skill)"
+              @click.stop
+              @change="(val) => skillStore.setSkillEnabled(skill, Boolean(val))"
+            />
+          </div>
           <div class="skill-item__meta">
             <t-tag size="small" variant="light">{{ skill.agentName }}</t-tag>
             <span class="skill-item__time">{{ prettyDate(skill.updatedAt) }}</span>
@@ -61,6 +78,7 @@
 <script lang="ts" setup>
 import { AddIcon, RefreshIcon, SearchIcon, SettingIcon } from 'tdesign-icons-vue-next'
 import { LocalSkill, SkillAgent } from '@/modules/skill'
+import { useSettingSkillStore } from '@/store'
 import { prettyDate } from '@/utils/lang/FormatUtil'
 
 const props = defineProps<{
@@ -79,6 +97,14 @@ const emit = defineEmits<{
 
 const keyword = ref('')
 const activeAgent = ref('')
+const skillStore = useSettingSkillStore()
+
+const enableFilter = ref<'all' | 'enabled' | 'disabled'>('all')
+const enableOptions = [
+  { label: '全部', value: 'all' },
+  { label: '已启用', value: 'enabled' },
+  { label: '已禁用', value: 'disabled' }
+]
 
 const agentOptions = computed(() => [
   { label: '全部 Agent', value: '' },
@@ -89,6 +115,8 @@ const filteredList = computed(() => {
   const k = keyword.value.trim().toLowerCase()
   return props.list.filter((e) => {
     if (activeAgent.value && e.agentKey !== activeAgent.value) return false
+    if (enableFilter.value === 'enabled' && !skillStore.isSkillEnabled(e)) return false
+    if (enableFilter.value === 'disabled' && skillStore.isSkillEnabled(e)) return false
     if (!k) return true
     return (
       e.name.toLowerCase().includes(k) ||
@@ -115,8 +143,21 @@ const filteredList = computed(() => {
     flex-shrink: 0;
   }
 
-  &__search {
+  &__filters {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     margin: 0 8px 8px;
+    flex-shrink: 0;
+  }
+
+  &__search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__enable-filter {
+    width: 92px;
     flex-shrink: 0;
   }
 
@@ -140,6 +181,10 @@ const filteredList = computed(() => {
   border-bottom: 1px solid var(--td-component-border);
   transition: background-color 0.15s ease;
 
+  &:last-child {
+    border-bottom: none;
+  }
+
   &:hover {
     background-color: var(--td-bg-color-container-hover);
   }
@@ -148,7 +193,19 @@ const filteredList = computed(() => {
     background-color: var(--td-brand-color-light);
   }
 
+  &.disabled .skill-item__name {
+    color: var(--td-text-color-disabled);
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   &__name {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     font: var(--td-font-title-small);
     color: var(--td-text-color-primary);

@@ -5,6 +5,7 @@ import type { ChatFileRef, WorkspaceEntryRef } from '@/utils/chatSender'
 import { listWorkspaceEntries } from '@/utils/chatSender'
 import { makeSuggestionRenderer, type SuggestionRendererOptions } from '@/utils/suggestionRenderer'
 import type { LocalSkill } from '@/modules/skill'
+import { useSettingSkillStore } from '@/store'
 import { toolOptions } from '@/modules/tool'
 
 // 导出的稳定 PluginKey，供 LChatSender 在 keydown 时直接读取 suggestion 内部 active 状态，
@@ -45,7 +46,9 @@ export const buildSkillSuggestion = (
   render: makeSuggestionRenderer(
     (item) => {
       const s = item as SkillSuggestionItem
-      return { title: s.label, desc: s.data.description }
+      // 被禁用的 skill 仍可显式指定（不默认注入目录），标注状态让用户知情
+      const prefix = useSettingSkillStore().isSkillEnabled(s.data) ? '' : '已禁用 · '
+      return { title: s.label, desc: `${prefix}${s.data.description}` }
     },
     options
   )

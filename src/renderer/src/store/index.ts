@@ -4,6 +4,7 @@ export * from './setting/SettingDefaultStore'
 export * from './setting/SettingGlobalStore'
 export * from './setting/SettingNetworkStore'
 export * from './setting/SettingSecureStore'
+export * from './setting/SettingSkillStore'
 
 export * from '@/store/ai/AiChatStore'
 export * from '@/store/ai/AiAgentStore'

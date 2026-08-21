@@ -19,7 +19,7 @@ import { buildMemoryPrompt, buildMemoryToolPrompt } from '@/modules/memory'
 import { buildPersonalizePrompt } from '@/modules/personalize'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
 import { SUB_AGENT_ALLOW } from '@/modules/subagent/types'
-import { useAiAgentStore, useSettingAiStore } from '@/store'
+import { useAiAgentStore, useSettingAiStore, useSettingSkillStore } from '@/store'
 import type {
   ChatContext,
   ChatMessageSetterMode,
@@ -337,7 +337,9 @@ export class ToolChat {
   ): Promise<AiMessageParam[]> {
     const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
     const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
-    const skills = await localSkillList()
+    // 被禁用的 skill 不注入目录（模型不可见即不会调用 load_skill），SkillLocal 管理页仍可见全量
+    const skillStore = useSettingSkillStore()
+    const skills = (await localSkillList()).filter((e) => skillStore.isSkillEnabled(e))
     const catalogPrompt = buildSkillCatalogPrompt(skills)
     this.lastSkillCatalogPrompt = catalogPrompt
     const workspacePrompt = this.buildWorkspacePrompt()

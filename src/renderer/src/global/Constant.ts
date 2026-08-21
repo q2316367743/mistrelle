@@ -123,6 +123,10 @@ export const getSettingSecurePath = () =>
 export const getSettingDefaultPath = () =>
   window.preload.path.join(dataFolder, 'setting', 'default.json')
 
+// 设置-Skill 启用配置文件路径：~/.mistrelle/setting/skill.json
+export const getSettingSkillPath = () =>
+  window.preload.path.join(dataFolder, 'setting', 'skill.json')
+
 // 打开过的 AI 工作空间路径历史：~/.mistrelle/data/workspace-history.json
 export const getWorkspaceHistoryPath = () =>
   window.preload.path.join(dataFolder, 'data', 'workspace-history.json')
