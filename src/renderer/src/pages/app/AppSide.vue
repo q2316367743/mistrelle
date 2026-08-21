@@ -7,78 +7,9 @@
     <div class="h-32px pl-40px"></div>
 
     <div class="side-container">
-      <nav class="menu-list" aria-label="主菜单">
-        <button
-          class="menu-item"
-          :class="{ active: isActive('/new') }"
-          type="button"
-          @click="goTo('/new')"
-        >
-          <ChatIcon class="menu-icon" />
-          <span>{{ Constant.name }}</span>
-        </button>
-        <button
-          class="menu-item"
-          :class="{ active: isStartActive('/project/') }"
-          type="button"
-          @click="goTo('/project/list')"
-        >
-          <AbilityOpenIcon class="menu-icon" />
-          <span>项目</span>
-        </button>
-        <button class="menu-item" @click="toggleNote()">
-          <PenIcon class="menu-icon" />
-          <span>设计</span>
-          <chevron-right-icon class="ml-auto" :style="noteIconStyle" />
-        </button>
-        <div v-if="note" class="pl-16px">
-          <button
-            :class="[
-              'menu-item',
-              { active: isStartActive('/design/detail/') || isActive('/design/list') }
-            ]"
-            @click="goTo('/design/list')"
-          >
-            <palette1-icon class="menu-icon" />
-            <span>设计风格</span>
-          </button>
-          <button
-            :class="['menu-item', { active: isActive('/design/font') }]"
-            @click="goTo('/design/font')"
-          >
-            <textformat-color-icon class="menu-icon" />
-            <span>字体</span>
-          </button>
-        </div>
-        <button class="menu-item" type="button" @click="toggleMore()">
-          <app-icon class="menu-icon" />
-          <span>更多拓展</span>
-          <chevron-right-icon class="ml-auto" :style="moreIconStyle" />
-        </button>
-        <div v-if="more" class="pl-16px">
-          <button
-            class="menu-item"
-            :class="{ active: isActive(`/agent`) }"
-            type="button"
-            @click="goTo(`/agent`)"
-          >
-            <AiEducationIcon class="menu-icon" />
-            <span>Agent</span>
-          </button>
-          <button :class="['menu-item', { active: isActive('/skill') }]" @click="goTo(`/skill`)">
-            <LightbulbIcon class="menu-icon" />
-            <span>技能</span>
-          </button>
-          <button :class="['menu-item', { active: isActive(`/tool`) }]" @click="goTo(`/tool`)">
-            <tools-icon class="menu-icon" />
-            <span>工具</span>
-          </button>
-        </div>
-
-        <t-divider size="1px" />
-
-        <ChatList v-if="active === 'agent'" />
-      </nav>
+      <SideMenu :items="menuTree" />
+      <t-divider size="1px" />
+      <ChatList />
     </div>
 
     <div class="user-menu">
@@ -111,40 +42,35 @@
     </div>
   </t-aside>
 </template>
+
 <script lang="ts" setup>
 import {
   AiArticleIcon,
-  ChatIcon,
-  PenIcon,
-  InternetIcon,
-  UserIcon,
-  ChevronRightIcon,
-  Setting1Icon,
-  SecuredIcon,
-  AppIcon,
-  ToolsIcon,
   AiEducationIcon,
-  LightbulbIcon,
+  AppIcon,
   AbilityOpenIcon,
-  Palette1Icon,
-  TextformatColorIcon,
   BookmarkIcon,
-  UserCircleIcon
+  ChatIcon,
+  InternetIcon,
+  LightbulbIcon,
+  Palette1Icon,
+  PenIcon,
+  SecuredIcon,
+  Setting1Icon,
+  TextformatColorIcon,
+  ToolsIcon,
+  UserCircleIcon,
+  UserIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
-import { useBoolState } from '@/hooks'
 import ChatList from './components/ChatList.vue'
+import SideMenu, { type SideMenuItem } from './components/SideMenu.vue'
 import { Constant } from '@/global/Constant'
 import UserManIcon from '@/assets/icons/UserManIcon.vue'
 import UserWomanIcon from '@/assets/icons/UserWomanIcon.vue'
 
 const router = useRouter()
-const route = useRoute()
-
-const active = ref('agent')
-const [note, toggleNote] = useBoolState(false)
-const [more, toggleMore] = useBoolState(false)
 
 const settingOptions = [
   { label: '系统设置', icon: Setting1Icon, value: 'global' },
@@ -157,25 +83,31 @@ const settingOptions = [
   { label: '网络设置', icon: InternetIcon, value: 'network' }
 ]
 
-const noteIconStyle = computed(() => ({
-  transform: note.value ? 'rotate(90deg)' : '',
-  transition: 'all 200ms ease-in-out'
-}))
-const moreIconStyle = computed(() => ({
-  transform: more.value ? 'rotate(90deg)' : '',
-  transition: 'all 200ms ease-in-out'
-}))
+const menuTree: SideMenuItem[] = [
+  { label: Constant.name, icon: ChatIcon, to: '/new' },
+  { label: '项目', icon: AbilityOpenIcon, to: '/project/list', activePaths: ['/project/'] },
+  {
+    label: '设计',
+    icon: PenIcon,
+    activePaths: ['/design/detail/'],
+    children: [
+      { label: '设计风格', icon: Palette1Icon, to: '/design/list' },
+      { label: '字体', icon: TextformatColorIcon, to: '/design/font' }
+    ]
+  },
+  {
+    label: '更多拓展',
+    icon: AppIcon,
+    children: [
+      { label: 'Agent', icon: AiEducationIcon, to: '/agent' },
+      { label: '技能', icon: LightbulbIcon, to: '/skill' },
+      { label: '工具', icon: ToolsIcon, to: '/tool' }
+    ]
+  }
+]
+
 const avatar = computed(() => useSettingAccountStore().state.avatar)
 const nickname = computed(() => useSettingAccountStore().state.nickname)
-
-const isActive = (path: string) => route.path === path
-const isStartActive = (path: string) => route.path.startsWith(path)
-
-const goTo = (path: string) => {
-  if (route.path !== path) {
-    router.push(path)
-  }
-}
 
 const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
 
@@ -183,6 +115,7 @@ onMounted(() => {
   console.log('plugin enter', isDark.value)
 })
 </script>
+
 <style scoped lang="less">
 .side-container {
   position: absolute;
@@ -193,10 +126,20 @@ onMounted(() => {
   padding: 8px 8px 0;
   overflow-x: hidden;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
-.search-button,
+.user-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px;
+}
+
 .menu-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--td-comp-margin-s);
@@ -225,39 +168,6 @@ onMounted(() => {
   &:focus-visible {
     box-shadow: var(--fluent-focus-ring);
   }
-}
-
-.menu-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--td-comp-margin-xs);
-  min-height: 0;
-  width: 204px;
-  height: 100%;
-  overflow: hidden;
-}
-
-.bottom-menu {
-  display: flex;
-  flex-direction: column;
-  gap: var(--td-comp-margin-xs);
-  margin-top: 8px;
-  padding-top: var(--td-comp-paddingTB-s);
-  border-top: 1px solid var(--fluent-sidebar-border);
-  width: 204px;
-  overflow-x: hidden;
-}
-
-.user-menu {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 8px;
-}
-
-.menu-item {
-  position: relative;
 
   &::before {
     position: absolute;
@@ -269,38 +179,5 @@ onMounted(() => {
     border-radius: var(--td-radius-round);
     transition: background var(--fluent-transition-fast);
   }
-
-  &:disabled {
-    color: var(--td-text-color-disabled);
-    cursor: not-allowed;
-
-    &:hover {
-      background: transparent;
-    }
-
-    &::before {
-      background: transparent;
-    }
-  }
-
-  &.active {
-    color: var(--td-text-color-brand);
-    background: var(--fluent-item-selected);
-    border-color: var(--fluent-sidebar-border);
-
-    &:hover {
-      background: var(--fluent-item-selected);
-    }
-
-    &::before {
-      background: var(--fluent-item-selected-border);
-    }
-  }
-}
-
-.menu-icon {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
 }
 </style>
