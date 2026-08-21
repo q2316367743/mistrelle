@@ -11,6 +11,13 @@ export const AiModelTypeOptions: Array<CommonSelect> = [
   { value: 'vector', label: '向量' }
 ]
 
+/** 模型能力位（独立 type，后续新增能力只扩展此处） */
+export type AiModelSupport = 'image' | 'think'
+
+export const AiModelSupportOptions: Array<CommonSelect> = [
+  { value: 'image', label: '识图' }
+]
+
 export interface AiModel {
   // 标识符
   identifier: string
@@ -24,6 +31,8 @@ export interface AiModel {
   context?: number
   // 最大输出 token 大小
   output?: number
+  // 支持的能力（勾选识图后聊天引用的图片会随请求传递）
+  support?: AiModelSupport[]
 }
 
 /**

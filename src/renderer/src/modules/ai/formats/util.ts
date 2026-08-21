@@ -1,4 +1,4 @@
-import type { AiUsage } from '../types'
+import type { AiContentBlock, AiImageBlock, AiUsage } from '../types'
 
 /** 归一 baseURL：去尾部斜杠；anthropic 若以 /v1 结尾则去掉，避免拼出 /v1/v1/messages */
 export const normalizeBase = (baseURL: string): string => baseURL.trim().replace(/\/+$/, '')
@@ -65,3 +65,28 @@ export const toStreamError = (error: unknown): Error => {
         : undefined
   return status === undefined ? new Error(message) : Object.assign(new Error(message), { status })
 }
+
+/** 归一消息 content：string 视为单文本块，数组原样，null / undefined（历史数据可能缺字段）为空 */
+export const toContentBlocks = (content: string | AiContentBlock[] | null): AiContentBlock[] => {
+  if (content == null) return []
+  return typeof content === 'string' ? [{ type: 'text', text: content }] : content
+}
+
+/** 提取消息中的纯文本（图像块忽略），供 token 估算 / 日志等场景 */
+export const contentText = (content: string | AiContentBlock[] | null): string =>
+  toContentBlocks(content)
+    .filter((block): block is Extract<AiContentBlock, { type: 'text' }> => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
+
+/** 解析 data URL 图像为 anthropic base64 source；非 data URL（http(s)）返回 url source */
+export const imageSource = (url: string):
+  | { type: 'base64'; media_type: string; data: string }
+  | { type: 'url'; url: string } => {
+  const match = /^data:(image\/[\w.+-]+);base64,(.+)$/s.exec(url)
+  if (match) return { type: 'base64', media_type: match[1], data: match[2] }
+  return { type: 'url', url }
+}
+
+/** 类型守卫：内容块是否为图像块 */
+export const isImageBlock = (block: AiContentBlock): block is AiImageBlock => block.type === 'image_url'

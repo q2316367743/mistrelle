@@ -8,7 +8,7 @@
 
     <div class="side-container">
       <SideMenu :items="menuTree" />
-      <t-divider size="1px" />
+      <t-divider size="8px" />
       <ChatList />
     </div>
 

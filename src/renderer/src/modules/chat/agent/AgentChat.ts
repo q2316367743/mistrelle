@@ -29,6 +29,7 @@ import type {
   ResolvedChatRequestParams
 } from '@/modules/chat'
 import { toAgentRequestMessages } from './agentContext'
+import { collectVisionBlocks } from './visionBlocks'
 import {
   appendAssistantContent,
   createPendingAssistantMessage,
@@ -142,7 +143,8 @@ export class ToolChat {
       ...params,
       baseURL: option.baseUrl,
       apiKey: option.key,
-      format: option.format ?? 'chat'
+      format: option.format ?? 'chat',
+      support: option.support
     }
   }
 
@@ -291,7 +293,7 @@ export class ToolChat {
     return content
   }
 
-  private buildReferenceContext(): string {
+  private buildReferenceContext(attachedImageUrls: Set<string> = new Set()): string {
     const lastUserMessage = [...this.messages.value].reverse().find((m) => m.role === 'user')
     if (!lastUserMessage || lastUserMessage.role !== 'user') return ''
     const contents = lastUserMessage.content
@@ -299,9 +301,13 @@ export class ToolChat {
       .filter((content): content is AttachmentContent => content.type === 'attachment')
       .flatMap((content) => content.data)
     if (attachments.length === 0) return ''
-    const parts = attachments.map(
-      (item) => `## File: ${item.name ?? item.url}\n路径：${item.url}\n`
-    )
+    const parts = attachments.map((item) => {
+      // 已转为图像块随请求发送的图片加标注，避免模型再用工具重复读取
+      const attached = item.url !== undefined && attachedImageUrls.has(item.url)
+        ? '（已作为图片附于本消息）'
+        : ''
+      return `## File: ${item.name ?? item.url}${attached}\n路径：${item.url}\n`
+    })
     return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n---\n')}`
   }
 
@@ -332,7 +338,7 @@ export class ToolChat {
   }
 
   private async buildRequestMessages(
-    params: ChatRequestParams,
+    params: ResolvedChatRequestParams,
     assistantMessageId: string
   ): Promise<AiMessageParam[]> {
     const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
@@ -381,10 +387,15 @@ export class ToolChat {
       const memoryPrompt = await buildMemoryPrompt()
       if (memoryPrompt) systemMessages.push({ role: 'system', content: memoryPrompt })
     }
+    // 识图模型：把全部历史用户消息引用的图片重建为图像内容块（每次从磁盘路径读取，落库仍为路径引用）
+    const vision = params.support?.includes('image')
+      ? await collectVisionBlocks(this.messages.value)
+      : undefined
     const messages = toAgentRequestMessages(
       this.messages.value,
       assistantMessageId,
-      this.buildReferenceContext()
+      this.buildReferenceContext(vision?.attachedUrls),
+      vision?.blocksByMessageId
     )
     return [...systemMessages, ...messages]
   }
@@ -452,7 +463,7 @@ export class ToolChat {
       step++
       const functions = this.filterToolsByMode(this.getFunctions(params))
       const resolvedParams = await this.resolveModel(params)
-      lastApiMessages = await this.buildRequestMessages(params, assistantMessageId)
+      lastApiMessages = await this.buildRequestMessages(resolvedParams, assistantMessageId)
       lastTools = this.buildTools(functions)
       const result = await streamAgentStep({
         messages: this.messages,
@@ -551,7 +562,7 @@ export class ToolChat {
     seq: number
   ): Promise<boolean> {
     const resolvedParams = await this.resolveModel(params)
-    const apiMessages = await this.buildRequestMessages(params, assistantMessageId)
+    const apiMessages = await this.buildRequestMessages(resolvedParams, assistantMessageId)
     apiMessages.push({ role: 'system', content: FINALIZE_PROMPT })
     const before =
       this.messages.value.find((m) => m.id === assistantMessageId)?.content?.length ?? 0
@@ -627,6 +638,8 @@ export class ToolChat {
       return
     }
 
+    // 排查用：气泡只展示 error.message 会丢堆栈，控制台补全量错误定位真实抛出点
+    console.error(`[AgentChat] 请求出错 (assistantMessageId=${assistantMessageId})`, error)
     this.status.value = 'error'
     this.ctx.config.onError?.(error instanceof Error ? error : new Error(String(error)))
     appendAssistantContent(this.messages, assistantMessageId, {

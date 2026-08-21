@@ -1,6 +1,7 @@
 import type { AiStreamChunk } from '@/modules/ai'
 import type { AIMessageContent, ThinkingEffort, UserMessageContent } from '@/domain'
 import { AiChatMode, AiProvideFormat } from '@/entity'
+import type { AiModelSupport } from '@/entity'
 import type { ChatType, WritingScene } from '@/modules/chat'
 
 // ==========================================
@@ -39,6 +40,8 @@ export interface ResolvedChatRequestParams extends ChatRequestParams {
   apiKey?: string
   /** API 格式（chat / responses / anthropic），决定请求体与流式解析方式；缺省 chat */
   format?: AiProvideFormat
+  /** 模型能力位（识图时用户引用的图片随请求传递） */
+  support?: AiModelSupport[]
 }
 
 /** onRequest 可返回的请求覆盖项；刻意不含 fetch 的 `mode` 等会与 chat 字段冲突的项 */

@@ -1,7 +1,7 @@
 import type { AiRequestParams, AiStreamChunk, AiToolCallDelta } from '../types'
 import type { SseFrame } from '../sse'
 import { AiFormatAdapter } from './types'
-import { isRecord, normalizeBase, strField, toStreamError, toUsage } from './util'
+import { isRecord, normalizeBase, strField, toContentBlocks, toStreamError, toUsage } from './util'
 
 /**
  * OpenAI Responses API（/responses）适配器（DeepSeek 亦兼容此协议）。
@@ -18,10 +18,13 @@ export const createResponsesAdapter = (): AiFormatAdapter => {
       const input: unknown[] = []
       for (const msg of params.messages) {
         if (msg.role === 'system' || msg.role === 'user') {
-          input.push({
-            role: msg.role,
-            content: [{ type: 'input_text', text: msg.content ?? '' }]
-          })
+          // user 消息可能带图像块（识图），映射为 input_image；其余为文本
+          const content = toContentBlocks(msg.content).map((block) =>
+            block.type === 'image_url'
+              ? { type: 'input_image', image_url: block.image_url.url }
+              : { type: 'input_text', text: block.text }
+          )
+          input.push({ role: msg.role, content })
         } else if (msg.role === 'tool') {
           input.push({
             type: 'function_call_output',

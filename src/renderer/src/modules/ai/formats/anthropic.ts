@@ -1,7 +1,16 @@
 import type { AiRequestParams, AiStreamChunk, AiUsage } from '../types'
 import type { SseFrame } from '../sse'
 import { AiFormatAdapter } from './types'
-import { isRecord, normalizeBase, safeJsonParse, strField, toStreamError, toUsage } from './util'
+import {
+  imageSource,
+  isRecord,
+  normalizeBase,
+  safeJsonParse,
+  strField,
+  toContentBlocks,
+  toStreamError,
+  toUsage
+} from './util'
 
 /** Anthropic 缺省 max_tokens（Messages API 必填） */
 const DEFAULT_MAX_TOKENS = 4096
@@ -29,7 +38,13 @@ export const createAnthropicAdapter = (): AiFormatAdapter => {
       for (const msg of params.messages) {
         if (msg.role === 'system') continue
         if (msg.role === 'user') {
-          messages.push({ role: 'user', content: [{ type: 'text', text: msg.content ?? '' }] })
+          // user 消息可能带图像块（识图）：data URL 拆为 base64 source，http(s) 走 url source
+          const content = toContentBlocks(msg.content).map((block) =>
+            block.type === 'image_url'
+              ? { type: 'image', source: imageSource(block.image_url.url) }
+              : { type: 'text', text: block.text }
+          )
+          messages.push({ role: 'user', content })
         } else if (msg.role === 'tool') {
           messages.push({
             role: 'user',

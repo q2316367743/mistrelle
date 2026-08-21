@@ -15,9 +15,28 @@ export interface AiToolCallParam {
   }
 }
 
+// ==========================================
+//  多模态内容块（仅 user 消息使用；对齐 OpenAI Chat 形状，
+//  responses / anthropic 适配器在 buildRequest 时转换成各自协议形状）
+// ==========================================
+
+export interface AiTextBlock {
+  type: 'text'
+  text: string
+}
+
+/** 图像块：url 为 data URL（本地文件转 base64）或可公网访问的 http(s) 地址 */
+export interface AiImageBlock {
+  type: 'image_url'
+  image_url: { url: string }
+}
+
+export type AiContentBlock = AiTextBlock | AiImageBlock
+
 export interface AiMessageParam {
   role: AiMessageRole
-  content: string | null
+  /** 纯文本消息为 string；带图像的用户消息为内容块数组 */
+  content: string | AiContentBlock[] | null
   tool_calls?: AiToolCallParam[]
   tool_call_id?: string
   /** DeepSeek 思考回显（assistant 消息透传；anthropic / responses 用不到） */

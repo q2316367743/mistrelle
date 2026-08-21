@@ -1,4 +1,4 @@
-import type { AiMessageParam, AiToolCallParam } from '@/modules/ai'
+import type { AiImageBlock, AiMessageParam, AiToolCallParam } from '@/modules/ai'
 import type {
   AIMessage,
   AIMessageContent,
@@ -164,7 +164,9 @@ const buildPinnedContext = (msg: ChatMessage): string => {
 export const toAgentRequestMessages = (
   messages: ChatMessage[],
   activeAssistantMessageId: string,
-  activeReferenceContext = ''
+  activeReferenceContext = '',
+  /** 消息 id → 图像内容块（识图模型时由调用方异步预构建，全部历史保留） */
+  imagesByMessageId: Map<string, AiImageBlock[]> = new Map()
 ): AiMessageParam[] => {
   const out: AiMessageParam[] = []
   const activeAssistantIndex = messages.findIndex(
@@ -186,10 +188,17 @@ export const toAgentRequestMessages = (
         const pinned = buildPinnedContext(message)
         extra = [ref, pinned].filter(Boolean).join('\n\n')
       }
-      out.push({
-        role: 'user',
-        content: extra ? `${content}\n\n${extra}` : content
-      })
+      const textBody = extra ? `${content}\n\n${extra}` : content
+      const images = imagesByMessageId.get(message.id)
+      if (images && images.length > 0) {
+        // 识图：文本与图像块同序输出，图片仅允许出现在 user 消息中（DeepSeek 等视觉 API 约束）
+        out.push({
+          role: 'user',
+          content: [...(textBody ? [{ type: 'text' as const, text: textBody }] : []), ...images]
+        })
+      } else {
+        out.push({ role: 'user', content: textBody })
+      }
       continue
     }
 

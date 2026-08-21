@@ -386,6 +386,7 @@ function handleAddModel() {
         type: result.type,
         context: result.context,
         output: result.output,
+        support: result.support,
         enable: true
       })
       await handleSave()
@@ -404,6 +405,7 @@ function handleEditModel(model: AiModel) {
         target.type = result.type
         target.context = result.context
         target.output = result.output
+        target.support = result.support
       }
       await handleSave()
       MessageUtil.success('模型已更新')

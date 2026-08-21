@@ -1,4 +1,5 @@
 import type { AiMessageParam, AiTool } from '@/modules/ai'
+import { contentText } from '@/modules/ai/formats/util'
 import type { TokenBreakdown } from '@/domain'
 
 /** 技能工具：其工具结果计入「技能」分类（load_skill / read_skill_file），其余工具结果计入「工具及子智能体」 */
@@ -29,11 +30,13 @@ export const formatTokens = (value: number): string => {
   return `${value}`
 }
 
-/** 提取 API 消息的纯文本内容（AiMessageParam.content 为 string | null） */
+/** 提取 API 消息的纯文本内容（content 为 string | 内容块数组 | null；缺字段视为空并告警，用于定位脏数据来源） */
 const messageText = (message: AiMessageParam): string => {
-  const content = message.content
-  if (typeof content === 'string') return content
-  return ''
+  if (message.content === undefined) {
+    console.warn('[tokenEstimate] 消息缺少 content 字段', message.role, message.tool_call_id ?? '')
+    return ''
+  }
+  return contentText(message.content)
 }
 
 /**

@@ -1,6 +1,7 @@
 import { AiChatContent, AiChatItem } from '@/entity/ai'
 import { getDataForWorkspace } from '@/global/Constant'
 import type { ChatType, WritingScene } from '@/modules/chat'
+import { cloneDeep } from 'es-toolkit'
 
 // ==========================================
 //  聊天持久化服务（SQLite）
@@ -53,7 +54,7 @@ export const aiChatList = async (): Promise<Array<AiChatItem>> => {
 
 /** 列表行 upsert（新增 / 更名 / 置顶等） */
 export const aiChatUpsertItem = async (item: AiChatItem): Promise<void> => {
-  await window.preload.db.chat.upsertItem(item)
+  await window.preload.db.chat.upsertItem(cloneDeep(item))
 }
 
 /** 删除聊天：单事务级联删列表行 + 消息体 + 子代理消息体（沙盒产物目录由 aiChatSandboxRemove 处理） */

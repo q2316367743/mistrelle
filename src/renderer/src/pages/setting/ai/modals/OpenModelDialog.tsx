@@ -1,6 +1,6 @@
-import { DialogPlugin, Form, FormItem, Input, InputNumber, RadioGroup } from 'tdesign-vue-next'
+import { CheckboxGroup, DialogPlugin, Form, FormItem, Input, InputNumber, RadioGroup } from 'tdesign-vue-next'
 import { MessageUtil } from '@/utils/modal'
-import { AiModel, AiModelType, AiModelTypeOptions } from '@/entity'
+import { AiModel, AiModelSupport, AiModelSupportOptions, AiModelType, AiModelTypeOptions } from '@/entity'
 import { guessModelParams } from '@/utils/aiModel'
 
 export interface AddModelResult {
@@ -9,6 +9,7 @@ export interface AddModelResult {
   type: AiModelType
   context?: number
   output?: number
+  support?: AiModelSupport[]
 }
 
 export const openModelDialog = (
@@ -21,14 +22,16 @@ export const openModelDialog = (
   const type = ref<AiModelType>(editingModel?.type ?? 'chat')
   const context = ref<number | undefined>(editingModel?.context)
   const output = ref<number | undefined>(editingModel?.output)
+  const support = ref<AiModelSupport[]>(editingModel?.support ?? [])
   const isEditing = !!editingModel
 
-  // 输入模型标识后自动按内置表填充 context/output（仅当两项均未手动设置时）
+  // 输入模型标识后自动按内置表填充 context/output/support（仅当均未手动设置时）
   function onIdentifierChange() {
     if (isEditing || context.value != null || output.value != null) return
     const params = guessModelParams(identifier.value)
     if (params.context != null) context.value = params.context
     if (params.output != null) output.value = params.output
+    if (params.support && support.value.length === 0) support.value = [...params.support]
   }
 
   const dp = DialogPlugin({
@@ -53,7 +56,8 @@ export const openModelDialog = (
         name: name.value.trim(),
         type: type.value,
         context: context.value,
-        output: output.value
+        output: output.value,
+        support: support.value.length > 0 ? support.value : undefined
       })
       dp?.destroy()
       return true
@@ -94,6 +98,9 @@ export const openModelDialog = (
               suffix="token"
               theme="normal"
             />
+          </FormItem>
+          <FormItem label="能力" name="support">
+            <CheckboxGroup v-model={support.value} options={AiModelSupportOptions} />
           </FormItem>
         </Form>
       </div>
