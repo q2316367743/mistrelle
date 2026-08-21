@@ -10,7 +10,15 @@ export const DbChannels = {
   aihotList: 'db:aihot:list',
   aihotApplyBatch: 'db:aihot:applyBatch',
   aihotClear: 'db:aihot:clear',
-  aihotGetMeta: 'db:aihot:getMeta'
+  aihotGetMeta: 'db:aihot:getMeta',
+  chatList: 'db:chat:list',
+  chatUpsertItem: 'db:chat:upsertItem',
+  chatDeleteItem: 'db:chat:deleteItem',
+  chatGetContent: 'db:chat:getContent',
+  chatSetContent: 'db:chat:setContent',
+  chatGetSub: 'db:chat:getSub',
+  chatSetSub: 'db:chat:setSub',
+  chatGetStamp: 'db:chat:getStamp'
 } as const
 
 /** 排序 / 时间筛选基准 */
@@ -62,4 +70,25 @@ export interface AihotBatch {
   upserts: AihotDbItemInput[]
   deletes: string[]
   meta: Partial<AihotMeta>
+}
+
+// ── 聊天域（列表 + 消息体 + 子代理消息体） ─────────────────
+
+/** chat 表行载荷（侧栏列表项，类型化列；渲染侧 AiChatItem 与之一一映射） */
+export interface ChatItemInput {
+  id: string
+  name: string
+  top: boolean
+  workspace: string
+  projectId?: string
+  taskId?: string
+  type?: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** chatGetContent 返回：data 为完整 AiChatContent JSON（渲染侧 parse），缺行为 null */
+export interface ChatContentResult {
+  data: string | null
+  updatedTime: number | null
 }

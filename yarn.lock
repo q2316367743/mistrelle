@@ -5338,6 +5338,15 @@ frac@~1.1.2:
   resolved "https://registry.npmmirror.com/frac/-/frac-1.1.2.tgz"
   integrity sha512-w/XBfkibaTl3YDqASwfDUqkna4Z2p9cFSr1aHDt0WoMTECnRfBOv2WArlZILlqgWlmdIlALXGpM2AOhEk5W3IA==
 
+framer-motion@^13.1.0:
+  version "13.1.1"
+  resolved "https://registry.npmmirror.com/framer-motion/-/framer-motion-13.1.1.tgz#bdec4ee02164633a285e45083da91dadb30194c0"
+  integrity sha512-B/xn2TPS4f61cEBLFjiYlQFnBZUW1YVj/LM+C+N4OP8Rs95VLEI2ot/RlfBg111la/EiyECFaJJi/A3FWA8MUA==
+  dependencies:
+    motion-dom "^13.1.1"
+    motion-utils "^13.0.0"
+    tslib "^2.4.0"
+
 fs-extra@11.3.1:
   version "11.3.1"
   resolved "https://registry.npmmirror.com/fs-extra/-/fs-extra-11.3.1.tgz"
@@ -5584,6 +5593,11 @@ hasown@^2.0.2, hasown@^2.0.4:
   integrity sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==
   dependencies:
     function-bind "^1.1.2"
+
+hey-listen@^1.0.8:
+  version "1.0.8"
+  resolved "https://registry.npmmirror.com/hey-listen/-/hey-listen-1.0.8.tgz#8e59561ff724908de1aa924ed6ecc84a56a9aa68"
+  integrity sha512-COpmrF2NOg4TBWUJ5UVyaCU2A88wEMkUPK4hNqyCkqHbxT92BbvfjoSozkAIIm6XhicGlJHhFdullInrdhwU8Q==
 
 highlight.js@^11.9.0:
   version "11.12.0"
@@ -6405,6 +6419,28 @@ monaco-editor@^0.56.0:
   dependencies:
     dompurify "3.4.8"
     marked "14.0.0"
+
+motion-dom@^13.0.0, motion-dom@^13.1.1:
+  version "13.1.1"
+  resolved "https://registry.npmmirror.com/motion-dom/-/motion-dom-13.1.1.tgz#bbcb7c2e7236583f20759330d1275876131dc2eb"
+  integrity sha512-XSf8VYWSB6G/0IY3rWVbyLcxWXtAVHkN1PQE2agTaCv3u8RGvbwu56TyyR/MNzBqqNavEBTZzErcxI1TxBrjcA==
+  dependencies:
+    motion-utils "^13.0.0"
+
+motion-utils@^13.0.0:
+  version "13.0.0"
+  resolved "https://registry.npmmirror.com/motion-utils/-/motion-utils-13.0.0.tgz#b2e4dbe21e5488032592f0b0d4e0b7b776466dfa"
+  integrity sha512-7DnN7TmbLcYXcG4RVadXIihWlyuM9afoUww8Y5Agg431kGKiuL2/OMyP4mJ5wLz+pvN3t5ySClLOaVXJ+wekRQ==
+
+motion-v@^2.4.0:
+  version "2.4.0"
+  resolved "https://registry.npmmirror.com/motion-v/-/motion-v-2.4.0.tgz#d398b99412c57880dfbc4b21bd554fb2ca61d94a"
+  integrity sha512-kRDGMAZk3nvdjEO36Wo6pezSEIStGXGhVFiwo1QkUDsUg8mB5igjYPXyece8wtu2DrHhmFfA6Y1nOz07+5QH4A==
+  dependencies:
+    framer-motion "^13.1.0"
+    hey-listen "^1.0.8"
+    motion-dom "^13.0.0"
+    motion-utils "^13.0.0"
 
 mrmime@^2.0.0:
   version "2.0.1"

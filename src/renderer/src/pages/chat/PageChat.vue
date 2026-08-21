@@ -11,7 +11,7 @@
 <script lang="ts" setup>
 import { AiChatItem } from '@/entity/ai'
 import { useAiChatStore } from '@/store'
-import { buildChatMainPath } from '@/modules/chat'
+import { buildChatMainKey } from '@/modules/chat'
 
 const route = useRoute()
 
@@ -27,7 +27,7 @@ watch(
       storageKey.value = ''
       nextTick(() => {
         chat.value = res
-        storageKey.value = buildChatMainPath(res.id)
+        storageKey.value = buildChatMainKey(res.id)
       })
     }
   },

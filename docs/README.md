@@ -41,7 +41,8 @@
 
 | 文档                                                        | 描述                                                                                 |
 |-------------------------------------------------------------|--------------------------------------------------------------------------------------|
-| [01-sqlite-storage.md](./data/01-sqlite-storage.md)         | SQLite 存储层：Drizzle + better-sqlite3（主进程持有全部 DB 逻辑）、DB 路径 `~/.mistrelle/db/mistrelle.db`、schema、IPC 领域方法契约、aihot 去重/分页、旧 selected.json 丢弃重引导、后续模块复用步骤 |
+| [01-sqlite-storage.md](./data/01-sqlite-storage.md)         | SQLite 存储层：Drizzle + better-sqlite3（主进程持有全部 DB 逻辑）、DB 路径 `~/.mistrelle/db/mistrelle.db`、schema、IPC 领域方法契约、aihot 去重/分页、drizzle-kit 迁移流水线 + 资源目录规范、后续模块复用步骤 |
+| [02-chat-sqlite-migration.md](./data/02-chat-sqlite-migration.md) | 聊天域迁移 SQLite：chat/chat_content/chat_sub 三表、会话键路由（chat:{id}/sub:{chatId}:{subId}，项目任务保持文件）、记忆进度键改写、`test/migrate-chat-to-sqlite.mjs` 手动迁移脚本（--dry-run、删除范围=index.json+message/、保留 outputs） |
 
 ### browserTool/ —— 浏览器工具
 

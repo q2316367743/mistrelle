@@ -55,6 +55,49 @@ declare interface AihotDbApi {
   getMeta: () => Promise<AihotMeta>
 }
 
+/** chat 表行载荷（侧栏列表项） */
+declare interface ChatItemInput {
+  id: string
+  name: string
+  top: boolean
+  workspace: string
+  projectId?: string
+  taskId?: string
+  type?: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** 列表行（top 为 0/1 整数，渲染侧转 boolean） */
+declare interface ChatItemRow {
+  id: string
+  name: string
+  top: number
+  workspace: string
+  projectId: string | null
+  taskId: string | null
+  type: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+declare interface ChatContentResult {
+  data: string | null
+  updatedTime: number | null
+}
+
+declare interface ChatDbApi {
+  list: () => Promise<ChatItemRow[]>
+  upsertItem: (item: ChatItemInput) => Promise<void>
+  deleteItem: (id: string) => Promise<void>
+  getContent: (chatId: string) => Promise<ChatContentResult>
+  setContent: (chatId: string, data: string, updatedTime: number) => Promise<void>
+  getSub: (chatId: string, subId: string) => Promise<string | null>
+  setSub: (chatId: string, subId: string, data: string) => Promise<void>
+  getStamp: (chatId: string) => Promise<number | null>
+}
+
 declare interface DbApi {
   aihot: AihotDbApi
+  chat: ChatDbApi
 }

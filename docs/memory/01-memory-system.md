@@ -22,8 +22,8 @@
 对话进行（任意会话）
   │ 一轮回复结束（status → 空闲）
   ▼ 空闲防抖 5 分钟（继续对话自动顺延）；会话空闲回收时立即触发
-MemoryExtractor.extractSession(storageKey)
-  读该会话 main.json 自 extracted[storageKey] 之后的新消息
+MemoryExtractor.extractSession(storageKey = `chat:{id}`)
+  读该会话消息体（SQLite chat_content，经 aiChatContentGet(键)）自 extracted[storageKey] 之后的新消息
   → flattenMessages 紧凑转写（仅 user/assistant 文本 + 工具名，≤ 30k 字符）
   → LLM 提取（快速/总结模型，输出条目或 [NONE]）
   → 追加到 soul/memory/今日.md（超 2000 字丢最旧）→ 推进进度
@@ -52,7 +52,7 @@ AgentChat.buildRequestMessages
 - **模型**：提取与合并走 `defaultSummaryModel || defaultQuickModel` 兜底链（同订阅总结），`createChatCompletion` 非流式调用。
 - **长度上限（MemoryConstant.ts）**：长期 4000 字（合并输出超限按行截断兜底）、单日 2000 字（追加时丢最旧）、注入每日预算 4000 字、提取输入 30k 字符。
 - **注入缓存**：buildMemoryPrompt 按「开关 + MEMORY.md mtime + 各每日文件 mtime」签名缓存，agent loop 每轮调用无额外读盘；所有写入操作自动失效缓存。
-- **提取进度**：state.extracted 以 storageKey（消息文件绝对路径）为键记录已消费消息数；LLM 判定无可记（[NONE]）也推进进度，失败不推进（下次重试）。extractPendingSessions 以「最后合并日」为时间下界、按文件 mtime 记忆去重，重复调用只做 stat 预筛。
+- **提取进度**：state.extracted 以 storageKey（`chat:{id}`，聊天消息体迁 SQLite 后由键路由替代原 main.json 路径；历史键由迁移脚本改写）为键记录已消费消息数；LLM 判定无可记（[NONE]）也推进进度，失败不推进（下次重试）。extractPendingSessions 以「最后合并日」为时间下界、按 `chat_content.updated_time` 记忆去重（替代原文件 mtime），重复调用只做轻量戳查询。
 
 ## 关键文件
 

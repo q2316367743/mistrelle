@@ -1,5 +1,5 @@
 import { ToolChat } from '@/modules/chat/agent/AgentChat'
-import { buildChatSubPath } from '@/modules/chat/service/ChatService'
+import { buildChatSubKey } from '@/modules/chat/service/ChatService'
 import { MAX_SUB_AGENT_STEPS } from '@/global/Constant'
 import { SUB_AGENT_SCENE } from './policy'
 import { persistSubAgent } from './persistence'
@@ -55,7 +55,7 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
     parentSignal,
     subAgentType
   } = options
-  const storageKey = buildChatSubPath(chatId, subId)
+  const storageKey = buildChatSubKey(chatId, subId)
 
   // 父 Agent 已终止：直接返回，不启动子 Agent
   if (parentSignal?.aborted) {

@@ -1,5 +1,5 @@
 import type { AIMessage, ChatMessage, UserMessage } from '@/domain'
-import { aiChatContentGet, aiChatList, buildChatMainPath } from '@/modules/chat/service/ChatService'
+import { aiChatContentGet, aiChatContentStamp, aiChatList, buildChatMainKey } from '@/modules/chat/service/ChatService'
 import { useLog } from '@/hooks/UseLog'
 import {
   EXTRACT_DEBOUNCE_MS,
@@ -145,8 +145,8 @@ export const extractSessionNow = (storageKey: string): void => {
   void extractSession(storageKey)
 }
 
-/** 扫描去重缓存：storageKey → 上次成功消费时的文件 mtime（文件未变则跳过解析） */
-const scannedMtime = new Map<string, number>()
+/** 扫描去重缓存：storageKey（chat:{id}）→ 上次成功消费时的 updated_time（未变则跳过解析） */
+const scannedStamp = new Map<string, number>()
 
 export interface PendingExtractSummary {
   /** 消费到新消息的会话数 */
@@ -159,7 +159,7 @@ export interface PendingExtractSummary {
  * 扫描提取所有未提取完的会话：
  * - 合并前的兜底补提（覆盖 app 退出时丢掉的防抖尾段、此前提取失败的会话）
  * - 设置页「立即提取」手动触发
- * 以「最后合并日」为时间下界预筛（stat mtime），成功消费后记录 mtime 去重，重复调用开销极小。
+ * 以「最后合并日」为时间下界预筛（chat_content.updated_time），成功消费后记录戳去重，重复调用开销极小。
  */
 export const extractPendingSessions = async (): Promise<PendingExtractSummary> => {
   const state = await readSoulState()
@@ -168,13 +168,12 @@ export const extractPendingSessions = async (): Promise<PendingExtractSummary> =
   const cutoff = new Date(`${state.lastConsolidateDate}T00:00:00`).getTime()
   const list = await aiChatList()
   for (const item of list) {
-    const path = buildChatMainPath(item.id)
-    if (!window.preload.fs.existsSync(path)) continue
-    const stat = await window.preload.fs.stat(path)
-    if (stat.mtime < cutoff || scannedMtime.get(path) === stat.mtime) continue
-    const result = await extractSession(path)
+    const key = buildChatMainKey(item.id)
+    const stamp = await aiChatContentStamp(key)
+    if (stamp === null || stamp < cutoff || scannedStamp.get(key) === stamp) continue
+    const result = await extractSession(key)
     if (!result.ok) continue
-    scannedMtime.set(path, stat.mtime)
+    scannedStamp.set(key, stamp)
     if (result.hadNew) {
       summary.sessions += 1
       summary.entries += result.entries

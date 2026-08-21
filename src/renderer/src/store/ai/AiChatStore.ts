@@ -4,12 +4,12 @@ import { defineStore } from 'pinia'
 import { useLog } from '@/hooks/UseLog'
 import {
   aiChatContentSet,
-  aiChatIndexSave,
   aiChatList,
   aiChatRemove,
   aiChatSandbox,
   aiChatSandboxRemove,
-  buildChatMainPath,
+  aiChatUpsertItem,
+  buildChatMainKey,
   getSandboxDir,
   destroyChatSession,
   useChatName
@@ -49,8 +49,8 @@ export const useAiChatStore = defineStore('ai-chat', () => {
         ...target,
         updatedAt: Date.now()
       }
-      // 保存记录
-      await aiChatIndexSave(state.value)
+      // 保存记录（行级 upsert）
+      await aiChatUpsertItem(state.value[index])
     }
   }
 
@@ -69,12 +69,10 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       type: params.type
     }
     state.value.push(item)
-    // 保存索引
-    await aiChatIndexSave(state.value)
-    // 先创建沙盒目录（含 message/ 子目录，及 writing/article 场景的文章项目目录），再写聊天内容——新路径 {id}/message/main.json 的父目录需先存在
+    // 保存索引（行级 upsert）+ 创建沙盒目录（产物用）+ 保存聊天内容（含草稿，消息体在 DB）
+    await aiChatUpsertItem(item)
     await aiChatSandbox(id, { type: params.type, writingScene: params.writingScene })
-    // 保存聊天内容（含草稿）
-    await aiChatContentSet(buildChatMainPath(id), {
+    await aiChatContentSet(buildChatMainKey(id), {
       updatedTime: now,
       draft: params,
       agentId: agentId || '',
@@ -99,10 +97,9 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     let index = state.value.findIndex((e) => e.id === id)
     if (index >= 0) {
       state.value.splice(index, 1)
-      await aiChatIndexSave(state.value)
       // 销毁内存会话，避免后台请求与常驻持久化残留
-      destroyChatSession(buildChatMainPath(id))
-      // 删除聊天记录
+      destroyChatSession(buildChatMainKey(id))
+      // 删除聊天记录（DB 级联删列表行 + 消息体 + 子代理消息体）
       await aiChatRemove(id)
       // 删除沙盒目录
       await aiChatSandboxRemove(id)

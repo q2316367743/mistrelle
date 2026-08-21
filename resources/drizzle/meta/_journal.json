@@ -8,6 +8,13 @@
       "when": 1787299421604,
       "tag": "0000_silky_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787302519808,
+      "tag": "0001_big_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

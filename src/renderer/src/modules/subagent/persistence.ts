@@ -1,14 +1,10 @@
 import { AiChatContent } from '@/entity/ai'
-import {
-  aiChatContentGet,
-  aiChatContentSet,
-  buildChatMainPath,
-  buildChatSubPath
-} from '@/modules/chat/service/ChatService'
+import { aiChatContentGet, aiChatContentSet, buildChatSubKey } from '@/modules/chat/service/ChatService'
 import { ChatMessage } from '@/domain'
 
 /**
- * 子 Agent 消息持久化到 message/sub_{subId}.json，复用 AiChatContent 结构。
+ * 子 Agent 消息持久化（storageKey = sub:{chatId}:{subId}，DB chat_sub 表），
+ * 复用 AiChatContent 结构。
  */
 export const persistSubAgent = async (
   storageKey: string,
@@ -32,14 +28,6 @@ export const readSubAgentContent = async (
   chatId: string,
   subId: string
 ): Promise<ChatMessage[] | undefined> => {
-  const path = buildChatSubPath(chatId, subId)
-  const content = await aiChatContentGet(path)
+  const content = await aiChatContentGet(buildChatSubKey(chatId, subId))
   return content?.messages
-}
-
-/**
- * 读取主 Agent 消息文件（供 UI 加载主聊天记录）。
- */
-export const readMainContent = async (chatId: string): Promise<AiChatContent | undefined> => {
-  return aiChatContentGet(buildChatMainPath(chatId))
 }

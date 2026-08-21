@@ -40,16 +40,22 @@ src/
 │   │   ├── client.ts          # 单例 initDb()/db()：打开 ~/.mistrelle/db/mistrelle.db + pragma WAL + migrate()
 │   │   ├── schema/index.ts
 │   │   ├── schema/aihot.ts    # aihot_item / aihot_meta 表 + 索引（Drizzle schema 元数据）
-│   │   └── repo/aihotRepo.ts  # DAO：list / applyBatch / clear / getMeta
+│   │   ├── schema/chat.ts     # chat / chat_content / chat_sub 表（聊天列表 + 消息体）
+│   │   ├── repo/aihotRepo.ts  # DAO：list / applyBatch / clear / getMeta
+│   │   └── repo/chatRepo.ts   # DAO：list / upsertItem / deleteItem / get|setContent / get|setSub / getStamp
 │   └── ipc/dbIpc.ts           # registerDbIpc()：IPC 领域方法 → repo 透传
 ├── preload/src/
 │   ├── dbChannels.ts          # DbChannels 常量 + 载荷类型（独立于 channels.ts，其已贴 500 行红线）
-│   └── db.ts                  # dbApi 薄桥（aihot.list / applyBatch / clear / getMeta）
+│   └── db.ts                  # dbApi 薄桥（aihot.* / chat.*）
 └── renderer/src/
     ├── types/db.d.ts          # ambient 声明 DbApi 等（与 fs.d.ts 同级）
     ├── vite-env.d.ts          # Window.preload 增补 db: DbApi
     └── modules/aihot/AihotSelectedService.ts  # 网络同步编排 + 调 dbApi 持久化
 ```
+
+**聊天域**（列表 + 消息体 + 子代理消息体）已于 0001 迁移入表：会话键 `chat:{id}` / `sub:{chatId}:{subId}`
+走 DB、其余文件路径键（项目任务）保持文件读写；历史文件由 `test/migrate-chat-to-sqlite.mjs` 手动迁移。
+详见 [02-chat-sqlite-migration.md](./02-chat-sqlite-migration.md)。
 
 **DB 文件路径只在 main 解析**：`app.getPath('home') + ~/.mistrelle + /db/mistrelle.db`，
 渲染进程不感知路径。
