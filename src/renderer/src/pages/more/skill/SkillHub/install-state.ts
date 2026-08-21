@@ -1,5 +1,5 @@
 import type { LocalSkill } from '@/modules/skill'
-import type { ApiSkill } from '@/modules/skillhub'
+import type { ApiSkill } from '@/modules/api/skillhub'
 import { versionCompare } from '@/utils/lang/FieldUtil'
 
 /**

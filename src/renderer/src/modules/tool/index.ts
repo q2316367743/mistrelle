@@ -16,6 +16,7 @@ import { getNativeSearchTools } from './components/native/search'
 import { skillTools } from './components/skill'
 import { agentTools } from './components/agent'
 import { designStyleTools } from './components/design'
+import { aihotTools } from './components/aihot'
 import { fontListTool } from './components/design/fontTools'
 import { askTool } from './components/ask'
 import { spawnAgentTool } from '@/modules/subagent/tool'
@@ -49,7 +50,8 @@ export const toolGroups: Array<ToolGroup> = [
   { group: '媒体工具', tools: [...injectFfmpegTools] },
   { group: '浏览器', tools: [...injectBrowserTools, ...nativeBrowserAutomationTools] },
   { group: '专家管理', tools: agentTools },
-  { group: '设计风格', tools: designStyleTools }
+  { group: '设计风格', tools: designStyleTools },
+  { group: 'AI 热点', tools: aihotTools }
 ]
   .map((g) => ({ ...g, tools: g.tools.filter((t) => !t.internal) }))
   .filter((g) => g.tools.length > 0)
@@ -68,6 +70,7 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(nativeBrowserAutomationTools, 'name'),
   ...objectify(agentTools, 'name'),
   ...objectify(designStyleTools, 'name'),
+  ...objectify(aihotTools, 'name'),
   ...objectify([fontListTool], 'name')
 }
 

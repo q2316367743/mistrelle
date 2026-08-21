@@ -1,6 +1,6 @@
 import { DrawerPlugin } from 'tdesign-vue-next'
 import SkillHubDetailContent from './SkillHubDetailContent.vue'
-import type { ApiSkill } from '@/modules/skillhub'
+import type { ApiSkill } from '@/modules/api/skillhub'
 
 /**
  * 查看 Skill 详情抽屉

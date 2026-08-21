@@ -6,7 +6,7 @@ import {
 import { ChatContent } from '@tdesign-vue-next/chat'
 import { MessageUtil } from '@/utils/modal'
 import { prettyDataUnit } from '@/utils/lang/FormatUtil'
-import { skillHubApiV1SkillsFile, type ApiV1SkillFileItem } from '@/modules/skillhub'
+import { skillHubApiV1SkillsFile, type ApiV1SkillFileItem } from '@/modules/api/skillhub'
 
 export interface FileTreeNode extends TreeOptionData {
   label: string

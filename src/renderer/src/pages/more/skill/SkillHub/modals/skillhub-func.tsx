@@ -8,7 +8,7 @@ import {
   type LocalSkill,
   type SkillAgent
 } from '@/modules/skill'
-import { skillHubInstall, type ApiSkill } from '@/modules/skillhub'
+import { skillHubInstall, type ApiSkill } from '@/modules/api/skillhub'
 
 interface DownloadState {
   agentKey: string

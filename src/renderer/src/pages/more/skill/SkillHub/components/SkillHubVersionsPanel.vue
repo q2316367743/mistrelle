@@ -23,7 +23,7 @@
 </template>
 <script lang="ts" setup>
 import { prettyDate } from '@/utils/lang/FormatUtil'
-import type { ApiV1SkillVersionItem } from '@/modules/skillhub'
+import type { ApiV1SkillVersionItem } from '@/modules/api/skillhub'
 
 defineProps<{
   versions: Array<ApiV1SkillVersionItem>

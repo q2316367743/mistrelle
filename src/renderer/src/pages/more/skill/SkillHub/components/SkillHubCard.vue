@@ -51,7 +51,7 @@
 <script lang="ts" setup>
 import { DownloadIcon, StarIcon } from 'tdesign-icons-vue-next'
 import type { LocalSkill } from '@/modules/skill'
-import type { ApiSkill } from '@/modules/skillhub'
+import type { ApiSkill } from '@/modules/api/skillhub'
 import { buildInstallState } from '../install-state'
 import SkillInstallActions from './SkillInstallActions.vue'
 

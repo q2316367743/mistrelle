@@ -84,7 +84,7 @@ import {
   type ApiSkill,
   type ApiV1SkillsResult,
   type ApiV1SkillVersionItem
-} from '@/modules/skillhub'
+} from '@/modules/api/skillhub'
 import { buildFileTree, openSkillHubFileView, type FileTreeNode } from './SkillHubDetailShared'
 import { openSkillHubDownload, openSkillHubUninstall } from '../modals/skillhub-func'
 import SkillInstallActions from './SkillInstallActions.vue'

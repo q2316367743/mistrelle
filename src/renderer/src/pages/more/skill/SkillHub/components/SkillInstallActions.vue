@@ -21,7 +21,7 @@
 </template>
 <script lang="ts" setup>
 import type { LocalSkill } from '@/modules/skill'
-import type { ApiSkill } from '@/modules/skillhub'
+import type { ApiSkill } from '@/modules/api/skillhub'
 import { buildInstallState } from '../install-state'
 
 const props = defineProps<{
