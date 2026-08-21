@@ -1,6 +1,7 @@
 <template>
   <div class="r-chat-list">
     <ChatList
+      ref="chatListRef"
       :clear-history="clearHistory"
       :text-loading="textLoading"
       :is-stream-load="isStreamLoad"
@@ -85,6 +86,22 @@ const emit = defineEmits<{
 
 const textLoading = computed(() => props.status === 'pending')
 const isStreamLoad = computed(() => props.status === 'streaming')
+
+// tdesign ChatList expose 的滚动方法（见 @tdesign-vue-next/chat chat-list.mjs）
+// eslint-disable-next-line no-undef
+const chatListRef = ref<{ scrollToBottom: (data?: { behavior?: ScrollBehavior }) => void }>()
+
+// 发送消息后滚动到底部：ChatList 内部自动跟随会被用户上滚暂停（preventAutoScroll），
+// 需在新 user 消息渲染完成后显式复位；user 消息为异步追加，不能挂在 send 事件上
+watch(
+  () => props.messages.length,
+  async (len, prevLen) => {
+    if (prevLen === undefined || len <= prevLen) return
+    if (props.messages[len - 1]?.role !== 'user') return
+    await nextTick()
+    chatListRef.value?.scrollToBottom({ behavior: 'smooth' })
+  }
+)
 
 const userMessages = computed(() =>
   props.messages.filter((message): message is UserMessage => message.role === 'user')

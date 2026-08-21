@@ -106,6 +106,7 @@
 | [11-stream-retry.md](./chat/11-stream-retry.md)                     | 流式请求自动重试：agent 层指数退避（2s→4s→8s，默认 3 次）、失败清半截内容防重复、`ext.retryKey` 提示块随消息持久化；4xx（含 axios「status code 403」空壳）不重试 |
 | [12-agent-context-compaction.md](./chat/12-agent-context-compaction.md) | 历史工具上下文紧凑化：请求构建时按 `toolContextRules` 注册表处理历史——写类同资源仅保留最后一次成功写完整原文、其余（含失败写）整对剔除，读类同资源仅保留最新（写入使旧读过期），仅历史消息生效、持久化原文不动；含两轮「args 中间态被模型复读」故障记录（占位串、删字段后的 `{}`，args 侧禁止任何改写） |
 | [13-vision-image-passing.md](./chat/13-vision-image-passing.md)     | 模型识图：`AiModel.support` 能力位（独立 type）+ 弹窗 CheckboxGroup + 预设标注；请求构建时从磁盘路径重建图像块（全部历史保留），三格式适配器映射 `image_url` / `input_image` / anthropic source |
+| [14-send-scroll-to-bottom.md](./chat/14-send-scroll-to-bottom.md)   | 发送消息后滚动到底部：watch「列表增长且新末条为 user」+ ChatList expose 的 scrollToBottom（smooth），复位 tdesign 上滚暂停的自动跟随；user 消息异步追加故不挂 send 事件 |
 
 ### memory/ —— 记忆
 
