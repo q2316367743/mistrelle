@@ -3,15 +3,11 @@
 //  selected 模式：打开即渲染本地缓存，后台增量同步；
 //  筛选/搜索/排序/分片全部本地计算，无网络请求
 // ==========================================
-import { computed, ref, type Ref } from 'vue'
 import dayjs from 'dayjs'
 import type { AihotItem } from '@/modules/api/aihot'
-import {
-  loadAihotSelected,
-  syncAihotSelected,
-  type AihotSelectedCache
-} from '@/modules/aihot/AihotSelectedService'
+import { loadAihotSelected, syncAihotSelected, type AihotSelectedCache } from '@/modules/aihot'
 import { aihotTimelineKey } from './aihot-page-utils'
+import type { Ref } from 'vue'
 
 /** 本地模式的窗口选项（含全部时间：本地缓存才有全量历史） */
 export type AihotLocalWindow = '24h' | '7d' | 'all'
@@ -56,11 +52,15 @@ export const useAihotSelectedItems = (filter: AihotLocalFilter) => {
     return items
       .filter((item) => {
         if (category.value && item.category !== category.value) return false
-        if (windowMs !== null && now - dayjs(aihotTimelineKey(item, by.value)).valueOf() > windowMs) {
+        if (
+          windowMs !== null &&
+          now - dayjs(aihotTimelineKey(item, by.value)).valueOf() > windowMs
+        ) {
           return false
         }
         if (q.length >= 2) {
-          const haystack = `${item.title}\n${item.originalTitle ?? ''}\n${item.summary ?? ''}`.toLowerCase()
+          const haystack =
+            `${item.title}\n${item.originalTitle ?? ''}\n${item.summary ?? ''}`.toLowerCase()
           if (!haystack.includes(q)) return false
         }
         return true
@@ -108,5 +108,17 @@ export const useAihotSelectedItems = (filter: AihotLocalFilter) => {
     shown.value += LOCAL_PAGE_SIZE
   }
 
-  return { ready, syncing, manualSyncing, syncedAt, filtered, visible, hasMore, init, sync, resetShown, more }
+  return {
+    ready,
+    syncing,
+    manualSyncing,
+    syncedAt,
+    filtered,
+    visible,
+    hasMore,
+    init,
+    sync,
+    resetShown,
+    more
+  }
 }

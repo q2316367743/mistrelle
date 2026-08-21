@@ -87,7 +87,7 @@
 import { RefreshIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import EmptyResult from '@/components/Result/EmptyResult.vue'
 import { aihotApiV1Items, type AihotItem, type AihotPage } from '@/modules/api/aihot'
-import { aihotNotifyError, isAihotBadRequest } from '@/modules/aihot/AihotRequestError'
+import { aihotNotifyError, isAihotBadRequest } from '@/modules/aihot'
 import AihotTimelineList from './AihotTimelineList.vue'
 import { aihotRelativeTime, groupAihotItemsByDay } from '../aihot-page-utils'
 import { useAihotSelectedItems } from '../useAihotSelectedItems'

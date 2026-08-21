@@ -48,11 +48,7 @@
         <div class="aihot-story__digest-body">{{ story.digest }}</div>
       </div>
 
-      <aihot-story-neighbors
-        v-if="neighbors.length > 0"
-        :neighbors="neighbors"
-        @jump="jump"
-      />
+      <aihot-story-neighbors v-if="neighbors.length > 0" :neighbors="neighbors" @jump="jump" />
 
       <aihot-story-reports v-if="sortedReports.length > 0" :reports="sortedReports" />
 
@@ -73,7 +69,7 @@ import {
 } from '@/modules/api/aihot'
 import AihotStoryNeighbors from './AihotStoryNeighbors.vue'
 import AihotStoryReports from './AihotStoryReports.vue'
-import { aihotNotifyError } from '@/modules/aihot/AihotRequestError'
+import { aihotNotifyError } from '@/modules/aihot'
 import { aihotRelativeTime } from '../aihot-page-utils'
 
 const props = defineProps<{

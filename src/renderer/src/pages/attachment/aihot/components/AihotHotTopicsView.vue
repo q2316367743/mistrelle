@@ -49,7 +49,7 @@ import { RefreshIcon } from 'tdesign-icons-vue-next'
 import EmptyResult from '@/components/Result/EmptyResult.vue'
 import { aihotApiV1HotTopics, type AihotHotTopic } from '@/modules/api/aihot'
 import { openAihotStory } from './AihotStoryDrawer'
-import { aihotNotifyError } from '@/modules/aihot/AihotRequestError'
+import { aihotNotifyError } from '@/modules/aihot'
 import { aihotRelativeTime, storyIdFromLink } from '../aihot-page-utils'
 
 const loading = ref(false)

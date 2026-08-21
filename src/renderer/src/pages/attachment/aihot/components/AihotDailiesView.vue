@@ -35,7 +35,7 @@ import {
   type AihotDailyReport as AihotDailyReportData
 } from '@/modules/api/aihot'
 import AihotDailyReport from './AihotDailyReport.vue'
-import { aihotNotifyError } from '@/modules/aihot/AihotRequestError'
+import { aihotNotifyError } from '@/modules/aihot'
 
 const loading = ref(false)
 const indexLoading = ref(false)
@@ -153,7 +153,6 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     gap: 4px;
-
   }
 
   &__loading {
