@@ -60,7 +60,8 @@ import {
   TextformatColorIcon,
   ToolsIcon,
   UserCircleIcon,
-  UserIcon
+  UserIcon,
+  ComponentRadioIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
@@ -103,6 +104,11 @@ const menuTree: SideMenuItem[] = [
       { label: '技能', icon: LightbulbIcon, to: '/skill' },
       { label: '工具', icon: ToolsIcon, to: '/tool' }
     ]
+  },
+  {
+    label: '闲庭漫步',
+    icon: LightbulbIcon,
+    children: [{ label: 'AI HOT', icon: ComponentRadioIcon, to: '/attachment/aihot' }]
   }
 ]
 

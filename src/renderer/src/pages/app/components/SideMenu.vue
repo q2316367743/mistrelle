@@ -14,7 +14,7 @@ export interface SideMenuItem {
   to?: string
   /** to 判定 active 的方式，默认 exact */
   match?: 'exact' | 'prefix'
-  /** 额外按前缀判定 active 的路径，用于父级覆盖子路由 */
+  /** 额外按前缀判定 active 的路径，仅作用于自身（不因子孙选中而高亮） */
   activePaths?: string[]
   children?: SideMenuItem[]
 }

@@ -35,18 +35,23 @@ const props = defineProps<{ item: SideMenuItem }>()
 const router = useRouter()
 const route = useRoute()
 
-function isItemActive(item: SideMenuItem): boolean {
+function isSelfActive(item: SideMenuItem): boolean {
   if (item.to) {
     const match = item.match ?? 'exact'
     if (match === 'prefix' ? route.path.startsWith(item.to) : route.path === item.to) return true
   }
-  if (item.activePaths?.some((p) => route.path.startsWith(p))) return true
-  return !!item.children?.some(isItemActive)
+  return !!item.activePaths?.some((p) => route.path.startsWith(p))
 }
 
-const active = computed(() => isItemActive(props.item))
-// 当前路由落在某子项时，默认展开该父级（深链接进入也能看到对应子菜单）
-const expanded = ref(active.value && !!props.item.children?.length)
+function hasActiveDescendant(item: SideMenuItem): boolean {
+  return !!item.children?.some((child) => isSelfActive(child) || hasActiveDescendant(child))
+}
+
+const active = computed(() => isSelfActive(props.item))
+// 子项选中或自身 activePaths 命中时默认展开（深链接进入也能看到对应子菜单）
+const expanded = ref(
+  !!props.item.children?.length && (active.value || hasActiveDescendant(props.item))
+)
 
 function goTo() {
   if (!props.item.to) return

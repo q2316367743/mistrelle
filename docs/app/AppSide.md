@@ -20,7 +20,7 @@ interface SideMenuItem {
   icon?: Component              // tdesign 图标组件，模板用 <component :is>
   to?: string                   // 点击导航目标；存在 children 时一般为空（仅展开/收起）
   match?: 'exact' | 'prefix'    // to 判定 active 的方式，默认 exact
-  activePaths?: string[]        // 额外按前缀判定 active 的路径，用于父级覆盖子路由（如 /design/detail/）
+  activePaths?: string[]        // 额外按前缀判定自身 active 的路径（如父级覆盖 /design/detail/）；不因子孙选中而高亮
   children?: SideMenuItem[]
 }
 ```
@@ -31,25 +31,33 @@ interface SideMenuItem {
 - 项目 → `to:'/project/list'`，`activePaths:['/project/']`（保留 `startsWith('/project/')` 高亮语义）
 - 设计（父，`activePaths:['/design/detail/']`）→ 设计风格 `/design/list`、字体 `/design/font`
 - 更多拓展（父）→ Agent `/agent`、技能 `/skill`、工具 `/tool`
+- 闲庭漫步（父）→ AI HOT `/attachment/aihot`
 
 ## active 判定（SideMenuNode 内，复用 `route.path` 范式）
 
+每项只按自身 `to` / `activePaths` 判定 `.active`，**不向子孙冒泡**。二级菜单选中子项时，父级不高亮。
+
 ```ts
-function isItemActive(item: SideMenuItem): boolean {
+function isSelfActive(item: SideMenuItem): boolean {
   if (item.to) {
     const match = item.match ?? 'exact'
     if (match === 'prefix' ? route.path.startsWith(item.to) : route.path === item.to) return true
   }
-  if (item.activePaths?.some((p) => route.path.startsWith(p))) return true
-  return !!item.children?.some(isItemActive)   // 父级 = 任一子级 active
+  return !!item.activePaths?.some((p) => route.path.startsWith(p))
 }
 ```
 
-该规则完整覆盖原实现：父级「设计」在 `/design/detail/*` 或 `/design/list` 时高亮、「项目」在任意 `/project/*` 时高亮等。
+覆盖场景：
+
+- 「设计风格」`/design/list`、字体 `/design/font`：仅对应子项高亮，父级「设计」不高亮
+- 「设计」在 `/design/detail/*` 时仍高亮（自身 `activePaths`）
+- 「项目」在任意 `/project/*` 时高亮
+
+展开仍单独看子孙：`hasActiveDescendant` 递归检查子项是否 `isSelfActive`，深链接进入时父级默认展开，但样式不跟选中。
 
 ## 展开/收起动画
 
-- 每个有 `children` 的节点维护自身 `expanded`（`ref`）；**初始值 = `isItemActive(item) && 有 children`**，即深链接进入时该父级默认展开。
+- 每个有 `children` 的节点维护自身 `expanded`（`ref`）；**初始值 = 有 children 且（自身 active 或子孙 active）**，即深链接进入时该父级默认展开。
 - 嵌套容器包 `<transition name="submenu">`，用 JS 钩子做动态高度过渡：
   - `onEnter`：`height:0 → scrollHeight`
   - `onAfterEnter`：`height:auto`

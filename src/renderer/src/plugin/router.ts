@@ -109,6 +109,14 @@ export const routes: Array<RouteRecordRaw> = [
     ]
   },
 
+  // --------------------------------- 闲庭漫步 ---------------------------------
+
+  {
+    name: '闲庭漫步/AIHOT',
+    path: '/attachment/aihot',
+    component: () => import('@/pages/attachment/aihot/AttachmentAihotPage.vue')
+  },
+
   // --------------------------------- 设置 ---------------------------------
 
   {
