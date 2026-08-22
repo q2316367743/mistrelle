@@ -57,15 +57,6 @@
                 <template #icon><RefreshIcon /></template>
                 重试
               </t-button>
-              <t-button
-                v-else
-                size="small"
-                variant="text"
-                theme="primary"
-                @click.stop="emit('open', item)"
-              >
-                查看详情
-              </t-button>
             </div>
           </div>
         </div>
