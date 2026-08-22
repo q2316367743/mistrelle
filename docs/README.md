@@ -100,7 +100,7 @@
 | [04-chat-session-lifecycle.md](./chat/04-chat-session-lifecycle.md) | 会话生命周期与空闲自动回收：挂载/运行豁免、5 分钟 TTL 过期销毁、回收后磁盘水合    |
 | [05-todo-progress.md](./chat/05-todo-progress.md)                   | 待办进度按钮：头部圆环 +「第 X / N 步」、t-popup 弹层复用 TodoList、空待办隐藏    |
 | [06-token-usage.md](./chat/06-token-usage.md)                       | Token 用量与上下文占用：API usage 记录、四类构成估算+归一化、发送栏圆环 + 弹窗明细 |
-| [07-chat-process-fold.md](./chat/07-chat-process-fold.md)           | 助理消息过程折叠：完成 + 有过程内容即可折叠、无最终回复时折叠条 +「异常停止」提示 |
+| [07-chat-process-fold.md](./chat/07-chat-process-fold.md)           | 助理消息过程折叠：完成 + 有过程内容即可折叠、无最终回复时折叠条 +「异常停止」提示、record_memory 收尾时最终回复锚定到其前文本 |
 | [08-new-page-keep-alive.md](./chat/08-new-page-keep-alive.md)       | 新建聊天页 keep-alive 保活：router-view 外套 keep-alive 缓存 /new 页（组件名 PageNew），发送后重置全部表单数据 |
 | [09-user-message-expand.md](./chat/09-user-message-expand.md)       | 用户消息折叠 / 展开：限高 3 行 + 底部 backdrop-filter 渐变模糊、模糊区中央向下箭头展开 / 展开后居中向上箭头收起；图片附件 hover 用 t-popup+t-image 预览，点击标签在文件夹中显示 |
 | [10-ai-workspace.md](./chat/10-ai-workspace.md)                     | AiWorkspace 工作目录选择器：非只读 dropdown 选择/清除/历史，只读锁定态点击 shell.openPath 打开目录（cursor default 无动画） |

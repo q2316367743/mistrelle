@@ -129,10 +129,17 @@ const isCompleted = computed(
 
 // ─── 完成后过程折叠 ────────────────────────────────────────────────
 
-/** 最终回复：content 中最后一条非 continueHint / retryNotice 的 text/markdown（agent 循环最后一步的输出） */
-const finalContent = computed<AIMessageContent | undefined>(() => {
-  const contents = props.message.content ?? []
-  for (let i = contents.length - 1; i >= 0; i--) {
+/** record_memory：AI 常在回答结束后追加的记忆记录调用，其后至多一段补充说明，均非最终回复 */
+const isRecordMemoryCall = (item: AIMessageContent): boolean =>
+  item.type === 'toolcall' && item.data.toolCallName === 'record_memory'
+
+/** 在 [from, to] 区间倒序取最后一条非 continueHint / retryNotice 的 text/markdown */
+const findLastText = (
+  contents: AIMessageContent[],
+  from: number,
+  to: number
+): AIMessageContent | undefined => {
+  for (let i = from; i >= to; i--) {
     const item = contents[i]
     if (
       (item.type === 'text' || item.type === 'markdown') &&
@@ -143,6 +150,32 @@ const finalContent = computed<AIMessageContent | undefined>(() => {
     }
   }
   return undefined
+}
+
+/** 最终回复：默认取 content 中最后一条非 continueHint / retryNotice 的 text/markdown（agent 循环最后一步的输出）。
+ *  record_memory 为收尾调用时（其后无其他 toolcall / thinking）改锚定到它之前，
+ *  使回答结束后的记忆调用与补充说明归入过程，真正的回答不被折叠；其前无文本则回退默认逻辑 */
+const finalContent = computed<AIMessageContent | undefined>(() => {
+  const contents = props.message.content ?? []
+  let lastMemoryIdx = -1
+  for (let i = contents.length - 1; i >= 0; i--) {
+    if (isRecordMemoryCall(contents[i])) {
+      lastMemoryIdx = i
+      break
+    }
+  }
+  if (lastMemoryIdx < 0) return findLastText(contents, contents.length - 1, 0)
+  const hasWorkAfterMemory = contents
+    .slice(lastMemoryIdx + 1)
+    .some(
+      (item) =>
+        (item.type === 'thinking' || item.type === 'toolcall') && !isRecordMemoryCall(item)
+    )
+  if (hasWorkAfterMemory) return findLastText(contents, contents.length - 1, 0)
+  return (
+    findLastText(contents, lastMemoryIdx - 1, 0) ??
+    findLastText(contents, contents.length - 1, lastMemoryIdx)
+  )
 })
 
 /** 是否存在可折叠的过程内容（thinking / toolcall / 中间文本等，排除最终回复与 continueHint 操作按钮） */
