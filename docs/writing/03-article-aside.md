@@ -34,6 +34,7 @@ src/components/chat/aside/writing/
 - 编辑落盘：`ArticleEditor` 变更（`editor.getMarkdown()`）→ `ArticleAside` 防抖 800ms 写回 `{root}/{file}`。
 - 图片落盘：粘贴 / 拖入图片 → 写入 `assetsDir`（`{root}/assets`）→ 插入相对路径节点（`../assets/xxx.png`）。
 - 文章创建：由 AI 通过 `article_create` 工具完成，侧边栏「刷新」后在下拉中可见。
+- 刷新语义：点击「刷新」会先重载项目索引（列表 / 元信息 / 字数），若当前已选中文章，还会从磁盘重新读取该文章正文并写回编辑器——因此 AI 通过 `file_write` 改写 `.md` 正文后，无需叉掉重选，点一次刷新即可看到最新内容。`ArticleEditor` 仅在磁盘内容与编辑器当前内容确有差异时同步（`emitUpdate:false`），不会与用户正在预览 / 编辑的内容冲突。
 - 工作空间切换：watch root → `destroyArticleStore(旧)` + 重载新项目（释放内存、避免失效状态）。
 
 ## 编辑器（tiptap）

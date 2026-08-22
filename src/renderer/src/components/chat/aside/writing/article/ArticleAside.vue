@@ -145,12 +145,20 @@ const handleSelectChange = (id: unknown) => {
   void handleSelect(id)
 }
 
-/** 刷新项目索引；若当前选中文章已被删除则复位选中 */
+/** 刷新项目索引；若当前选中文章已被删除则复位选中，否则从磁盘重载正文（反映 AI 改写） */
 const reload = async () => {
   await store.value.refresh()
   if (activeId.value && !articles.value.some((a) => a.id === activeId.value)) {
     activeId.value = ''
     content.value = ''
+    return
+  }
+  if (activeId.value && activeArticle.value) {
+    try {
+      content.value = await store.value.readArticle(activeId.value)
+    } catch {
+      // 正文读取失败保持内存内容，不阻断刷新
+    }
   }
 }
 
