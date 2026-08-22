@@ -68,6 +68,8 @@ interface InjectClipboard {
   copyText(text: string): Promise<boolean>
   copyFile(file: string | string[]): Promise<boolean>
   copyImage(img: string | Uint8Array): Promise<boolean>
+  /** 按本地图片文件路径复制（main 侧 nativeImage.createFromPath；区别于 copyImage 的 base64/dataURL） */
+  copyImageByPath(path: string): Promise<boolean>
   getCopyedFiles(): Promise<{ isFile: boolean; isDirectory: boolean; name: string; path: string }[]>
 }
 

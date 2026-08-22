@@ -7,10 +7,13 @@ import {
   DbChannels,
   type AihotBatch,
   type AihotListParams,
-  type ChatItemInput
+  type ChatItemInput,
+  type ImageListParams,
+  type ImageRecordInput
 } from '~/dbChannels'
 import { initDb } from '$/db/client'
 import { aiHotApplyBatch, aiHotClear, aiHotGetMeta, aiHotList, aiHotMarkRead } from '$/db/repo/aihotRepo'
+import { imageDelete, imageList, imageUpsert } from '$/db/repo/imageRepo'
 import {
   chatDeleteItem,
   chatGetContent,
@@ -60,4 +63,12 @@ export function registerDbIpc(): void {
   ipcMain.handle(DbChannels.chatGetStamp, (_event, chatId: string): number | null =>
     chatGetStamp(chatId)
   )
+
+  ipcMain.handle(DbChannels.imageList, (_event, params: ImageListParams): ReturnType<typeof imageList> =>
+    imageList(params.filter, params.limit, params.offset)
+  )
+  ipcMain.handle(DbChannels.imageUpsert, (_event, record: ImageRecordInput): void =>
+    imageUpsert(record)
+  )
+  ipcMain.handle(DbChannels.imageDelete, (_event, id: string): void => imageDelete(id))
 }

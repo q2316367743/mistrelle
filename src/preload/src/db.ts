@@ -10,7 +10,10 @@ import {
   type AihotListResult,
   type AihotMeta,
   type ChatContentResult,
-  type ChatItemInput
+  type ChatItemInput,
+  type ImageListParams,
+  type ImageListResult,
+  type ImageRecordInput
 } from './dbChannels'
 
 /** 列表行（top 为 0/1 整数，渲染侧转 boolean） */
@@ -56,5 +59,15 @@ export const dbApi = {
     /** 消息体更新时间戳（记忆提取未变跳过；缺行返回 null） */
     getStamp: (chatId: string): Promise<number | null> =>
       ipcRenderer.invoke(DbChannels.chatGetStamp, chatId)
+  },
+  image: {
+    /** 分页查询生成记录（筛选 / 排序 / 分页在 SQL 内完成） */
+    list: (params: ImageListParams): Promise<ImageListResult> =>
+      ipcRenderer.invoke(DbChannels.imageList, params),
+    /** 记录 upsert（插入 pending / 生成结束更新 success|failed） */
+    upsert: (record: ImageRecordInput): Promise<void> =>
+      ipcRenderer.invoke(DbChannels.imageUpsert, record),
+    /** 删除单条记录（图片文件由渲染侧联动删除） */
+    delete: (id: string): Promise<void> => ipcRenderer.invoke(DbChannels.imageDelete, id)
   }
 }

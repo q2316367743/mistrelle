@@ -81,6 +81,8 @@ const clipboard = {
     ipcRenderer.invoke(ClipboardChannels.copyFile, file),
   copyImage: (img: string | Uint8Array): Promise<boolean> =>
     ipcRenderer.invoke(ClipboardChannels.copyImage, img),
+  copyImageByPath: (path: string): Promise<boolean> =>
+    ipcRenderer.invoke(ClipboardChannels.copyImageByPath, path),
   getCopyedFiles: (): Promise<InjectClipboardFile[]> =>
     ipcRenderer.invoke(ClipboardChannels.getCopyedFiles)
 }

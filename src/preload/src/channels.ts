@@ -41,6 +41,7 @@ export const ClipboardChannels = {
   copyText: 'clipboard:copyText',
   copyFile: 'clipboard:copyFile',
   copyImage: 'clipboard:copyImage',
+  copyImageByPath: 'clipboard:copyImageByPath',
   getCopyedFiles: 'clipboard:getCopyedFiles'
 } as const
 

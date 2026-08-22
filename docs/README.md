@@ -62,6 +62,7 @@
 |---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
 | [01-aihot-page.md](./attachment/01-aihot-page.md)             | AIHOT 资讯页：t-tabs 四视图（精选/动态/热点/日报）；精选=本地缓存、动态=在线全量池（lazy 懒挂载）；时间轴；精选集 snapshot/changes 增量同步；日报不可变缓存、429 Retry-After 等接入文档约定落地；已读/未读标记（read 列持久化、点击打开即标记） |
 | [02-aihot-embedded-link-viewer.md](./attachment/02-aihot-embedded-link-viewer.md) | AIHOT 内嵌网页浏览抽屉：全模块链接出口统一走 `openAihotLink` → DrawerPlugin + `<webview>`（webviewTag: true）；选型结论（vs WebContentsView）、UA 覆写防白屏、persist:aihot-webview 会话隔离、did-fail-load -3 忽略等注意事项 |
+| [03-image-generate-page.md](./attachment/03-image-generate-page.md) | 文生图页面（`/attachment/image`）：生成表单（模型选择：显式 imageOptions 优先、缺省默认；提交即清空、可并行连续生成）+ 历史网格；复用 `generateImage` 服务、`image_generate` 表 + `db:image:*` IPC、图片按月分桶 `~/.mistrelle/image/generate/{yyyy-MM}/{id}.png`；pending→success/failed 状态机（单例跨路由存活、settle 排除运行中、删除防 upsert 复活）、`${provideId}:${identifier}` 模型 key 约定、五处同步清单 |
 
 ### canvas/ —— 画布
 

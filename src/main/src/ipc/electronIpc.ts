@@ -172,6 +172,15 @@ export function registerClipboardIpc(): void {
     return true
   })
 
+  // 按本地文件路径复制图片（nativeImage.createFromPath；与 copyImage 的 base64/dataURL 语义区分）
+  ipcMain.handle(ClipboardChannels.copyImageByPath, (_event, path: string): boolean => {
+    const { nativeImage } = require('electron') as typeof import('electron')
+    const imageObj = nativeImage.createFromPath(path)
+    if (imageObj.isEmpty()) return false
+    clipboard.writeImage(imageObj)
+    return true
+  })
+
   ipcMain.handle(ClipboardChannels.getCopyedFiles, () => {
     const files = parseClipboardFiles()
     return files.map((path) => {

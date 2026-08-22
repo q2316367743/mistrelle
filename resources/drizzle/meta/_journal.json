@@ -22,6 +22,13 @@
       "when": 1787373783440,
       "tag": "0002_dusty_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787396852851,
+      "tag": "0003_red_brood",
+      "breakpoints": true
     }
   ]
 }

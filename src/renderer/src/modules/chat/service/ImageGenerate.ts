@@ -29,6 +29,11 @@ export interface GenerateImageParams {
   path: string
   /** 可选：输出尺寸，如 "1024x1024"；缺省用 1024x1024 */
   size?: string
+  /**
+   * 可选：生图模型 optionMap key（格式 `${provideId}:${identifier}`，见 SettingAiStore.imageOptions）；
+   * 缺省回退「设置 → 默认设置 → 默认生图模型」
+   */
+  model?: string
 }
 
 export interface GenerateImageResult {
@@ -254,21 +259,22 @@ const readImageSize = async (
 
 /**
  * 生成图片并保存到本地。
+ * 模型来源：显式 params.model 优先，缺省回退默认生图模型。
  * @returns 成功返回 { path, width?, height? }；失败返回 { error }。
  */
 export const generateImage = async (
   params: GenerateImageParams
 ): Promise<GenerateImageResult | { error: string }> => {
-  const defaultModel = useSettingDefaultStore().state.defaultImageModel
-  if (!defaultModel) {
-    return { error: '未配置默认生图模型：请到 设置 → 默认设置 → 默认生图模型 选择模型后再试' }
+  const modelKey = params.model?.trim() || useSettingDefaultStore().state.defaultImageModel
+  if (!modelKey) {
+    return { error: '未配置生图模型：请在页面选择模型，或到 设置 → 默认设置 → 默认生图模型 配置后再试' }
   }
 
   const aiStore = useSettingAiStore()
   if (!aiStore.ready) await aiStore.initPromise
-  const option = aiStore.optionMap.get(defaultModel)
+  const option = aiStore.optionMap.get(modelKey)
   if (!option) {
-    return { error: '默认生图模型不存在或未启用：请在 AI 设置中检查该模型配置' }
+    return { error: '生图模型不存在或未启用：请在 AI 设置中检查该模型配置' }
   }
 
   const baseUrl = option.baseUrl.trim().replace(/\/+$/, '')

@@ -19,7 +19,10 @@ export const DbChannels = {
   chatSetContent: 'db:chat:setContent',
   chatGetSub: 'db:chat:getSub',
   chatSetSub: 'db:chat:setSub',
-  chatGetStamp: 'db:chat:getStamp'
+  chatGetStamp: 'db:chat:getStamp',
+  imageList: 'db:image:list',
+  imageUpsert: 'db:image:upsert',
+  imageDelete: 'db:image:delete'
 } as const
 
 /** 排序 / 时间筛选基准 */
@@ -92,4 +95,42 @@ export interface ChatItemInput {
 export interface ChatContentResult {
   data: string | null
   updatedTime: number | null
+}
+
+// ── 文生图域（生成记录） ─────────────────
+
+/** 生成任务状态：pending=生成中，success=成功，failed=失败 */
+export type ImageGenerateStatus = 'pending' | 'success' | 'failed'
+
+/** image_generate 表行载荷（upsert 全量列 / list 行返回，两用） */
+export interface ImageRecordInput {
+  id: string
+  prompt: string
+  model: string | null
+  size: string | null
+  /** 图片文件绝对路径（pending 时即为预定路径） */
+  path: string | null
+  width: number | null
+  height: number | null
+  status: ImageGenerateStatus
+  error: string | null
+  createdAt: number
+}
+
+export interface ImageListFilter {
+  /** 关键词（>=2 字符才参与匹配，对 prompt 子串） */
+  keyword?: string
+  /** 状态筛选；空 = 全部 */
+  status?: ImageGenerateStatus
+}
+
+export interface ImageListParams {
+  filter: ImageListFilter
+  limit: number
+  offset: number
+}
+
+export interface ImageListResult {
+  items: ImageRecordInput[]
+  total: number
 }

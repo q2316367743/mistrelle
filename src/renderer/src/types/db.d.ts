@@ -98,7 +98,50 @@ declare interface ChatDbApi {
   getStamp: (chatId: string) => Promise<number | null>
 }
 
+/** 生成任务状态：pending=生成中，success=成功，failed=失败 */
+declare type ImageGenerateStatus = 'pending' | 'success' | 'failed'
+
+/** image_generate 表行载荷（upsert 全量列 / list 行返回，两用） */
+declare interface ImageRecordInput {
+  id: string
+  prompt: string
+  model: string | null
+  size: string | null
+  /** 图片文件绝对路径（pending 时即为预定路径） */
+  path: string | null
+  width: number | null
+  height: number | null
+  status: ImageGenerateStatus
+  error: string | null
+  createdAt: number
+}
+
+declare interface ImageListFilter {
+  /** 关键词（>=2 字符才参与匹配，对 prompt 子串） */
+  keyword?: string
+  /** 状态筛选；空 = 全部 */
+  status?: ImageGenerateStatus
+}
+
+declare interface ImageListParams {
+  filter: ImageListFilter
+  limit: number
+  offset: number
+}
+
+declare interface ImageListResult {
+  items: ImageRecordInput[]
+  total: number
+}
+
+declare interface ImageDbApi {
+  list: (params: ImageListParams) => Promise<ImageListResult>
+  upsert: (record: ImageRecordInput) => Promise<void>
+  delete: (id: string) => Promise<void>
+}
+
 declare interface DbApi {
   aihot: AihotDbApi
   chat: ChatDbApi
+  image: ImageDbApi
 }
