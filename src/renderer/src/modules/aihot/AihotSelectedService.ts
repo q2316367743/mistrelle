@@ -17,6 +17,9 @@ import {
 } from '@/modules/api/aihot'
 import { aihotErrorStatus, aihotNotifyError } from './AihotRequestError'
 
+/** 渲染侧条目视图：API 的 AihotItem 叠加本地「是否已读」标记（在线池条目无 read 字段） */
+export type AihotItemView = AihotItem & { read?: boolean }
+
 /** fields=default 契约下的字段集判别（防御服务端异常返回 minimal） */
 const isFullItem = (item: AihotItem | AihotItemMinimal): item is AihotItem =>
   'originalTitle' in item
@@ -57,7 +60,7 @@ export const listAihotItems = async (
   query: AihotListQuery,
   limit: number,
   offset: number
-): Promise<{ items: AihotItem[]; total: number }> => {
+): Promise<{ items: AihotItemView[]; total: number }> => {
   const q = query.keyword.trim().toLowerCase()
   const res = await window.preload.db.aihot.list({
     filter: {
@@ -69,8 +72,15 @@ export const listAihotItems = async (
     limit,
     offset
   })
-  return { items: res.items.map((r) => JSON.parse(r.data) as AihotItem), total: res.total }
+  return {
+    items: res.items.map((r) => ({ ...(JSON.parse(r.data) as AihotItem), read: r.read })),
+    total: res.total
+  }
 }
+
+/** 标记单条资讯为已读（点击打开条目时调用，状态落 SQLite 持久化） */
+export const markAihotItemRead = async (id: string): Promise<void> =>
+  window.preload.db.aihot.markRead(id)
 
 /** 读取账本元数据（schemaVersion / fields / cursor 水位 / syncedAt） */
 export const getAihotMeta = async (): Promise<AihotMeta> => window.preload.db.aihot.getMeta()

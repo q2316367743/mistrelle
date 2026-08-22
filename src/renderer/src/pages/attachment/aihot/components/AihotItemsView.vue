@@ -46,6 +46,7 @@
     <div class="aihot-items__status">
       <template v-if="isLocal">
         <span>本地精选 {{ total }} 条</span>
+        <span v-if="unreadCount">未读 {{ unreadCount }} 条</span>
         <span v-if="syncedAt">同步于 {{ aihotRelativeTime(syncedAt) }}</span>
         <span v-else>首次同步中…</span>
       </template>
@@ -60,6 +61,7 @@
           :by="by"
           :show-selected="mode === 'all'"
           class="px-8px"
+          @read="onItemRead"
         />
         <empty-result
           v-else-if="!viewLoading"
@@ -128,6 +130,16 @@ const categoryOptions = [
 
 const isLocal = computed(() => mode.value === 'selected')
 
+/** 本页未读计数（仅本地精选库；在线池无已读概念） */
+const unreadCount = computed(() =>
+  isLocal.value ? list.value.filter((i) => i.read === false).length : 0
+)
+
+/** 标记已读：仅本地精选库生效（在线池不入本地库） */
+const onItemRead = (id: string) => {
+  if (isLocal.value) markRead(id)
+}
+
 // ====================================== 本地精选数据源 ======================================
 const {
   manualSyncing,
@@ -140,7 +152,8 @@ const {
   init,
   sync,
   resetShown,
-  more
+  more,
+  markRead
 } = useAihotSelectedItems({ keyword, category, timeWindow, by })
 
 // ====================================== 在线全量池数据源 ======================================

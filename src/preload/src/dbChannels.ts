@@ -11,6 +11,7 @@ export const DbChannels = {
   aihotApplyBatch: 'db:aihot:applyBatch',
   aihotClear: 'db:aihot:clear',
   aihotGetMeta: 'db:aihot:getMeta',
+  aihotMarkRead: 'db:aihot:markRead',
   chatList: 'db:chat:list',
   chatUpsertItem: 'db:chat:upsertItem',
   chatDeleteItem: 'db:chat:deleteItem',
@@ -52,8 +53,8 @@ export interface AihotListParams {
 }
 
 export interface AihotListResult {
-  /** data 为完整 AihotItem JSON（渲染侧 JSON.parse 还原），id 供 key 使用 */
-  items: Array<{ id: string; data: string }>
+  /** data 为完整 AihotItem JSON（渲染侧 JSON.parse 还原），id 供 key 使用，read 为是否已读 */
+  items: Array<{ id: string; data: string; read: boolean }>
   total: number
 }
 

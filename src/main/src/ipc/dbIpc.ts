@@ -10,7 +10,7 @@ import {
   type ChatItemInput
 } from '~/dbChannels'
 import { initDb } from '$/db/client'
-import { aiHotApplyBatch, aiHotClear, aiHotGetMeta, aiHotList } from '$/db/repo/aihotRepo'
+import { aiHotApplyBatch, aiHotClear, aiHotGetMeta, aiHotList, aiHotMarkRead } from '$/db/repo/aihotRepo'
 import {
   chatDeleteItem,
   chatGetContent,
@@ -36,6 +36,7 @@ export function registerDbIpc(): void {
   )
   ipcMain.handle(DbChannels.aihotClear, (): void => aiHotClear())
   ipcMain.handle(DbChannels.aihotGetMeta, (): ReturnType<typeof aiHotGetMeta> => aiHotGetMeta())
+  ipcMain.handle(DbChannels.aihotMarkRead, (_event, id: string): void => aiHotMarkRead(id))
 
   ipcMain.handle(DbChannels.chatList, (): ReturnType<typeof chatList> => chatList())
   ipcMain.handle(DbChannels.chatUpsertItem, (_event, item: ChatItemInput): void =>

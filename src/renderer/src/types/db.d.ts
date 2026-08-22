@@ -31,7 +31,7 @@ declare interface AihotListParams {
 }
 
 declare interface AihotListResult {
-  items: Array<{ id: string; data: string }>
+  items: Array<{ id: string; data: string; read: boolean }>
   total: number
 }
 
@@ -53,6 +53,7 @@ declare interface AihotDbApi {
   applyBatch: (batch: AihotBatch) => Promise<void>
   clear: () => Promise<void>
   getMeta: () => Promise<AihotMeta>
+  markRead: (id: string) => Promise<void>
 }
 
 /** chat 表行载荷（侧栏列表项） */

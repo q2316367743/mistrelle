@@ -29,7 +29,9 @@ export const dbApi = {
     /** 清空精选数据与元数据（409 重引导时） */
     clear: (): Promise<void> => ipcRenderer.invoke(DbChannels.aihotClear),
     /** 读取账本元数据（schemaVersion / fields / cursor 水位 / syncedAt） */
-    getMeta: (): Promise<AihotMeta> => ipcRenderer.invoke(DbChannels.aihotGetMeta)
+    getMeta: (): Promise<AihotMeta> => ipcRenderer.invoke(DbChannels.aihotGetMeta),
+    /** 标记单条为已读（点击打开资讯条目时调用） */
+    markRead: (id: string): Promise<void> => ipcRenderer.invoke(DbChannels.aihotMarkRead, id)
   },
   chat: {
     /** 聊天列表（created_at 倒序，top 为 0/1） */

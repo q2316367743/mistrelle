@@ -13,6 +13,7 @@
             :item="item"
             :show-selected="showSelected"
             class="aihot-timeline__card"
+            @read="$emit('read', $event)"
           />
         </div>
       </div>
@@ -31,6 +32,8 @@ defineProps<{
   by: 'timeline' | 'published'
   showSelected?: boolean
 }>()
+
+defineEmits<{ read: [id: string] }>()
 </script>
 <style scoped lang="less">
 // 时间列宽 40px + 间距 12px + 圆点半径 4.5px = 竖线中心 56.5px

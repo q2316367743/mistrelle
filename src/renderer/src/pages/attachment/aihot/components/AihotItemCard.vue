@@ -1,7 +1,10 @@
 <template>
   <div class="aihot-item-card" @click="openOriginal">
     <div class="aihot-item-card__head">
-      <span class="aihot-item-card__title" :title="item.title">{{ item.title }}</span>
+      <span v-if="isUnread" class="aihot-item-card__unread" />
+      <span class="aihot-item-card__title" :class="{ 'is-unread': isUnread }" :title="item.title">
+        {{ item.title }}
+      </span>
       <t-tag v-if="showSelected && item.selected" size="small" theme="primary" variant="light">
         精选
       </t-tag>
@@ -23,20 +26,27 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { AihotItem } from '@/modules/api/aihot'
+import type { AihotItemView } from '@/modules/aihot'
 import { aihotCategoryLabel, aihotRelativeTime } from '../aihot-page-utils'
 import { openAihotLink } from './AihotLinkDrawer'
 
 const props = defineProps<{
-  item: AihotItem
+  item: AihotItemView
   /** mode=all 时展示精选标记，selected 模式下全量皆精选无需展示 */
   showSelected?: boolean
 }>()
 
+const emit = defineEmits<{ read: [id: string] }>()
+
+const isUnread = computed(() => props.item.read === false)
+
 const categoryLabel = computed(() => aihotCategoryLabel(props.item.category))
 const time = computed(() => aihotRelativeTime(props.item.publishedAt ?? props.item.discoveredAt))
 
-const openOriginal = () => openAihotLink(props.item.links.aihot)
+const openOriginal = () => {
+  openAihotLink(props.item.links.aihot)
+  emit('read', props.item.id)
+}
 </script>
 <style scoped lang="less">
 .aihot-item-card {
@@ -71,6 +81,18 @@ const openOriginal = () => openAihotLink(props.item.links.aihot)
     font: var(--td-font-body-medium);
     font-weight: 600;
     color: var(--td-text-color-primary);
+
+    &.is-unread {
+      font-weight: 700;
+    }
+  }
+
+  &__unread {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--td-radius-circle);
+    background-color: var(--td-brand-color);
   }
 
   &__summary {

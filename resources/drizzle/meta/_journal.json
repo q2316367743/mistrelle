@@ -15,6 +15,13 @@
       "when": 1787302519808,
       "tag": "0001_big_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787373783440,
+      "tag": "0002_dusty_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

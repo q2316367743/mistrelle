@@ -7,7 +7,7 @@
  * - search_text 为小写拼接的 title+originalTitle+summary，供 LIKE 子串搜索（q>=2 字符）。
  * - timeline 排序/筛选基准：by='timeline' 用 discovered_at，by='published' 用 coalesce(published_at, discovered_at)。
  */
-import { index, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const aihotItems = sqliteTable(
   'aihot_item',
@@ -18,7 +18,9 @@ export const aihotItems = sqliteTable(
     discoveredAt: text('discovered_at'),
     publishedAt: text('published_at'),
     searchText: text('search_text'),
-    data: text('data').notNull()
+    data: text('data').notNull(),
+    /** 是否已读：0=未读，1=已读；用户点击打开条目时置 1，同步 upsert 不触碰此列以保留已读状态 */
+    read: integer('read').notNull().default(0)
   },
   (t) => [
     index('idx_aihot_category').on(t.category),

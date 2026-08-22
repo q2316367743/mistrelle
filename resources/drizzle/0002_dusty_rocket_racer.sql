@@ -1,0 +1,1 @@
+ALTER TABLE `aihot_item` ADD `read` integer DEFAULT 0 NOT NULL;

@@ -2,10 +2,11 @@
   <page-layout title="AI HOT">
     <div class="aihot-page">
       <t-tabs v-model="active" class="aihot-page__tabs">
-        <t-tab-panel value="items" label="资讯" :destroy-on-hide="false">
+        <t-tab-panel value="items" label="精选" :destroy-on-hide="false">
           <aihot-items-view />
         </t-tab-panel>
-        <t-tab-panel value="hot" label="热点榜" :destroy-on-hide="false">
+        <t-tab-panel value="all" label="动态" :destroy-on-hide="false"> </t-tab-panel>
+        <t-tab-panel value="hot" label="热点" :destroy-on-hide="false">
           <aihot-hot-topics-view />
         </t-tab-panel>
         <t-tab-panel value="dailies" label="日报" :destroy-on-hide="false">

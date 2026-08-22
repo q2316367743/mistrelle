@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS aihot_item (
   published_at  TEXT,
   search_text   TEXT,               -- 小写拼接 title\noriginalTitle\nsummary，供 LIKE 子串搜索
   data          TEXT NOT NULL       -- 完整 AihotItem JSON，仅供渲染
+  read          INTEGER NOT NULL DEFAULT 0  -- 是否已读：0=未读，1=已读（用户点击打开条目时置 1）
 );
 CREATE INDEX idx_aihot_category   ON aihot_item(category);
 CREATE INDEX idx_aihot_discovered ON aihot_item(discovered_at);
@@ -82,6 +83,8 @@ CREATE TABLE IF NOT EXISTS aihot_meta (key TEXT PRIMARY KEY, value TEXT);
 
 - **写入**：`aihot_item.data` 存完整 JSON；`title/category/discovered_at/published_at/search_text`
   是从 data 提取的可筛选 / 排序标量列（避免整行 JSON 参与筛选）。
+- **已读标记**：`read` 列（0/1）记录用户是否已读，点击打开条目时置 1；同步 upsert 的 `upsertSet` 不含 `read`，
+  故增量覆盖 / 重引导插入**不会清除已有已读状态**，新插入条目默认 0（未读）。
 - **时间基准**：`by='timeline'` 用 `discovered_at`；`by='published'` 用 `coalesce(published_at, discovered_at)`
   （与页面 `aihotTimelineKey` 语义一致）。
 
@@ -93,6 +96,7 @@ CREATE TABLE IF NOT EXISTS aihot_meta (key TEXT PRIMARY KEY, value TEXT);
 | `aihot.applyBatch({upserts,deletes,meta})` | delete + upsert（ON CONFLICT DO UPDATE）+ meta 水位，**单事务原子** |
 | `aihot.clear()` | 清空 items + meta（409 重引导用） |
 | `aihot.getMeta()` | 读取账本元数据（缺省返回空壳，不预写） |
+| `aihot.markRead(id)` | 标记单条为已读（`read=1`）；仅更新 read 列，不影响同步水位与筛选 |
 
 用户输入（关键词 / 分类 / 时间）一律经 DAO 绑定参数；`onConflictDoUpdate` 用
 `sql\`excluded.<col>\`` 作全列替换，等价 INSERT OR REPLACE。

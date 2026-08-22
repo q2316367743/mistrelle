@@ -55,7 +55,7 @@ API 层复用 `modules/api/aihot`（全量 8 端点，`requestJson` 走 preload 
 DB 结构（`aihot_item` 存完整 JSON + 筛选/排序标量列，`aihot_meta` 存 schemaVersion / fields / cursor 水位 / syncedAt）：
 
 ```sql
-aihot_item(id PK, title, category, discovered_at, published_at, search_text, data NOT NULL)
+aihot_item(id PK, title, category, discovered_at, published_at, search_text, data NOT NULL, read INTEGER NOT NULL DEFAULT 0)
 aihot_meta(key PK, value)
 ```
 
@@ -81,6 +81,16 @@ UI 侧（`useAihotSelectedItems`）：`init()` 读 meta + DB 分页查询即时�
 6. **日报不可变缓存**：按 `date` 建组件级 `Map` 缓存，同一天绝不重复请求（文档 "never re-fetch a date it already has"）；最新日报直接请求稳定 URL `/latest`，不从索引猜日期；刷新只重拉 latest 与归档索引，不清日报缓存。
 7. **错误提示**（`modules/aihot/AihotRequestError.ts`）：429 / 503 读 `Retry-After` 头提示具体秒数；404 / 400 / 409 给语义化文案；其余 `MessageUtil.error(fallback, e)`；失败时保留已加载数据。
 8. **category 容忍新值**：已知五类显示中文（`aihot-page-utils.ts` 的 `AIHOT_CATEGORY_LABELS`），未知值原样展示。
+
+## 已读 / 未读（本地精选库）
+
+为本地精选条目增加「是否已读」标记，落 SQLite 持久化（跨重启保留）。**仅本地精选库（selected 模式）有已读概念**；「全部」在线池不入本地库，无已读标识。
+
+- **存储**：`aihot_item.read`（0/1，默认 0）；`list` 查询随 `data` 一并返回 `read`，渲染侧映射为 `AihotItemView.read`（`AihotItem & { read?: boolean }`，在线条目无该字段）。
+- **标记时机**：用户点击卡片打开链接时，`AihotItemCard` emit `read(id)` → `AihotTimelineList` 透传 → `AihotItemsView.onItemRead` 仅在本地模式调用 `useAihotSelectedItems.markRead(id)`：写库（`aihot.markRead`）并就地将本地 `list` 中该条 `read=true` 即时刷新 UI（无需重查）。
+- **UI 表现**：未读条目标题加粗 + 头部品牌色小圆点（`AihotItemCard.is-unread`）；状态栏显示「未读 N 条」（本页计数，`read === false` 统计）。卡片以 `read === false` 判定未读，在线条目无 `read` 字段故不显示标识。
+- **已读稳定性**：同步增量 upsert 仅覆盖 `data` 等标量列、不触碰 `read`，因此周期性同步不会清除已读状态。
+- **范围取舍**：不实现「全部标为已读」批量操作（如需可后续在 repo 增加 `aiHotMarkAllRead` 并接入工具栏）。
 
 ## 注意事项
 

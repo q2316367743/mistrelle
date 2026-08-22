@@ -37,7 +37,7 @@ export function aiHotList(filter: AihotListFilter, limit: number, offset: number
   const where = conds.length ? and(...conds) : undefined
 
   const rows = db()
-    .select({ id: aihotItems.id, data: aihotItems.data })
+    .select({ id: aihotItems.id, data: aihotItems.data, read: aihotItems.read })
     .from(aihotItems)
     .where(where)
     .orderBy(desc(key))
@@ -45,7 +45,7 @@ export function aiHotList(filter: AihotListFilter, limit: number, offset: number
     .offset(offset)
     .all()
   const total = db().select({ c: count() }).from(aihotItems).where(where).get()?.c ?? 0
-  return { items: rows, total }
+  return { items: rows.map((r) => ({ id: r.id, data: r.data, read: r.read === 1 })), total }
 }
 
 const toRow = (it: AihotDbItemInput) => ({
@@ -96,6 +96,11 @@ export function aiHotApplyBatch(batch: AihotBatch): void {
         .run()
     }
   })
+}
+
+/** 标记单条为已读（点击打开条目时调用；只更新 read 列，不影响同步水位与筛选） */
+export function aiHotMarkRead(id: string): void {
+  db().update(aihotItems).set({ read: 1 }).where(eq(aihotItems.id, id)).run()
 }
 
 /** 清空精选数据与元数据（409 重引导时使用） */

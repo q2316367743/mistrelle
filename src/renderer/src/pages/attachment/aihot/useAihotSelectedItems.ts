@@ -3,11 +3,12 @@
 //  selected 模式：打开即查询 DB 分页渲染，后台增量同步；筛选 / 搜索 / 排序 / 分页在 SQL 内完成，不持有全量数组
 // ==========================================
 import dayjs from 'dayjs'
-import type { AihotItem } from '@/modules/api/aihot'
 import {
   getAihotMeta,
   listAihotItems,
+  markAihotItemRead,
   syncAihotSelected,
+  type AihotItemView,
   type AihotListQuery
 } from '@/modules/aihot'
 import type { Ref } from 'vue'
@@ -30,8 +31,8 @@ export interface AihotLocalFilter {
 export const useAihotSelectedItems = (filter: AihotLocalFilter) => {
   const { keyword, category, timeWindow, by } = filter
 
-  /** 当前已加载的多页条目（前 offset 条 + 尾部续页） */
-  const list = ref<AihotItem[]>([])
+  /** 当前已加载的多页条目（前 offset 条 + 尾部续页），read 为本地已读标记 */
+  const list = ref<AihotItemView[]>([])
   /** 匹配筛选的总条数（状态栏展示 / hasMore 判定） */
   const total = ref(0)
   /** 已初始化（meta 读取完成） */
@@ -98,6 +99,13 @@ export const useAihotSelectedItems = (filter: AihotLocalFilter) => {
     if (hasMore.value && !moreLoading.value) query(false)
   }
 
+  /** 标记单条为已读：写库 + 本地即时更新（ref 深度响应，UI 无需重查） */
+  const markRead = async (id: string): Promise<void> => {
+    await markAihotItemRead(id)
+    const it = list.value.find((i) => i.id === id)
+    if (it) it.read = true
+  }
+
   const sync = async (manual = false): Promise<void> => {
     if (manual) manualSyncing.value = true
     if (syncing.value) return
@@ -138,6 +146,7 @@ export const useAihotSelectedItems = (filter: AihotLocalFilter) => {
     init,
     sync,
     resetShown,
-    more
+    more,
+    markRead
   }
 }

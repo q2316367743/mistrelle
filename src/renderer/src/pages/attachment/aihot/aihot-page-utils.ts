@@ -6,7 +6,7 @@
 //  - 429/503 按 Retry-After 提示重试间隔
 // ==========================================
 import dayjs from 'dayjs'
-import type { AihotItem } from '@/modules/api/aihot'
+import type { AihotItemView } from '@/modules/aihot'
 
 /** 分类当前值（API 可能随时新增，未知值回退原样展示） */
 export const AIHOT_CATEGORY_LABELS: Record<string, string> = {
@@ -58,11 +58,11 @@ export interface AihotTimelineGroup {
   key: string
   /** 组标签：今天 · 8月21日 周四 / 昨天 · ... / 8月19日 周二 */
   label: string
-  items: Array<AihotItem>
+  items: Array<AihotItemView>
 }
 
 /** 时间轴基准：timeline 用 discoveredAt，published 用 publishedAt（null 回退 discoveredAt） */
-export const aihotTimelineKey = (item: AihotItem, by: 'timeline' | 'published'): string =>
+export const aihotTimelineKey = (item: AihotItemView, by: 'timeline' | 'published'): string =>
   by === 'published' ? item.publishedAt ?? item.discoveredAt : item.discoveredAt
 
 const WEEK_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
@@ -78,17 +78,17 @@ export const aihotDayLabel = (key: string): string => {
 }
 
 /** 时间轴行时间 HH:mm（本地时区） */
-export const aihotTimelineTime = (item: AihotItem, by: 'timeline' | 'published'): string =>
+export const aihotTimelineTime = (item: AihotItemView, by: 'timeline' | 'published'): string =>
   dayjs(aihotTimelineKey(item, by)).format('HH:mm')
 
 /**
  * 按本地时区日期分组：items 须先按时间倒序排好，组与组内均保持传入顺序
  */
 export const groupAihotItemsByDay = (
-  items: Array<AihotItem>,
+  items: Array<AihotItemView>,
   by: 'timeline' | 'published'
 ): Array<AihotTimelineGroup> => {
-  const groups = new Map<string, Array<AihotItem>>()
+  const groups = new Map<string, Array<AihotItemView>>()
   for (const item of items) {
     const key = dayjs(aihotTimelineKey(item, by)).format('YYYY-MM-DD')
     const list = groups.get(key)
