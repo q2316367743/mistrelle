@@ -59,6 +59,7 @@
         :src="initialUrl"
         partition="persist:aihot-webview"
         :useragent="browserUa"
+        allowpopups
         @did-start-loading="onStartLoading"
         @did-stop-loading="onStopLoading"
         @did-navigate="onNavigated"

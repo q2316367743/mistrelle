@@ -38,6 +38,6 @@ aihot 模块所有外部链接出口（列表卡片 / 热点榜兜底 / 事件�
 1. **UA 覆写**：站点普遍按 UA 拦截 Electron 流量导致白屏。内容组件基于宿主 Chromium 版本拼标准 Chrome UA（截取到 `(KHTML, like Gecko)` 后接 Chrome 版本 + Safari 尾缀）；UA 结构不符时退化为仅剔除 `Electron/x.y.z` 标记。
 2. **partition 语义**：`persist:aihot-webview` 持久化会话，与应用主 session 隔离，cookie / 登录态跨打开保留；换名即弃用旧数据。
 3. **src 只绑初值**：`:src="initialUrl"`（props 快照），若跟随地址栏变化会在每次跳转时触发重复加载；地址栏展示走 `getURL()` 单向同步。
-4. **导航守卫不受影响**：主窗口 `will-navigate` 只作用于主 webContents；webview 内 `window.open` 仍走宿主 `setWindowOpenHandler` → 转系统浏览器，行为正确。
+4. **导航守卫与 _blank 链接**：主窗口 `will-navigate` 只作用于主 webContents，webview 不受影响。webview 内 `_blank` / `window.open` 走系统浏览器需两处配合：webview 带 `allowpopups` 属性（否则弹窗请求在任何 handler 前就被静默拦死）；Electron 22+ 已移除 `new-window` 事件且宿主 `setWindowOpenHandler` 不覆盖 guest，须在主进程 `did-attach-webview` 时给 guest 单独挂 handler → `shell.openExternal(url)` + deny。
 5. **did-fail-load code -3** 是导航中断（如加载中再次跳转），必须忽略不算失败。
 6. **销毁即回收**：`destroyOnClose` 卸载内容组件连带卸载 webview，guest 页面随之销毁，无泄漏残留。

@@ -56,7 +56,7 @@ function windowOptions(): BrowserWindowConstructorOptions {
       sandbox: false,
       nodeIntegration: true,
       // aihot 抽屉内嵌浏览器（<webview> 标签）需要显式开启；webview 拥有独立
-      // webContents，不受下方 will-navigate 守卫影响，其 window.open 仍走宿主 setWindowOpenHandler
+      // webContents，不受下方 will-navigate 守卫影响，弹窗处理见 did-attach-webview
       webviewTag: true
     }
   }
@@ -83,6 +83,16 @@ function createWindow(): void {
       ? url.startsWith(new URL(devUrl).origin)
       : url.startsWith(`file://${join(__dirname, '../renderer/index.html')}`)
     if (!allowed) event.preventDefault()
+  })
+
+  // webview（aihot 内嵌浏览抽屉）内的 _blank / window.open：Electron 22+ 已移除 new-window 事件，
+  // 且上方宿主 setWindowOpenHandler 不覆盖 guest，须在 guest 附着时单独挂 handler——
+  // 配合 webview 的 allowpopups 属性放行弹窗请求，再统一转系统浏览器并拒绝建窗
+  mainWindow.webContents.on('did-attach-webview', (_, wc) => {
+    wc.setWindowOpenHandler(({ url }) => {
+      shell.openExternal(url)
+      return { action: 'deny' }
+    })
   })
 
   // HMR for renderer base on electron-vite cli.
