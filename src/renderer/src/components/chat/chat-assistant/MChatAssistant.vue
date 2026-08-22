@@ -168,8 +168,7 @@ const finalContent = computed<AIMessageContent | undefined>(() => {
   const hasWorkAfterMemory = contents
     .slice(lastMemoryIdx + 1)
     .some(
-      (item) =>
-        (item.type === 'thinking' || item.type === 'toolcall') && !isRecordMemoryCall(item)
+      (item) => (item.type === 'thinking' || item.type === 'toolcall') && !isRecordMemoryCall(item)
     )
   if (hasWorkAfterMemory) return findLastText(contents, contents.length - 1, 0)
   return (
