@@ -12,16 +12,17 @@
     <div class="aihot-item-card__meta">
       <span class="aihot-item-card__source">{{ item.source.name }}</span>
       <span>{{ time }}</span>
-      <span v-if="item.score != null" class="aihot-item-card__score">{{ item.score }} 分</span>
-      <span v-if="item.attribution" class="aihot-item-card__attr">
+      <span
+        v-if="item.attribution && item.attribution.name !== 'AIHOT'"
+        class="aihot-item-card__attr"
+      >
         转载自 {{ item.attribution.name }}
       </span>
-      <link-icon class="aihot-item-card__link-icon" />
+      <span v-if="item.score != null" class="aihot-item-card__score">{{ item.score }} 分</span>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { LinkIcon } from 'tdesign-icons-vue-next'
 import type { AihotItem } from '@/modules/api/aihot'
 import { aihotCategoryLabel, aihotRelativeTime } from '../aihot-page-utils'
 
@@ -46,14 +47,12 @@ const openOriginal = () => window.preload.inject.shell.openExternal(props.item.l
   border-radius: var(--td-radius-medium);
   background-color: var(--td-bg-color-container);
   cursor: pointer;
-  transition: background-color var(--fluent-transition-fast), border-color var(--fluent-transition-fast);
+  transition:
+    background-color var(--fluent-transition-fast),
+    border-color var(--fluent-transition-fast);
 
   &:hover {
     background-color: var(--td-bg-color-container-hover);
-
-    .aihot-item-card__link-icon {
-      opacity: 1;
-    }
   }
 
   &__head {
@@ -104,6 +103,7 @@ const openOriginal = () => window.preload.inject.shell.openExternal(props.item.l
 
     .aihot-item-card__score {
       color: var(--td-brand-color);
+      margin-left: auto;
     }
   }
 

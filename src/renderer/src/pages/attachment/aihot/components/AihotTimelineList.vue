@@ -9,7 +9,11 @@
         <div v-for="item in group.items" :key="item.id" class="aihot-timeline__row">
           <span class="aihot-timeline__time">{{ aihotTimelineTime(item, by) }}</span>
           <span class="aihot-timeline__dot" />
-          <aihot-item-card :item="item" :show-selected="showSelected" class="aihot-timeline__card" />
+          <aihot-item-card
+            :item="item"
+            :show-selected="showSelected"
+            class="aihot-timeline__card"
+          />
         </div>
       </div>
     </div>
