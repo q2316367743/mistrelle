@@ -12,7 +12,6 @@
           <search-icon />
         </template>
       </t-input>
-      <t-select v-model="mode" :options="modeOptions" class="aihot-items__filter" />
       <t-select
         v-model="timeWindow"
         :options="windowOptions"
@@ -59,7 +58,7 @@
           v-if="displayItems.length > 0"
           :groups="displayGroups"
           :by="by"
-          :show-selected="mode === 'all'"
+          :show-selected="!isLocal"
           class="px-8px"
           @read="onItemRead"
         />
@@ -94,24 +93,23 @@ import AihotTimelineList from './AihotTimelineList.vue'
 import { aihotRelativeTime, groupAihotItemsByDay } from '../aihot-page-utils'
 import { useAihotSelectedItems } from '../useAihotSelectedItems'
 
+const props = defineProps<{
+  mode: 'selected' | 'all'
+}>()
+
 const ONLINE_PAGE_SIZE = 20
 
 const keyword = ref('')
-const mode = ref<'selected' | 'all'>('selected')
 const timeWindow = ref<'24h' | '7d' | 'all'>('7d')
 const by = ref<'timeline' | 'published'>('timeline')
 const category = ref('')
 
-const modeOptions = [
-  { label: '精选', value: 'selected' },
-  { label: '全部', value: 'all' }
-]
 const ONLINE_WINDOW_OPTIONS = [
   { label: '近 24 小时', value: '24h' },
   { label: '近 7 天', value: '7d' }
 ]
 const windowOptions = computed(() =>
-  mode.value === 'selected'
+  props.mode === 'selected'
     ? [...ONLINE_WINDOW_OPTIONS, { label: '全部时间', value: 'all' }]
     : ONLINE_WINDOW_OPTIONS
 )
@@ -128,7 +126,7 @@ const categoryOptions = [
   { label: '贴士', value: 'tip' }
 ]
 
-const isLocal = computed(() => mode.value === 'selected')
+const isLocal = computed(() => props.mode === 'selected')
 
 /** 本页未读计数（仅本地精选库；在线池无已读概念） */
 const unreadCount = computed(() =>
@@ -220,17 +218,6 @@ const handleFilterChange = () => {
 
 const loadMore = () => (isLocal.value ? more() : loadOnline(false))
 
-watch(mode, (m) => {
-  if (m === 'selected') {
-    resetShown()
-    init()
-  } else {
-    // 全部时间仅本地缓存可用，在线模式回退默认 7 天
-    if (timeWindow.value === 'all') timeWindow.value = '7d'
-    if (onlineList.value.length === 0) loadOnline(true)
-  }
-})
-
 watchDebounced(
   keyword,
   () => {
@@ -240,7 +227,8 @@ watchDebounced(
 )
 
 onMounted(() => {
-  init()
+  if (isLocal.value) init()
+  else loadOnline(true)
 })
 </script>
 <style scoped lang="less">

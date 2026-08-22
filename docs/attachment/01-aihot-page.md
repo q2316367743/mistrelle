@@ -5,20 +5,22 @@
 
 ## 实现思路
 
-页面以 `t-tabs` 承载三个视图（**资讯 / 热点榜 / 日报**），全部面板 `destroy-on-hide="false"` 保持各视图状态与日报缓存；事件详情通过命令式 `DrawerPlugin` 抽屉展示，支持在抽屉内沿事件脉络 / 相关事件连续跳转。
+页面以 `t-tabs` 承载四个视图（**精选 / 动态 / 热点 / 日报**），全部面板 `destroy-on-hide="false"` 保持各视图状态与日报缓存；「动态」面板额外 `lazy`，首次点开才挂载并请求在线池；事件详情通过命令式 `DrawerPlugin` 抽屉展示，支持在抽屉内沿事件脉络 / 相关事件连续跳转。
 
-资讯视图为**双数据源 + 时间轴**：
+精选与动态共用 `AihotItemsView` 组件，由父级 tab 传入 `mode` prop（`selected` / `all`），工具栏不再提供 mode 切换；两 tab 筛选状态（关键词 / 时间窗 / 排序 / 分类）相互独立。
 
-- **精选模式（默认）**：数据源是本地缓存（snapshot + changes 增量同步，见下节），打开即渲染、离线可浏览；筛选/搜索/排序/分片全部本地计算，无网络请求。
-- **全部模式**：在线 `/api/v1/items` 游标查询（全量池本质是 7 天窗口临时查询，不缓存）。
-- 两模式共用时间轴渲染（参考 aihot.virxact.com/all）：按本地时区日期分组（今天 · 8月21日 周四 · N 条）→ 组内左列 HH:mm 时间 + 竖直时间线（圆点+连线）→ 右侧资讯卡片；组头粘性。
+资讯列表为**双数据源 + 时间轴**：
+
+- **精选 tab（`mode=selected`，默认）**：数据源是本地缓存（snapshot + changes 增量同步，见下节），打开即渲染、离线可浏览；筛选/搜索/排序/分片全部本地计算，无网络请求。
+- **动态 tab（`mode=all`）**：在线 `/api/v1/items` 游标查询（全量池本质是 7 天窗口临时查询，不缓存）；卡片展示精选标记（`show-selected`）。
+- 两 tab 共用时间轴渲染（参考 aihot.virxact.com/all）：按本地时区日期分组（今天 · 8月21日 周四 · N 条）→ 组内左列 HH:mm 时间 + 竖直时间线（圆点+连线）→ 右侧资讯卡片；组头粘性。
 
 ### 端点选型（严格按接入文档指引）
 
 | 视图 | 端点 | 文档定位 |
 |------|------|----------|
-| 资讯·精选 | `/api/v1/selected/snapshot` + `/api/v1/selected/changes` | "Keep a complete local copy of the selected set"：snapshot 一次引导 + changes 永续增量（本地缓存，重复浏览不重复拉全量） |
-| 资讯·全部 | `/api/v1/items` | "show recent or today's items"（仅覆盖最近 7 天，窗口化） |
+| 精选 | `/api/v1/selected/snapshot` + `/api/v1/selected/changes` | "Keep a complete local copy of the selected set"：snapshot 一次引导 + changes 永续增量（本地缓存，重复浏览不重复拉全量） |
+| 动态 | `/api/v1/items` | "show recent or today's items"（仅覆盖最近 7 天，窗口化） |
 | 热点榜 | `/api/v1/hot-topics` | "show what is trending right now" |
 | 日报 | `/api/v1/dailies/latest` + `/api/v1/dailies` + `/api/v1/dailies/{date}` | "show the daily digest" |
 | 事件详情 | `/api/v1/stories/{publicId}` | 从热点榜 `links.story` 末段取 id 进入 |
@@ -34,7 +36,7 @@ pages/attachment/aihot/
 ├── aihot-page-utils.ts                   # 分类映射 / storyIdFromLink / 相对时间 / 时间轴分组
 ├── useAihotSelectedItems.ts              # 本地数据源 composable（DB 分页查询/筛选/排序）
 └── components/
-    ├── AihotItemsView.vue                # 资讯：双数据源 + 筛选栏 + 时间轴 + 加载更多
+    ├── AihotItemsView.vue                # 精选/动态：mode prop 驱动双数据源 + 筛选栏 + 时间轴 + 加载更多
     ├── AihotTimelineList.vue             # 时间轴列表（日期分组/粘性组头/时间线）
     ├── AihotItemCard.vue                 # 单条卡片
     ├── AihotHotTopicsView.vue            # 热点榜
@@ -74,7 +76,7 @@ UI 侧（`useAihotSelectedItems`）：`init()` 读 meta + DB 分页查询即时�
 ## 数据获取约定（与接入文档的对应关系）
 
 1. **items 游标**：`nextCursor` 不透明、原样回传、仅同查询复用；筛选/关键词变化重置第一页；追加遇 400 视为 invalid_cursor（窗口滑动失效）自动从第一页重载。
-2. **本地模式窗口**：「全部时间」仅本地缓存可用（本地才有全量历史）；切到在线模式自动回退 7d。窗口过滤按基准时间戳计算（`by=timeline` 用 discoveredAt、`by=published` 用 publishedAt ?? discoveredAt），与服务端 items 语义对齐。
+2. **本地模式窗口**：「全部时间」仅精选 tab（本地缓存）可用；动态 tab 时间窗固定为 24h / 7d。窗口过滤按基准时间戳计算（`by=timeline` 用 discoveredAt、`by=published` 用 publishedAt ?? discoveredAt），与服务端 items 语义对齐。
 3. **无自动轮询**：全部请求由用户动作触发；selected 同步走 changes 增量（打开页面一次 + 手动刷新）。
 4. **关键词**：`q` trim 后 2–200 码点才发送（<2 视为无关键词），在线输入防抖 400ms；本地模式为包含匹配（title/originalTitle/summary），即时过滤。
 5. **story id 来源**：只取 API 返回值（hot-topics `links.story` URL 末段、story 的 `storyline` / `related` 的 `publicId`），解析失败禁止构造 id，回退打开 `links.aihot` 外链；308 重定向由 axios 自动跟随，404 展示「事件不存在或已下线」。
@@ -84,7 +86,7 @@ UI 侧（`useAihotSelectedItems`）：`init()` 读 meta + DB 分页查询即时�
 
 ## 已读 / 未读（本地精选库）
 
-为本地精选条目增加「是否已读」标记，落 SQLite 持久化（跨重启保留）。**仅本地精选库（selected 模式）有已读概念**；「全部」在线池不入本地库，无已读标识。
+为本地精选条目增加「是否已读」标记，落 SQLite 持久化（跨重启保留）。**仅精选 tab（`mode=selected`）有已读概念**；动态 tab 在线池不入本地库，无已读标识。
 
 - **存储**：`aihot_item.read`（0/1，默认 0）；`list` 查询随 `data` 一并返回 `read`，渲染侧映射为 `AihotItemView.read`（`AihotItem & { read?: boolean }`，在线条目无该字段）。
 - **标记时机**：用户点击卡片打开链接时，`AihotItemCard` emit `read(id)` → `AihotTimelineList` 透传 → `AihotItemsView.onItemRead` 仅在本地模式调用 `useAihotSelectedItems.markRead(id)`：写库（`aihot.markRead`）并就地将本地 `list` 中该条 `read=true` 即时刷新 UI（无需重查）。
