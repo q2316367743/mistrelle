@@ -54,7 +54,10 @@ function windowOptions(): BrowserWindowConstructorOptions {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      nodeIntegration: true
+      nodeIntegration: true,
+      // aihot 抽屉内嵌浏览器（<webview> 标签）需要显式开启；webview 拥有独立
+      // webContents，不受下方 will-navigate 守卫影响，其 window.open 仍走宿主 setWindowOpenHandler
+      webviewTag: true
     }
   }
 }

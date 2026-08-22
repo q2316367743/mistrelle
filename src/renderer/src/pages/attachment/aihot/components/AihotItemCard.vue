@@ -25,6 +25,7 @@
 <script lang="ts" setup>
 import type { AihotItem } from '@/modules/api/aihot'
 import { aihotCategoryLabel, aihotRelativeTime } from '../aihot-page-utils'
+import { openAihotLink } from './AihotLinkDrawer'
 
 const props = defineProps<{
   item: AihotItem
@@ -35,7 +36,7 @@ const props = defineProps<{
 const categoryLabel = computed(() => aihotCategoryLabel(props.item.category))
 const time = computed(() => aihotRelativeTime(props.item.publishedAt ?? props.item.discoveredAt))
 
-const openOriginal = () => window.preload.inject.shell.openExternal(props.item.links.original)
+const openOriginal = () => openAihotLink(props.item.links.aihot)
 </script>
 <style scoped lang="less">
 .aihot-item-card {

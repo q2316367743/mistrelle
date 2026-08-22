@@ -30,9 +30,16 @@
   - `watch(collapsed)` → `nextTick` 后重新检测；
   - `ResizeObserver` 监听内容容器尺寸变化（聊天窗口宽度变化会影响换行高度），`onUnmounted` 时 `disconnect`。
 
+## 附件标签（图片预览 + 在文件夹中显示）
+
+- `item.type === 'attachment'` 且 `fileType === 'image'`：标签外包 `t-popup`（`trigger="hover"`），浮层内 `t-image` 预览；`src` 由 `window.preload.net.pathToHref(file.url)` 转成 `mistrelle://`，避免 dev 下 http 页加载本地路径被拦截。
+- 点击任意附件标签：`window.preload.inject.shell.showItemInFolder(file.url)` 在系统文件管理器中定位该文件（hover 预览与 click 定位互不抢触发）。
+- 非图片附件仍为普通 `t-tag` + `FileIcon`；图片用 `FileImageIcon`。
+
 ## 注意事项
 
 - 内容为文本与 `t-tag` 标签内联混排，限高仅裁剪高度、不改布局语义，内联换行不受影响。
+- 图片预览挂在 popup 浮层上（传送到 `body`），预览宽高样式必须写在不依赖 `.m-chat-user` 祖先的选择器上。
 - 逐渐模糊依赖 `backdrop-filter` + `mask-image` 渐变，Electron（Chromium）环境完全支持。
 - 样式均沿用 tdesign token（边框 `--td-component-border`；背景 `color-mix(in srgb, var(--td-bg-color-container) 72%, transparent)` 半透明毛玻璃；hover `--td-brand-color` / `--td-brand-color-light` / `--td-shadow-1`），禁止裸色值。
 - 箭头按钮使用原生 `<button>` 实现（非业务弹窗场景），图标统一使用 tdesign icons。

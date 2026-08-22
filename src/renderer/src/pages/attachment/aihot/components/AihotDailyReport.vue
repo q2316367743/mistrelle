@@ -53,12 +53,13 @@
 <script lang="ts" setup>
 import type { AihotDailyReport as AihotDailyReportData } from '@/modules/api/aihot'
 import { aihotDateTime, aihotRelativeTime } from '../aihot-page-utils'
+import { openAihotLink } from './AihotLinkDrawer'
 
 defineProps<{
   report: AihotDailyReportData
 }>()
 
-const openLink = (url: string) => window.preload.inject.shell.openExternal(url)
+const openLink = (url: string) => openAihotLink(url)
 </script>
 <style scoped lang="less">
 .aihot-daily {

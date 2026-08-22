@@ -24,17 +24,14 @@
 <script lang="ts" setup>
 import type { AihotStoryReport } from '@/modules/api/aihot'
 import { aihotDateTime } from '../aihot-page-utils'
+import { openAihotLink } from './AihotLinkDrawer'
 
 defineProps<{
   reports: Array<AihotStoryReport>
 }>()
 
 const openReport = (report: AihotStoryReport) => {
-  if (report.links.original) {
-    window.preload.inject.shell.openExternal(report.links.original)
-  } else {
-    window.preload.inject.shell.openExternal(report.links.aihot)
-  }
+  openAihotLink(report.links.original || report.links.aihot)
 }
 </script>
 <style scoped lang="less">

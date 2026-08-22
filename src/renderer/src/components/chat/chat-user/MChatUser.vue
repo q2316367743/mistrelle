@@ -2,10 +2,7 @@
   <div class="m-chat-user">
     <!-- 用户消息内联展示：文本为文字，skill/file 为不同色与图标的标签，整行内联。
          默认折叠限高、底部逐渐模糊，模糊区中央向下箭头展开；展开后内容下方居中向上箭头收起 -->
-    <div
-      class="content-wrap"
-      :class="{ 'is-collapsed': collapsed, 'is-faded': isOverflow }"
-    >
+    <div class="content-wrap" :class="{ 'is-collapsed': collapsed, 'is-faded': isOverflow }">
       <div ref="contentRef" class="r-chat-list__user-content">
         <template v-for="(item, index) in message.content" :key="item.id || index">
           <span v-if="item.type === 'text'" class="r-chat-list__text">{{ item.data }}</span>
@@ -15,7 +12,7 @@
             variant="light"
             :title="item.data.path"
             size="small"
-            class="r-chat-list__inline-tag mr-4px"
+            class="r-chat-list__inline-tag"
           >
             <template #icon><CodeIcon /></template>
             {{ item.data.name }}
@@ -26,23 +23,53 @@
             variant="light"
             :title="item.data.label"
             size="small"
-            class="r-chat-list__inline-tag mr-4px"
+            class="r-chat-list__inline-tag"
           >
             <template #icon><ToolsIcon /></template>
             {{ item.data.label }}
           </t-tag>
           <template v-else-if="item.type === 'attachment'">
-            <t-tag
-              v-for="(file, fi) in item.data"
-              :key="file.url || fi"
-              theme="success"
-              variant="light"
-              :title="file.url"
-              class="r-chat-list__inline-tag"
-            >
-              <template #icon><FileIcon /></template>
-              @{{ file.name }}
-            </t-tag>
+            <template v-for="(file, fi) in item.data" :key="file.url || fi">
+              <t-popup
+                v-if="file.fileType === 'image' && file.url"
+                trigger="hover"
+                placement="top"
+                show-arrow
+                destroy-on-close
+                class="r-chat-list__inline-tag"
+              >
+                <t-tag
+                  theme="success"
+                  variant="light"
+                  :title="file.url"
+                  class="r-chat-list__file-tag"
+                  @click="revealFile(file.url)"
+                >
+                  <template #icon><FileImageIcon /></template>
+                  @{{ file.name }}
+                </t-tag>
+                <template #content>
+                  <t-image
+                    :src="toLocalSrc(file.url)"
+                    :alt="file.name"
+                    fit="contain"
+                    shape="round"
+                    class="r-chat-list__image-preview"
+                  />
+                </template>
+              </t-popup>
+              <t-tag
+                v-else
+                theme="success"
+                variant="light"
+                :title="file.url"
+                class="r-chat-list__inline-tag r-chat-list__file-tag"
+                @click="revealFile(file.url)"
+              >
+                <template #icon><FileIcon /></template>
+                @{{ file.name }}
+              </t-tag>
+            </template>
           </template>
           <t-tag
             v-else-if="item.type === 'canvas'"
@@ -50,7 +77,7 @@
             variant="light"
             :title="`画布 canvas-${item.data.version} 节点 ${item.data.nodeId}`"
             size="small"
-            class="r-chat-list__inline-tag mr-4px"
+            class="r-chat-list__inline-tag"
           >
             <template #icon><LayersIcon /></template>
             画布(canvas-{{ item.data.version }})节点({{ item.data.label || item.data.nodeId }})
@@ -61,7 +88,7 @@
             variant="light"
             :title="`PPT「${item.data.pptId}」第 ${item.data.slide} 页节点 ${item.data.nodeId}`"
             size="small"
-            class="r-chat-list__inline-tag mr-4px"
+            class="r-chat-list__inline-tag"
           >
             <template #icon><SlideshowIcon /></template>
             PPT({{ item.data.pptId }})节点({{ item.data.label || item.data.nodeId }})
@@ -106,6 +133,7 @@ import {
   ChevronUpIcon,
   CodeIcon,
   FileIcon,
+  FileImageIcon,
   LayersIcon,
   SlideshowIcon,
   ToolsIcon
@@ -122,6 +150,13 @@ defineEmits(['delete'])
 const getUserText = (message: UserMessage) => {
   return message.content.find((item) => item.type === 'text')?.data ?? ''
 }
+
+const revealFile = (path?: string) => {
+  if (!path) return
+  window.preload.inject.shell.showItemInFolder(path)
+}
+
+const toLocalSrc = (path: string) => window.preload.net.pathToHref(path)
 
 // ─── 内容折叠 / 展开（默认限高 + 底部渐变模糊，箭头展开 / 收起） ───
 
@@ -160,6 +195,12 @@ onUnmounted(() => {
 })
 </script>
 <style scoped lang="less">
+/* popup 传送到 body，选择器不能挂在 .m-chat-user 下，否则宽高不生效 */
+.r-chat-list__image-preview {
+  width: 240px;
+  height: 180px;
+  background: var(--td-bg-color-secondarycontainer);
+}
 .m-chat-user {
   width: fit-content;
   max-width: 100%;
@@ -199,6 +240,13 @@ onUnmounted(() => {
     display: block;
     line-height: 22px;
 
+    .r-chat-list__inline-tag {
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .r-chat-list__file-tag {
+      cursor: pointer;
+    }
     .r-chat-list__text {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
