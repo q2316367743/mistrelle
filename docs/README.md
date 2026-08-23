@@ -114,7 +114,7 @@
 
 | 文档                                                          | 描述                                                                                                    |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| [01-memory-system.md](./memory/01-memory-system.md)           | 记忆系统（`~/.mistrelle/soul/`）：短期记忆空闲防抖提取 + `record_memory` 主动记录 + 设置页手动立即提取 → 每日 LLM 合并长期记忆（4000 字上限硬保护，合并前兜底补提）→ 主 Agent 独立 system 消息注入；state.json 提取进度与合并边界语义（下一个待消费日期，含边界）、首启基线不回溯 |
+| [01-memory-system.md](./memory/01-memory-system.md)           | 记忆系统（`~/.mistrelle/soul/`）：短期记忆空闲防抖提取 + `record_memory` 主动记录 + 设置页手动立即提取 → 每日 LLM 合并长期记忆（4000 字上限硬保护，合并前兜底补提）→ 主 Agent 独立 system 消息注入；state.json 提取进度与合并边界语义（下一个待消费日期，含边界）、首启基线不回溯、合并成功记录上次合并时间 |
 
 ### personalize/ —— 个性化
 
@@ -155,7 +155,7 @@
 | [06-ego-browser-tools.md](./tool/06-ego-browser-tools.md) | ego-browser 工具：`ego_browser_run` 免审批包装 CLI（nodejs 子命令经 stdin 通道传 script，其余子命令 args 透传）、`ego_browser_exist` 只读探测安装状态；可执行文件路径解析（runtime.egoBrowser 配置 → 平台默认推断 → PATH 兜底）；`cliRun` 新增 `stdin` 选项 |
 | [07-tool-policy.md](./tool/07-tool-policy.md)           | 工具安全策略注册与模块循环依赖约束：`registerToolPolicy` / `resolveToolPolicy` 机制、TDZ 崩溃根因（toolPolicy import 闭包拉入 chat/store 全量图）与修复（import 叶子化）、后续新增策略的约束 |
 | [08-search-tools.md](./tool/08-search-tools.md)         | 搜索工具：`getDefaultTools()` 动态组装；`zhihu_search` 仅配置 Access Secret 时注入 + `any_search` 可匿名；账号设置知乎项与鉴权头 |
-| [09-aihot-tools.md](./tool/09-aihot-tools.md)         | AIHOT 资讯工具：匿名只读公开 API 客户端（`modules/api/aihot` 全 8 端点，skillhub 同款模式）+ 7 个 safe 工具（热门榜 / 条目检索 / 事件时间线 / 日报 / 日报索引 / 精选集快照+增量）；镜像引导的 cursor 账本语义 |
+| [09-aihot-tools.md](./tool/09-aihot-tools.md)         | AIHOT 资讯工具：匿名只读公开 API 客户端（`modules/api/aihot` 全 8 端点，skillhub 同款模式）+ 6 个 safe 工具（热门榜 / 条目检索 / 事件时间线 / 日报 / 日报索引 / 精选库本地镜像查询）；精选镜像由应用侧 AihotSelectedService 维护，工具不暴露 snapshot+changes 账本协议 |
 
 ### writing/ —— 写作
 

@@ -26,25 +26,25 @@ modules/api/aihot/
     └── api-v1-selected-changes.ts   # GET /api/v1/selected/changes   aihotApiV1SelectedChanges({ cursor, limit? })
 ```
 
-## 工具契约（7 个，全部 safe）
+## 工具契约（6 个，全部 safe）
 
-工具定义在 `modules/tool/components/aihot/index.ts`，注册于 `modules/tool/index.ts` 分组 `AI 热点`（`toolGroups` + `toolMap`），按需在 agent / 会话中勾选启用。
+工具定义在 `modules/tool/components/aihot/index.ts`，注册于 `modules/tool/index.ts` 分组 `AI 热点`（`toolGroups` + `toolMap`），按需在 agent / 会话中勾选启用。5 个走匿名只读公开 API（按需单次调用），1 个（`aihot_selected`）查询应用侧本地精选镜像（SQLite）。
 
 | 工具 | 参数 | 返回 |
 |---|---|---|
 | `aihot_hot_topics` | 无 | `{ count, items }`；每项附加 `storyPublicId`（handler 从 `links.story` URL 末段提取），模型可直接链到 `aihot_story` |
-| `aihot_items` | `q?`、`category?`(enum)、`window?`(24h/7d)、`mode?`(selected/all)、`limit?`(默认 20，clamp 1–100) | `AihotItemsResponse`（近 7 天窗口） |
+| `aihot_items` | `q?`、`category?`(enum)、`window?`(24h/7d)、`by?`(timeline/published)、`mode?`(selected/all)、`limit?`(默认 20，clamp 1–100) | `AihotItemsResponse`（近 7 天窗口） |
 | `aihot_story` | `publicId`(必填) | `AihotStory`（时间线 reports + AI 摘要 digest） |
 | `aihot_daily` | `date?`(YYYY-MM-DD 上海时区，缺省=最新) | `AihotDailyReport`（合并 latest 与按日期两端点） |
 | `aihot_dailies` | `limit?`(默认 30，clamp 1–180) | `AihotDailiesResponse`（日报日期索引） |
-| `aihot_selected_snapshot` | `fields?`(default/minimal)、`limit?`、`page?`(续页游标=上页 nextPage) | `AihotSelectedSnapshot`（全集镜像引导分页） |
-| `aihot_selected_changes` | `cursor`(必填)、`limit?` | `AihotSelectedChanges`（增量 upsert/remove） |
+| `aihot_selected` | `q?`、`category?`(enum)、`window?`(24h/7d/all，默认 all)、`by?`(timeline/published)、`limit?`(默认 20，clamp 1–100)、`refresh?`(boolean) | `{ syncedAt, total, hasMore, items }`（本地镜像全量历史，条目为完整字段去本地 `read` 标记） |
 
 handler 统一经 `runAihot(action, fn)` 包装：成功原样返回、失败 `{ error: '<action>失败：<message>' }` 软错误供模型自我纠正。
 
 ## 注意事项
 
-- **镜像语义**：`snapshot` + `changes` 服务完整镜像客户端——先分页 snapshot 直到 `hasMore=false`，保留**第一页**的 `cursor` 作为账本水位；此后 `changes` 先应用页面再保存新 `cursor`。游标失效时服务端回 `409 snapshot_required`，需重新引导
+- **精选集走应用本地镜像**：精选集（`selected`）由应用侧 `modules/aihot/AihotSelectedService` 维护——snapshot 引导（保留第一页 `cursor` 作账本水位）+ changes 永续增量（先应用页面再保存新 `cursor`），409 `snapshot_required` 自动清库重引导，镜像落 SQLite（`window.preload.db.aihot`），与资讯页共享同一份数据。工具 `aihot_selected` 只查询该本地镜像，**不向模型暴露 snapshot / changes 账本协议**：无状态工具无法可靠跨调用维护不透明 `cursor`，一旦失效需全量重引导数千条，token 浪费且不可恢复
+- `aihot_selected` 首次调用自动触发 snapshot 引导（数千条分页写入，一次性数秒）；此后距上次同步 ≥5 分钟或传 `refresh=true` 才走增量同步，其余直接读本地缓存；镜像条目为完整字段（含 summary），不含仅 `/items` 端点返回的 `reason`
 - **items 仅 7 天窗口**，不做全量镜像用途；`cursor` 绑定同查询（换过滤条件须重新从头取）
 - 429 / 503 响应带 `Retry-After`，规范要求以 `Cache-Control s-maxage` 为最小轮询间隔（items 60s、hot-topics 300s）——当前按需调用场景无轮询，仅靠 axios 失败信息透出
 - 错误体为 `application/problem+json`（含 `requestId`），当前不解析，直接以 axios 错误消息返回

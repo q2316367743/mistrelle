@@ -30,7 +30,7 @@
       <t-list-item>
         <t-list-item-meta
           title="立即整理"
-          description="把昨日及更早的每日短期记忆合并进长期记忆（每日首启与运行中跨天会自动执行）"
+          :description="consolidateDesc"
         />
         <template #action>
           <t-button
@@ -109,6 +109,7 @@
 </template>
 <script lang="ts" setup>
 import { MessageUtil, MessageBoxUtil } from '@/utils/modal'
+import { toDateString } from '@/utils/lang/FormatUtil'
 import {
   MEMORY_MAX_CHARS,
   extractPendingSessions,
@@ -132,8 +133,15 @@ const longTermDraft = ref('')
 const dates = ref<string[]>([])
 const selectedDate = ref('')
 const dayContent = ref('')
+const lastConsolidatedAt = ref('')
 
 const dayOptions = computed(() => [...dates.value].reverse().map((d) => ({ label: d, value: d })))
+
+const consolidateDesc = computed(() =>
+  `把昨日及更早的每日短期记忆合并进长期记忆（每日首启与运行中跨天会自动执行），上次整理：${
+    lastConsolidatedAt.value ? toDateString(lastConsolidatedAt.value) : '尚未整理过'
+  }`
+)
 
 const loadDayContent = async () => {
   dayContent.value = selectedDate.value ? await readDayMemory(selectedDate.value) : ''
@@ -142,6 +150,7 @@ const loadDayContent = async () => {
 const refresh = async () => {
   const state = await readSoulState()
   enabled.value = state.memoryEnabled
+  lastConsolidatedAt.value = state.lastConsolidatedAt ?? ''
   longTerm.value = await readLongTermMemory()
   longTermDraft.value = longTerm.value
   dates.value = await listDayMemoryDates()

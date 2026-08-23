@@ -14,6 +14,8 @@ export interface SoulState {
   memoryEnabled: boolean
   /** 下一个待消费日期（YYYY-MM-DD，含边界）；每日文件仅消费「日期 >= 该值 且 < 今天」的 */
   lastConsolidateDate: string
+  /** 上次成功合并长期记忆的时间（ISO 8601）；存量 state.json 无该字段 */
+  lastConsolidatedAt?: string
   /** storageKey（会话消息文件路径）→ 已提取的消息数量 */
   extracted: Record<string, number>
 }

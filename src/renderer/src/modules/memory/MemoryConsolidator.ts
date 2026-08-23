@@ -89,6 +89,7 @@ export const runConsolidation = async (
     }
 
     await writeLongTermMemory(merged)
+    state.lastConsolidatedAt = new Date().toISOString()
     state.lastConsolidateDate = nextDayKey(pending[pending.length - 1])
     await writeSoulState()
     logger.info(`长期记忆已更新（合并 ${sections.length} 天短期记忆）`)

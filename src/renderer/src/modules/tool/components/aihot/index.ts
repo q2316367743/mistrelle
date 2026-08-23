@@ -1,6 +1,6 @@
 // ==========================================
-//  AIHOT 工具：AI 资讯热点查询（匿名只读公开 API，全部 risk: safe）
-//  API 客户端见 @/modules/api/aihot
+//  AIHOT 工具：AI 资讯热点查询（匿名只读公开 API + 本地精选镜像，全部 risk: safe）
+//  API 客户端见 @/modules/api/aihot；本地精选镜像见 @/modules/aihot（AihotSelectedService）
 // ==========================================
 
 import { ToolFunction } from '@/domain'
@@ -10,14 +10,16 @@ import {
   aihotApiV1DailiesLatest,
   aihotApiV1HotTopics,
   aihotApiV1Items,
-  aihotApiV1SelectedChanges,
-  aihotApiV1SelectedSnapshot,
   aihotApiV1Stories
 } from '@/modules/api/aihot'
+import { getAihotMeta, listAihotItems, syncAihotSelected } from '@/modules/aihot'
 
 /** 从热门话题的 links.story URL 末段提取故事 publicId，便于模型直接调用 aihot_story */
 const storyPublicIdOf = (url?: string): string | undefined =>
   url ? url.split('/').filter(Boolean).pop() : undefined
+
+/** 本地精选镜像自动增量同步间隔：距上次同步不足该值时直接读缓存（与资讯页 AUTO_SYNC_INTERVAL 一致） */
+const AUTO_SYNC_INTERVAL = 5 * 60 * 1000
 
 const runAihot = async (action: string, fn: () => Promise<unknown>) => {
   try {
@@ -62,6 +64,11 @@ export const aihotTools: ToolFunction[] = [
           description: '分类：AI 模型 / AI 产品 / 行业 / 论文 / 技巧'
         },
         window: { type: 'string', enum: ['24h', '7d'], description: '时间窗口，默认 7d' },
+        by: {
+          type: 'string',
+          enum: ['timeline', 'published'],
+          description: '窗口与排序所用时间戳基准：timeline=发现时间（默认），published=发布时间'
+        },
         mode: {
           type: 'string',
           enum: ['selected', 'all'],
@@ -73,11 +80,19 @@ export const aihotTools: ToolFunction[] = [
     risk: 'safe',
     handler: async (...params: unknown[]) =>
       runAihot('检索条目', async () => {
-        const { q, category, mode, window: timeWindow, limit } = params[0] as {
+        const {
+          q,
+          category,
+          mode,
+          window: timeWindow,
+          by,
+          limit
+        } = params[0] as {
           q?: string
           category?: string
           mode?: 'selected' | 'all'
           window?: '24h' | '7d'
+          by?: 'timeline' | 'published'
           limit?: number
         }
         return aihotApiV1Items({
@@ -85,6 +100,7 @@ export const aihotTools: ToolFunction[] = [
           category,
           mode,
           window: timeWindow,
+          by,
           limit: Math.min(Math.max(Math.floor(limit ?? 20), 1), 100)
         })
       })
@@ -146,51 +162,72 @@ export const aihotTools: ToolFunction[] = [
       })
   },
   {
-    name: 'aihot_selected_snapshot',
-    label: 'AIHOT 精选集快照',
+    name: 'aihot_selected',
+    label: 'AIHOT 精选库',
     description:
-      '获取 AIHOT 精选集全量快照（只增不减的策展库，共数千条，分页返回）。用于一次性引导完整镜像：持续用返回的 nextPage 翻页直到 hasMore=false，并保留第一页返回的 cursor 供 aihot_selected_changes 增量同步。',
+      '查询 AIHOT 精选集全量内容（应用本地镜像，覆盖全量历史，不受 7 天窗口限制，条目含摘要）。首次使用会自动初始化镜像；数据距上次同步超过约 5 分钟或传 refresh=true 时，会先执行增量同步再查询。',
     parameters: {
       type: 'object',
       properties: {
-        fields: {
+        q: { type: 'string', description: '关键词（≥2 字符生效，匹配标题与摘要）' },
+        category: {
           type: 'string',
-          enum: ['default', 'minimal'],
-          description: 'default=完整字段，minimal=约省 4 倍体积'
+          enum: ['ai-models', 'ai-products', 'industry', 'paper', 'tip'],
+          description: '分类：AI 模型 / AI 产品 / 行业 / 论文 / 技巧'
         },
-        limit: { type: 'number', description: '每页条数（1–1000，默认 500）' },
-        page: { type: 'string', description: '续页游标（上一页返回的 nextPage）' }
+        window: {
+          type: 'string',
+          enum: ['24h', '7d', 'all'],
+          description: '时间窗口，默认 all（全量历史）'
+        },
+        by: {
+          type: 'string',
+          enum: ['timeline', 'published'],
+          description: '排序基准：timeline=发现时间（默认），published=发布时间'
+        },
+        limit: { type: 'number', description: '返回条数（1–100，默认 20）' },
+        refresh: { type: 'boolean', description: '先强制增量同步再查询（默认 false）' }
       }
     },
     risk: 'safe',
     handler: async (...params: unknown[]) =>
-      runAihot('获取精选集快照', async () => {
-        const { fields, limit, page } = params[0] as {
-          fields?: 'default' | 'minimal'
+      runAihot('查询精选库', async () => {
+        const {
+          q,
+          category,
+          window: timeWindow,
+          by,
+          limit,
+          refresh
+        } = params[0] as {
+          q?: string
+          category?: string
+          window?: '24h' | '7d' | 'all'
+          by?: 'timeline' | 'published'
           limit?: number
-          page?: string
+          refresh?: boolean
         }
-        return aihotApiV1SelectedSnapshot({ fields, limit, page })
-      })
-  },
-  {
-    name: 'aihot_selected_changes',
-    label: 'AIHOT 精选集增量变更',
-    description:
-      '获取 AIHOT 精选集自指定游标之后的原子变更（upsert / remove）。cursor 来自 aihot_selected_snapshot 第一页返回值；返回 409 snapshot_required 表示游标失效，需重新引导快照。',
-    parameters: {
-      type: 'object',
-      properties: {
-        cursor: { type: 'string', description: '账本水位游标（snapshot 首页返回的 cursor）' },
-        limit: { type: 'number', description: '返回条数（1–100，默认 100）' }
-      },
-      required: ['cursor']
-    },
-    risk: 'safe',
-    handler: async (...params: unknown[]) =>
-      runAihot('获取精选集变更', async () => {
-        const { cursor, limit } = params[0] as { cursor: string; limit?: number }
-        return aihotApiV1SelectedChanges({ cursor, limit })
+        // 从未引导镜像 / 数据过旧 / 显式 refresh 时先同步，否则直接读本地缓存
+        const meta = await getAihotMeta()
+        const stale = !meta.syncedAt || Date.now() - Date.parse(meta.syncedAt) >= AUTO_SYNC_INTERVAL
+        if (!meta.cursor || refresh || stale) await syncAihotSelected()
+        const res = await listAihotItems(
+          {
+            keyword: q ?? '',
+            category: category ?? '',
+            timeWindow: timeWindow ?? 'all',
+            by: by ?? 'timeline'
+          },
+          Math.min(Math.max(Math.floor(limit ?? 20), 1), 100),
+          0
+        )
+        return {
+          syncedAt: (await getAihotMeta()).syncedAt,
+          total: res.total,
+          hasMore: res.total > res.items.length,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          items: res.items.map(({ read: _read, ...item }) => item)
+        }
       })
   }
 ]

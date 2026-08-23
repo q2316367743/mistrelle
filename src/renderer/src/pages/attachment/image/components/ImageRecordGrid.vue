@@ -80,6 +80,7 @@ import EmptyResult from '@/components/Result/EmptyResult.vue'
 import { formatDateTime, pathToHref } from '../image-page-utils'
 
 const props = defineProps<{
+  // eslint-disable-next-line no-undef
   items: ImageRecordInput[]
   total: number
   initLoading: boolean
@@ -90,7 +91,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:keyword': [value: string]
+  // eslint-disable-next-line no-undef
   open: [record: ImageRecordInput]
+  // eslint-disable-next-line no-undef
   retry: [record: ImageRecordInput]
   'load-more': []
 }>()
@@ -100,6 +103,7 @@ const keywordModel = computed({
   set: (value: string) => emit('update:keyword', value)
 })
 
+// eslint-disable-next-line no-undef
 const handleCardClick = (item: ImageRecordInput) => {
   if (item.status === 'success') emit('open', item)
 }
