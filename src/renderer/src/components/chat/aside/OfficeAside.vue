@@ -20,8 +20,8 @@
       </sub-title>
       <div
         v-for="output in outputs"
-        class="office-aside__product"
         :key="output.path"
+        class="office-aside__product"
         @click="openFilePreview({ fileName: output.name, fullPath: output.path })"
       >
         <file-icon />
@@ -39,7 +39,13 @@
     <div v-else-if="active === 'workspace' || active === 'sandbox'" class="office-aside__content">
       <sub-title :title="active === 'workspace' ? '工作空间' : '沙盒空间'">
         <template #actions>
-          <t-button theme="primary" size="small" variant="text" shape="square" @click="handleTreeRefresh">
+          <t-button
+            theme="primary"
+            size="small"
+            variant="text"
+            shape="square"
+            @click="handleTreeRefresh"
+          >
             <template #icon>
               <refresh-icon />
             </template>
@@ -48,10 +54,10 @@
       </sub-title>
       <t-tree
         :key="treeKey"
+        v-model:expanded="expanded"
         :data="treeData"
         :load="treeLoad"
         :icon="treeIcon"
-        v-model:expanded="expanded"
         hover
         line
         transition
@@ -72,7 +78,7 @@ import {
   RefreshIcon
 } from 'tdesign-icons-vue-next'
 import type { TreeOptionData, TreeNodeModel } from 'tdesign-vue-next'
-import { openFilePreview } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
+import { openFilePreview } from '@/components/preview/FilePreviewDialog'
 import TodoList from '@/components/chat/TodoList.vue'
 import AgentHistoryList, { type AgentHistoryItem } from '@/components/chat/AgentHistoryList.vue'
 
@@ -162,7 +168,8 @@ const NOISE_NAMES = new Set([
 
 const currentRoot = computed(() => {
   // 沙盒空间仅展示 outputs 目录
-  if (active.value === 'sandbox') return props.sandbox ? window.preload.path.join(props.sandbox, 'outputs') : ''
+  if (active.value === 'sandbox')
+    return props.sandbox ? window.preload.path.join(props.sandbox, 'outputs') : ''
   return props.workspace
 })
 

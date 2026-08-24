@@ -16,8 +16,20 @@
     :writing-scene="writingScene"
     :fullscreen="fullscreen"
   />
-  <design-aside v-else-if="type === 'design'" :sandbox="sandbox" :workspace="workspace" :fullscreen="fullscreen" :status="status" />
-  <ppt-aside v-else-if="type === 'ppt'" :sandbox="sandbox" :workspace="workspace" :fullscreen="fullscreen" :status="status" />
+  <design-aside
+    v-else-if="type === 'design'"
+    :sandbox="sandbox"
+    :workspace="workspace"
+    :fullscreen="fullscreen"
+    :status="status"
+  />
+  <ppt-aside
+    v-else-if="type === 'ppt'"
+    :sandbox="sandbox"
+    :workspace="workspace"
+    :fullscreen="fullscreen"
+    :status="status"
+  />
 </template>
 <script lang="ts" setup>
 import type { ChatMessage, TodoItem } from '@/domain'

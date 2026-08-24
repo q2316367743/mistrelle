@@ -49,7 +49,7 @@ import { RefreshIcon } from 'tdesign-icons-vue-next'
 import EmptyResult from '@/components/Result/EmptyResult.vue'
 import { aihotApiV1HotTopics, type AihotHotTopic } from '@/modules/api/aihot'
 import { openAihotStory } from './AihotStoryDrawer'
-import { openAihotLink } from './AihotLinkDrawer'
+import { openLinkPreview } from '@/components/preview/LinkPreviewDrawer'
 import { aihotNotifyError } from '@/modules/aihot'
 import { aihotRelativeTime, storyIdFromLink } from '../aihot-page-utils'
 
@@ -77,7 +77,7 @@ const handleClick = (topic: AihotHotTopic) => {
   if (storyId) {
     openAihotStory(storyId, topic.title)
   } else {
-    openAihotLink(topic.links.aihot)
+    openLinkPreview(topic.links.aihot)
   }
 }
 

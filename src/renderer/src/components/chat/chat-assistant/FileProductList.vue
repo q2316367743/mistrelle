@@ -49,7 +49,14 @@ import {
   VideoIcon
 } from 'tdesign-icons-vue-next'
 import { useProductListCollapse } from '@/hooks'
-import { openFilePreview, type ProductFile } from './modals/FilePreviewDialog'
+import {
+  openFilePreview,
+  CODE_EXTS,
+  IMAGE_EXTS,
+  VIDEO_EXTS,
+  AUDIO_EXTS,
+  getExt
+} from '@/components/preview/FilePreviewDialog'
 
 const props = defineProps({
   message: {
@@ -60,9 +67,15 @@ const props = defineProps({
 
 const toolCallNames = ['file_write_xlsx', 'file_write']
 
-const products = computed<ProductFile[]>(() => {
+/** 产物卡片一律是本地磁盘文件，fullPath 非空；与公共预览项 FilePreviewItem 结构兼容 */
+interface ProductListItem {
+  fileName: string
+  fullPath: string
+}
+
+const products = computed<ProductListItem[]>(() => {
   if (!props.message.content) return []
-  const result: ProductFile[] = []
+  const result: ProductListItem[] = []
   for (const item of props.message.content) {
     if (item.type !== 'toolcall' || item.status !== 'complete') continue
     const tc = item as ToolCallContent
@@ -84,74 +97,7 @@ const products = computed<ProductFile[]>(() => {
 
 const { collapsed, isCollapsible, maxHeight, toggleProducts } = useProductListCollapse(products)
 
-const CODE_EXTS = new Set([
-  '.ts',
-  '.tsx',
-  '.js',
-  '.jsx',
-  '.vue',
-  '.json',
-  '.css',
-  '.less',
-  '.html',
-  '.py',
-  '.rs',
-  '.go',
-  '.java',
-  '.c',
-  '.cpp',
-  '.h',
-  '.hpp',
-  '.yaml',
-  '.yml',
-  '.toml',
-  '.xml',
-  '.sh',
-  '.bat',
-  '.cmd',
-  '.sql',
-  '.rb',
-  '.php',
-  '.swift',
-  '.kt',
-  '.dart',
-  '.scss',
-  '.sass',
-  '.styl',
-  '.pl',
-  '.lua',
-  '.r',
-  '.groovy',
-  '.tex',
-  '.ini',
-  '.cfg',
-  '.conf',
-  '.env',
-  '.gradle',
-  '.tf'
-])
-
-const IMAGE_EXTS = new Set([
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.gif',
-  '.svg',
-  '.webp',
-  '.ico',
-  '.bmp',
-  '.avif'
-])
-
-const VIDEO_EXTS = new Set(['.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv'])
-
-const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus'])
-
-function getExt(path: string) {
-  const i = path.lastIndexOf('.')
-  return i >= 0 ? path.slice(i).toLowerCase() : ''
-}
-
+// 文件类型分组与 getExt 复用自公共预览模块（与 FilePreviewDialog 分发逻辑同一来源）
 function isCodeFile(path: string) {
   return CODE_EXTS.has(getExt(path))
 }

@@ -1,6 +1,6 @@
 <template>
-  <div class="aihot-link-viewer">
-    <div class="aihot-link-viewer__toolbar">
+  <div class="link-viewer">
+    <div class="link-viewer__toolbar">
       <t-button
         variant="text"
         shape="square"
@@ -36,7 +36,7 @@
         </t-button>
       </t-tooltip>
 
-      <div class="aihot-link-viewer__url" :title="currentUrl">{{ currentUrl }}</div>
+      <div class="link-viewer__url" :title="currentUrl">{{ currentUrl }}</div>
 
       <t-tooltip content="用系统浏览器打开">
         <t-button variant="text" shape="square" size="small" class="btn" @click="openExternal">
@@ -50,14 +50,14 @@
       </t-tooltip>
     </div>
 
-    <div class="aihot-link-viewer__progress" :class="{ 'is-loading': loading }"></div>
+    <div class="link-viewer__progress" :class="{ 'is-loading': loading }"></div>
 
-    <div class="aihot-link-viewer__stage">
+    <div class="link-viewer__stage">
       <webview
         ref="webviewRef"
-        class="aihot-link-viewer__frame"
+        class="link-viewer__frame"
         :src="initialUrl"
-        partition="persist:aihot-webview"
+        :partition="partition"
         :useragent="browserUa"
         allowpopups
         @did-start-loading="onStartLoading"
@@ -67,10 +67,10 @@
         @did-fail-load="onFailLoad"
       ></webview>
 
-      <div v-if="failed" class="aihot-link-viewer__error">
-        <span class="aihot-link-viewer__error-title">页面加载失败</span>
-        <span class="aihot-link-viewer__error-desc">{{ failed.desc }}（{{ failed.code }}）</span>
-        <div class="aihot-link-viewer__error-actions">
+      <div v-if="failed" class="link-viewer__error">
+        <span class="link-viewer__error-title">页面加载失败</span>
+        <span class="link-viewer__error-desc">{{ failed.desc }}（{{ failed.code }}）</span>
+        <div class="link-viewer__error-actions">
           <t-button variant="outline" size="small" @click="reload">重试</t-button>
           <t-button theme="primary" size="small" @click="openExternal">系统浏览器打开</t-button>
         </div>
@@ -90,9 +90,14 @@ import {
   StopCircleIcon
 } from 'tdesign-icons-vue-next'
 
-const props = defineProps<{
-  url: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    url: string
+    /** webview 持久化会话名；沿用默认 session（不写 partition）时拿不到 cookie 持久化 */
+    partition?: string
+  }>(),
+  { partition: 'persist:link-preview' }
+)
 
 const emit = defineEmits<{
   close: []
@@ -168,7 +173,7 @@ const openExternal = () => window.preload.inject.shell.openExternal(currentUrl.v
 </script>
 
 <style scoped lang="less">
-.aihot-link-viewer {
+.link-viewer {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -213,7 +218,7 @@ const openExternal = () => window.preload.inject.shell.openExternal(currentUrl.v
         inset: 0 auto 0 0;
         width: 40%;
         background-color: var(--td-brand-color);
-        animation: aihot-link-progress 1.2s ease-in-out infinite;
+        animation: link-viewer-progress 1.2s ease-in-out infinite;
       }
     }
   }
@@ -266,7 +271,7 @@ const openExternal = () => window.preload.inject.shell.openExternal(currentUrl.v
   }
 }
 
-@keyframes aihot-link-progress {
+@keyframes link-viewer-progress {
   0% {
     transform: translateX(-100%);
   }

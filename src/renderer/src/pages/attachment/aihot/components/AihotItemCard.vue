@@ -28,7 +28,7 @@
 <script lang="ts" setup>
 import type { AihotItemView } from '@/modules/aihot'
 import { aihotCategoryLabel, aihotRelativeTime } from '../aihot-page-utils'
-import { openAihotLink } from './AihotLinkDrawer'
+import { openLinkPreview } from '@/components/preview/LinkPreviewDrawer'
 
 const props = defineProps<{
   item: AihotItemView
@@ -44,7 +44,7 @@ const categoryLabel = computed(() => aihotCategoryLabel(props.item.category))
 const time = computed(() => aihotRelativeTime(props.item.publishedAt ?? props.item.discoveredAt))
 
 const openOriginal = () => {
-  openAihotLink(props.item.links.aihot)
+  openLinkPreview(props.item.links.aihot)
   emit('read', props.item.id)
 }
 </script>

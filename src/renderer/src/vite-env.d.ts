@@ -22,6 +22,7 @@ declare global {
          * @param path 路径
          */
         pathToHref(path: string): string
+        pathToFileHref(path: string): string
       }
       crypto: CryptoApi
       inject: InjectApi

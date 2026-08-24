@@ -43,7 +43,7 @@ import { ChevronLeftIcon } from 'tdesign-icons-vue-next'
 import AssetToolbar from './components/AssetToolbar.vue'
 import AssetTable from './components/AssetTable.vue'
 import { buildProjectAssetDirPath } from '@/modules/project'
-import { openFilePreview, type ProductFile } from '@/components/chat/chat-assistant/modals/FilePreviewDialog'
+import { openFilePreview, type FilePreviewItem } from '@/components/preview/FilePreviewDialog'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
 
@@ -111,7 +111,7 @@ const reload = () => {
 
 const openItem = (item: FileItem) => {
   if (item.isDirectory) return
-  openFilePreview({ fileName: item.name, fullPath: item.path } as ProductFile)
+  openFilePreview({ fileName: item.name, fullPath: item.path } as FilePreviewItem)
 }
 
 const handleRename = async (item: FileItem) => {

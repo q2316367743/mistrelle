@@ -69,7 +69,7 @@ import {
 } from '@/modules/api/aihot'
 import AihotStoryNeighbors from './AihotStoryNeighbors.vue'
 import AihotStoryReports from './AihotStoryReports.vue'
-import { openAihotLink } from './AihotLinkDrawer'
+import { openLinkPreview } from '@/components/preview/LinkPreviewDrawer'
 import { aihotNotifyError } from '@/modules/aihot'
 import { aihotRelativeTime } from '../aihot-page-utils'
 
@@ -127,7 +127,7 @@ const jump = (neighbor: AihotStoryNeighbor) => {
 
 const openOnSite = () => {
   if (story.value?.links.aihot) {
-    openAihotLink(story.value.links.aihot)
+    openLinkPreview(story.value.links.aihot)
   }
 }
 

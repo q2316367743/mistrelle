@@ -24,14 +24,14 @@
 <script lang="ts" setup>
 import type { AihotStoryReport } from '@/modules/api/aihot'
 import { aihotDateTime } from '../aihot-page-utils'
-import { openAihotLink } from './AihotLinkDrawer'
+import { openLinkPreview } from '@/components/preview/LinkPreviewDrawer'
 
 defineProps<{
   reports: Array<AihotStoryReport>
 }>()
 
 const openReport = (report: AihotStoryReport) => {
-  openAihotLink(report.links.original || report.links.aihot)
+  openLinkPreview(report.links.original || report.links.aihot)
 }
 </script>
 <style scoped lang="less">

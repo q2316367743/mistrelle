@@ -13,7 +13,7 @@ import { extname } from 'node:path'
 
 const SCHEME = 'mistrelle'
 
-/** 文件扩展名 → Content-Type（字体 / 图片为主，其余回退通用类型） */
+/** 文件扩展名 → Content-Type（字体 / 图片 / 网页资源为主，其余回退通用类型） */
 const MIME_BY_EXT: Record<string, string> = {
   '.ttf': 'font/ttf',
   '.otf': 'font/otf',
@@ -28,7 +28,13 @@ const MIME_BY_EXT: Record<string, string> = {
   '.avif': 'image/avif',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
-  '.bmp': 'image/bmp'
+  '.bmp': 'image/bmp',
+  '.html': 'text/html',
+  '.htm': 'text/html',
+  '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json'
 }
 
 const mimeOf = (filePath: string): string =>
