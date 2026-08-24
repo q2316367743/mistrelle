@@ -17,7 +17,9 @@
         >
           全选
         </t-checkbox>
-        <span class="fetch-models-content__count">已选 {{ selectedIds.length }} / {{ visibleModels.length }}</span>
+        <span class="fetch-models-content__count"
+          >已选 {{ selectedIds.length }} / {{ visibleModels.length }}</span
+        >
       </div>
       <div class="fetch-models-content__divider" />
 
@@ -25,7 +27,10 @@
         <div class="fetch-models-content__group-title">{{ group.family }}</div>
         <t-checkbox
           :checked="group.models.every((m) => selectedIds.includes(m.id))"
-          :indeterminate="group.models.some((m) => selectedIds.includes(m.id)) && !group.models.every((m) => selectedIds.includes(m.id))"
+          :indeterminate="
+            group.models.some((m) => selectedIds.includes(m.id)) &&
+            !group.models.every((m) => selectedIds.includes(m.id))
+          "
           @change="(checked: boolean) => handleGroupChange(group, checked)"
         >
           全选
@@ -49,7 +54,10 @@
               <span class="fetch-models-content__item-label">
                 {{ m.id }}{{ m.name ? ` (${m.name})` : '' }}
               </span>
-              <span v-if="guessModelParams(m.id).context" class="fetch-models-content__item-context">
+              <span
+                v-if="guessModelParams(m.id).context"
+                class="fetch-models-content__item-context ellipsis"
+              >
                 {{ formatContextWindow(guessModelParams(m.id).context) }}
               </span>
             </t-checkbox>
@@ -77,7 +85,13 @@
 <script lang="ts" setup>
 import { SearchIcon } from 'tdesign-icons-vue-next'
 import type { AiModel } from '@/entity'
-import { MODEL_TYPE_LABEL, MODEL_TYPE_THEME, formatContextWindow, guessModelParams, guessModelType } from '@/utils/aiModel'
+import {
+  MODEL_TYPE_LABEL,
+  MODEL_TYPE_THEME,
+  formatContextWindow,
+  guessModelParams,
+  guessModelType
+} from '@/utils/aiModel'
 
 interface FetchModel {
   id: string
@@ -99,7 +113,9 @@ const emit = defineEmits<{
   (e: 'success', ids: string[]): void
 }>()
 
-const selectedIds = ref<string[]>(props.existingModels.filter((m) => m.enable).map((m) => m.identifier))
+const selectedIds = ref<string[]>(
+  props.existingModels.filter((m) => m.enable).map((m) => m.identifier)
+)
 const keyword = ref('')
 const submitting = ref(false)
 
@@ -137,15 +153,21 @@ const visibleGroups = computed<ModelGroup[]>(() => {
 const visibleModels = computed<FetchModel[]>(() => visibleGroups.value.flatMap((g) => g.models))
 
 const allVisibleSelected = computed(
-  () => visibleModels.value.length > 0 && visibleModels.value.every((m) => selectedIds.value.includes(m.id))
+  () =>
+    visibleModels.value.length > 0 &&
+    visibleModels.value.every((m) => selectedIds.value.includes(m.id))
 )
-const someVisibleSelected = computed(() => visibleModels.value.some((m) => selectedIds.value.includes(m.id)))
+const someVisibleSelected = computed(() =>
+  visibleModels.value.some((m) => selectedIds.value.includes(m.id))
+)
 
 // ---------- 选择操作 ----------
 
 function handleSelectAll(checked: boolean) {
   if (checked) {
-    const toAdd = visibleModels.value.filter((m) => !selectedIds.value.includes(m.id)).map((m) => m.id)
+    const toAdd = visibleModels.value
+      .filter((m) => !selectedIds.value.includes(m.id))
+      .map((m) => m.id)
     selectedIds.value = [...selectedIds.value, ...toAdd]
   } else {
     const visibleIds = visibleModels.value.map((m) => m.id)
@@ -176,6 +198,9 @@ async function handleSubmit() {
 
 <style scoped lang="less">
 .fetch-models-content {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   &__search {
     position: sticky;
     top: 0;
@@ -232,6 +257,7 @@ async function handleSubmit() {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    width: 474px;
   }
 
   &__item-context {
@@ -245,6 +271,8 @@ async function handleSubmit() {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    position: sticky;
+    bottom: 0;
   }
 }
 </style>

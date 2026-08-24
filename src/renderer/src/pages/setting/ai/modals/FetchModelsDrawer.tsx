@@ -14,7 +14,7 @@ export const fetchModelsDrawer = (
 ) => {
   const dp = DrawerPlugin({
     header: '选择要导入的模型',
-    size: '400px',
+    size: '600px',
     footer: false,
     destroyOnClose: true,
     body: () =>
