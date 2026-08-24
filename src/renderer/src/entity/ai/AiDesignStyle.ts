@@ -1,16 +1,74 @@
 import { BaseEntity } from '@/entity'
 
-export type AiDesignStyleCategory = 'poster' | '移动端' | '网页端'
+/** 设计风格分组（产品 UI + 平面六组，与 web-image-skill 目录对齐） */
+export const AI_DESIGN_STYLE_CATEGORIES = [
+  'product-ui',
+  'print-tradition',
+  'art-movement',
+  'east',
+  'handmade',
+  'pop-culture',
+  'commercial'
+] as const
 
-/** 分类下拉选项（poster 为英文键，中文展示「海报」） */
+export type AiDesignStyleCategory = (typeof AI_DESIGN_STYLE_CATEGORIES)[number]
+
+/** 分类下拉选项（value 为稳定 slug，label 为展示名） */
 export const DESIGN_STYLE_CATEGORY_OPTIONS: Array<{
   value: AiDesignStyleCategory
   label: string
 }> = [
-  { value: 'poster', label: '海报' },
-  { value: '移动端', label: '移动端' },
-  { value: '网页端', label: '网页端' }
+  { value: 'product-ui', label: '产品 UI' },
+  { value: 'print-tradition', label: '印刷传统' },
+  { value: 'art-movement', label: '艺术运动' },
+  { value: 'east', label: '东方' },
+  { value: 'handmade', label: '手作纸感' },
+  { value: 'pop-culture', label: '流行文化' },
+  { value: 'commercial', label: '影像商业' }
 ]
+
+const LEGACY_DESIGN_STYLE_CATEGORY_MAP: Record<string, AiDesignStyleCategory> = {
+  poster: 'commercial',
+  移动端: 'product-ui',
+  网页端: 'commercial'
+}
+
+/** 归一化分类；旧数据 poster / 移动端 / 网页端 映射到新分组 */
+export const normalizeDesignStyleCategory = (
+  value?: string
+): AiDesignStyleCategory => {
+  if (
+    value &&
+    (AI_DESIGN_STYLE_CATEGORIES as readonly string[]).includes(value)
+  ) {
+    return value as AiDesignStyleCategory
+  }
+  if (value && value in LEGACY_DESIGN_STYLE_CATEGORY_MAP) {
+    return LEGACY_DESIGN_STYLE_CATEGORY_MAP[value]
+  }
+  return 'commercial'
+}
+
+export const getDesignStyleCategoryLabel = (
+  category: AiDesignStyleCategory | string
+): string =>
+  DESIGN_STYLE_CATEGORY_OPTIONS.find(
+    (o) => o.value === normalizeDesignStyleCategory(category)
+  )?.label ?? String(category)
+
+/** 按分组顺序聚合风格列表（空组自动剔除） */
+export const groupDesignStylesByCategory = <
+  T extends { category: AiDesignStyleCategory | string }
+>(
+  styles: T[]
+): Array<{ category: AiDesignStyleCategory; label: string; items: T[] }> =>
+  DESIGN_STYLE_CATEGORY_OPTIONS.map((opt) => ({
+    category: opt.value,
+    label: opt.label,
+    items: styles.filter(
+      (s) => normalizeDesignStyleCategory(s.category) === opt.value
+    )
+  })).filter((g) => g.items.length > 0)
 
 export interface AiDesignStyleColorPalette {
   primary: string
@@ -37,6 +95,19 @@ export interface AiDesignStyleTypography {
 /** 边框样式选项（表单下拉） */
 export const DESIGN_STYLE_BORDER_STYLES = ['solid', 'dashed', 'dotted', 'none'] as const
 export type AiDesignStyleBorderStyle = (typeof DESIGN_STYLE_BORDER_STYLES)[number]
+
+/** 留白三档（短边占比目标） */
+export const DESIGN_STYLE_WHITESPACE_RATIOS = [35, 55, 70] as const
+export type AiDesignStyleWhitespaceRatio = (typeof DESIGN_STYLE_WHITESPACE_RATIOS)[number]
+
+export const DESIGN_STYLE_WHITESPACE_OPTIONS: Array<{
+  value: AiDesignStyleWhitespaceRatio
+  label: string
+}> = [
+  { value: 35, label: '35%（信息密度较高）' },
+  { value: 55, label: '55%（均衡）' },
+  { value: 70, label: '70%（极简留白）' }
+]
 
 /** 间距规范：外边距 / 内边距 / 间距基准 */
 export interface AiDesignStyleSpacing {
@@ -173,7 +244,7 @@ export interface AiDesignStyleForm extends AiDesignStyleCore {
   typography: AiDesignStyleTypography
 
   /**
-   * 布局硬约束（针对生图模型）
+   * 布局硬约束（针对生图模型 / 画布图层动作）
    */
   layoutRules: Array<string>
 
@@ -181,6 +252,33 @@ export interface AiDesignStyleForm extends AiDesignStyleCore {
    * 全局样式细节规范（tokens）：间距 / 圆角 / 边框 / 阴影 / 动效
    */
   tokens: AiDesignStyleTokens
+
+  // ========================== 风格配方层（辨识度） ==========================
+
+  /**
+   * 口头别名（点名匹配，如「瑞士」「国际主义」）
+   */
+  aliases: Array<string>
+  /**
+   * 签名手法：本风格独有的那一招；只换色板不算换风格
+   */
+  signature: string
+  /**
+   * 留白目标档位（短边占比约值）
+   */
+  whitespaceRatio: AiDesignStyleWhitespaceRatio
+  /**
+   * 常用画幅比例，如 '3:4' / '1.91:1' / '1:1'
+   */
+  preferredFormats: Array<string>
+  /**
+   * 适用场景简述
+   */
+  suitableFor: string
+  /**
+   * 不适用场景简述
+   */
+  unsuitableFor: string
 }
 
 export interface AiDesignStyle extends BaseEntity, AiDesignStyleForm {
@@ -213,11 +311,19 @@ export const buildAiDesignStyleTokens = (
   }
 }
 
+/** 归一化留白档位；非法值回落 55 */
+export const normalizeWhitespaceRatio = (
+  value?: number
+): AiDesignStyleWhitespaceRatio => {
+  if (value === 35 || value === 55 || value === 70) return value
+  return 55
+}
+
 /** 新建时的默认表单值 */
 export const buildAiDesignStyleForm = (): AiDesignStyleForm => ({
   name: '',
   description: '',
-  category: '移动端',
+  category: 'commercial',
   tags: [],
   visualPrompt: '',
   negativePrompt: '',
@@ -235,19 +341,31 @@ export const buildAiDesignStyleForm = (): AiDesignStyleForm => ({
     caption: { font: '', weight: 400, size: 12, lineHeight: 1.5 }
   },
   layoutRules: [],
-  tokens: buildAiDesignStyleTokens()
+  tokens: buildAiDesignStyleTokens(),
+  aliases: [],
+  signature: '',
+  whitespaceRatio: 55,
+  preferredFormats: [],
+  suitableFor: '',
+  unsuitableFor: ''
 })
 
-/** 完整实体 → 表单（编辑时回填） */
+/** 完整实体 → 表单（编辑时回填；旧数据缺字段时兜底） */
 export const toAiDesignStyleForm = (style: AiDesignStyle): AiDesignStyleForm => ({
   name: style.name,
   description: style.description,
-  category: style.category,
+  category: normalizeDesignStyleCategory(style.category),
   tags: style.tags,
   visualPrompt: style.visualPrompt,
   negativePrompt: style.negativePrompt,
   colorPalette: style.colorPalette,
   typography: style.typography,
   layoutRules: style.layoutRules,
-  tokens: buildAiDesignStyleTokens(style.tokens)
+  tokens: buildAiDesignStyleTokens(style.tokens),
+  aliases: style.aliases ?? [],
+  signature: style.signature ?? '',
+  whitespaceRatio: normalizeWhitespaceRatio(style.whitespaceRatio),
+  preferredFormats: style.preferredFormats ?? [],
+  suitableFor: style.suitableFor ?? '',
+  unsuitableFor: style.unsuitableFor ?? ''
 })

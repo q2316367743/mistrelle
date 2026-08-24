@@ -13,6 +13,7 @@ import {
   DESIGN_STYLE_CATEGORY_OPTIONS,
   buildAiDesignStyleForm,
   buildAiDesignStyleTokens,
+  normalizeWhitespaceRatio,
   toAiDesignStyleForm
 } from '@/entity/ai'
 import { useDesignStyleStore } from '@/store'
@@ -25,7 +26,8 @@ const FORM_PROPERTIES: Record<string, ToolProperty> = {
   description: { type: 'string', description: '一句话简介，展示在卡片下方' },
   category: {
     type: 'string',
-    description: '适用场景分类（可选值：poster=海报 / 移动端 / 网页端）',
+    description:
+      '风格分组（可选值：product-ui=产品 UI / print-tradition=印刷传统 / art-movement=艺术运动 / east=东方 / handmade=手作纸感 / pop-culture=流行文化 / commercial=影像商业）',
     enum: CATEGORY_VALUES
   },
   tags: {
@@ -85,9 +87,30 @@ const FORM_PROPERTIES: Record<string, ToolProperty> = {
   },
   layoutRules: {
     type: 'array',
-    description: '布局硬约束（针对生图模型）',
+    description: '布局硬约束（针对生图模型 / 画布图层动作，如贯穿线、强调色只出现一次）',
     items: { type: 'string', description: '一条布局规则' }
   },
+  aliases: {
+    type: 'array',
+    description: '口头别名（点名匹配，如「瑞士」「国际主义」）',
+    items: { type: 'string', description: '别名' }
+  },
+  signature: {
+    type: 'string',
+    description: '签名手法：本风格独有的那一招；只换色板不算换风格，必须写清可执行的图层动作'
+  },
+  whitespaceRatio: {
+    type: 'number',
+    description: '留白目标档位：35 / 55 / 70（短边占比约值）',
+    enum: [35, 55, 70]
+  },
+  preferredFormats: {
+    type: 'array',
+    description: "常用画幅比例，如 '3:4' / '1.91:1' / '1:1'",
+    items: { type: 'string', description: '比例字符串' }
+  },
+  suitableFor: { type: 'string', description: '适用场景简述' },
+  unsuitableFor: { type: 'string', description: '不适用场景简述' },
   tokens: {
     type: 'object',
     description: '全局样式细节规范（tokens）：间距 / 圆角 / 边框 / 阴影 / 动效，可整体或部分传入',
@@ -160,7 +183,7 @@ const categoryError = (category: string) => ({
   error: `分类 "${category}" 不合法，可选值：${CATEGORY_VALUES.join(' / ')}`
 })
 
-/** 风格概要信息（列表用，含色板供模型参考配色） */
+/** 风格概要信息（列表用，含色板与签名手法供模型参考） */
 const toSummary = (style: AiDesignStyleItem | AiDesignStyle) => ({
   id: style.id,
   name: style.name,
@@ -168,7 +191,11 @@ const toSummary = (style: AiDesignStyleItem | AiDesignStyle) => ({
   category: style.category,
   tags: style.tags,
   isSystem: 'isSystem' in style && style.isSystem,
-  colorPalette: style.colorPalette
+  colorPalette: style.colorPalette,
+  aliases: 'aliases' in style ? style.aliases : undefined,
+  signature: 'signature' in style ? style.signature : undefined,
+  preferredFormats: 'preferredFormats' in style ? style.preferredFormats : undefined,
+  suitableFor: 'suitableFor' in style ? style.suitableFor : undefined
 })
 
 export const designStyleTools: ToolFunction[] = [
@@ -226,6 +253,7 @@ export const designStyleTools: ToolFunction[] = [
         ...buildAiDesignStyleForm(),
         ...args,
         name,
+        whitespaceRatio: normalizeWhitespaceRatio(args.whitespaceRatio),
         // 模型可能只传 tokens 的部分分组，用默认值兜底合并
         tokens: buildAiDesignStyleTokens(args.tokens)
       }
@@ -263,6 +291,9 @@ export const designStyleTools: ToolFunction[] = [
       const form: AiDesignStyleForm = {
         ...toAiDesignStyleForm(old),
         ...patch,
+        whitespaceRatio: normalizeWhitespaceRatio(
+          (patch.whitespaceRatio as number | undefined) ?? old.whitespaceRatio
+        ),
         // tokens 支持部分分组更新，与旧值（已归一化）合并
         tokens: buildAiDesignStyleTokens(tokens ?? old.tokens)
       }

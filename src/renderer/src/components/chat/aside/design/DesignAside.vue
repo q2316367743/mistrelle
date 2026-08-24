@@ -72,11 +72,7 @@
         class="design-aside__canvas"
         @select="handleElementSelect"
       />
-      <element-property-panel
-        v-if="fullscreen"
-        :sandbox="sandbox ?? ''"
-        :node-id="selectedId"
-      />
+      <element-property-panel v-if="fullscreen" :sandbox="sandbox ?? ''" :node-id="selectedId" />
     </div>
   </div>
 </template>
@@ -282,6 +278,7 @@ const handleAction: DropdownProps['onClick'] = (data) => {
     display: flex;
 
     &--split {
+      margin-bottom: 8px;
       gap: 8px;
     }
   }

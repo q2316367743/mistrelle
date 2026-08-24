@@ -32,22 +32,24 @@ design 类型聊天在「新增页」可选绑定一个设计风格（可选，�
 ### 反向排除词          # withVisualPrompt 时输出
 {negativePrompt}
 
+### 签名手法（必须落地，只换色板不算换风格）  # signature 非空时
+{signature}
+
+### 留白与画幅
+- 留白目标：约 {whitespaceRatio}%
+- 常用画幅：...
+
+### 适用与禁忌          # suitableFor / unsuitableFor 非空时
+...
+
 ### 配色方案
-- 主色：...
-- 辅助色：...
 ...
 
 ### 字体规范
-- 标题：{font}，字重 {weight}，字号 {size}px，行高 {lineHeight}
-- 正文：...
-- 辅助文字：...
+...
 
-### 细节规范            # 始终输出（tokens，缺字段用默认值兜底）
-- 间距：页面边距 {pageMargin}px，区块间距 {sectionGap}px，卡片内边距 {cardPadding}px，基准单位 {baseUnit}px
-- 圆角：小 {small}px / 中 {medium}px / 大 {large}px{，胶囊按钮}
-- 边框：{width}px {style} {color}（或无边框）
-- 阴影：{offsetX}px {offsetY}px {blur}px {color}（或不启用）
-- 动效：{duration}ms {easing}，范围 {scope}
+### 细节规范            # 始终输出（tokens）
+...
 
 ### 布局约束
 - {layoutRules each}

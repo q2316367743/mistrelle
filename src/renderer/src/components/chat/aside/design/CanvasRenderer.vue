@@ -1,6 +1,6 @@
 <template>
   <div ref="containerRef" class="canvas-renderer">
-    <div class="canvas-renderer__viewport" :style="{ padding: '8px' }">
+    <div class="canvas-renderer__viewport">
       <div class="canvas-renderer__stage">
         <div ref="canvasHost" class="canvas-renderer__host" />
       </div>
@@ -9,7 +9,13 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { App, EditorEvent, EditorMoveEvent, EditorRotateEvent, EditorScaleEvent } from 'leafer-editor'
+import {
+  App,
+  EditorEvent,
+  EditorMoveEvent,
+  EditorRotateEvent,
+  EditorScaleEvent
+} from 'leafer-editor'
 import { MessageUtil } from '@/utils/modal'
 import { ensureFontsForDoc, getCanvasStore, buildDocElements } from '@/modules/canvas'
 import type { CanvasDoc, CanvasNode } from '@/modules/canvas'
@@ -76,7 +82,8 @@ let app: App | null = null
 let pointerDownInCanvas = true
 const handleWindowPointerDown = (e: PointerEvent) => {
   const target = e.target
-  pointerDownInCanvas = target instanceof Node ? (canvasHost.value?.contains(target) ?? false) : false
+  pointerDownInCanvas =
+    target instanceof Node ? (canvasHost.value?.contains(target) ?? false) : false
 }
 
 /** 在节点树中按 id 查找节点（含子树） */
@@ -186,22 +193,14 @@ const syncEditorTransform = async () => {
       changed = true
     }
     // 尺寸：仅自由节点写回；布局组（layout 非 none）尺寸由引擎排布
-    const isFreeGroup = node.type !== 'group' || (node.layout == null || node.layout === 'none')
+    const isFreeGroup = node.type !== 'group' || node.layout == null || node.layout === 'none'
     const nodeW = typeof node.width === 'number' ? node.width : 0
     const nodeH = typeof node.height === 'number' ? node.height : 0
-    if (
-      isFreeGroup &&
-      typeof el.width === 'number' &&
-      Math.abs(el.width - nodeW) > 0.5
-    ) {
+    if (isFreeGroup && typeof el.width === 'number' && Math.abs(el.width - nodeW) > 0.5) {
       node.width = Math.round(el.width)
       changed = true
     }
-    if (
-      isFreeGroup &&
-      typeof el.height === 'number' &&
-      Math.abs(el.height - nodeH) > 0.5
-    ) {
+    if (isFreeGroup && typeof el.height === 'number' && Math.abs(el.height - nodeH) > 0.5) {
       node.height = Math.round(el.height)
       changed = true
     }
@@ -299,21 +298,22 @@ defineExpose({ render })
   min-height: 0;
   display: flex;
   overflow: hidden;
+  margin-right: -16px;
 
   &__viewport {
     flex: 1;
     min-width: 0;
     min-height: 0;
     display: flex;
+    margin-right: -16px;
   }
 
   &__stage {
-    margin: auto;
-    max-width: 100%;
-    max-height: 100%;
-    overflow: auto;
+    max-height: calc(100% - 8px);
+    height: calc(100% - 8px);
+    overflow: hidden;
     border-radius: var(--td-radius-medium);
-    box-shadow: var(--td-shadow-2);
+    border: 1px solid var(--td-border-level-1-color);
   }
 
   &__empty {

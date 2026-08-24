@@ -158,7 +158,7 @@ interface CanvasDoc {
 | `canvas_get_nodes`                                                              | safe             | 返回图层树 + palette（输入参数，布局组内子节点无最终坐标）                                        |
 | `canvas_inspect`                                                                | safe             | 返回指定节点渲染后的画布绝对包围盒（x/y/width/height/centerX/centerY），供核对位置/尺寸/间距/对齐 |
 | `canvas_set_palette`                                                            | sensitive        | 定义/合并调色板                                                                                   |
-| `canvas_guidelines`                                                             | safe             | topic: style-guide / composition / typography / operations / workflow                             |
+| `canvas_guidelines`                                                             | safe             | topic: style-guide / composition / typography / operations / workflow / image-generation / **styles** / 场景… |
 
 安全策略：`canvas_*` 全部注册 `allow`（仅读写沙盒 outputs/），`canvas_export` 走路径感知策略。
 
@@ -178,16 +178,16 @@ interface CanvasDoc {
     仅配置默认生图模型（`image_generate` 工具已注入）时，提示词才追加生图增强规则（主视觉生图首选 + sprite 合并 + `image_crop` 切分 +
     `canvas_guidelines("image-generation")` 引用），避免「提示词提到 image_generate、工具却未注入」的错配；未配置时主视觉来源只用真实素材 +
     几何图形。提示词经 `ChatTypeConfig.prompt(ctx)` 工厂组装（AgentChat.buildTypePrompt 调用）。
-- **内置参考**（`guidelines.ts` 用 `?raw` 打包，`canvas_guidelines` 读取）：
-  - `style-guide.md`：反 AI 俗套铁律 + 创意武器库（改编自 ardot rules/style-guide.md）
-  - `composition.md`：构图法则 + 常用画布尺寸 + 四边安全边距（比例 + 底线）
-  - `typography.md`：字体层级 / 字距行距 / 描边与渐变文字
+- **内置参考**（`guidelines.ts`：静态 md 用 `?raw` 打包；`styles` 由 `DESIGN_STYLE_PRESETS` 运行时生成）：
+  - `styles`：**动态风格目录**（id / 别名 / 签名手法 / 画幅 / 适合），未指定风格时协商用
+  - `style-guide.md`：反 AI 俗套铁律 + 风格协商 / 四步法 + 创意武器库
+  - `composition.md`：构图法则 + 定量门槛（字号倍率 / 留白 / 边距 4% 硬底线 + 6%~9% 观感）+ 尺寸表
+  - `typography.md`：字体层级 / 中文行长与断行 / 字距行距
   - `operations.md`：batch_edit 操作与节点速查 + 示例
-  - `workflow.md`：端到端工作流与收敛阈值（构建后主动用 canvas_inspect 核对四边边距）
-  - 场景指南：`poster.md`（海报）/ `book-cover.md`（书籍封面）/ `album-cover.md`（专辑封面）/ `social-media.md`（公众号封面 +
-    小红书配图）/ `knowledge-card.md`（读书笔记 / 知识卡片）
-  - 素材指南：`image-generation.md`（生图 + 多素材合并 sprite 一次生成 + `image_crop` 切分的省钱规范；无真实素材时生图是主视觉首选，避免纯文字海报）
-  - 各场景指南统一结构：画布尺寸表 → 构图 → 文字排版 → 色彩 → 素材来源 → 自检清单
+  - `workflow.md`：端到端工作流（问平台 → 文案额度 → 风格 → 构建 → inspect / 15% 缩略）
+  - 场景指南：`poster` / `book-cover` / `album-cover` / `social-media` / `knowledge-card`
+  - 素材指南：`image-generation.md`
+  - 各场景指南统一结构：`尺寸 → 画面结构 → 文案容量 → 安全区/翻车点 → 自检`
 
 ## 9. 注意事项
 

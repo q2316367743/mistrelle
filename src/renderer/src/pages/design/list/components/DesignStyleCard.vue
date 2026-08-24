@@ -50,7 +50,12 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
 import { MoreIcon, EditIcon, DeleteIcon, ViewListIcon } from 'tdesign-icons-vue-next'
-import { AiDesignStyle, AiDesignStyleItem, DESIGN_STYLE_CATEGORY_OPTIONS } from '@/entity'
+import {
+  AiDesignStyle,
+  AiDesignStyleItem,
+  getDesignStyleCategoryLabel,
+  normalizeDesignStyleCategory
+} from '@/entity'
 
 const props = defineProps<{ style: AiDesignStyleItem | AiDesignStyle }>()
 const emit = defineEmits<{ open: []; edit: []; delete: [] }>()
@@ -74,10 +79,8 @@ const paletteTitle = computed(() =>
   paletteColors.value.map((c) => `${c.label} ${c.value}`).join(' · ')
 )
 
-const categoryLabel = computed(
-  () =>
-    DESIGN_STYLE_CATEGORY_OPTIONS.find((o) => o.value === props.style.category)?.label ??
-    props.style.category
+const categoryLabel = computed(() =>
+  getDesignStyleCategoryLabel(normalizeDesignStyleCategory(props.style.category))
 )
 </script>
 

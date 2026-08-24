@@ -23,15 +23,21 @@
             class="page-new__style"
             :popup-props="{ overlayClassName: 'page-new-style-overlay' }"
           >
-            <t-option v-for="s in designStyleOptions" :key="s.id" :value="s.id" :label="s.name">
-              <div class="page-new__style-option">
-                <span class="page-new__style-option-name">
-                  {{ s.name }}
-                  <t-tag v-if="s.isSystem" theme="primary" variant="light" size="small">内置</t-tag>
-                </span>
-                <span class="page-new__style-option-desc">{{ s.description }}</span>
-              </div>
-            </t-option>
+            <t-option-group
+              v-for="group in designStyleGroups"
+              :key="group.category"
+              :label="group.label"
+            >
+              <t-option v-for="s in group.items" :key="s.id" :value="s.id" :label="s.name">
+                <div class="page-new__style-option">
+                  <span class="page-new__style-option-name">
+                    {{ s.name }}
+                    <t-tag v-if="s.isSystem" theme="primary" variant="light" size="small">内置</t-tag>
+                  </span>
+                  <span class="page-new__style-option-desc">{{ s.description }}</span>
+                </div>
+              </t-option>
+            </t-option-group>
           </t-select>
         </template>
       </div>
@@ -42,6 +48,7 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
+import { groupDesignStylesByCategory } from '@/entity'
 import { useAiChatStore, useDesignStyleStore, useSettingDefaultStore } from '@/store'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { CHAT_TYPE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/modules/chat'
@@ -66,9 +73,14 @@ const currentOption = computed(() => typeOptions.find((option) => option.value =
 const currentScene = computed(() => sceneOptions.find((option) => option.value === scene.value))
 
 const designStyleStore = useDesignStyleStore()
-/** 设计风格选项（列表缓存：预设 + 用户自建），补充 isSystem 标记供模板区分内置项 */
-const designStyleOptions = computed(() =>
-  designStyleStore.all.map((s) => ({ ...s, isSystem: 'isSystem' in s && s.isSystem }))
+/** 按分组聚合的设计风格选项（预设 + 用户自建） */
+const designStyleGroups = computed(() =>
+  groupDesignStylesByCategory(
+    designStyleStore.all.map((s) => ({
+      ...s,
+      isSystem: 'isSystem' in s && s.isSystem
+    }))
+  )
 )
 
 const handleSend = async (message: ChatRequestParams) => {

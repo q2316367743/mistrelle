@@ -34,11 +34,11 @@
 
 ### 入参 Schema（create / update 共用 `FORM_PROPERTIES`）
 
-扁平字段：`name` / `description` / `category`（enum: `poster` / `移动端` / `网页端`）/ `tags` / `visualPrompt` /
-`negativePrompt` / `layoutRules`；嵌套对象：`colorPalette`（primary / secondary / background / surface / text_primary /
-text_secondary 六个色值）、`typography`（heading / body / caption × font / weight / size / lineHeight）、`tokens`（spacing /
-radius / border / shadow / motion 五组，支持部分分组传入）。未传字段由 `create`
-侧 `buildAiDesignStyleForm()` 补默认值、`update` 侧保持原值；`tokens` 一律经 `buildAiDesignStyleTokens()` 与默认值兜底合并。
+扁平字段：`name` / `description` / `category`（enum: `product-ui` / `print-tradition` / `art-movement` / `east` / `handmade` / `pop-culture` / `commercial`）/ `tags` / `visualPrompt` /
+`negativePrompt` / `layoutRules` / `aliases` / `signature` / `whitespaceRatio`（35|55|70）/ `preferredFormats` /
+`suitableFor` / `unsuitableFor`；嵌套对象：`colorPalette`、`typography`、`tokens`。未传字段由 `create`
+侧 `buildAiDesignStyleForm()` 补默认值、`update` 侧保持原值；`tokens` 一律经 `buildAiDesignStyleTokens()` 合并；
+`whitespaceRatio` 经 `normalizeWhitespaceRatio` 归一。创建时强调 **signature 必写**（只换色不算换风格）。
 
 ### 返回契约
 
@@ -70,4 +70,4 @@ radius / border / shadow / motion 五组，支持部分分组传入）。未传�
 - 工具与 agent 的绑定方向是「agent 声明工具名 → `toolMap` 解析」，新增工具必须同步进 `toolMap` 否则 agent 调用会静默缺失
 - `getDetail` 是异步的（用户风格读盘、预设返回常量），`update` 前必须 `await` 而不是用同步 `getById`（列表项无提示词等字段）
 - 系统预设（isSystem）只读：工具层与 store 层双重保护
-- category 枚举含中文字符串，模型侧由 identity 明确说明可选值
+- category 为英文 slug，模型侧由 identity 列出 slug 与中文分组名对照

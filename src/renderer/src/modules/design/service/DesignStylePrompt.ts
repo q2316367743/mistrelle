@@ -1,4 +1,9 @@
-import { AiDesignStyle, AiDesignStyleColorPalette, buildAiDesignStyleTokens } from '@/entity'
+import {
+  AiDesignStyle,
+  AiDesignStyleColorPalette,
+  buildAiDesignStyleTokens,
+  normalizeWhitespaceRatio
+} from '@/entity'
 
 /**
  * 设计风格 → 提示词段落。
@@ -50,9 +55,36 @@ export const buildDesignStylePrompt = (
     `- 动效：${t.motion.duration}ms ${t.motion.easing}，范围 ${t.motion.scope}`
   ]
 
+  const whitespace = normalizeWhitespaceRatio(style.whitespaceRatio)
+  const aliases = style.aliases ?? []
+  const preferredFormats = style.preferredFormats ?? []
+
   const parts: string[] = []
   parts.push('## 设计风格')
   parts.push(`本次设计采用风格「${style.name}」，${style.description}`.trim())
+  if (aliases.length > 0) {
+    parts.push(`别名：${aliases.join(' / ')}`)
+  }
+  if (style.signature) {
+    parts.push(
+      '',
+      '### 签名手法（必须落地，只换色板不算换风格）',
+      style.signature
+    )
+  }
+  parts.push(
+    '',
+    '### 留白与画幅',
+    `- 留白目标：约 ${whitespace}%`,
+    preferredFormats.length > 0
+      ? `- 常用画幅：${preferredFormats.join(' / ')}（用户未指定尺寸时优先）`
+      : '- 常用画幅：未指定'
+  )
+  if (style.suitableFor || style.unsuitableFor) {
+    parts.push('', '### 适用与禁忌')
+    if (style.suitableFor) parts.push(`- 适合：${style.suitableFor}`)
+    if (style.unsuitableFor) parts.push(`- 不适合：${style.unsuitableFor}`)
+  }
   if (withVisual && style.visualPrompt) parts.push('', '### 正向提示词', style.visualPrompt)
   if (withVisual && style.negativePrompt) parts.push('', '### 反向排除词', style.negativePrompt)
   parts.push('', '### 配色方案', ...paletteLines)

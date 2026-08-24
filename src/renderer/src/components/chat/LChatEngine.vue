@@ -202,7 +202,7 @@ const paddingRight = computed(() => `${8 + r1}px`)
   position: relative;
   overflow: hidden;
   height: v-bind(height);
-  padding: 48px 8px 16px;
+  padding: 48px 8px 8px;
   z-index: 52;
 
   &__content {

@@ -68,7 +68,7 @@
 
 | 文档                                                                    | 描述                                                                                               |
 |-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| [02-canvas-node-model.md](./canvas/02-canvas-node-model.md)             | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill；对齐枚举含 START/END（≡MIN/MAX）；text 行高绝对测量；渐变 from/to 仅 9 个 Leafer 方位（渲染层归一化存量脏数据） |
+| [02-canvas-node-model.md](./canvas/02-canvas-node-model.md)             | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill；`canvas_guidelines("styles")` 动态风格目录；场景指南结构含文案容量/安全区/翻车点 |
 | [03-canvas-animation-export.md](./canvas/03-canvas-animation-export.md) | 画布动画与视频导出（v3）：声明式动画、逐帧渲染 + ffmpeg 导出、剪映式全屏进度遮罩；离屏 Leafer 挂临时容器避免污染 body 的 `user-select` |
 | [04-canvas-element-tree.md](./canvas/04-canvas-element-tree.md)         | 画布元素树：设计侧边栏全屏左栏，`selectedId` 驱动元素树 ↔ 画布双向选中联动                      |
 | [05-canvas-property-panel.md](./canvas/05-canvas-property-panel.md)     | 画布元素属性面板：全屏三栏第三栏，本地草稿 +「保存」按钮显式写回（batchEdit update，与 AI 同链路）；x/y 禁改、渐变/$token/布局关键字降级策略、按类型字段矩阵 |
@@ -77,9 +77,9 @@
 
 | 文档                                                          | 描述                                                                                                      |
 |---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| [01-design-style.md](./design/01-design-style.md)             | 设计风格模块：`~/.mistrelle/design/` 落盘（index.json 索引 + `design-{id}.json` 明细）、内置预设（isSystem 只读）、列表 + 明细页、命令式抽屉表单；tokens 细节规范（间距 / 圆角 / 边框 / 阴影 / 动效）+ 提示词固定注入「细节规范」段落（PPT 不跳过） |
+| [01-design-style.md](./design/01-design-style.md)             | 设计风格模块：落盘契约、**38 套内置预设**（6 产品 UI + 32 平面配方，分组文件）、配方字段（aliases / signature / whitespaceRatio / preferredFormats / suitableFor）、tokens + 提示词注入签名手法 |
 | [02-design-style-chat.md](./design/02-design-style-chat.md)   | 设计风格接入 design 聊天：`designStyleId` 创建后锁定、风格转提示词注入稳定 system 前缀、聊天室工作空间/风格只读展示、列表缓存详情不缓存 |
-| [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手（内置 Agent）：`builtin:design-style` + 4 个 internal 风格工具契约（list/get/create/update）+ `font_list` 查询本机字体、`DesignStyleStore.put` 返回 id 改造 |
+| [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写 |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
 
 ### ppt/ —— PPT 专家

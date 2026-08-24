@@ -19,6 +19,36 @@
           <t-form-item label="标签" name="tags">
             <t-tag-input v-model="form.tags" placeholder="输入后回车添加标签" clearable />
           </t-form-item>
+          <t-form-item label="别名" name="aliases" help="口头点名匹配，如「瑞士」「国际主义」">
+            <t-tag-input v-model="form.aliases" placeholder="输入后回车添加别名" clearable />
+          </t-form-item>
+          <t-form-item
+            label="签名手法"
+            name="signature"
+            help="本风格独有的那一招；只换色板不算换风格"
+          >
+            <t-textarea
+              v-model="form.signature"
+              placeholder="写清可执行的图层动作，如：贯穿 1px 横线切开标题与内容…"
+              :autosize="{ minRows: 3, maxRows: 6 }"
+            />
+          </t-form-item>
+          <t-form-item label="留白档位" name="whitespaceRatio">
+            <t-select v-model="form.whitespaceRatio" :options="DESIGN_STYLE_WHITESPACE_OPTIONS" />
+          </t-form-item>
+          <t-form-item label="常用画幅" name="preferredFormats" help="如 3:4、1.91:1、1:1">
+            <t-tag-input
+              v-model="form.preferredFormats"
+              placeholder="输入比例后回车，如 3:4"
+              clearable
+            />
+          </t-form-item>
+          <t-form-item label="适合" name="suitableFor">
+            <t-input v-model="form.suitableFor" placeholder="适用场景简述" />
+          </t-form-item>
+          <t-form-item label="不适合" name="unsuitableFor">
+            <t-input v-model="form.unsuitableFor" placeholder="禁忌场景简述" />
+          </t-form-item>
         </t-form>
       </t-tab-panel>
 
@@ -83,7 +113,11 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue'
 import { AddIcon, DeleteIcon } from 'tdesign-icons-vue-next'
-import { AiDesignStyleForm, DESIGN_STYLE_CATEGORY_OPTIONS } from '@/entity'
+import {
+  AiDesignStyleForm,
+  DESIGN_STYLE_CATEGORY_OPTIONS,
+  DESIGN_STYLE_WHITESPACE_OPTIONS
+} from '@/entity'
 import { useDesignStyleStore } from '@/store'
 import { MessageUtil } from '@/utils/modal'
 import ColorPaletteFields from './ColorPaletteFields.vue'

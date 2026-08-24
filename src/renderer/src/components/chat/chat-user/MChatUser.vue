@@ -121,6 +121,7 @@
         :content="getUserText(message)"
         role="user"
         @delete="$emit('delete', message.id)"
+        style="margin-right: 8px;"
       />
     </div>
   </div>

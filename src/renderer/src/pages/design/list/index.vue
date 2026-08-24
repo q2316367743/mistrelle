@@ -19,7 +19,7 @@
             v-model="category"
             :options="filterOptions"
             clearable
-            placeholder="全部分类"
+            placeholder="全部分组"
             class="style-section__filter"
           />
           <t-input v-model="keyword" clearable placeholder="搜索风格" class="style-section__search">
@@ -27,16 +27,21 @@
           </t-input>
         </div>
       </div>
-      <div v-if="filteredList.length > 0" class="style-grid">
-        <design-style-card
-          v-for="s in filteredList"
-          :key="s.id"
-          :style="s"
-          @open="handleOpen(s.id)"
-          @edit="handleEdit(s.id)"
-          @delete="handleDelete(s.id)"
-        />
-      </div>
+      <template v-if="groupedList.length > 0">
+        <div v-for="group in groupedList" :key="group.category" class="style-group">
+          <h3 class="style-group__title">{{ group.label }}</h3>
+          <div class="style-grid">
+            <design-style-card
+              v-for="s in group.items"
+              :key="s.id"
+              :style="s"
+              @open="handleOpen(s.id)"
+              @edit="handleEdit(s.id)"
+              @delete="handleDelete(s.id)"
+            />
+          </div>
+        </div>
+      </template>
       <t-empty
         v-else
         title="暂无设计风格"
@@ -51,7 +56,11 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { AddIcon, SearchIcon } from 'tdesign-icons-vue-next'
-import { DESIGN_STYLE_CATEGORY_OPTIONS } from '@/entity'
+import {
+  DESIGN_STYLE_CATEGORY_OPTIONS,
+  groupDesignStylesByCategory,
+  normalizeDesignStyleCategory
+} from '@/entity'
 import { useDesignStyleStore } from '@/store'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import DesignStyleCard from './components/DesignStyleCard.vue'
@@ -62,12 +71,17 @@ const store = useDesignStyleStore()
 
 const keyword = ref('')
 const category = ref('')
-const filterOptions = [{ label: '全部分类', value: '' }, ...DESIGN_STYLE_CATEGORY_OPTIONS]
+const filterOptions = [{ label: '全部分组', value: '' }, ...DESIGN_STYLE_CATEGORY_OPTIONS]
 
 const filteredList = computed(() => {
   const text = keyword.value.trim().toLowerCase()
   return store.all.filter((s) => {
-    if (category.value && s.category !== category.value) return false
+    if (
+      category.value &&
+      normalizeDesignStyleCategory(s.category) !== category.value
+    ) {
+      return false
+    }
     if (!text) return true
     return (
       s.name.toLowerCase().includes(text) ||
@@ -76,6 +90,8 @@ const filteredList = computed(() => {
     )
   })
 })
+
+const groupedList = computed(() => groupDesignStylesByCategory(filteredList.value))
 
 const handleAdd = () => openDesignStylePut()
 const handleOpen = (id: string) => router.push(`/design/detail/${id}`)
@@ -138,7 +154,7 @@ const handleDelete = async (id: string) => {
   }
 
   &__filter {
-    width: 140px;
+    width: 160px;
   }
 
   &__search {
@@ -154,5 +170,18 @@ const handleDelete = async (id: string) => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
+}
+
+.style-group {
+  & + & {
+    margin-top: 28px;
+  }
+
+  &__title {
+    margin: 0 0 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--td-text-color-primary);
+  }
 }
 </style>

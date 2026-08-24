@@ -40,6 +40,30 @@
               <t-tag size="small" variant="outline">{{ categoryLabel }}</t-tag>
               <t-tag v-for="t in style.tags" :key="t" size="small" variant="light">{{ t }}</t-tag>
             </div>
+            <div v-if="style.aliases?.length" class="detail-basic__row">
+              <span class="detail-basic__label">别名</span>
+              <span>{{ style.aliases.join(' / ') }}</span>
+            </div>
+            <div v-if="style.signature" class="detail-basic__row">
+              <span class="detail-basic__label">签名手法</span>
+              <span>{{ style.signature }}</span>
+            </div>
+            <div class="detail-basic__row">
+              <span class="detail-basic__label">留白</span>
+              <span>约 {{ style.whitespaceRatio ?? 55 }}%</span>
+            </div>
+            <div v-if="style.preferredFormats?.length" class="detail-basic__row">
+              <span class="detail-basic__label">常用画幅</span>
+              <span>{{ style.preferredFormats.join(' / ') }}</span>
+            </div>
+            <div v-if="style.suitableFor" class="detail-basic__row">
+              <span class="detail-basic__label">适合</span>
+              <span>{{ style.suitableFor }}</span>
+            </div>
+            <div v-if="style.unsuitableFor" class="detail-basic__row">
+              <span class="detail-basic__label">不适合</span>
+              <span>{{ style.unsuitableFor }}</span>
+            </div>
           </div>
         </div>
       </section>
@@ -106,7 +130,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeftIcon, EditIcon } from 'tdesign-icons-vue-next'
-import { AiDesignStyle, DESIGN_STYLE_CATEGORY_OPTIONS } from '@/entity'
+import { AiDesignStyle, getDesignStyleCategoryLabel, normalizeDesignStyleCategory } from '@/entity'
 import { useDesignStyleStore } from '@/store'
 import { openDesignStylePut } from '@/pages/design/list/modals/DesignStylePutDialog'
 import StylePaletteBlock from './components/StylePaletteBlock.vue'
@@ -134,11 +158,10 @@ const load = async () => {
 }
 load()
 
-const categoryLabel = computed(
-  () =>
-    DESIGN_STYLE_CATEGORY_OPTIONS.find((o) => o.value === style.value?.category)?.label ??
-    style.value?.category ??
-    ''
+const categoryLabel = computed(() =>
+  style.value
+    ? getDesignStyleCategoryLabel(normalizeDesignStyleCategory(style.value.category))
+    : ''
 )
 
 const goList = () => router.push('/design/list')
@@ -197,6 +220,20 @@ const handleEdit = async () => {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  &__row {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    font: var(--td-font-body-medium);
+    color: var(--td-text-color-primary);
+  }
+
+  &__label {
+    flex-shrink: 0;
+    width: 72px;
+    color: var(--td-text-color-placeholder);
   }
 }
 
