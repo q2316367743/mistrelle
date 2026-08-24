@@ -9,6 +9,4 @@ export * from './setting/SettingSkillStore'
 export * from '@/store/ai/AiChatStore'
 export * from '@/store/ai/AiAgentStore'
 
-export * from './project/ProjectStore'
-
 export * from './design/DesignStyleStore'

@@ -130,21 +130,6 @@
 
               <!-- 添加文件 -->
               <template v-else-if="activePanel === 'file'">
-                <template v-if="projectFiles.length > 0">
-                  <div class="l-chat-attachment__group-title">项目资产</div>
-                  <div
-                    v-for="file in projectFiles"
-                    :key="file.path"
-                    class="l-chat-attachment__row"
-                    @click="selectRefItem(file)"
-                  >
-                    <file-icon class="l-chat-attachment__row-icon" />
-                    <div class="l-chat-attachment__row-info" :title="file.name">
-                      <span class="l-chat-attachment__row-name">{{ file.name }}</span>
-                      <span class="l-chat-attachment__row-desc">{{ file.relativePath }}</span>
-                    </div>
-                  </div>
-                </template>
                 <template v-if="workspaceDir">
                   <div class="l-chat-attachment__group-title">工作空间</div>
                   <div
@@ -295,7 +280,6 @@ import {
   ToolsIcon,
   AddIcon
 } from 'tdesign-icons-vue-next'
-import type { Component } from 'vue'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
 import { toolOptions } from '@/modules/tool'
 import { useAiAgentStore } from '@/store'
@@ -328,14 +312,12 @@ const props = withDefaults(
     mode?: AiChatMode
     sandboxDir?: string
     workspaceDir?: string
-    projectFiles?: ChatFileRef[]
   }>(),
   {
     agent: '',
     mode: 0,
     sandboxDir: '',
-    workspaceDir: '',
-    projectFiles: () => []
+    workspaceDir: ''
   }
 )
 const emit = defineEmits<{
@@ -361,6 +343,7 @@ const sandboxFiles = ref<{ inputs: ChatFileRef[]; outputs: ChatFileRef[]; loadin
   loading: false
 })
 const workspaceCurrentDir = ref('')
+// eslint-disable-next-line no-undef
 const workspaceFiles = ref<{ items: FileItem[]; loading: boolean }>({ items: [], loading: false })
 
 watch(
@@ -385,7 +368,6 @@ watch(
 // ─── Computed ─────────────────────────────────────────────
 const agents = computed(() => useAiAgentStore().all)
 const selectedAgent = computed(() => agents.value.find((item) => item.id === props.agent))
-const projectFiles = computed(() => props.projectFiles)
 const workspaceDir = computed(() => props.workspaceDir)
 const canBackWorkspace = computed(() => {
   if (!workspaceCurrentDir.value || !props.workspaceDir) return false
@@ -537,6 +519,7 @@ const selectRefItem = (file: ChatFileRef) => {
   show.value = false
 }
 
+// eslint-disable-next-line no-undef
 const selectWorkspaceItem = async (item: FileItem) => {
   if (item.isDirectory) {
     await loadWorkspaceDir(item.path)
@@ -572,6 +555,7 @@ const loadWorkspaceDir = async (dir: string) => {
   }
 }
 
+// eslint-disable-next-line no-undef
 const workspaceItemDesc = (item: FileItem) =>
   item.isDirectory ? '目录' : relativeFromRoot(item.path, props.workspaceDir)
 

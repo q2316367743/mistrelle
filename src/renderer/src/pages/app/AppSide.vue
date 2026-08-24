@@ -48,7 +48,6 @@ import {
   AiArticleIcon,
   AiEducationIcon,
   AppIcon,
-  AbilityOpenIcon,
   BookmarkIcon,
   ChatIcon,
   InternetIcon,
@@ -87,7 +86,6 @@ const settingOptions = [
 
 const menuTree: SideMenuItem[] = [
   { label: Constant.name, icon: ChatIcon, to: '/new' },
-  { label: '项目', icon: AbilityOpenIcon, to: '/project/list', activePaths: ['/project/'] },
   {
     label: '设计',
     icon: PenIcon,

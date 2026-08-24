@@ -2,7 +2,6 @@ export * from './BaseEntity'
 
 export * from './setting'
 export * from './ai'
-export * from './project'
 
 /*
 ## 工作目录

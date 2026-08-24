@@ -18,7 +18,6 @@
             v-model:mode="mode"
             :sandbox-dir="sandboxDir"
             :workspace-dir="workspaceRef"
-            :project-files="projectAssetFiles"
             @add-skill="insertSkill"
             @add-tool="insertTool"
             @add-ref-file="insertFile"
@@ -137,7 +136,6 @@ import type { ChatSenderInitial } from './chatSenderInitial'
 import type { CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
 import type { PptNodeRef } from '@/components/chat/ppt/pptNodeBridge'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
-import { projectAssetContextKey } from '@/pages/project/detail/context/projectAssetContext'
 import { AiChatMode } from '@/entity'
 import { LockOffIcon, PaletteIcon, TaskIcon } from 'tdesign-icons-vue-next'
 
@@ -183,9 +181,7 @@ const type = ref<ChatType>(props.initial.type ?? 'office')
 const writingScene = ref<WritingScene>(props.initial.writingScene ?? 'article')
 const designStyleId = ref(props.initial.designStyleId ?? '')
 const workspaceRef = ref(props.initial.workspace || '')
-const projectAssetContext = inject(projectAssetContextKey, null)
-const projectAssetFiles = computed(() => projectAssetContext?.files.value ?? [])
-const files = computed(() => [...sandboxFiles.value, ...projectAssetFiles.value])
+const files = computed(() => [...sandboxFiles.value])
 
 /** 设计风格名称：从缓存列表取（列表缓存、详情不缓存），风格被删除时回退空串 */
 const designStyleName = computed(

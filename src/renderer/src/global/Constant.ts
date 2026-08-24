@@ -56,11 +56,6 @@ export const getDataForWorkspace = () => {
   return window.preload.path.join(dataFolder, 'workspace')
 }
 
-// ~/.mistrelle/project
-export const getAppData2Project = () => {
-  return window.preload.path.join(dataFolder, 'project')
-}
-
 // ~/.mistrelle/design
 export const getAppData2Design = () => {
   return window.preload.path.join(dataFolder, 'design')
