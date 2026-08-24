@@ -153,27 +153,21 @@ const findLastText = (
 }
 
 /** 最终回复：默认取 content 中最后一条非 continueHint / retryNotice 的 text/markdown（agent 循环最后一步的输出）。
- *  record_memory 为收尾调用时（其后无其他 toolcall / thinking）改锚定到它之前，
- *  使回答结束后的记忆调用与补充说明归入过程，真正的回答不被折叠；其前无文本则回退默认逻辑 */
+ *  record_memory 为收尾调用时（第一个 record_memory 之后无非记忆工具调用）锚定到第一个 record_memory 之前，
+ *  使回答结束后的记忆调用与收尾补充说明归入过程，真正的回答不被折叠；其前无文本则回退默认逻辑。
+ *  注意：收尾阶段常见的「记忆调用 + 收尾 thinking + 一句结束语」中 thinking 不算继续干活，
+ *  仅非记忆 toolcall 才视为中途记忆（记忆后继续执行）走默认逻辑 */
 const finalContent = computed<AIMessageContent | undefined>(() => {
   const contents = props.message.content ?? []
-  let lastMemoryIdx = -1
-  for (let i = contents.length - 1; i >= 0; i--) {
-    if (isRecordMemoryCall(contents[i])) {
-      lastMemoryIdx = i
-      break
-    }
-  }
-  if (lastMemoryIdx < 0) return findLastText(contents, contents.length - 1, 0)
+  const firstMemoryIdx = contents.findIndex(isRecordMemoryCall)
+  if (firstMemoryIdx < 0) return findLastText(contents, contents.length - 1, 0)
   const hasWorkAfterMemory = contents
-    .slice(lastMemoryIdx + 1)
-    .some(
-      (item) => (item.type === 'thinking' || item.type === 'toolcall') && !isRecordMemoryCall(item)
-    )
+    .slice(firstMemoryIdx + 1)
+    .some((item) => item.type === 'toolcall' && !isRecordMemoryCall(item))
   if (hasWorkAfterMemory) return findLastText(contents, contents.length - 1, 0)
   return (
-    findLastText(contents, lastMemoryIdx - 1, 0) ??
-    findLastText(contents, contents.length - 1, lastMemoryIdx)
+    findLastText(contents, firstMemoryIdx - 1, 0) ??
+    findLastText(contents, contents.length - 1, firstMemoryIdx)
   )
 })
 
