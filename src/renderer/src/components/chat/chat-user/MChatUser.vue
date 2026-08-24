@@ -120,8 +120,8 @@
       <RChatActionbar
         :content="getUserText(message)"
         role="user"
+        style="margin-right: 8px"
         @delete="$emit('delete', message.id)"
-        style="margin-right: 8px;"
       />
     </div>
   </div>
