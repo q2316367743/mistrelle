@@ -26,23 +26,23 @@ modules/api/aihot/
     └── api-v1-selected-changes.ts   # GET /api/v1/selected/changes   aihotApiV1SelectedChanges({ cursor, limit? })
 ```
 
-## 工具契约（6 个，全部 safe）
+## 工具契约（4 个，全部 safe）
 
-工具定义在 `modules/tool/components/aihot/index.ts`，注册于 `modules/tool/index.ts` 分组 `AI 热点`（`toolGroups` + `toolMap`），按需在 agent / 会话中勾选启用。5 个走匿名只读公开 API（按需单次调用），1 个（`aihot_selected`）查询应用侧本地精选镜像（SQLite）。
+工具定义在 `modules/tool/components/aihot/index.ts`，注册于 `modules/tool/index.ts` 分组 `AI 热点`（`toolGroups` + `toolMap`），按需在 agent / 会话中勾选启用。3 个走匿名只读公开 API（按需单次调用），1 个（`aihot_selected`）查询应用侧本地精选镜像（SQLite）。工具与资讯页四页签一一对应：精选=`aihot_selected`、动态=`aihot_items`、热点=`aihot_hot_topics`、日报=`aihot_daily`。
 
 | 工具 | 参数 | 返回 |
 |---|---|---|
-| `aihot_hot_topics` | 无 | `{ count, items }`；每项附加 `storyPublicId`（handler 从 `links.story` URL 末段提取），模型可直接链到 `aihot_story` |
-| `aihot_items` | `q?`、`category?`(enum)、`window?`(24h/7d)、`by?`(timeline/published)、`mode?`(selected/all)、`limit?`(默认 20，clamp 1–100) | `AihotItemsResponse`（近 7 天窗口） |
-| `aihot_story` | `publicId`(必填) | `AihotStory`（时间线 reports + AI 摘要 digest） |
+| `aihot_hot_topics` | 无 | `AihotHotTopicsResponse`（AIHOT Top 10：`{ count, items }`） |
+| `aihot_items` | `q?`、`category?`(enum)、`window?`(24h/7d)、`by?`(timeline/published)、`limit?`(默认 20，clamp 1–100) | `AihotItemsResponse`（在线公开池，固定 `mode: 'all'`，近 7 天窗口） |
 | `aihot_daily` | `date?`(YYYY-MM-DD 上海时区，缺省=最新) | `AihotDailyReport`（合并 latest 与按日期两端点） |
-| `aihot_dailies` | `limit?`(默认 30，clamp 1–180) | `AihotDailiesResponse`（日报日期索引） |
 | `aihot_selected` | `q?`、`category?`(enum)、`window?`(24h/7d/all，默认 all)、`by?`(timeline/published)、`limit?`(默认 20，clamp 1–100)、`refresh?`(boolean) | `{ syncedAt, total, hasMore, items }`（本地镜像全量历史，条目为完整字段去本地 `read` 标记） |
 
 handler 统一经 `runAihot(action, fn)` 包装：成功原样返回、失败 `{ error: '<action>失败：<message>' }` 软错误供模型自我纠正。
 
 ## 注意事项
 
+- **仅 4 个工具，与资讯页四页签一一对应**：事件时间线（story）、日报归档索引（dailies）属页面内下钻能力，只保留在资讯页 UI（事件抽屉 / 日报归档列表），不再暴露为独立工具；对应 API 客户端 `aihotApiV1Stories` / `aihotApiV1Dailies` 仍被页面组件（`AihotStoryDrawerContent.vue` / `AihotDailiesView.vue`）使用，保留于 `modules/api/aihot`，勿删
+- **动态=在线公开池**：`aihot_items` 固定 `mode: 'all'`（无模式参数）；精选查询一律走 `aihot_selected`（本地镜像），二者职责不重叠
 - **精选集走应用本地镜像**：精选集（`selected`）由应用侧 `modules/aihot/AihotSelectedService` 维护——snapshot 引导（保留第一页 `cursor` 作账本水位）+ changes 永续增量（先应用页面再保存新 `cursor`），409 `snapshot_required` 自动清库重引导，镜像落 SQLite（`window.preload.db.aihot`），与资讯页共享同一份数据。工具 `aihot_selected` 只查询该本地镜像，**不向模型暴露 snapshot / changes 账本协议**：无状态工具无法可靠跨调用维护不透明 `cursor`，一旦失效需全量重引导数千条，token 浪费且不可恢复
 - `aihot_selected` 首次调用自动触发 snapshot 引导（数千条分页写入，一次性数秒）；此后距上次同步 ≥5 分钟或传 `refresh=true` 才走增量同步，其余直接读本地缓存；镜像条目为完整字段（含 summary），不含仅 `/items` 端点返回的 `reason`
 - **items 仅 7 天窗口**，不做全量镜像用途；`cursor` 绑定同查询（换过滤条件须重新从头取）

@@ -156,7 +156,7 @@
 | [06-ego-browser-tools.md](./tool/06-ego-browser-tools.md) | ego-browser 工具：`ego_browser_run` 免审批包装 CLI（nodejs 子命令经 stdin 通道传 script，其余子命令 args 透传）、`ego_browser_exist` 只读探测安装状态；可执行文件路径解析（runtime.egoBrowser 配置 → 平台默认推断 → PATH 兜底）；`cliRun` 新增 `stdin` 选项 |
 | [07-tool-policy.md](./tool/07-tool-policy.md)           | 工具安全策略注册与模块循环依赖约束：`registerToolPolicy` / `resolveToolPolicy` 机制、TDZ 崩溃根因（toolPolicy import 闭包拉入 chat/store 全量图）与修复（import 叶子化）、后续新增策略的约束 |
 | [08-search-tools.md](./tool/08-search-tools.md)         | 搜索工具：`getDefaultTools()` 动态组装；`zhihu_search` 仅配置 Access Secret 时注入 + `any_search` 可匿名；账号设置知乎项与鉴权头 |
-| [09-aihot-tools.md](./tool/09-aihot-tools.md)         | AIHOT 资讯工具：匿名只读公开 API 客户端（`modules/api/aihot` 全 8 端点，skillhub 同款模式）+ 6 个 safe 工具（热门榜 / 条目检索 / 事件时间线 / 日报 / 日报索引 / 精选库本地镜像查询）；精选镜像由应用侧 AihotSelectedService 维护，工具不暴露 snapshot+changes 账本协议 |
+| [09-aihot-tools.md](./tool/09-aihot-tools.md)         | AIHOT 资讯工具：匿名只读公开 API 客户端（`modules/api/aihot` 全 8 端点，skillhub 同款模式）+ 4 个 safe 工具与资讯页四页签一一对应（精选=本地镜像查询、动态=在线公开池检索、热点=热门榜、日报）；事件时间线 / 日报归档索引仅保留在页面 UI 不暴露为工具；镜像由应用侧 AihotSelectedService 维护，工具不暴露 snapshot+changes 账本协议 |
 
 ### writing/ —— 写作
 

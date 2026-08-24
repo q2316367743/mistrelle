@@ -1,22 +1,18 @@
 // ==========================================
 //  AIHOT 工具：AI 资讯热点查询（匿名只读公开 API + 本地精选镜像，全部 risk: safe）
+//  与资讯页四页签一一对应：精选=aihot_selected（本地镜像）、动态=aihot_items（在线公开池）、
+//  热点=aihot_hot_topics、日报=aihot_daily；事件时间线 / 日报归档索引仅保留在页面 UI，不暴露为工具
 //  API 客户端见 @/modules/api/aihot；本地精选镜像见 @/modules/aihot（AihotSelectedService）
 // ==========================================
 
 import { ToolFunction } from '@/domain'
 import {
-  aihotApiV1Dailies,
   aihotApiV1DailiesDate,
   aihotApiV1DailiesLatest,
   aihotApiV1HotTopics,
-  aihotApiV1Items,
-  aihotApiV1Stories
+  aihotApiV1Items
 } from '@/modules/api/aihot'
 import { getAihotMeta, listAihotItems, syncAihotSelected } from '@/modules/aihot'
-
-/** 从热门话题的 links.story URL 末段提取故事 publicId，便于模型直接调用 aihot_story */
-const storyPublicIdOf = (url?: string): string | undefined =>
-  url ? url.split('/').filter(Boolean).pop() : undefined
 
 /** 本地精选镜像自动增量同步间隔：距上次同步不足该值时直接读缓存（与资讯页 AUTO_SYNC_INTERVAL 一致） */
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000
@@ -33,27 +29,19 @@ export const aihotTools: ToolFunction[] = [
   {
     name: 'aihot_hot_topics',
     label: 'AI 热门榜',
-    description:
-      '获取当前多来源 AI 热门榜（AIHOT Top 10，按多源覆盖与讨论热度排名）。需要深入了解某个话题时，用返回的 storyPublicId 调用 aihot_story 查看事件时间线。',
+    description: '获取当前多来源 AI 热门榜（AIHOT Top 10，按多源覆盖与讨论热度排名）。',
     parameters: {
       type: 'object',
       properties: {}
     },
     risk: 'safe',
-    handler: async () =>
-      runAihot('获取热门榜', async () => {
-        const resp = await aihotApiV1HotTopics()
-        return {
-          count: resp.count,
-          items: resp.items.map((e) => ({ ...e, storyPublicId: storyPublicIdOf(e.links.story) }))
-        }
-      })
+    handler: async () => runAihot('获取热门榜', aihotApiV1HotTopics)
   },
   {
     name: 'aihot_items',
-    label: 'AI 条目检索',
+    label: 'AI 动态检索',
     description:
-      '检索近期公开 AI 条目（仅最近 7 天窗口）。可按关键词、分类、时间窗口过滤，适合查询最新的 AI 模型、AI 产品、行业动态、论文与技巧。',
+      '检索近期公开 AI 条目（在线公开池，仅最近 7 天窗口）。可按关键词、分类、时间窗口过滤，适合查询最新的 AI 模型、AI 产品、行业动态、论文与技巧。',
     parameters: {
       type: 'object',
       properties: {
@@ -69,36 +57,23 @@ export const aihotTools: ToolFunction[] = [
           enum: ['timeline', 'published'],
           description: '窗口与排序所用时间戳基准：timeline=发现时间（默认），published=发布时间'
         },
-        mode: {
-          type: 'string',
-          enum: ['selected', 'all'],
-          description: 'selected=精选条目（默认），all=全部条目'
-        },
         limit: { type: 'number', description: '返回条数（1–100，默认 20）' }
       }
     },
     risk: 'safe',
     handler: async (...params: unknown[]) =>
       runAihot('检索条目', async () => {
-        const {
-          q,
-          category,
-          mode,
-          window: timeWindow,
-          by,
-          limit
-        } = params[0] as {
+        const { q, category, window: timeWindow, by, limit } = params[0] as {
           q?: string
           category?: string
-          mode?: 'selected' | 'all'
           window?: '24h' | '7d'
           by?: 'timeline' | 'published'
           limit?: number
         }
         return aihotApiV1Items({
+          mode: 'all',
           q,
           category,
-          mode,
           window: timeWindow,
           by,
           limit: Math.min(Math.max(Math.floor(limit ?? 20), 1), 100)
@@ -106,29 +81,10 @@ export const aihotTools: ToolFunction[] = [
       })
   },
   {
-    name: 'aihot_story',
-    label: 'AI 事件时间线',
-    description:
-      '获取单个 AI 事件（故事）的完整时间线、相关报道与 AI 摘要。publicId 来自 aihot_hot_topics 返回的 storyPublicId。',
-    parameters: {
-      type: 'object',
-      properties: {
-        publicId: { type: 'string', description: '故事公开 ID' }
-      },
-      required: ['publicId']
-    },
-    risk: 'safe',
-    handler: async (...params: unknown[]) =>
-      runAihot('获取事件时间线', async () => {
-        const { publicId } = params[0] as { publicId: string }
-        return (await aihotApiV1Stories(publicId)).story
-      })
-  },
-  {
     name: 'aihot_daily',
     label: 'AIHOT 日报',
     description:
-      '获取 AIHOT 日报全文（每日 08:00 上海时间生成，含导语、分栏条目与快讯）。不传 date 取最新一期；需要查看有哪些日期时先用 aihot_dailies。',
+      '获取 AIHOT 日报全文（每日 08:00 上海时间生成，含导语、分栏条目与快讯）。不传 date 取最新一期。',
     parameters: {
       type: 'object',
       properties: {
@@ -141,24 +97,6 @@ export const aihotTools: ToolFunction[] = [
         const { date } = params[0] as { date?: string }
         const resp = date ? await aihotApiV1DailiesDate(date) : await aihotApiV1DailiesLatest()
         return resp.report
-      })
-  },
-  {
-    name: 'aihot_dailies',
-    label: 'AIHOT 日报索引',
-    description:
-      '获取 AIHOT 日报归档索引（按日期最新在前，仅含日期与导语摘要）。用于了解有哪些日期的日报，再用 aihot_daily 按日期取全文。',
-    parameters: {
-      type: 'object',
-      properties: {
-        limit: { type: 'number', description: '返回期数（1–180，默认 30）' }
-      }
-    },
-    risk: 'safe',
-    handler: async (...params: unknown[]) =>
-      runAihot('获取日报索引', async () => {
-        const { limit } = params[0] as { limit?: number }
-        return aihotApiV1Dailies(Math.min(Math.max(Math.floor(limit ?? 30), 1), 180))
       })
   },
   {

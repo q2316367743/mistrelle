@@ -20,7 +20,6 @@ export * from './ai'
     |- 2026-08-19.md
     |- ...
   |- state.json              # 记忆状态：开关 / 合并边界 / 各会话提取进度
-|- project                    # 项目目录 @see project
 |- workspace                  # 工作空间 @see ai
 |- design                     # 设计风格 @see AiDesignStyle
   |- index.json               # 索引文件，记录着列表中需要展示的信息

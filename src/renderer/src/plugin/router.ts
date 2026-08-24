@@ -35,14 +35,6 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/pages/chat/PageChat.vue')
   },
 
-  // --------------------------------- 项目相关 ---------------------------------
-
-  {
-    name: '项目列表',
-    path: '/project/list',
-    component: () => import('@/pages/project/list/index.vue')
-  },
-
   // --------------------------------- 设计 ---------------------------------
 
   {
@@ -59,54 +51,6 @@ export const routes: Array<RouteRecordRaw> = [
     name: '设置/字体管理',
     path: '/design/font',
     component: () => import('@/pages/design/font/DesignFontPage.vue')
-  },
-
-  // --------------------------------- 项目 ---------------------------------
-
-  {
-    path: '/project/:id',
-    component: () => import('@/pages/project/detail/index.vue'),
-    children: [
-      {
-        path: '',
-        redirect: (to) => `/project/${(to.params as { id: string }).id}/dynamics`
-      },
-      {
-        name: '项目-动态',
-        path: 'dynamics',
-        component: () => import('@/pages/project/dynamics/DynamicsPage.vue')
-      },
-      {
-        name: '项目-计划',
-        path: 'plan',
-        component: () => import('@/pages/project/plan/PlanPage.vue')
-      },
-      {
-        name: '项目-任务',
-        path: 'task',
-        component: () => import('@/pages/project/task/TaskPage.vue')
-      },
-      {
-        name: '项目-聊天',
-        path: 'chat/:chatId',
-        component: () => import('@/pages/project/chat/ProjectChatPage.vue')
-      },
-      {
-        name: '项目-资产',
-        path: 'asset',
-        component: () => import('@/pages/project/asset/AssetPage.vue')
-      },
-      {
-        name: '项目-订阅',
-        path: 'subscribe',
-        component: () => import('@/pages/project/subscribe/SubscribePage.vue')
-      },
-      {
-        name: '项目-笔记',
-        path: 'note',
-        component: () => import('@/pages/project/note/NotePage.vue')
-      }
-    ]
   },
 
   // --------------------------------- 闲庭漫步 ---------------------------------
