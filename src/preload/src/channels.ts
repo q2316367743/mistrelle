@@ -81,6 +81,7 @@ export const FsChannels = {
   readDir: 'fs:readDir',
   writeTextFile: 'fs:writeTextFile',
   readTextFile: 'fs:readTextFile',
+  readFileLines: 'fs:readFileLines',
   readBinaryFile: 'fs:readBinaryFile',
   existsSync: 'fs:existsSync',
   mkdir: 'fs:mkdir',

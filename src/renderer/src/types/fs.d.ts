@@ -21,6 +21,12 @@ declare interface FileStat {
   birthtime: number
 }
 
+declare interface FsReadLinesResult {
+  lines: string[]
+  totalLines: number | null
+  hasMore: boolean
+}
+
 declare interface FsGlobOptions {
   path: string
   pattern: string
@@ -53,6 +59,7 @@ declare interface FsApi {
   readDir: (path: string) => Promise<Array<FileItem>>
   writeTextFile: (path: string, text: string) => Promise<void>
   readTextFile: (path: string) => Promise<string>
+  readFileLines: (path: string, offset: number, limit: number) => Promise<FsReadLinesResult>
   readBinaryFile: (path: string) => Promise<ArrayBuffer>
   existsSync: (path: string) => boolean
   mkdir: (path: string, recursive = true) => Promise<void>

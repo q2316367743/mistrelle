@@ -3,8 +3,9 @@
  * 除 existsSync 变为异步外（renderer 调用点已 await 化），其余方法签名不变。
  */
 import { ipcMain } from 'electron'
-import { statSync, existsSync, type Dirent } from 'node:fs'
+import { statSync, existsSync, createReadStream, type Dirent } from 'node:fs'
 import { readdir, readFile, writeFile, mkdir, rm, copyFile, rename, stat } from 'node:fs/promises'
+import readline from 'node:readline'
 import { basename, join, relative, sep } from 'node:path'
 import {
   FsChannels,
@@ -37,6 +38,13 @@ interface FileStat {
   ctime: number
   atime: number
   birthtime: number
+}
+
+/** readFileLines 结果：窗口内行原文（不带行号）；totalLines 仅扫到 EOF 时精确，提前停流为 null */
+interface FsReadLinesResult {
+  lines: string[]
+  totalLines: number | null
+  hasMore: boolean
 }
 
 const toEntry = (path: string, name: string): FileEntry => {
@@ -78,6 +86,8 @@ const MAX_GREP_MATCHES = 100
 const MAX_GREP_FILE_SIZE = 2 * 1024 * 1024
 /** grep 匹配行文本截断长度 */
 const MAX_LINE_LENGTH = 200
+/** readFileLines 行收集字节预算：为 128KB 工具结果全局截断留安全余量 */
+const MAX_LINES_BUDGET = 110 * 1024
 
 const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -174,6 +184,41 @@ export function registerFsIpc(): void {
 
   ipcMain.handle(FsChannels.readTextFile, (_event, path: string): Promise<string> =>
     readFile(path, 'utf-8')
+  )
+
+  ipcMain.handle(
+    FsChannels.readFileLines,
+    async (_event, path: string, offset = 1, limit = 500): Promise<FsReadLinesResult> => {
+      if (!existsSync(path)) throw new Error(`文件不存在：${path}`)
+      const lines: string[] = []
+      let seen = 0 // 已流经的行数（含 offset 之前的）
+      let budget = MAX_LINES_BUDGET
+      let stoppedEarly = false
+      const rl = readline.createInterface({
+        input: createReadStream(path, { encoding: 'utf-8' }),
+        crlfDelay: Infinity
+      })
+      for await (const line of rl) {
+        seen++
+        if (lines.length >= limit) {
+          stoppedEarly = true // 窗口满后再见一行，即确认还有剩余
+          break
+        }
+        if (seen < offset) continue
+        const byteLen = Buffer.byteLength(line)
+        if (byteLen > budget) {
+          // 预算耗尽：一行未收时截断本行保进度（单行超长场景），已有收行则直接停
+          if (lines.length === 0) {
+            lines.push(`${line.slice(0, budget)}[本行共 ${byteLen} 字节，超出读取预算已截断]`)
+          }
+          stoppedEarly = true
+          break
+        }
+        lines.push(line)
+        budget -= byteLen
+      }
+      return { lines, totalLines: stoppedEarly ? null : seen, hasMore: stoppedEarly }
+    }
   )
 
   ipcMain.handle(FsChannels.readBinaryFile, async (_event, path: string): Promise<ArrayBuffer> => {

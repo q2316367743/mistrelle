@@ -25,6 +25,13 @@ interface FileEntry {
   birthtime: number
 }
 
+/** readFileLines 结果：窗口内行原文（不带行号）；totalLines 仅扫到 EOF 时精确，提前停流为 null */
+interface FsReadLinesResult {
+  lines: string[]
+  totalLines: number | null
+  hasMore: boolean
+}
+
 const toArrayBuffer = (data: Uint8Array): ArrayBuffer => {
   const copy = new Uint8Array(data)
   return copy.buffer
@@ -35,6 +42,8 @@ export const fsApi = {
   writeTextFile: (path: string, text: string): Promise<void> =>
     ipcRenderer.invoke(FsChannels.writeTextFile, path, text),
   readTextFile: (path: string): Promise<string> => ipcRenderer.invoke(FsChannels.readTextFile, path),
+  readFileLines: (path: string, offset: number, limit: number): Promise<FsReadLinesResult> =>
+    ipcRenderer.invoke(FsChannels.readFileLines, path, offset, limit),
   readBinaryFile: async (path: string): Promise<ArrayBuffer> => {
     const data = (await ipcRenderer.invoke(FsChannels.readBinaryFile, path)) as Uint8Array
     return toArrayBuffer(data)

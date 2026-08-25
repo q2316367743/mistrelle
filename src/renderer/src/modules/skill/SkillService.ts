@@ -14,9 +14,7 @@ export const buildDefaultSkillAgents = (): Array<SkillAgent> => {
   const join = window.preload.path.join
   return [
     { key: 'system', name: '系统默认', path: join(home, '.agents', 'skills') },
-    { key: 'claude', name: 'Claude Code', path: join(home, '.claude', 'skills') },
-    { key: 'opencode', name: 'OpenCode', path: join(home, '.config', 'opencode', 'skills') },
-    { key: 'workbuddy', name: 'WorkBuddy', path: join(home, '.workbuddy', 'skills') }
+    { key: 'mistrelle', name: '半窗烟雨', path: join(home, '.mistrelle', 'skills') }
   ]
 }
 

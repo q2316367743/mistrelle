@@ -12,6 +12,11 @@ function checkBlacklist(path: string): string | null {
   return null
 }
 
+/** file_read 默认每页行数 */
+const FILE_READ_DEFAULT_LINES = 500
+/** file_read 单次读取行数上限 */
+const FILE_READ_MAX_LINES = 2000
+
 export const fileTools: ToolFunction[] = [
   {
     name: 'file_list',
@@ -35,21 +40,44 @@ export const fileTools: ToolFunction[] = [
   {
     name: 'file_read',
     label: '读取文件',
-    description: '读取纯文本文件的全部内容（UTF-8 编码），适用于 .txt/.md/.json/.csv/.ts/.js/.css 等文本格式。docx/xlsx/pdf 请使用 file_read_docx / file_read_xlsx / file_read_pdf',
+    description:
+      '按行分页读取纯文本文件（UTF-8 编码），适用于 .txt/.md/.json/.csv/.ts/.js/.css 等文本格式。默认读取前 500 行；返回带 nextOffset 表示还有剩余行，传 offset 续读（limit 上限 2000）。部分读取时每行带「行号|」前缀。单行超长文件（如压缩 JSON）不适用按行分页。docx/xlsx/pdf 请使用 file_read_docx / file_read_xlsx / file_read_pdf',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: '要读取的文件路径' }
+        path: { type: 'string', description: '要读取的文件路径' },
+        offset: { type: 'number', description: '起始行号（1 起始），默认 1；续读时传上次返回的 nextOffset' },
+        limit: { type: 'number', description: `本次读取行数，默认 ${FILE_READ_DEFAULT_LINES}，上限 ${FILE_READ_MAX_LINES}` }
       },
       required: ['path']
     },
     risk: 'safe',
     handler: async (...params: unknown[]) => {
-      const { path } = params[0] as { path: string }
+      const { path, offset, limit } = params[0] as { path: string; offset?: number; limit?: number }
       const error = checkBlacklist(path)
       if (error) return { error }
-      const content = await window.preload.fs.readTextFile(path)
-      return { content }
+      const startLine = Math.max(1, Math.floor(offset ?? 1))
+      const lineCount = Math.min(FILE_READ_MAX_LINES, Math.max(1, Math.floor(limit ?? FILE_READ_DEFAULT_LINES)))
+      try {
+        const { lines, totalLines, hasMore } = await window.preload.fs.readFileLines(path, startLine, lineCount)
+        // 首页即全量：原文直出，与整读行为兼容（不带行号）
+        if (!hasMore && startLine === 1 && totalLines === lines.length) {
+          return { content: lines.join('\n'), totalLines }
+        }
+        if (!hasMore && lines.length === 0 && totalLines !== null && startLine > totalLines) {
+          return { content: '', totalLines, offset: startLine, hint: `offset 超出文件总行数（共 ${totalLines} 行）` }
+        }
+        const content = lines.map((line, i) => `${startLine + i}|${line}`).join('\n')
+        const response: { content: string; totalLines: number | null; offset: number; nextOffset?: number } = {
+          content,
+          totalLines,
+          offset: startLine
+        }
+        if (hasMore) response.nextOffset = startLine + lines.length
+        return response
+      } catch (e) {
+        return { error: `读取文件失败：${e instanceof Error ? e.message : String(e)}` }
+      }
     }
   },
   {

@@ -1,6 +1,14 @@
-# 文件系统工具：image_info、file_stat 与 file_glob / file_grep
+# 文件系统工具：file_read 按行分页、image_info、file_stat 与 file_glob / file_grep
 
 ## 背景
+
+### file_read 按行分页
+
+`file_read` 原先整文件 `readTextFile` 一次性返回 `{ content }`，超过 128KB 时被
+`agentTools.ts` 的全局硬截断（`MAX_TOOL_RESULT_BYTES`）拦腰截断，尾部内容直接丢失且模型无从续读。
+
+改为**主进程流式按行分页**：`createReadStream + readline` 逐行扫描取 `[offset, offset+limit)` 窗口，
+模型凭返回的 `nextOffset / totalLines` 翻页续读，超大文件不整读入渲染层内存。
 
 ### image_info 与 file_stat 的职责分离
 
@@ -20,6 +28,25 @@
 
 ## 实现思路
 
+### file_read 按行分页（主进程流式）
+
+- 走「主进程单方法 + 薄 preload 桥」：新通道 `fs:readFileLines`（位置参数 `path, offset, limit`），
+  主进程 `readline.createInterface({ crlfDelay: Infinity })` 流式逐行扫描（readline 无法 seek，每次从文件头扫起）。
+- **窗口语义**：收集 `[offset, offset+limit)` 行；窗口满后再见 1 行即提前停流（`hasMore: true`，
+  `totalLines: null`）；自然扫到 EOF 则 `totalLines` 精确、`hasMore: false`。
+- **字节预算**（`MAX_LINES_BUDGET = 110KB`，为 128KB 全局截断留余量）：累计超预算停止收行；
+  **单行本身超预算时截断该行并附 `[本行共 N 字节，超出读取预算已截断]` 标记**，保证分页始终有进展
+  （防压缩 JSON 等单行超长文件产生 0 进度死循环）。
+- **双形态返回**（渲染层 `file.ts` 组装）：
+  - 首页即全量（`!hasMore && offset=1 && totalLines === lines.length`）：原文直出 `{ content, totalLines }`，
+    不带行号，与旧行为兼容；
+  - 部分读取：每行加 `` `${行号}|` `` 前缀，返回 `{ content, totalLines: number | null, offset, nextOffset? }`
+    （`nextOffset` 仅在还有剩余行时给出）。
+- `offset` 超出总行数：空 content + `totalLines` + `hint`，模型自行纠正。
+- 行尾兼容：readline 天然剥离 `\n` / `\r\n`；完整读取经 `join('\n')` 会丢失文件末尾换行符（可接受）。
+
+### image_info / file_stat / file_glob / file_grep
+
 - `readImageInfo`（`src/utils/imageInfo.ts`）收敛为返回 `{ format, width, height }`。
 - `file_stat` 基于主进程 `fs.stat`，手动转换字段返回普通对象，风格与 `readDir` 的 `FileItem` 一致。
 - `file_glob` / `file_grep` 走「主进程单方法 + 薄 preload 桥」：
@@ -38,6 +65,9 @@
 
 | 限制项               | 值        | 说明                              |
 | -------------------- | --------- | --------------------------------- |
+| file_read 默认页大小 | 500 行    | 首读 / 续读默认行数               |
+| file_read 单次上限   | 2000 行   | limit 钳制上限（渲染层静默钳制）  |
+| file_read 行收集预算 | 110KB     | 主进程累计字节超限即停（128KB 余量），单行超限截断该行并标记 |
 | glob 文件数上限      | 200       | 超出即停止遍历                    |
 | grep 匹配数上限      | 100       | 超出即停止扫描                    |
 | grep 单文件大小上限  | 2MB       | 超过跳过                          |
@@ -54,14 +84,39 @@
 
 ## 关键文件
 
-- `src/preload/src/channels.ts` — `FsChannels.glob / grep` 通道 + `FsGlobOptions` 等共享接口
-- `src/main/src/ipc/fsIpc.ts` — `globToRegex` / `walkFiles` / 两个 handler 的全部实现
-- `src/preload/src/fs.ts` — preload 桥 `glob` / `grep` 透传方法
-- `src/renderer/src/types/fs.d.ts` — 渲染侧 `FsApi` 声明同步（含 `FsGlobResult` / `FsGrepResult`）
-- `src/renderer/src/modules/tool/components/native/file.ts` — `image_info` 调整 + `file_stat` /
+- `src/preload/src/channels.ts` — `FsChannels.readFileLines` 通道；`FsChannels.glob / grep` 通道 + `FsGlobOptions` 等共享接口
+  （`readFileLines` 的结果接口因 channels.ts 贴近 500 行红线，按消费方各自声明，不在此文件定义）
+- `src/main/src/ipc/fsIpc.ts` — `readFileLines` 流式 handler（窗口 / 预算 / EOF 语义）+ `globToRegex` / `walkFiles` / 其余 handler
+- `src/preload/src/fs.ts` — preload 桥 `readFileLines` / `glob` / `grep` 透传方法（本地声明 `FsReadLinesResult`）
+- `src/renderer/src/types/fs.d.ts` — 渲染侧 `FsApi` 声明同步（含 `FsReadLinesResult` / `FsGlobResult` / `FsGrepResult`）
+- `src/renderer/src/modules/tool/components/native/file.ts` — `file_read` 分页组装（双形态返回）+ `image_info` 调整 + `file_stat` /
   `file_glob` / `file_grep` 工具定义
 
 ## API 契约
+
+### file_read
+
+输入：`{ path: string, offset?: number, limit?: number }`（`offset` 1 起始默认 1，`limit` 默认 500 上限 2000）
+
+完整读取（首页即全量，≤500 行的小文件）：
+
+```json
+{ "content": "整文件原文", "totalLines": 120 }
+```
+
+部分读取（大文件 / 显式翻页）：
+
+```json
+{
+  "content": "501|export function foo() {\n502|  ...",
+  "totalLines": 5000,
+  "offset": 501,
+  "nextOffset": 1001
+}
+```
+
+- `totalLines` 为 `null` 表示主进程提前停流、总行数未知（凭 `nextOffset` 续读即可）。
+- `offset` 超出总行数：`{ content: "", totalLines, offset, hint }`。
 
 ### image_info
 
@@ -111,7 +166,7 @@
 
 ### 通用
 
-- 四个工具均 `risk: 'safe'`，经过沙盒黑名单校验（`checkBlacklist`）与默认工具策略的
+- 五个工具均 `risk: 'safe'`，经过沙盒黑名单校验（`checkBlacklist`）与默认工具策略的
   `args.path` 可信区域 / 白名单裁决。
 - `file_glob` / `file_grep` 在 handler 内先校验目录存在（`existsSync`）并 try/catch 兜底返回 `{ error }`。
 - 工具定义在 `fileTools` 数组追加即自动进入 `getDefaultTools()`，无需在 `toolMap` / `toolGroups` 登记。
@@ -119,6 +174,8 @@
 ## 注意事项
 
 - 需要文件大小时应优先 `file_stat`（`fs.stat`），不要依赖 sharp metadata。
+- 单行超长文件（压缩 JSON 等）按行分页无效：首行即触发字节预算截断标记，应改用 `file_grep`
+  定位或让模型换手段。
 - glob 匹配对象是**相对起始目录的路径**（`/` 分隔）：`*.md` 只匹配根层，`**/*.md` 匹配任意层级——
   description 已向模型说明该语义。
 - shell 工具的 `cli_run` 也能跑 grep / rg，但属 sensitive 风险需审批且输出非结构化；`file_grep` 是
