@@ -65,6 +65,12 @@
 | [03-image-generate-page.md](./attachment/03-image-generate-page.md) | 文生图页面（`/attachment/image`）：生成表单（模型选择：显式 imageOptions 优先、缺省默认；提交即清空、可并行连续生成）+ 历史网格；复用 `generateImage` 服务、`image_generate` 表 + `db:image:*` IPC、图片按月分桶 `~/.mistrelle/image/generate/{yyyy-MM}/{id}.png`；pending→success/failed 状态机（单例跨路由存活、settle 排除运行中、删除防 upsert 复活）、`${provideId}:${identifier}` 模型 key 约定、五处同步清单 |
 | [04-file-preview-dialog.md](./attachment/04-file-preview-dialog.md) | 文件预览弹窗（公共组件 `FilePreviewDialog`，原 chat-assistant/modals 提升并按约定拆外壳+内容）：`FilePreviewItem` 契约与分发（url→链接抽屉 / md / **html、htm→webview 渲染预览** / code / image / video / audio / showInFolder 兜底）；mistrelle:// 协议仅默认 session 注册故 html webview 不写 partition、主进程 MIME 补 text/html 等 |
 
+### extend/ —— 闲庭漫步工具页
+
+| 文档                                                          | 描述                                                                                                                          |
+|---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| [01-model-health-tool.md](./extend/01-model-health-tool.md) | 可用性检测工具（`/attachment/test`，参考 aibase llm-health）：已配置模型一键选择（含禁用项）自动填充 / 5 维度 12 检测项（基础 4 / 完整 12，共享观测降成本、30s 超时、connect 失败级联跳过）；`model_health` 表 + `db:health:*` IPC；渲染层执行（复用 modules/ai 三格式适配器）+ 模块级单例 composable 单任务锁 + keep-alive（`ExtendTestPage`）切页不中断；逐项落库累积、孤儿 running 收尾、审计报告 markdown 自动生成可重生成、API 密钥不落库 |
+
 ### canvas/ —— 画布
 
 | 文档                                                                    | 描述                                                                                               |

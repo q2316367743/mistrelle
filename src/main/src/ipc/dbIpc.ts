@@ -8,11 +8,14 @@ import {
   type AihotBatch,
   type AihotListParams,
   type ChatItemInput,
+  type HealthListParams,
+  type HealthRecordInput,
   type ImageListParams,
   type ImageRecordInput
 } from '~/dbChannels'
 import { initDb } from '$/db/client'
 import { aiHotApplyBatch, aiHotClear, aiHotGetMeta, aiHotList, aiHotMarkRead } from '$/db/repo/aihotRepo'
+import { healthDelete, healthList, healthUpsert } from '$/db/repo/healthRepo'
 import { imageDelete, imageList, imageUpsert } from '$/db/repo/imageRepo'
 import {
   chatDeleteItem,
@@ -71,4 +74,14 @@ export function registerDbIpc(): void {
     imageUpsert(record)
   )
   ipcMain.handle(DbChannels.imageDelete, (_event, id: string): void => imageDelete(id))
+
+  ipcMain.handle(
+    DbChannels.healthList,
+    (_event, params: HealthListParams): ReturnType<typeof healthList> =>
+      healthList(params.limit, params.offset)
+  )
+  ipcMain.handle(DbChannels.healthUpsert, (_event, record: HealthRecordInput): void =>
+    healthUpsert(record)
+  )
+  ipcMain.handle(DbChannels.healthDelete, (_event, id: string): void => healthDelete(id))
 }

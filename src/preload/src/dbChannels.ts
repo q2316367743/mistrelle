@@ -22,7 +22,10 @@ export const DbChannels = {
   chatGetStamp: 'db:chat:getStamp',
   imageList: 'db:image:list',
   imageUpsert: 'db:image:upsert',
-  imageDelete: 'db:image:delete'
+  imageDelete: 'db:image:delete',
+  healthList: 'db:health:list',
+  healthUpsert: 'db:health:upsert',
+  healthDelete: 'db:health:delete'
 } as const
 
 /** 排序 / 时间筛选基准 */
@@ -132,5 +135,77 @@ export interface ImageListParams {
 
 export interface ImageListResult {
   items: ImageRecordInput[]
+  total: number
+}
+
+// ── 模型健康检测域（可用性检测工具） ─────────────────
+
+/** 检测套餐：basic=基础检测（4 项），full=完整检测（12 项） */
+export type HealthCheckMode = 'basic' | 'full'
+
+/** 任务状态：running=检测中，finished=正常结束，stopped=被停止或应用中断 */
+export type HealthTaskStatus = 'running' | 'finished' | 'stopped'
+
+/** 单项结果：pass=通过，warn=警告，fail=失败，skip=跳过（该项不适用） */
+export type HealthItemStatus = 'pass' | 'warn' | 'fail' | 'skip'
+
+/** 任务级风险结论：healthy=健康，risky=有风险，danger=高风险，unknown=未定（检测中/无有效项） */
+export type HealthConclusion = 'healthy' | 'risky' | 'danger' | 'unknown'
+
+/** 接口协议格式（与渲染层 AiProvideFormat 同构；本侧不 import 渲染层 entity） */
+export type HealthApiFormat = 'chat' | 'anthropic' | 'responses'
+
+/** 单个检测项结果（items JSON 列的元素） */
+export interface HealthItemResult {
+  key: string
+  name: string
+  /** 所属维度（连通与速度 / 模型真实性 / 计费合规 / 能力基线 / 功能特性） */
+  dimension: string
+  status: HealthItemStatus
+  /** 本项耗时 ms（含共享请求复用的场景） */
+  latencyMs: number | null
+  /** 结果说明 / 响应摘录 / 错误信息 */
+  detail: string | null
+}
+
+/** 执行日志条目（logs JSON 列的元素） */
+export interface HealthLogEntry {
+  time: number
+  level: 'info' | 'warn' | 'error'
+  message: string
+}
+
+/**
+ * model_health 表行载荷（upsert 全量列 / list 行返回，两用）。
+ * API 密钥只用于当次检测请求，不落库（本域无 key 字段）。
+ */
+export interface HealthRecordInput {
+  id: string
+  /** 提供方名称快照（手动填写的检测为 null） */
+  provideName: string | null
+  apiUrl: string
+  modelId: string
+  modelName: string | null
+  format: HealthApiFormat
+  mode: HealthCheckMode
+  status: HealthTaskStatus
+  conclusion: HealthConclusion
+  /** 检测项结果数组（HealthItemResult[]）的 JSON 文本 */
+  items: string
+  /** 执行日志数组（HealthLogEntry[]）的 JSON 文本 */
+  logs: string
+  /** 审计报告 markdown（未生成为 null） */
+  report: string | null
+  durationMs: number | null
+  createdAt: number
+}
+
+export interface HealthListParams {
+  limit: number
+  offset: number
+}
+
+export interface HealthListResult {
+  items: HealthRecordInput[]
   total: number
 }

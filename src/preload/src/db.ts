@@ -11,6 +11,9 @@ import {
   type AihotMeta,
   type ChatContentResult,
   type ChatItemInput,
+  type HealthListParams,
+  type HealthListResult,
+  type HealthRecordInput,
   type ImageListParams,
   type ImageListResult,
   type ImageRecordInput
@@ -69,5 +72,15 @@ export const dbApi = {
       ipcRenderer.invoke(DbChannels.imageUpsert, record),
     /** 删除单条记录（图片文件由渲染侧联动删除） */
     delete: (id: string): Promise<void> => ipcRenderer.invoke(DbChannels.imageDelete, id)
+  },
+  health: {
+    /** 分页查询检测记录（created_at 倒序） */
+    list: (params: HealthListParams): Promise<HealthListResult> =>
+      ipcRenderer.invoke(DbChannels.healthList, params),
+    /** 记录 upsert（插入 running / 逐项累积 / 收尾 finished|stopped） */
+    upsert: (record: HealthRecordInput): Promise<void> =>
+      ipcRenderer.invoke(DbChannels.healthUpsert, record),
+    /** 删除单条检测记录 */
+    delete: (id: string): Promise<void> => ipcRenderer.invoke(DbChannels.healthDelete, id)
   }
 }
