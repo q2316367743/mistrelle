@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "16b5b4db-e1f8-4075-8b22-a50fad348e5a",
+  "id": "58a743dd-643c-46bc-b84a-021e379577ec",
   "prevId": "a2b20fea-0e17-4072-9718-47ad87b573bc",
   "tables": {
     "aihot_item": {
@@ -346,13 +346,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
-        },
-        "report": {
-          "name": "report",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
           "autoincrement": false
         },
         "duration_ms": {

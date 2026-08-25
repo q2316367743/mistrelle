@@ -177,6 +177,7 @@ export interface HealthLogEntry {
 
 /**
  * model_health 表行载荷（upsert 全量列 / list 行返回，两用）。
+ * 只存关键数据：审计报告（HTML）由 items / logs + 标量动态生成，导出时才落盘，不进库。
  * API 密钥只用于当次检测请求，不落库（本域无 key 字段）。
  */
 export interface HealthRecordInput {
@@ -194,8 +195,6 @@ export interface HealthRecordInput {
   items: string
   /** 执行日志数组（HealthLogEntry[]）的 JSON 文本 */
   logs: string
-  /** 审计报告 markdown（未生成为 null） */
-  report: string | null
   durationMs: number | null
   createdAt: number
 }

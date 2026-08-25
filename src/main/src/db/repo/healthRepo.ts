@@ -2,7 +2,7 @@
  * 模型健康检测领域仓储（main 进程）：封装 model_health 表读写。
  *
  * - 状态机由渲染侧驱动：插入 running → 逐项完成整行 upsert 累积 → 收尾 finished / stopped。
- * - list 仅分页（created_at 倒序）；items / logs 为 JSON 文本、report 为 markdown，本层原样透传由渲染侧解析。
+ * - list 仅分页（created_at 倒序）；items / logs 为 JSON 文本，本层原样透传由渲染侧解析。
  */
 import { db } from '../client'
 import { count, desc, eq, sql } from 'drizzle-orm'

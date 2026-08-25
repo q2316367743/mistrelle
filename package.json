@@ -27,6 +27,7 @@
     "axios": "1.15.2",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.2",
+    "ejs": "^6.0.1",
     "electron-updater": "^6.3.9",
     "iconv-lite": "^0.7.3",
     "lucide-vue-next": "^1.0.0",

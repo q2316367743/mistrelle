@@ -177,7 +177,7 @@ declare interface HealthLogEntry {
   message: string
 }
 
-/** model_health 表行载荷（upsert 全量列 / list 行返回，两用；API 密钥不落库） */
+/** model_health 表行载荷（upsert 全量列 / list 行返回，两用；API 密钥不落库；报告动态生成不进库） */
 declare interface HealthRecordInput {
   id: string
   /** 提供方名称快照（手动填写的检测为 null） */
@@ -193,8 +193,6 @@ declare interface HealthRecordInput {
   items: string
   /** 执行日志数组（HealthLogEntry[]）的 JSON 文本 */
   logs: string
-  /** 审计报告 markdown（未生成为 null） */
-  report: string | null
   durationMs: number | null
   createdAt: number
 }

@@ -52,7 +52,7 @@
     <health-result-view
       :items="run.items"
       :logs="run.logs"
-      :report="run.record.report"
+      :report="reportHtml"
       :auto-scroll-logs="isRunning"
     />
   </div>
@@ -61,7 +61,7 @@
 <script lang="ts" setup>
 import { StopCircleIcon } from 'tdesign-icons-vue-next'
 import HealthResultView from './HealthResultView.vue'
-import { HEALTH_CONCLUSION_LABELS } from '../health-report'
+import { HEALTH_CONCLUSION_LABELS, buildHealthReport } from '../health-report'
 import type { HealthRun } from '../useHealthChecks'
 
 const props = defineProps<{ run: HealthRun }>()
@@ -86,6 +86,24 @@ const progressStatus = computed(() => {
   if (props.run.record.conclusion === 'danger') return 'error' as const
   return undefined
 })
+
+/** 审计报告 HTML：任务收尾（结束 / 停止）后由数据动态生成，不落库 */
+const reportHtml = ref<string | null>(null)
+watch(
+  () => props.run.record.status,
+  async (status) => {
+    if (status === 'running') {
+      reportHtml.value = null
+      return
+    }
+    reportHtml.value = await buildHealthReport({
+      ...props.run.record,
+      items: props.run.items,
+      logs: props.run.logs
+    })
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped lang="less">

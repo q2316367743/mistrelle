@@ -10,7 +10,6 @@ CREATE TABLE `model_health` (
 	`conclusion` text NOT NULL,
 	`items` text NOT NULL,
 	`logs` text NOT NULL,
-	`report` text,
 	`duration_ms` integer,
 	`created_at` integer NOT NULL
 );

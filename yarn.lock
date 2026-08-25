@@ -4767,6 +4767,11 @@ ejs@^3.1.8:
   dependencies:
     jake "^10.8.5"
 
+ejs@^6.0.1:
+  version "6.0.1"
+  resolved "https://registry.npmmirror.com/ejs/-/ejs-6.0.1.tgz#88ea8ce00335c3575d7c3602dd76e84b0bd60f43"
+  integrity sha512-UaaM14yby8U3k02ihS1Bmj5Kz2d7CCQM1scxpgs4Mhkq8F1wR2gl3+Ts4h5Ne4Mnt7M9m4Dw7jsuMr3+xO4vZA==
+
 electron-builder@^26.0.12:
   version "26.15.3"
   resolved "https://registry.npmmirror.com/electron-builder/-/electron-builder-26.15.3.tgz"

@@ -41,11 +41,23 @@ id(PK) / provide_name / api_url / model_id / model_name
 format('chat'|'anthropic'|'responses') / mode('basic'|'full')
 status('running'|'finished'|'stopped') / conclusion('healthy'|'risky'|'danger'|'unknown')
 items(HealthItemResult[] JSON) / logs(HealthLogEntry[] JSON)
-report(审计报告 markdown，可空) / duration_ms / created_at + idx_model_health_created
+duration_ms / created_at + idx_model_health_created
 ```
 
 `HealthItemResult = { key, name, dimension, status: pass|warn|fail|skip, latencyMs, detail }`；
 `HealthLogEntry = { time, level: info|warn|error, message }`。类型定义在 `src/preload/src/dbChannels.ts`（preload/main 不 import 渲染层 entity，`HealthApiFormat` 为独立命名 type），渲染侧 ambient 镜像在 `src/renderer/src/types/db.d.ts`。
+
+**数据库只存关键数据**：审计报告（HTML）由记录标量 + items / logs 动态生成，仅导出时落盘。
+
+## 审计报告（HTML 模板渲染）
+
+- **模板引擎 EJS**（主进程运行时依赖）：模板文件在 `resources/templates/model-health-report.ejs`（与 drizzle 迁移同目录模式：electron-vite main publicDir，dev 自 out/main 相对回源、打包随应用分发）。以后新增 HTML 模板放同目录即可复用整条链路。
+- **主进程统一渲染服务** `src/main/src/service/templateRender.ts`：读模板（内存缓存）+ `ejs.render`，模板名白名单校验（`^[a-z0-9][a-z0-9-]*$` 防路径穿越）。
+- **IPC 链路**：`src/preload/src/templateChannels.ts`（独立通道文件，`template:render`，不碰贴红线的 channels.ts）→ `src/main/src/ipc/templateIpc.ts`（registerIpc.ts 注册）→ `src/preload/src/template.ts`（`window.preload.template.render({ name, data })` 返回完整 HTML）→ `vite-env.d.ts` 挂类型。
+- **安全**：EJS 默认 `<%= %>` HTML 转义——detail 含模型自述 / 错误信息等不可信文本，模板侧禁止 `<%- %>`；预览用 `<iframe :srcdoc sandbox="">` 完全隔离（无脚本无同源）。
+- **产物**：自包含单文件 HTML（内联 CSS，Fluent 风格：结论渐变横幅 + 四统计卡 + 基本信息卡 + 维度明细表 + 日志时间线），`@media print` 优化——浏览器 Ctrl+P 可直接另存 PDF。
+- **导出**：历史详情抽屉「导出 HTML 报告」→ `useHealthChecks.exportReport(record)` 动态生成 → 落盘 `~/.mistrelle/health/report/模型检测报告-{modelId净化}-{yyyyMMdd-HHmmss}.html`（`Constant.getModelHealthReportDir()` 工厂）→ `showItemInFolder` 定位 + 抽屉内路径 t-link。
+- 模板数据契约：渲染侧 `health-report.ts` 预处理 view model（stats / info / groups / logs 格式化），模板只做展示循环；契约注释写在模板文件头部。
 
 ## 关键文件
 
@@ -54,12 +66,14 @@ report(审计报告 markdown，可空) / duration_ms / created_at + idx_model_he
 | `pages/extend/test/ExtendTestPage.vue` | 页面骨架（defineOptions name 供 keep-alive include 匹配） |
 | `pages/extend/test/useHealthChecks.ts` | 单例 composable：运行锁 / 顺序编排 / 逐项落库 / 停止 / 孤儿收尾 / 报告重生成 |
 | `pages/extend/test/health-check-items.ts` | 12 检测项定义 + 执行器 + 模型家族关键词映射 |
-| `pages/extend/test/health-report.ts` | 结论计算 + 审计报告 markdown 生成（纯函数） |
+| `pages/extend/test/health-report.ts` | 结论计算 + 审计报告 view model 组装（buildHealthReport 调主进程模板渲染，async） |
 | `components/HealthConfigForm.vue` | 表单：已配置模型一键选择（含禁用项，label 带「已禁用」）自动填充地址 / 密钥 / 模型 / 格式，均可手改；套餐 radio |
 | `components/HealthRunPanel.vue` | 任务状态面板（ID / 结论 / 进度 / 停止）+ 实时结果 |
 | `components/HealthResultView.vue` | 三视图（概览按维度分组 / 报告 / 日志），页面与抽屉共用；`autoScrollLogs` 供运行中滚动 |
 | `components/HealthHistoryList.vue` | 历史表格（通过率 = 通过数 / 有效项数，skip 不计） |
-| `modals/HealthRecordDrawer.tsx` + `Content.vue` | DrawerPlugin 命令式抽屉，查看历史详情 + 重新生成报告 |
+| `modals/HealthRecordDrawer.tsx` + `Content.vue` | DrawerPlugin 命令式抽屉，查看历史详情 + 导出 HTML 报告（路径 t-link 定位） |
+| `resources/templates/model-health-report.ejs` | 审计报告 EJS 模板（自包含 HTML，头部注释写明数据契约） |
+| `src/main/src/{service/templateRender,ipc/templateIpc}.ts` | 主进程模板渲染服务与 IPC handler |
 | `src/main/src/db/{schema,repo}/health*` | Drizzle schema + DAO（仿 image 域） |
 
 IPC 链路五处同步：`dbChannels.ts`（db:health:list/upsert/delete + 类型）→ `dbIpc.ts`（handler）→ `preload/db.ts`（`dbApi.health`）→ `types/db.d.ts`（ambient）→ 渲染层 `window.preload.db.health.*`。
@@ -70,3 +84,5 @@ IPC 链路五处同步：`dbChannels.ts`（db:health:list/upsert/delete + 类型
 - `createChatCompletion` 只聚合 `delta.content`（思考增量不混入）；tool_call 检测必须直接消费 `createChatStream` 看 `delta.tool_calls`。
 - 渲染层 reload 会留下孤儿 running 行，靠 `init()` 收尾；不要在 main 侧起检测任务（会重复实现三格式协议）。
 - keep-alive 白名单在 `App.vue` 的 `keepAliveNames`，与组件 `defineOptions({ name })` 精确匹配。
+- 报告 HTML **不落库**（表无 report 列），预览 / 导出均由数据动态生成；`buildHealthReport` 是 async（跨 IPC 调主进程 EJS 渲染），computed 里不能直接 await，用 watch + ref（见 HealthRunPanel / 抽屉）。
+- 新增 HTML 模板：放 `resources/templates/<name>.ejs`（name 仅小写字母 / 数字 / 连字符）→ 渲染层 `window.preload.template.render({ name, data })`；模板内插值一律 `<%= %>`。

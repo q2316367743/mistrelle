@@ -35,11 +35,18 @@
       </div>
     </div>
 
-    <health-result-view :items="items" :logs="logs" :report="current.report" />
+    <health-result-view :items="items" :logs="logs" :report="reportHtml" />
+
+    <div v-if="exportedPath" class="exported-path">
+      <span class="path-label">已导出：</span>
+      <t-link theme="primary" hover="color" @click="locateExported">
+        {{ exportedPath }}
+      </t-link>
+    </div>
 
     <div class="detail-actions">
-      <t-button variant="outline" :loading="regenerating" @click="handleRegenerate">
-        {{ current.report ? '重新生成报告' : '生成审计报告' }}
+      <t-button variant="outline" :loading="exporting" @click="handleExport">
+        导出 HTML 报告
       </t-button>
       <t-button theme="default" variant="base" @click="emit('close')">关闭</t-button>
     </div>
@@ -49,7 +56,7 @@
 <script lang="ts" setup>
 import dayjs from 'dayjs'
 import HealthResultView from '../components/HealthResultView.vue'
-import { HEALTH_CONCLUSION_LABELS, HEALTH_TASK_STATUS_LABELS } from '../health-report'
+import { HEALTH_CONCLUSION_LABELS, HEALTH_TASK_STATUS_LABELS, buildHealthReport } from '../health-report'
 import { parseHealthItems, parseHealthLogs, useHealthChecks } from '../useHealthChecks'
 
 // eslint-disable-next-line no-undef
@@ -57,9 +64,8 @@ const props = defineProps<{ record: HealthRecordInput }>()
 
 const emit = defineEmits<{ close: [] }>()
 
-const { regenerateReport } = useHealthChecks()
+const { exportReport } = useHealthChecks()
 
-/** 展示副本：重新生成报告后用新记录替换（列表与 DB 同步在 composable 内完成） */
 // eslint-disable-next-line no-undef
 const current = ref<HealthRecordInput>(props.record)
 watch(
@@ -69,7 +75,19 @@ watch(
 
 const items = computed(() => parseHealthItems(current.value.items))
 const logs = computed(() => parseHealthLogs(current.value.logs))
-const regenerating = ref(false)
+
+/** 审计报告 HTML：由记录数据动态生成（EJS 模板在主进程渲染），不落库 */
+const reportHtml = ref<string | null>(null)
+watch(
+  [current, items],
+  async ([record, parsedItems]) => {
+    reportHtml.value = await buildHealthReport({ ...record, items: parsedItems, logs: logs.value })
+  },
+  { immediate: true }
+)
+
+const exporting = ref(false)
+const exportedPath = ref('')
 
 const CONCLUSION_LABELS = HEALTH_CONCLUSION_LABELS
 // eslint-disable-next-line no-undef
@@ -87,13 +105,18 @@ const STATUS_THEMES: Record<HealthTaskStatus, 'primary' | 'success' | 'warning'>
   stopped: 'warning'
 }
 
-const handleRegenerate = async () => {
-  regenerating.value = true
+const handleExport = async () => {
+  exporting.value = true
   try {
-    current.value = await regenerateReport(current.value)
+    exportedPath.value = await exportReport(current.value)
+    window.preload.inject.shell.showItemInFolder(exportedPath.value)
   } finally {
-    regenerating.value = false
+    exporting.value = false
   }
+}
+
+const locateExported = () => {
+  if (exportedPath.value) window.preload.inject.shell.showItemInFolder(exportedPath.value)
 }
 </script>
 
@@ -145,6 +168,29 @@ const handleRegenerate = async () => {
     margin-left: 8px;
     font-size: 12px;
     color: var(--td-text-color-secondary);
+  }
+}
+
+.exported-path {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: var(--td-radius-medium);
+  background: var(--td-bg-color-container-hover);
+
+  .path-label {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--td-text-color-placeholder);
+  }
+
+  :deep(.t-link) {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 

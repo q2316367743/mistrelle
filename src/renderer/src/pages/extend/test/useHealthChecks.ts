@@ -5,10 +5,13 @@
 //  约束（同 image 域状态机思路，见 docs/data/01）：
 //  - 同一时刻仅允许一个检测任务（running 锁），运行中只能查看历史与进度；
 //  - 逐项完成即整行 upsert 落库累积（items / logs JSON 增量），中断不丢已检项；
-//  - init 时把孤儿 running 行（上次刷新 / 退出中断）收尾为 stopped 并补生成报告；
+//  - init 时把孤儿 running 行（上次刷新 / 退出中断）收尾为 stopped 并重算结论；
+//  - 数据库只存关键数据：审计报告 HTML 由数据动态生成（health-report.ts），导出时才落盘；
 //  - API 密钥只用于当次请求，不写入记录。
 // ==========================================
+import dayjs from 'dayjs'
 import { useSnowflake } from '@/hooks'
+import { getModelHealthReportDir } from '@/global/Constant'
 import {
   getHealthCheckItems,
   runHealthItem,
@@ -115,19 +118,17 @@ const createHealthChecks = () => {
     if (idx >= 0) list.value[idx] = record
   }
 
-  /** 孤儿 running 行收尾：stopped + 追加中断日志 + 重算结论并补生成报告 */
+  /** 孤儿 running 行收尾：stopped + 追加中断日志 + 重算结论（报告动态生成，无需回填） */
   const finalizeOrphan = async (record: HealthRecordInput): Promise<void> => {
     const items = parseHealthItems(record.items)
     const logs = [...parseHealthLogs(record.logs)]
     logs.push({ time: Date.now(), level: 'warn', message: '检测中断：应用退出或页面刷新，已自动收尾' })
-    const next: HealthRecordInput = {
+    await window.preload.db.health.upsert({
       ...record,
       status: 'stopped',
       conclusion: buildHealthConclusion(items),
       logs: JSON.stringify(logs)
-    }
-    next.report = buildHealthReport({ ...next, items, logs })
-    await window.preload.db.health.upsert(next)
+    })
   }
 
   /**
@@ -153,7 +154,6 @@ const createHealthChecks = () => {
       conclusion: 'unknown',
       items: '[]',
       logs: '[]',
-      report: null,
       durationMs: null,
       createdAt: Date.now()
     }
@@ -223,11 +223,6 @@ const createHealthChecks = () => {
       live.record.status = stopped ? 'stopped' : 'finished'
       live.record.durationMs = Math.round(performance.now() - startedAt)
       live.record.conclusion = buildHealthConclusion(live.items)
-      live.record.report = buildHealthReport({
-        ...live.record,
-        items: live.items,
-        logs: live.logs
-      })
       const pass = live.items.filter((it) => it.status === 'pass').length
       const warn = live.items.filter((it) => it.status === 'warn').length
       const fail = live.items.filter((it) => it.status === 'fail').length
@@ -246,11 +241,6 @@ const createHealthChecks = () => {
       live.record.conclusion = buildHealthConclusion(live.items)
       live.record.items = JSON.stringify(live.items)
       live.record.logs = JSON.stringify(live.logs)
-      live.record.report = buildHealthReport({
-        ...live.record,
-        items: live.items,
-        logs: live.logs
-      })
       await upsertLocal({ ...live.record })
     } finally {
       taskController = null
@@ -264,18 +254,25 @@ const createHealthChecks = () => {
     taskController.abort()
   }
 
-  /** 对历史记录重新生成审计报告（重算结论；返回更新后的记录） */
-  const regenerateReport = async (record: HealthRecordInput): Promise<HealthRecordInput> => {
-    const items = parseHealthItems(record.items)
-    const logs = parseHealthLogs(record.logs)
-    const next: HealthRecordInput = {
+  /**
+   * 导出审计报告 HTML 文件：由记录数据动态生成（EJS 模板在主进程渲染）→
+   * 落盘 ~/.mistrelle/health/report/，返回文件绝对路径（调用方负责在文件管理器定位）。
+   */
+  const exportReport = async (record: HealthRecordInput): Promise<string> => {
+    const html = await buildHealthReport({
       ...record,
-      conclusion: buildHealthConclusion(items),
-      report: buildHealthReport({ ...record, items, logs })
-    }
-    await upsertLocal(next)
-    if (current.value?.record.id === next.id) current.value.record = next
-    return next
+      items: parseHealthItems(record.items),
+      logs: parseHealthLogs(record.logs)
+    })
+    const dir = getModelHealthReportDir()
+    await window.preload.fs.mkdir(dir)
+    const safeModel = record.modelId.replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 40)
+    const path = window.preload.path.join(
+      dir,
+      `模型检测报告-${safeModel}-${dayjs(record.createdAt).format('yyyyMMdd-HHmmss')}.html`
+    )
+    await window.preload.fs.writeTextFile(path, html)
+    return path
   }
 
   /** 删除历史记录（运行中的记录由 UI 层禁止删除；删的是当前展示记录时清空展示） */
@@ -308,7 +305,7 @@ const createHealthChecks = () => {
     loadMore,
     start,
     stop,
-    regenerateReport,
+    exportReport,
     remove,
     init
   }

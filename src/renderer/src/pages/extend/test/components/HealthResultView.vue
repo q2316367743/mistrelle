@@ -25,10 +25,14 @@
 
     <t-tab-panel value="report" label="审计报告" :destroy-on-hide="false">
       <div class="report-body">
-        <template v-if="report">
-          <ChatContent :content="report" />
-        </template>
-        <t-empty v-else description="尚未生成审计报告（任务收尾时自动生成）" />
+        <iframe
+          v-if="report"
+          class="report-frame"
+          :srcdoc="report"
+          sandbox=""
+          title="审计报告预览"
+        ></iframe>
+        <t-empty v-else description="任务收尾后自动生成审计报告（可在历史详情中导出 HTML）" />
       </div>
     </t-tab-panel>
 
@@ -53,7 +57,6 @@
 import dayjs from 'dayjs'
 import { HEALTH_DIMENSIONS } from '../health-check-items'
 import { HEALTH_STATUS_LABELS } from '../health-report'
-import { ChatContent } from '@tdesign-vue-next/chat'
 
 const props = withDefaults(
   defineProps<{
@@ -174,12 +177,18 @@ watch(
   }
 }
 
-.report-text {
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--td-text-color-primary);
-  white-space: pre-wrap;
-  word-break: break-all;
+.report-body {
+  display: flex;
+  min-height: 0;
+  height: calc(100% - 8px);
+}
+
+.report-frame {
+  flex: 1;
+  min-height: 280px;
+  border: 1px solid var(--td-component-border);
+  border-radius: var(--td-radius-medium);
+  background: var(--td-bg-color-container);
 }
 
 .log-line {
