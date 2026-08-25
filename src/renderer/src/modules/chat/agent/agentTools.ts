@@ -5,6 +5,7 @@ import { appendSubAgentId, markToolInteractive, updateToolCallContent } from './
 import { resolveToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
 import { MAX_TOOL_RESULT_BYTES } from '@/global/Constant'
 import type { InteractiveBridge } from './interactive'
+import { isConfirmDecision } from './interactive'
 import { useSnowflake } from '@/hooks'
 import {
   formatAskResult,
@@ -187,10 +188,22 @@ export const runSingleTool = async (
   }
   if (verdict === 'ask') {
     markToolInteractive(messages, assistantMessageId, call.toolCallId, 'confirm')
-    const approved = await interactive.awaitDecision('confirm', call.toolCallId, args)
+    const decision = await interactive.awaitDecision('confirm', call.toolCallId, args)
+    const approved = decision === true || (isConfirmDecision(decision) && decision.approved)
     if (!approved) {
-      applyResult(messages, assistantMessageId, call, '用户拒绝了该工具调用')
+      // null：挂起决策被中止清空（停止操作 / 新请求抢占 / 子 Agent 无交互桥），并非用户拒绝；
+      // false 或 { approved: false }：用户明确点了「拒绝」。两者文案必须区分，否则停止会被误读为拒绝
+      applyResult(
+        messages,
+        assistantMessageId,
+        call,
+        decision === null ? '本轮已停止，工具未执行' : '用户拒绝了该工具调用'
+      )
       return
+    }
+    // 用户勾选「此目录以后都允许」：把目录写入聊天白名单（仅主 Agent 提供回调，子 Agent 保持只读）
+    if (isConfirmDecision(decision) && decision.allowDir) {
+      policyContext.onAllowDir?.(decision.allowDir)
     }
   }
 

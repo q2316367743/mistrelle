@@ -8,13 +8,14 @@ import type {
   UserMessage
 } from '@/domain'
 import { nanoid } from 'nanoid'
-import { buildSkillCatalogPrompt, localSkillList } from '@/modules/skill'
+import { buildSkillCatalogPrompt, localSkillList, skillAgentList } from '@/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
 import type { AiChatMode } from '@/entity'
 import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/modules/chat/writingScene'
 import { getDefaultTools, isShellExecTool, toolMap } from '@/modules/tool'
+import type { ToolPolicyContext } from '@/modules/tool/toolPolicy'
 import { buildMemoryPrompt, buildMemoryToolPrompt } from '@/modules/memory'
 import { buildPersonalizePrompt } from '@/modules/personalize'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
@@ -90,6 +91,8 @@ export class ToolChat {
   private readonly systemPrompt: string
   private sandboxDir = ''
   private workspace = ''
+  /** 聊天级目录白名单（用户在确认卡片勾选「此目录以后都允许」累积），响应式供会话 watch 持久化 */
+  readonly allowedDirs = ref<string[]>([])
   /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
   private mode: AiChatMode = 0
   /** 聊天类型（新建对话时选定，创建后锁定；缺省回退 office） */
@@ -491,15 +494,7 @@ export class ToolChat {
         assistantMessageId,
         result.toolCalls,
         functions,
-        {
-          chatId: this.chatId,
-          sandboxDir: this.sandboxDir,
-          workspace: this.workspace,
-          mode: this.mode,
-          isSubAgent: this.isSubAgent,
-          chatType: this.chatType,
-          abortSignal: signal
-        },
+        this.buildPolicyContext(signal),
         this.interactive
       )
       this.toolCalls.value = [...this.toolCalls.value]
@@ -750,15 +745,7 @@ export class ToolChat {
         call,
         fn,
         args,
-        {
-          chatId: this.chatId,
-          sandboxDir: this.sandboxDir,
-          workspace: this.workspace,
-          mode: this.mode,
-          isSubAgent: this.isSubAgent,
-          chatType: this.chatType,
-          abortSignal: this.ctx.abortController?.signal
-        },
+        this.buildPolicyContext(this.ctx.abortController?.signal),
         this.interactive
       )
     } else {
@@ -826,6 +813,41 @@ export class ToolChat {
 
   setSandboxDir(path: string): void {
     this.sandboxDir = path
+  }
+
+  /** 设置聊天级目录白名单（会话水合时恢复持久化数据） */
+  setAllowedDirs(dirs: string[]): void {
+    this.allowedDirs.value = [...dirs]
+  }
+
+  /** 用户勾选「此目录以后都允许」时追加目录（归一化去重） */
+  allowDir(dir: string): void {
+    const normalized = window.preload.path.normalizePath(dir)
+    if (!normalized) return
+    const exists = this.allowedDirs.value.some(
+      (item) => window.preload.path.normalizePath(item) === normalized
+    )
+    if (!exists) this.allowedDirs.value = [...this.allowedDirs.value, dir]
+  }
+
+  /** 组装工具策略上下文（主循环与 resume 共用）：主 Agent 携带聊天白名单及其回写，子 Agent 保持只读不带 */
+  private buildPolicyContext(signal?: AbortSignal): ToolPolicyContext {
+    const ctx: ToolPolicyContext = {
+      chatId: this.chatId,
+      sandboxDir: this.sandboxDir,
+      workspace: this.workspace,
+      mode: this.mode,
+      isSubAgent: this.isSubAgent,
+      chatType: this.chatType,
+      abortSignal: signal,
+      // skill 根目录内脚本执行免审批；toolPolicy 保持叶子 import，故由调用方注入（见 docs/tool/07）
+      skillRootDirs: skillAgentList().map((agent) => agent.path)
+    }
+    if (!this.isSubAgent) {
+      ctx.allowedDirs = [...this.allowedDirs.value]
+      ctx.onAllowDir = (dir: string) => this.allowDir(dir)
+    }
+    return ctx
   }
 
   setChatId(id: string): void {

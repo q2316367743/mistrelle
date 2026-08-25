@@ -1,5 +1,5 @@
 <template>
-  <div class="confirm-chat-tool">
+  <div class="confirm-chat-tool" :data-tool-call-id="toolCallId">
     <template v-if="isInteractive">
       <div class="confirm-row">
         <ShieldErrorIcon class="confirm-icon" />
@@ -12,6 +12,9 @@
         <pre>{{ formattedArgs }}</pre>
       </div>
       <div class="confirm-actions">
+        <t-checkbox v-if="confirmPath" v-model="rememberDir" class="confirm-remember">
+          此目录以后都允许（仅本聊天）
+        </t-checkbox>
         <t-button theme="primary" size="small" @click="approve">批准执行</t-button>
         <t-button theme="default" variant="outline" size="small" @click="reject">拒绝</t-button>
       </div>
@@ -23,7 +26,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, inject } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
 import { ShieldErrorIcon } from 'tdesign-icons-vue-next'
@@ -54,6 +57,35 @@ const formattedArgs = computed(() => {
 
 const toolCallId = computed(() => props.content.data.toolCallId)
 
+/** 「此目录以后都允许」勾选状态；带 path 参数的确认卡片才展示 */
+const rememberDir = ref(false)
+const confirmPath = computed(() => {
+  const path = bridge?.pending.value?.args?.path
+  return typeof path === 'string' && path ? path : ''
+})
+// 切换到新的挂起确认（不同 toolCallId）时重置勾选，避免上一卡的选择带入
+watch(
+  () => bridge?.pending.value?.toolCallId,
+  () => {
+    rememberDir.value = false
+  }
+)
+
+const approve = () => {
+  if (rememberDir.value && confirmPath.value) {
+    bridge?.resolve(toolCallId.value, {
+      approved: true,
+      allowDir: window.preload.path.dirname(confirmPath.value)
+    })
+    return
+  }
+  bridge?.resolve(toolCallId.value, true)
+}
+
+const reject = () => {
+  bridge?.resolve(toolCallId.value, false)
+}
+
 const matched = computed(() => bridge?.pending.value?.toolCallId === toolCallId.value)
 const isInteractive = computed(
   () => (props.content.status === 'pending' || props.content.status === 'streaming') && !!bridge && matched.value
@@ -63,14 +95,6 @@ const isExecuting = computed(() => {
   const s = props.content.status
   return (s === 'pending' || s === 'streaming') && !matched.value
 })
-
-const approve = () => {
-  bridge?.resolve(toolCallId.value, true)
-}
-
-const reject = () => {
-  bridge?.resolve(toolCallId.value, false)
-}
 </script>
 <style scoped lang="less">
 .confirm-chat-tool {
@@ -131,9 +155,16 @@ const reject = () => {
 
   .confirm-actions {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: var(--td-comp-margin-s);
     margin-top: var(--td-comp-margin-s);
+  }
+
+  .confirm-remember {
+    margin-right: auto;
+    font: var(--td-font-body-small);
+    color: var(--td-text-color-secondary);
   }
 
   .confirm-executing {

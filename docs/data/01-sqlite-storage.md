@@ -131,6 +131,12 @@ CREATE TABLE IF NOT EXISTS aihot_meta (key TEXT PRIMARY KEY, value TEXT);
 - **原生依赖**：better-sqlite3 需为 Electron ABI 重编译（postinstall `install-app-deps` 已自动处理）；
   `electron-vite` 的 `externalizeDepsPlugin()` 保证 main 打包不内联原生模块。
 - **pragma WAL**：`journal_mode = WAL` 提升崩溃恢复稳健性；单实例下无并发写竞争。
+- **复合列 onConflictDoUpdate 必须先声明复合主键**（2026-08-25 修复，迁移 0004）：`chat_sub` 建表时
+  只有两普通列 + 普通索引，`chatSetSub` 的 `onConflictDoUpdate({ target: [chatId, subId] })` 在
+  prepare 阶段抛 `ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint`——
+  SQLite 要求 ON CONFLICT 目标必须是 PK/UNIQUE 约束。修复为 `primaryKey({ columns: [t.chatId, t.subId] })`
+  （复合主键最左前缀已覆盖按 chatId 的查询，原冗余索引一并删除）；SQLite 加主键走 drizzle-kit
+  生成的表重建序列（带 statement-breakpoint，migrate() 可正常应用）。
 - 本轮**不迁移**聊天 / 设置等其他文件存储；`JsonFileUtil` / `Constant` 路径工厂继续用于其余数据。
 
 ## 10. 后续模块如何复用

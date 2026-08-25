@@ -41,8 +41,7 @@ toolPolicy ─► httpDownloadPolicy ─► @/modules/tool/index ─► componen
 ## 约束（后续 AI 必须遵守）
 
 1. **禁止**在 `toolPolicy.ts` 中新增非叶子 import。若需读取 store / 实体，必须改为从最具体的
-   叶子文件导入（如 `@/entity/setting/SettingSecured`），禁止从 `@/entity`、`@/store`、
-   `@/modules/tool` 等 barrel 导入。
+   叶子文件导入（如 `@/entity/setting/SettingSecured`），禁止从 `@/entity`、`@/store`、`@/modules/tool` 等 barrel 导入。
 2. **禁止**在可被上述循环链触及的模块顶层调用 `registerToolPolicy`。新增工具策略时，
    注册位置与工具工厂保持一致（如设计工具注册在 `design/*` 模块顶层、`fontListTool` 在
    `fontTools.ts` 顶层），前提是这些模块不被 `toolPolicy` 的 import 闭包反向触及。
@@ -62,3 +61,72 @@ toolPolicy ─► httpDownloadPolicy ─► @/modules/tool/index ─► componen
 - `src/renderer/src/modules/tool/toolPolicyTypes.ts`（`ToolPolicy` / `ToolPolicyContext` 类型）
 - `src/renderer/src/modules/tool/policies/*`（browser_actions / http_download 等默认策略）
 - `src/renderer/src/store/setting/SettingSecureStore.ts`、`src/renderer/src/entity/setting/SettingSecured.ts`
+
+## 2026-08 升级：聊天级目录白名单 + skill 脚本放行 + 可信区命令放行
+
+### 1. 聊天级目录白名单（「此目录以后都允许」）
+
+确认卡片（`ConfirmChatTool.vue`）在工具参数含 `path` 时显示勾选项「此目录以后都允许（仅本聊天）」；
+勾选并批准后，`args.path` 的 `dirname` 进入本聊天的白名单，后续该目录内的路径操作与命令执行均免审批。
+**仅本聊天生效**（不跨聊天、不写入全局安全中心），随 `AiChatContent.allowedDirs` 持久化。
+
+数据流：
+
+```
+ConfirmChatTool 勾选批准 → bridge.resolve({ approved: true, allowDir })
+  → runSingleTool（agentTools.ts confirm 分支）→ ctx.onAllowDir(dir)
+  → AgentChat.allowDir(dir)（normalizePath 去重，写入 allowedDirs ref）
+  → ChatSession watch allowedDirs → persist → AiChatContent.allowedDirs（chat_content.data）
+裁决：AgentChat.buildPolicyContext 携带 allowedDirs 副本
+  → defaultToolPolicy 前置判定（见下）→ httpDownloadPolicy 亦检查 allowedDirs
+```
+
+契约要点：
+
+- `InteractiveDecision` 扩展 `ConfirmDecision { approved: boolean; allowDir?: string }`（interactive.ts，
+  附 `isConfirmDecision` 类型守卫）；旧 boolean 决策仍兼容。
+- `ToolPolicyContext` 新增 `allowedDirs`、`onAllowDir`、`skillRootDirs` 三字段。
+- 白名单判定位于 `defaultToolPolicy` 顶部、`sandbox.enabled` 早退**之前**——勾选授权不依赖沙箱开关。
+- 子 Agent 的 ctx 不携带 `allowedDirs` / `onAllowDir`（保持只读约束）；重启后经
+  `findPendingInteractiveToolcall` 恢复的挂起确认卡片勾选逻辑照常可用。
+
+### 2. skill 根目录内脚本免审批
+
+`cli_run` 的 `command`、`python_run` / `node_run` 的 `file` 位于任一 skill agent 根目录
+（系统默认 `~/.agents/skills`、`~/.mistrelle/skills` 与用户自定义 agent）之下 → allow，
+不依赖沙箱开关。根目录集合由 `AgentChat.buildPolicyContext` 调 `skillAgentList()` 注入
+`ctx.skillRootDirs`——**不是** toolPolicy 直接 import SkillService（其顶层 import `@/store`
+barrel，会复活上文 TDZ 循环链，这是本次实现时踩过并修正的点）。
+
+2026-08-25 增强：模型偶发把整条 shell 语句塞进 `command`（如 `find <skill 目录> -type f | head -20`），
+路径前缀匹配不上。`isSkillScriptCall` 对整串 `command` 按空白拆 token，**所有路径 token
+（`/` 或 `~/` 开头）均位于 skill 根目录下**才放行，防止借 skill 路径夹带外部路径；
+写类命令指向 skill 目录内文件同样放行（黑名单与计划模式仍兜底）。背景见 docs/chat/15。
+
+### 3. 可信区内命令免审批
+
+命令类工具（`args.cwd` 存在时）工作目录位于 sandboxDir / workspace / allowedDirs 之内 → allow，
+不依赖沙箱开关（用户选择 workspace 即视为认可）。缺省 cwd 不放行，维持原裁决。
+
+### defaultToolPolicy 前置判定顺序（sandbox.enabled 早退之前）
+
+1. skill 根目录内脚本（`isSkillScriptCall`，基于 `ctx.skillRootDirs`）
+2. 聊天白名单目录内路径（`args.path` × `ctx.allowedDirs`）
+3. 可信区内工作目录的命令（`args.cwd` × `isInTrustedZone`，现已含 allowedDirs）
+
+其后原逻辑不变。边界语义：白名单与放行仅在默认模式（mode 0）生效；计划模式 shell 仍 ask、
+写入 deny；完全访问模式本就 allow；安全中心黑名单覆盖层最后兜底（allow 升 ask），任何放行都无法跳过。
+
+### 本次涉及文件
+
+| 文件 | 改动 |
+|------|------|
+| `entity/ai/AiChat.ts` | `AiChatContent.allowedDirs?: string[]` |
+| `modules/tool/toolPolicyTypes.ts` | ctx 新增 `allowedDirs` / `onAllowDir` / `skillRootDirs` |
+| `modules/tool/toolPolicy.ts` | `isInTrustedZone` 扩展、三项前置判定、`isSkillScriptCall` |
+| `modules/tool/policies/httpDownloadPolicy.ts` | 下载路径白名单放行 |
+| `modules/chat/agent/interactive.ts` | `ConfirmDecision` + `isConfirmDecision` |
+| `modules/chat/agent/agentTools.ts` | confirm 分支解析新决策并回写白名单 |
+| `modules/chat/agent/AgentChat.ts` | `allowedDirs` ref、`setAllowedDirs` / `allowDir`、`buildPolicyContext`（两处内联 ctx 消重） |
+| `modules/chat/agent/ChatSessionManager.ts` | 水合 / watch / persist `allowedDirs` |
+| `components/chat/chat-assistant/tool/ConfirmChatTool.vue` | 勾选项 + 决策构造 |

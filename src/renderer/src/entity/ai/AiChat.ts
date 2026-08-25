@@ -52,6 +52,9 @@ export interface AiChatContent {
   writingScene?: WritingScene
   // 设计风格 id（design 类型），新建对话时选定，创建后锁定；旧数据缺省无
   designStyleId?: string
+  // 聊天级目录白名单：用户在确认卡片勾选「此目录以后都允许」累积的目录，
+  // 仅本聊天内生效（路径操作与该目录内执行命令免审批），不跨聊天共享
+  allowedDirs?: string[]
   messages: Array<ChatMessage>
   // 当前对话的待办清单（由 update_todo 工具维护）
   todos?: TodoItem[]

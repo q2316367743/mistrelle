@@ -8,6 +8,12 @@ export interface ToolPolicyContext {
   chatId?: string
   sandboxDir: string
   workspace: string
+  /** 聊天级目录白名单：用户在确认卡片勾选「此目录以后都允许」的目录（仅本聊天生效） */
+  allowedDirs?: string[]
+  /** 用户批准工具时勾选「此目录以后都允许」的回写回调（子 Agent 不提供，保持只读约束） */
+  onAllowDir?: (dir: string) => void
+  /** skill agent 根目录集合（AgentChat 注入），其内脚本执行免审批 */
+  skillRootDirs?: string[]
   /** 当前聊天模式，用于按模式约束工具执行（0 默认 / 1 计划：无写入·shell 需审批 / 2 完全访问） */
   mode?: AiChatMode
   /** 是否为子 Agent（只读 · 无交互桥）：只读 shell 命令自动放行，需审批的操作会被禁用交互桥自动拒绝 */

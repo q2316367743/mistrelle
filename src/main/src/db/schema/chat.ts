@@ -7,7 +7,7 @@
  *   读写粒度与原 main.json 一致（整聊加载 / 整聊节流保存）
  * - chat_sub：子代理消息体（原 message/sub_{subId}.json）
  */
-import { index, sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { index, sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core'
 
 export const chat = sqliteTable(
   'chat',
@@ -36,6 +36,12 @@ export const chatContent = sqliteTable('chat_content', {
   data: text('data').notNull()
 })
 
+/**
+ * 子代理消息体（原 message/sub_{subId}.json）。
+ * 复合主键 (chat_id, sub_id)：chatSetSub 的 onConflictDoUpdate 以此为冲突目标，
+ * 缺失约束会抛「ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint」；
+ * 复合主键最左前缀已覆盖按 chatId 的查询，无需另建索引。
+ */
 export const chatSub = sqliteTable(
   'chat_sub',
   {
@@ -44,5 +50,5 @@ export const chatSub = sqliteTable(
     /** 完整 AiChatContent JSON（子代理 messages） */
     data: text('data').notNull()
   },
-  (t) => [index('idx_chat_sub_chat').on(t.chatId)]
+  (t) => [primaryKey({ columns: [t.chatId, t.subId] })]
 )

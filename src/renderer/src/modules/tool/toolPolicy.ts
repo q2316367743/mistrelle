@@ -9,10 +9,11 @@ export type { ToolPolicyContext, ToolPolicy } from './toolPolicyTypes'
 
 // ─── 路径工具 ──────────────────────────────────────────────
 
-/** 判断路径是否处于可信区域（沙盒或用户工作空间） */
+/** 判断路径是否处于可信区域（沙盒、用户工作空间或聊天白名单目录） */
 function isInTrustedZone(path: string, ctx: ToolPolicyContext): boolean {
   if (ctx.sandboxDir && isPathUnder(path, ctx.sandboxDir)) return true
   if (ctx.workspace && isPathUnder(path, ctx.workspace)) return true
+  if (ctx.allowedDirs && isPathUnderAny(path, ctx.allowedDirs)) return true
   return false
 }
 
@@ -44,6 +45,7 @@ export function registerToolPolicy(policy: ToolPolicy): void {
 
 /**
  * 通用默认策略（默认模式 mode=0 的基础裁决）：
+ * - 前置放行（与沙箱开关无关）：skill 根目录内脚本执行、聊天白名单目录内路径操作、可信区内工作目录的命令执行
  * - 可信区域内的路径操作 → allow
  * - 命令白名单 → allow
  * - 其余按 risk 等级映射：dangerous → deny，sensitive → ask
@@ -57,6 +59,24 @@ function defaultToolPolicy(
   args: Record<string, unknown>,
   ctx: ToolPolicyContext
 ): ToolPolicyVerdict {
+  // skill 根目录内的脚本执行免审批（用户安装 skill 即视为信任其脚本）
+  if (isSkillScriptCall(tool, args, ctx)) return 'allow'
+
+  // 聊天白名单目录（用户在确认卡片勾选「此目录以后都允许」）：目录内路径操作免审批，仅本聊天生效
+  const path = args.path
+  if (
+    typeof path === 'string' &&
+    path &&
+    ctx.allowedDirs &&
+    isPathUnderAny(path, ctx.allowedDirs)
+  ) {
+    return 'allow'
+  }
+
+  // 命令的工作目录在可信区（沙盒 / 工作空间 / 聊天白名单）内：用户已认可该目录，免审批
+  const cwd = args.cwd
+  if (typeof cwd === 'string' && cwd && isInTrustedZone(cwd, ctx)) return 'allow'
+
   const store = useSettingSecureStore()
   const { sandbox } = store.state
 
@@ -66,7 +86,6 @@ function defaultToolPolicy(
   }
 
   // ── 路径类工具 ──
-  const path = args.path
   if (typeof path === 'string' && path) {
     if (isInTrustedZone(path, ctx)) return 'allow'
     if (sandbox.fileWhiteList.length && isPathUnderAny(path, sandbox.fileWhiteList)) {
@@ -78,7 +97,11 @@ function defaultToolPolicy(
 
   // ── 命令类工具 ──
   const cmdName = extractCommandName(args)
-  if (cmdName && sandbox.commandWhiteList.length && matchCommand(cmdName, sandbox.commandWhiteList)) {
+  if (
+    cmdName &&
+    sandbox.commandWhiteList.length &&
+    matchCommand(cmdName, sandbox.commandWhiteList)
+  ) {
     return 'allow'
   }
 
@@ -94,10 +117,37 @@ function defaultToolPolicy(
  * sed（-i 可写）、git（commit/push/checkout 等可写）、tee/touch/mkdir/rm 等写入类不在此列。
  */
 const READONLY_SHELL_COMMANDS = new Set([
-  'grep', 'rg', 'find', 'cat', 'head', 'tail', 'wc', 'ls', 'less', 'more',
-  'sort', 'uniq', 'cut', 'diff', 'cmp', 'file', 'pwd', 'which', 'stat',
-  'du', 'df', 'strings', 'xxd', 'hexdump', 'od', 'tr', 'awk', 'echo',
-  'basename', 'dirname', 'readlink'
+  'grep',
+  'rg',
+  'find',
+  'cat',
+  'head',
+  'tail',
+  'wc',
+  'ls',
+  'less',
+  'more',
+  'sort',
+  'uniq',
+  'cut',
+  'diff',
+  'cmp',
+  'file',
+  'pwd',
+  'which',
+  'stat',
+  'du',
+  'df',
+  'strings',
+  'xxd',
+  'hexdump',
+  'od',
+  'tr',
+  'awk',
+  'echo',
+  'basename',
+  'dirname',
+  'readlink'
 ])
 
 /** 判断本次 shell 工具调用是否为只读命令 */
@@ -143,8 +193,9 @@ export function resolveToolPolicy(
     case 2: // 完全访问模式：默认全部放行
       base = 'allow'
       break
-    default: // 0 默认模式：正常工具权限流
+    default:
       {
+        // 0 默认模式：正常工具权限流
         const policy = toolPolicies.get(tool.name)
         if (policy) {
           const verdict = policy.resolve(tool, args, ctx)
@@ -195,12 +246,44 @@ export function isShellExecTool(tool: ToolFunction): boolean {
   return SHELL_EXEC_TOOL_NAMES.has(tool.name)
 }
 
+/**
+ * 判断本次调用是否为执行 skill 根目录内的脚本：
+ * - python_run / node_run 的 file、cli_run 的 command 为脚本文件路径时，按路径前缀判定；
+ * - cli_run 的 command 为整条 shell 语句（模型未拆分参数，如 "find <skill 目录> -type f | head -20"）时，
+ *   按 token 拆分后要求所有路径 token 均位于 skill 根目录下才放行，防止借 skill 路径夹带外部路径
+ *   （如 "cat /etc/hosts <skill 目录>/x" 不放行）；写类命令指向 skill 目录内文件同样放行，
+ *   skill 为用户安装的可信内容，且仍受安全中心黑名单与计划模式约束。
+ * skill 根目录集合由 AgentChat 注入（ctx.skillRootDirs，toolPolicy 保持叶子 import，见 docs/tool/07）。
+ */
+function isSkillScriptCall(
+  tool: ToolFunction,
+  args: Record<string, unknown>,
+  ctx: ToolPolicyContext
+): boolean {
+  if (!isShellExecTool(tool) || !ctx.skillRootDirs?.length) return false
+  const roots = ctx.skillRootDirs
+  const file = args.file
+  if (typeof file === 'string' && file && roots.some((root) => isPathUnder(file, root))) {
+    return true
+  }
+  const command = args.command
+  if (typeof command !== 'string' || !command) return false
+  if (roots.some((root) => isPathUnder(command, root))) return true
+  const tokens = command.trim().split(/\s+/)
+  if (tokens.length < 2) return false
+  const pathTokens = tokens.filter((token) => token.startsWith('/') || token.startsWith('~/'))
+  if (!pathTokens.length) return false
+  return pathTokens.every((token) => roots.some((root) => isPathUnder(token, root)))
+}
+
 // ─── 安全中心黑名单覆盖（与聊天模式无关） ──────────────────
 
 /** 将路径归一化（展开 ~）用于黑名单子串匹配 */
 function argContainsBlacklistPath(value: string, blackList: string[]): boolean {
   const normalizedValue = window.preload.path.normalizePath(value)
-  return blackList.some((pattern) => normalizedValue.includes(window.preload.path.normalizePath(pattern)))
+  return blackList.some((pattern) =>
+    normalizedValue.includes(window.preload.path.normalizePath(pattern))
+  )
 }
 
 /**

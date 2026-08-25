@@ -4,9 +4,18 @@ import type { ChatMessage } from '@/domain'
 import type { ToolCall } from './agentTypes'
 
 /**
+ * confirm 类交互的决策：用户批准 / 拒绝工具执行。
+ * 勾选「此目录以后都允许」批准时 approved 为 true 且携带 allowDir（写入目录）。
+ */
+export interface ConfirmDecision {
+  approved: boolean
+  allowDir?: string
+}
+
+/**
  * 交互决策类型：
  * - ask：用户从选项中选择 / 输入答案，决策值为答案字符串（单个问题）或答案字符串数组（多个问题）
- * - confirm：用户批准 / 拒绝工具执行，决策值为布尔
+ * - confirm：用户批准 / 拒绝工具执行，决策值为布尔或 ConfirmDecision（勾选记住目录时）
  * - font_pick：用户在选字面板中挑选字体，决策值为字体名（string）或 null（取消）
  */
 export type InteractiveKind = 'ask' | 'confirm' | 'font_pick'
@@ -24,7 +33,13 @@ interface QueuedInteractive extends PendingInteractive {
   resolve: (decision: InteractiveDecision) => void
 }
 
-export type InteractiveDecision = string | boolean | string[] | null
+export type InteractiveDecision = string | boolean | string[] | ConfirmDecision | null
+
+/** 是否为 confirm 类决策对象（区分 ask / font_pick 的 string 与 string[] 决策形状） */
+export const isConfirmDecision = (
+  decision: InteractiveDecision
+): decision is ConfirmDecision =>
+  typeof decision === 'object' && decision !== null && !Array.isArray(decision)
 
 /**
  * 工具执行与 UI 之间的「挂起决策」桥。每个 ToolChat 实例持有自己的 bridge，

@@ -43,6 +43,7 @@ export class ChatSession {
   private destroyed = false
   private unWatch?: () => void
   private unWatchStatus?: () => void
+  private unWatchAllowedDirs?: () => void
   /** 当前挂载消费本会话的组件数（>0 时豁免回收） */
   private activeCount = 0
   /** 空闲回收定时器 */
@@ -115,6 +116,8 @@ export class ChatSession {
       }
       this.mode.value = content.mode
       this.chat.setMode(content.mode)
+      // 聊天级目录白名单（确认卡片勾选「此目录以后都允许」累积），旧数据缺省为空
+      if (content.allowedDirs?.length) this.chat.setAllowedDirs(content.allowedDirs)
       if (content.agentId) this.agentId.value = content.agentId
       // 旧数据无 type 字段时回退 office
       this.type.value = content.type ?? 'office'
@@ -150,6 +153,8 @@ export class ChatSession {
         if (this.activeCount === 0) this.scheduleIdleReclaim()
       }
     })
+    // 白名单目录变更即落盘（赋值总是新数组，浅 watch 即可触发）
+    this.unWatchAllowedDirs = watch(this.chat.allowedDirs, () => this.persist())
     // 新会话首轮发送草稿；否则恢复上次挂起的 ask/confirm 决策（sendUserMessage 后 status
     // 为 pending/streaming，resumePendingInteractives 内部会因 canStartRequest 直接返回）
     const hasUserMessage = this.chat.messages.value.some((m) => m.role === 'user')
@@ -194,6 +199,7 @@ export class ChatSession {
     this.cancelIdleReclaim()
     this.unWatch?.()
     this.unWatchStatus?.()
+    this.unWatchAllowedDirs?.()
     this.chat.destroy()
   }
 
@@ -208,6 +214,9 @@ export class ChatSession {
       type: this.type.value,
       writingScene: this.writingScene.value,
       designStyleId: this.designStyleId.value || undefined,
+      allowedDirs: this.chat.allowedDirs.value.length
+        ? [...this.chat.allowedDirs.value]
+        : undefined,
       todos: toRaw(this.chat.todos.value)
     })
   }

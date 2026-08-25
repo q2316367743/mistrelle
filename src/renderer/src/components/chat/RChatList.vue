@@ -36,6 +36,15 @@
         </ChatMessage>
       </div>
     </ChatList>
+    <!-- 挂起中的 confirm 决策提示：卡片可能被超长工具结果推出视口，用户看不到时 agent 循环
+         一直阻塞等批准（表现为页面卡住），横幅常驻提示 + 点击滚动定位 -->
+    <div v-if="pendingConfirmId" class="r-chat-list__confirm-banner">
+      <ShieldErrorIcon class="r-chat-list__confirm-icon" />
+      <span class="r-chat-list__confirm-text">有操作等待你的批准</span>
+      <t-button size="small" variant="outline" @click="scrollToToolCall(pendingConfirmId)">
+        前往
+      </t-button>
+    </div>
     <div class="r-chat-list__locator-group">
       <t-tooltip
         v-for="message in userMessages"
@@ -59,7 +68,9 @@
 </template>
 <script lang="ts" setup>
 import { ChatList, ChatMessage } from '@tdesign-vue-next/chat'
+import { ShieldErrorIcon } from 'tdesign-icons-vue-next'
 import { ChatMessage as ChatMessageType, ChatStatus, UserMessage } from '@/domain'
+import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
 import type { PropType } from 'vue'
 
 const props = defineProps({
@@ -106,6 +117,37 @@ watch(
 const userMessages = computed(() =>
   props.messages.filter((message): message is UserMessage => message.role === 'user')
 )
+
+// ─── 挂起确认的可见性 ────────────────────────────────────────────────
+
+const bridge = inject(INTERACTIVE_KEY)
+
+/** 当前挂起等待批准的 confirm 决策 ID（无或非 confirm 时为 null） */
+const pendingConfirmId = computed(() => {
+  const pending = bridge?.pending.value
+  return pending?.kind === 'confirm' ? pending.toolCallId : null
+})
+
+/** 滚动定位到指定确认卡片（卡片根元素带 data-tool-call-id 锚点） */
+const scrollToToolCall = (toolCallId: string) => {
+  const target = document.querySelector<HTMLElement>(
+    `[data-tool-call-id="${CSS.escape(toolCallId)}"]`
+  )
+  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+// 挂起确认激活时卡片不在可视区域则自动滚动一次：ChatList 的自动跟随会被用户上滚暂停，
+// 超长工具结果也会把卡片推出视口，不主动滚动用户可能永远看不到卡片
+watch(pendingConfirmId, async (id) => {
+  if (!id) return
+  await nextTick()
+  const target = document.querySelector<HTMLElement>(
+    `[data-tool-call-id="${CSS.escape(id)}"]`
+  )
+  if (!target) return
+  const rect = target.getBoundingClientRect()
+  if (rect.bottom < 0 || rect.top > window.innerHeight) scrollToToolCall(id)
+})
 
 const LOCATOR_TEXT_MAX = 10
 
@@ -159,6 +201,34 @@ const scrollToMessage = (messageId: string) => {
   &.user {
     margin-left: auto;
   }
+}
+
+.r-chat-list__confirm-banner {
+  position: absolute;
+  top: var(--td-comp-margin-xs);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--td-comp-margin-s);
+  padding: var(--td-comp-paddingTB-xs) var(--td-comp-paddingLR-m);
+  border-radius: var(--td-radius-round);
+  background: var(--td-warning-color-1);
+  border: 1px solid var(--td-warning-color-3);
+  box-shadow: var(--td-shadow-1);
+}
+
+.r-chat-list__confirm-icon {
+  flex-shrink: 0;
+  color: var(--td-warning-color);
+  font-size: var(--td-font-size-body-large);
+}
+
+.r-chat-list__confirm-text {
+  font: var(--td-font-body-medium);
+  color: var(--td-text-color-primary);
+  white-space: nowrap;
 }
 
 .r-chat-list__locator-group {
