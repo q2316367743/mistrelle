@@ -58,12 +58,22 @@ export const routes: Array<RouteRecordRaw> = [
   {
     name: '闲庭漫步/AIHOT',
     path: '/attachment/aihot',
-    component: () => import('@/pages/attachment/aihot/AttachmentAihotPage.vue')
+    component: () => import('@/pages/extend/aihot/AttachmentAihotPage.vue')
   },
   {
     name: '闲庭漫步/文生图',
     path: '/attachment/image',
-    component: () => import('@/pages/attachment/image/AttachmentImagePage.vue')
+    component: () => import('@/pages/extend/image/AttachmentImagePage.vue')
+  },
+  {
+    name: '闲庭漫步/可用性检测工具',
+    path: '/attachment/test',
+    component: () => import('@/pages/extend/test/ExtendTestPage.vue')
+  },
+  {
+    name: '闲庭漫步/模型对比检测',
+    path: '/attachment/compare',
+    component: () => import('@/pages/extend/compare/ExtendComparePage.vue')
   },
 
   // --------------------------------- 设置 ---------------------------------

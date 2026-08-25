@@ -61,7 +61,9 @@ import {
   UserCircleIcon,
   UserIcon,
   ComponentRadioIcon,
-  AiImageIcon
+  AiImageIcon,
+  ArrowLeftRight1Icon,
+  Calculation1Icon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useSettingAccountStore } from '@/store'
@@ -100,7 +102,9 @@ const menuTree: SideMenuItem[] = [
     icon: LightbulbIcon,
     children: [
       { label: 'AI HOT', icon: ComponentRadioIcon, to: '/attachment/aihot' },
-      { label: '生图', icon: AiImageIcon, to: '/attachment/image' }
+      { label: '生图', icon: AiImageIcon, to: '/attachment/image' },
+      { label: '可用性检测工具', icon: Calculation1Icon, to: '/attachment/test' },
+      { label: '模型对比检测', icon: ArrowLeftRight1Icon, to: '/attachment/compare' }
     ]
   },
   {
