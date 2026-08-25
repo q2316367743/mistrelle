@@ -74,7 +74,12 @@
     </div>
 
     <div class="form-actions">
-      <t-button theme="primary" size="large" :disabled="!canStart || disabled" @click="handleSubmit">
+      <t-button
+        theme="primary"
+        size="large"
+        :disabled="!canStart || disabled"
+        @click="handleSubmit"
+      >
         <template #icon><PlayIcon /></template>
         开始检测
       </t-button>
@@ -102,9 +107,9 @@ const modelOptions = computed<SelectOptionGroup[]>(() => {
   const groups: SelectOptionGroup[] = []
   for (const provide of aiStore.items) {
     const models = provide.models
-      .filter((model) => model.type === 'chat')
+      .filter((model) => model.type === 'chat' && model.enable)
       .map((model) => ({
-        label: model.enable ? model.model : `${model.model}（已禁用）`,
+        label: model.model,
         value: `${provide.id}:${model.identifier}`
       }))
     if (!models.length) continue
@@ -153,9 +158,7 @@ const handleManualModel = () => {
   modelName.value = null
 }
 
-const canStart = computed(
-  () => apiUrl.value.trim().length > 0 && modelId.value.trim().length > 0
-)
+const canStart = computed(() => apiUrl.value.trim().length > 0 && modelId.value.trim().length > 0)
 
 const handleSubmit = () => {
   if (!canStart.value) return
