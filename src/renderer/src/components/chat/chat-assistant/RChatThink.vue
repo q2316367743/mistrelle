@@ -1,5 +1,6 @@
 <template>
   <ChatThinking
+    class="my-4px"
     :collapsed="collapsed"
     :content="content.data"
     :status="content.status || 'pending'"
