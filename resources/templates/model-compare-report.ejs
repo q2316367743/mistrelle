@@ -1,0 +1,114 @@
+# 模型对比检测报告（markdown）
+
+<!--
+  模型对比检测审计报告模板（产出 markdown 纯文本，非 HTML）。
+  数据契约（渲染侧 compare-report.ts 预处理 view model，模板只做展示循环）：
+  { title, timeText, generatedText, statusLabel, durationText, execModeLabel,
+    speedRunsLabel, consistencyCountLabel, modelNames, modelMetas,
+    summary[], overviewRows[{metric, cells[{text,best,note}]}],
+    profileRows[{tag, cells[]}], features[{name, lines[]}],
+    speedDetails[{name, medianText, runs[{index,ttft,think,rate,tokens,inFlight,finish,error}]}],
+    identityItems[{name, latency, error, lines[]}], questionRows[{tag,question,reference,cells[]}],
+    answerBlocks[{name, items[{tag, lines[]}]}],
+    consistencyItems[{name, items[{tag, allSameLabel, answerLines[]}]}],
+    concurrencyNote, logs[{time, level, message}] }
+  例外说明：本项目 HTML 模板约定用 <%= %>（HTML 转义），但本模板产出 markdown 纯文本，
+  HTML 实体转义会把答案中的 < > ' 污染成 &lt; 等；所有文本已由 vm 侧 mdCell 统一清洗
+  （压空白 / 转义竖线 / 截断），故插值一律 <%- %> 原样输出。
+-->
+
+<%- title %>
+
+- 检测时间：<%- timeText %>
+- 报告生成：<%- generatedText %>
+- 任务状态：<%- statusLabel %> · 总耗时 <%- durationText %>
+- 执行模式：<%- execModeLabel %>（速度轮 <%- speedRunsLabel %> 次 · 一致性 <%- consistencyCountLabel %> 题）
+
+## 参与模型
+
+| # | 模型 | 提供方 | 接口地址 | 模型 ID | 格式 |
+| --- | --- | --- | --- | --- | --- |
+<% modelMetas.forEach((meta, i) => { %>| <%- i + 1 %> | <%- meta.name %> | <%- meta.provide %> | <%- meta.apiUrl %> | <%- meta.modelId %> | <%- meta.format %> |
+<% }) %>
+
+## 观察摘要
+
+<% if (summary.length) { %><% summary.forEach((line) => { %>- <%- line %>
+<% }) %><% } else { %>- 本轮无显著差异要点（各模型指标接近或数据不足）。
+<% } %>
+
+## 对比总览
+
+| 指标 | <% modelNames.forEach((name) => { %><%- name %> | <% }) %>
+| --- | <% modelNames.forEach(() => { %>- | <% }) %>
+<% overviewRows.forEach((row) => { %>| <%- row.metric %> | <% row.cells.forEach((cell) => { %><%- cell.text %><%- cell.best ? ' ⭐' : '' %><%- cell.note ? ` ${cell.note}` : '' %> | <% }) %>
+<% }) %>
+
+## 分类能力画像
+
+| 分类 | <% modelNames.forEach((name) => { %><%- name %> | <% }) %>
+| --- | <% modelNames.forEach(() => { %>- | <% }) %>
+<% profileRows.forEach((row) => { %>| <%- row.tag %> | <% row.cells.forEach((cell) => { %><%- cell %> | <% }) %>
+<% }) %>
+
+## 模型特征
+
+<% features.forEach((feature) => { %>### <%- feature.name %>
+<% feature.lines.forEach((line) => { %>- <%- line %>
+<% }) %>
+<% }) %>
+
+## 速度明细
+
+<% speedDetails.forEach((detail) => { %>### <%- detail.name %>（中位数 <%- detail.medianText %>）
+
+| # | TTFT | 首思考块 | tok/s | tokens | 并发水位 | 结束原因 |
+| --- | --- | --- | --- | --- | --- | --- |
+<% detail.runs.forEach((run) => { %>| <%- run.index %> | <%- run.ttft %> | <%- run.think %> | <%- run.rate %> | <%- run.tokens %> | <%- run.inFlight %> | <%- run.error ? '失败' : run.finish %> |
+<% }) %>
+<% }) %>
+
+## 身份自述
+
+<% identityItems.forEach((item) => { %>### <%- item.name %>（<%- item.latency %>）
+<% if (item.error) { %>请求失败：<%- item.error %>
+<% } else if (item.lines.length) { %><% item.lines.forEach((line) => { %><%- line %>
+<% }) %><% } else { %>（空回答）
+<% } %>
+<% }) %>
+
+## 题集矩阵
+
+| 分类 | 题目 | 参考答案 | <% modelNames.forEach((name) => { %><%- name %> | <% }) %>
+| --- | --- | --- | <% modelNames.forEach(() => { %>- | <% }) %>
+<% questionRows.forEach((row) => { %>| <%- row.tag %> | <%- row.question %> | <%- row.reference %> | <% row.cells.forEach((cell) => { %><%- cell %> | <% }) %>
+<% }) %>
+
+## 答案全文（人工复核）
+
+<% answerBlocks.forEach((block) => { %>### <%- block.name %>
+<% block.items.forEach((item, i) => { %>#### <%- i + 1 %>. <%- item.tag %>
+<% item.lines.forEach((line) => { %><%- line %>
+<% }) %>
+<% }) %>
+<% }) %>
+
+## 一致性轮（temperature=0 同题重复）
+
+<% consistencyItems.forEach((item) => { %>### <%- item.name %>
+<% item.items.forEach((sub) => { %>#### <%- sub.tag %> · <%- sub.allSameLabel %>
+<% sub.answerLines.forEach((line) => { %><%- line %>
+<% }) %>
+<% }) %>
+<% }) %>
+
+## 并发说明
+
+<%- concurrencyNote %>
+
+## 执行日志
+
+| 时间 | 级别 | 消息 |
+| --- | --- | --- |
+<% logs.forEach((log) => { %>| <%- log.time %> | <%- log.level.toUpperCase() %> | <%- log.message %> |
+<% }) %>

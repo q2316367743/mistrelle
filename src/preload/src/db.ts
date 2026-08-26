@@ -11,6 +11,10 @@ import {
   type AihotMeta,
   type ChatContentResult,
   type ChatItemInput,
+  type CompareListParams,
+  type CompareListResult,
+  type CompareQuestionInput,
+  type CompareRecordInput,
   type HealthListParams,
   type HealthListResult,
   type HealthRecordInput,
@@ -82,5 +86,31 @@ export const dbApi = {
       ipcRenderer.invoke(DbChannels.healthUpsert, record),
     /** 删除单条检测记录 */
     delete: (id: string): Promise<void> => ipcRenderer.invoke(DbChannels.healthDelete, id)
+  },
+  compare: {
+    question: {
+      /** 题库全量（order_index 升序，answerKeys 已解析为数组） */
+      list: (): Promise<CompareQuestionInput[]> =>
+        ipcRenderer.invoke(DbChannels.compareQuestionList),
+      /** 单题新增 / 编辑 / 启停（按 key upsert） */
+      upsert: (question: CompareQuestionInput): Promise<void> =>
+        ipcRenderer.invoke(DbChannels.compareQuestionUpsert, question),
+      /** 删除单题 */
+      delete: (key: string): Promise<void> =>
+        ipcRenderer.invoke(DbChannels.compareQuestionDelete, key),
+      /** 全量替换题库（恢复默认，单事务） */
+      replaceAll: (questions: CompareQuestionInput[]): Promise<void> =>
+        ipcRenderer.invoke(DbChannels.compareQuestionReplaceAll, questions)
+    },
+    record: {
+      /** 分页查询对比记录（created_at 倒序） */
+      list: (params: CompareListParams): Promise<CompareListResult> =>
+        ipcRenderer.invoke(DbChannels.compareList, params),
+      /** 记录 upsert（插入 running / 逐阶段累积 / 收尾 finished|stopped） */
+      upsert: (record: CompareRecordInput): Promise<void> =>
+        ipcRenderer.invoke(DbChannels.compareUpsert, record),
+      /** 删除单条对比记录 */
+      delete: (id: string): Promise<void> => ipcRenderer.invoke(DbChannels.compareDelete, id)
+    }
   }
 }

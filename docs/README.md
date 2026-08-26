@@ -69,7 +69,8 @@
 
 | 文档                                                          | 描述                                                                                                                          |
 |---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| [01-model-health-tool.md](./extend/01-model-health-tool.md) | 可用性检测工具（`/attachment/test`，参考 aibase llm-health）：已配置模型一键选择（含禁用项）自动填充 / 5 维度 12 检测项（基础 4 / 完整 12，共享观测降成本、30s 超时、connect 失败级联跳过）；`model_health` 表 + `db:health:*` IPC；渲染层执行（复用 modules/ai 三格式适配器）+ 模块级单例 composable 单任务锁 + keep-alive（`ExtendTestPage`）切页不中断；逐项落库累积、孤儿 running 收尾；审计报告 = EJS 模板（`resources/templates/`，主进程 templateRender 统一渲染服务 + `template:render` 通道，新域模板可复用）动态生成不落库，抽屉导出 HTML 落盘 `~/.mistrelle/health/report`；API 密钥不落库 |
+| [01-model-health-tool.md](./extend/01-model-health-tool.md) | 可用性检测工具（`/attachment/test`，参考 aibase llm-health）：已配置模型一键选择（含禁用项）自动填充 / 5 维度 12 检测项（基础 4 / 完整 12，共享观测降成本、30s 超时、connect 失败级联跳过）；`model_health` 表 + `db:health:*` IPC；渲染层执行（复用 modules/ai 三格式适配器）+ 模块级单例 composable 单任务锁 + keep-alive（`ExtendTestPage`）切页不中断；逐项落库累积、孤儿 running 收尾；审计报告 = EJS 模板（`resources/templates/`，主进程 templateRender 统一渲染服务 + `template:render` 通道，新域模板可复用）动态生成不落库，抽屉导出 HTML 走 dialog.save 用户自选路径（2026-08-26 起不再落固定目录）；API 密钥不落库 |
+| [02-model-compare-tool.md](./extend/02-model-compare-tool.md) | 模型对比检测工具（`/attachment/compare`）：2-6 模型横向对比（速度 TTFT/tokS 中位数、题集判分、身份自述、一致性、usage 计量），三种执行模式（默认混合=速度轮串行+其余并发）、in-flight 水位标注评估并发影响；**题库 `compare_question` 表 + 记录 `model_compare` 表**（标量+JSON 文本列、分页；2026-08-26 由文件 json 迁库防手改出错）+ md 报告**手动导出**（dialog.save 自选路径，EJS 模板 `<%- %>` 例外）；题目编辑 DialogPlugin 命令式；t-table 动态列 cell 渲染函数（TNode 首参 h、:deep 样式）；keep-alive `ExtendComparePage`；无偏好持久化 |
 
 ### canvas/ —— 画布
 

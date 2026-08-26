@@ -121,9 +121,6 @@ export const getCacheDir = () => window.preload.path.join(dataFolder, 'cache')
 export const getImageGenerateDir = (month: string) =>
   window.preload.path.join(dataFolder, 'image', 'generate', month)
 
-// 可用性检测报告导出目录：~/.mistrelle/health/report（HTML 报告按需落盘，数据库只存关键数据）
-export const getModelHealthReportDir = () => window.preload.path.join(dataFolder, 'health', 'report')
-
 // 单个工具结果的最大字节数，超出则截断，避免超大输出撑爆上下文窗口
 export const MAX_TOOL_RESULT_BYTES = 128 * 1024
 

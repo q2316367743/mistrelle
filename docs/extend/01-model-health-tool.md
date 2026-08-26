@@ -56,7 +56,7 @@ duration_ms / created_at + idx_model_health_created
 - **IPC 链路**：`src/preload/src/templateChannels.ts`（独立通道文件，`template:render`，不碰贴红线的 channels.ts）→ `src/main/src/ipc/templateIpc.ts`（registerIpc.ts 注册）→ `src/preload/src/template.ts`（`window.preload.template.render({ name, data })` 返回完整 HTML）→ `vite-env.d.ts` 挂类型。
 - **安全**：EJS 默认 `<%= %>` HTML 转义——detail 含模型自述 / 错误信息等不可信文本，模板侧禁止 `<%- %>`；预览用 `<iframe :srcdoc sandbox="">` 完全隔离（无脚本无同源）。
 - **产物**：自包含单文件 HTML（内联 CSS，Fluent 风格：结论渐变横幅 + 四统计卡 + 基本信息卡 + 维度明细表 + 日志时间线），`@media print` 优化——浏览器 Ctrl+P 可直接另存 PDF。
-- **导出**：历史详情抽屉「导出 HTML 报告」→ `useHealthChecks.exportReport(record)` 动态生成 → 落盘 `~/.mistrelle/health/report/模型检测报告-{modelId净化}-{yyyyMMdd-HHmmss}.html`（`Constant.getModelHealthReportDir()` 工厂）→ `showItemInFolder` 定位 + 抽屉内路径 t-link。
+- **导出**：历史详情抽屉「导出 HTML 报告」→ `useHealthChecks.exportReport(record)` 动态生成 → **`dialog.save` 让用户自选路径**（2026-08-26 与 compare 统一；原固定目录 `~/.mistrelle/health/report` 已弃用）→ 写文件 → `showItemInFolder` 定位 + 抽屉内路径 t-link（用户取消则无副作用）。
 - 模板数据契约：渲染侧 `health-report.ts` 预处理 view model（stats / info / groups / logs 格式化），模板只做展示循环；契约注释写在模板文件头部。
 
 ## 关键文件

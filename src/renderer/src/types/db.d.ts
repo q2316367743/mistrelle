@@ -213,9 +213,77 @@ declare interface HealthDbApi {
   delete: (id: string) => Promise<void>
 }
 
+// ── 模型对比检测域（题库 + 对比任务记录；结构化 UI 类型见 pages/extend/compare/compare-types.ts，本侧为 DB 行形状） ─────────────────
+
+/** 执行模式：parallel=全并发，mixed=混合（速度轮串行+其余并发），serial=全串行 */
+declare type CompareExecMode = 'parallel' | 'mixed' | 'serial'
+
+/** 任务状态：running=对比中，finished=正常结束，stopped=被停止或应用中断 */
+declare type CompareTaskStatus = 'running' | 'finished' | 'stopped'
+
+/** 题库行载荷（upsert 全量列 / list 行返回，两用；answerKeys 由 DAO 解析为数组） */
+declare interface CompareQuestionInput {
+  key: string
+  tag: string
+  orderIndex: number
+  enable: boolean
+  question: string
+  reference: string
+  answerKeys: string[]
+  pattern: string | null
+  note: string | null
+}
+
+/**
+ * model_compare 表行载荷（upsert 全量列 / list 行返回，两用）。
+ * models / results / logs 为数组 JSON 文本（渲染侧 parse 还原）；密钥不落库；md 报告手动导出（report_path 历史遗留不再写入）。
+ */
+declare interface CompareRecordInput {
+  id: string
+  status: CompareTaskStatus
+  execMode: CompareExecMode
+  speedRuns: number
+  consistencyCount: number
+  models: string
+  results: string
+  logs: string
+  durationMs: number | null
+  reportPath: string | null
+  createdAt: number
+}
+
+declare interface CompareListParams {
+  limit: number
+  offset: number
+}
+
+declare interface CompareListResult {
+  items: CompareRecordInput[]
+  total: number
+}
+
+declare interface CompareQuestionDbApi {
+  list: () => Promise<CompareQuestionInput[]>
+  upsert: (question: CompareQuestionInput) => Promise<void>
+  delete: (key: string) => Promise<void>
+  replaceAll: (questions: CompareQuestionInput[]) => Promise<void>
+}
+
+declare interface CompareRecordDbApi {
+  list: (params: CompareListParams) => Promise<CompareListResult>
+  upsert: (record: CompareRecordInput) => Promise<void>
+  delete: (id: string) => Promise<void>
+}
+
+declare interface CompareDbApi {
+  question: CompareQuestionDbApi
+  record: CompareRecordDbApi
+}
+
 declare interface DbApi {
   aihot: AihotDbApi
   chat: ChatDbApi
   image: ImageDbApi
   health: HealthDbApi
+  compare: CompareDbApi
 }

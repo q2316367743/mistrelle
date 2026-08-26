@@ -105,15 +105,16 @@ const STATUS_THEMES: Record<HealthTaskStatus, 'primary' | 'success' | 'warning'>
   stopped: 'warning'
 }
 
-const handleExport = async () => {
-  exporting.value = true
-  try {
-    exportedPath.value = await exportReport(current.value)
-    window.preload.inject.shell.showItemInFolder(exportedPath.value)
-  } finally {
-    exporting.value = false
+/** 导出报告：dialog.save 自选路径（exportReport 内部已定位文件）；用户取消 exportedPath 保持空 */
+  const handleExport = async () => {
+    exporting.value = true
+    try {
+      const path = await exportReport(current.value)
+      exportedPath.value = path ?? ''
+    } finally {
+      exporting.value = false
+    }
   }
-}
 
 const locateExported = () => {
   if (exportedPath.value) window.preload.inject.shell.showItemInFolder(exportedPath.value)

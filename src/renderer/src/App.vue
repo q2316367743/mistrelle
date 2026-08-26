@@ -56,8 +56,8 @@ const showChatAdd = computed(() => {
   return true
 })
 
-/** keep-alive 缓存的组件名：新建聊天页 + 可用性检测工具页保活（检测跨页面切换不中断） */
-const keepAliveNames = ['PageNew', 'ExtendTestPage']
+/** keep-alive 缓存的组件名：新建聊天页 + 可用性检测 / 模型对比工具页保活（检测跨页面切换不中断） */
+const keepAliveNames = ['PageNew', 'ExtendTestPage', 'ExtendComparePage']
 
 onMounted(() => {
   console.log(`插件已启动:

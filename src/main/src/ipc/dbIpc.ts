@@ -8,6 +8,9 @@ import {
   type AihotBatch,
   type AihotListParams,
   type ChatItemInput,
+  type CompareListParams,
+  type CompareQuestionInput,
+  type CompareRecordInput,
   type HealthListParams,
   type HealthRecordInput,
   type ImageListParams,
@@ -15,6 +18,15 @@ import {
 } from '~/dbChannels'
 import { initDb } from '$/db/client'
 import { aiHotApplyBatch, aiHotClear, aiHotGetMeta, aiHotList, aiHotMarkRead } from '$/db/repo/aihotRepo'
+import {
+  compareQuestionDelete,
+  compareQuestionList,
+  compareQuestionReplaceAll,
+  compareQuestionUpsert,
+  compareRecordDelete,
+  compareRecordList,
+  compareRecordUpsert
+} from '$/db/repo/compareRepo'
 import { healthDelete, healthList, healthUpsert } from '$/db/repo/healthRepo'
 import { imageDelete, imageList, imageUpsert } from '$/db/repo/imageRepo'
 import {
@@ -84,4 +96,29 @@ export function registerDbIpc(): void {
     healthUpsert(record)
   )
   ipcMain.handle(DbChannels.healthDelete, (_event, id: string): void => healthDelete(id))
+
+  // 模型对比检测域（题库 + 对比记录）
+  ipcMain.handle(DbChannels.compareQuestionList, (): ReturnType<typeof compareQuestionList> =>
+    compareQuestionList()
+  )
+  ipcMain.handle(DbChannels.compareQuestionUpsert, (_event, question: CompareQuestionInput): void =>
+    compareQuestionUpsert(question)
+  )
+  ipcMain.handle(DbChannels.compareQuestionDelete, (_event, key: string): void =>
+    compareQuestionDelete(key)
+  )
+  ipcMain.handle(
+    DbChannels.compareQuestionReplaceAll,
+    (_event, questions: CompareQuestionInput[]): void =>
+      compareQuestionReplaceAll(questions)
+  )
+  ipcMain.handle(
+    DbChannels.compareList,
+    (_event, params: CompareListParams): ReturnType<typeof compareRecordList> =>
+      compareRecordList(params.limit, params.offset)
+  )
+  ipcMain.handle(DbChannels.compareUpsert, (_event, record: CompareRecordInput): void =>
+    compareRecordUpsert(record)
+  )
+  ipcMain.handle(DbChannels.compareDelete, (_event, id: string): void => compareRecordDelete(id))
 }

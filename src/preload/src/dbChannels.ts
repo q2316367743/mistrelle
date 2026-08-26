@@ -25,7 +25,14 @@ export const DbChannels = {
   imageDelete: 'db:image:delete',
   healthList: 'db:health:list',
   healthUpsert: 'db:health:upsert',
-  healthDelete: 'db:health:delete'
+  healthDelete: 'db:health:delete',
+  compareQuestionList: 'db:compare:questionList',
+  compareQuestionUpsert: 'db:compare:questionUpsert',
+  compareQuestionDelete: 'db:compare:questionDelete',
+  compareQuestionReplaceAll: 'db:compare:questionReplaceAll',
+  compareList: 'db:compare:list',
+  compareUpsert: 'db:compare:upsert',
+  compareDelete: 'db:compare:delete'
 } as const
 
 /** 排序 / 时间筛选基准 */
@@ -206,5 +213,63 @@ export interface HealthListParams {
 
 export interface HealthListResult {
   items: HealthRecordInput[]
+  total: number
+}
+
+// ── 模型对比检测域（题库 + 对比任务记录） ─────────────────
+
+/** 执行模式：parallel=全并发，mixed=混合（速度轮串行+其余并发），serial=全串行 */
+export type CompareExecMode = 'parallel' | 'mixed' | 'serial'
+
+/** 任务状态：running=对比中，finished=正常结束，stopped=被停止或应用中断 */
+export type CompareTaskStatus = 'running' | 'finished' | 'stopped'
+
+/** 题库行载荷（upsert 全量列 / list 行返回，两用） */
+export interface CompareQuestionInput {
+  /** 稳定标识（种子固定 key / custom-{ts}；题集矩阵按 key 对齐） */
+  key: string
+  tag: string
+  /** 排序（order 为 SQL 保留字，列名用 order_index；list 按此升序） */
+  orderIndex: number
+  enable: boolean
+  question: string
+  reference: string
+  /** 判分关键词数组（DAO 内 JSON 序列化入 answer_keys 列） */
+  answerKeys: string[]
+  /** 可选正则（额外校验，如 JSON 格式题） */
+  pattern: string | null
+  note: string | null
+}
+
+/**
+ * model_compare 表行载荷（upsert 全量列 / list 行返回，两用）。
+ * models / results / logs 为数组 JSON 文本（渲染侧 parse 还原）；逐阶段完成时整行 upsert 增量累积。
+ * 密钥不落库；md 报告是用户手动导出产物（dialog.save 自选路径），表内 report_path 列保留但不再写入。
+ */
+export interface CompareRecordInput {
+  id: string
+  status: CompareTaskStatus
+  execMode: CompareExecMode
+  speedRuns: number
+  consistencyCount: number
+  /** 参与模型快照数组（CompareModelSnapshot[]）的 JSON 文本 */
+  models: string
+  /** 各模型检测结果数组（CompareModelResult[]）的 JSON 文本 */
+  results: string
+  /** 执行日志数组（CompareLogEntry[]）的 JSON 文本 */
+  logs: string
+  durationMs: number | null
+  /** 历史遗留列（不再写入；用户手动导出的报告由用户管理） */
+  reportPath: string | null
+  createdAt: number
+}
+
+export interface CompareListParams {
+  limit: number
+  offset: number
+}
+
+export interface CompareListResult {
+  items: CompareRecordInput[]
   total: number
 }

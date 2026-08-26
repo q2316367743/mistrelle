@@ -11,7 +11,6 @@
 // ==========================================
 import dayjs from 'dayjs'
 import { useSnowflake } from '@/hooks'
-import { getModelHealthReportDir } from '@/global/Constant'
 import {
   getHealthCheckItems,
   runHealthItem,
@@ -255,23 +254,26 @@ const createHealthChecks = () => {
   }
 
   /**
-   * 导出审计报告 HTML 文件：由记录数据动态生成（EJS 模板在主进程渲染）→
-   * 落盘 ~/.mistrelle/health/report/，返回文件绝对路径（调用方负责在文件管理器定位）。
+   * 导出审计报告 HTML：由记录数据动态生成（EJS 模板在主进程渲染）→
+   * dialog.save 让用户自选路径 → 写文件 → 文件管理器定位。
+   * 用户取消返回 null；成功后返回文件绝对路径（调用方可展示路径供再次定位）。
    */
-  const exportReport = async (record: HealthRecordInput): Promise<string> => {
+  const exportReport = async (record: HealthRecordInput): Promise<string | null> => {
     const html = await buildHealthReport({
       ...record,
       items: parseHealthItems(record.items),
       logs: parseHealthLogs(record.logs)
     })
-    const dir = getModelHealthReportDir()
-    await window.preload.fs.mkdir(dir)
     const safeModel = record.modelId.replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 40)
-    const path = window.preload.path.join(
-      dir,
-      `模型检测报告-${safeModel}-${dayjs(record.createdAt).format('yyyyMMdd-HHmmss')}.html`
-    )
+    const defaultName = `模型检测报告-${safeModel}-${dayjs(record.createdAt).format('yyyyMMdd-HHmmss')}.html`
+    const path = await window.preload.inject.dialog.save({
+      title: '导出审计报告',
+      defaultPath: defaultName,
+      filters: [{ name: 'HTML', extensions: ['html'] }]
+    })
+    if (!path) return null
     await window.preload.fs.writeTextFile(path, html)
+    window.preload.inject.shell.showItemInFolder(path)
     return path
   }
 
