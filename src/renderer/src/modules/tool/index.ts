@@ -7,7 +7,7 @@ import {
 } from '@/modules/tool/components/inject'
 import { shellTools } from './components/native/shell'
 import { fileTools } from './components/native/file'
-import { fileParseTools } from './components/native/fileParse'
+import { fileParseTools, fileWriteXlsxTool } from './components/native/fileParse'
 import { nativeHttpTools } from './components/native/http'
 import { nativeBrowserAutomationTools } from './components/native/browserAutomation'
 import { browserFetchTools } from './components/native/browserFetch'
@@ -48,7 +48,11 @@ export const toolGroups: Array<ToolGroup> = [
   { group: '日期工具', tools: dateTools },
   { group: '剪贴板', tools: injectClipboardTools },
   { group: '媒体工具', tools: [...injectFfmpegTools] },
-  { group: '浏览器', tools: [...injectBrowserTools, ...nativeBrowserAutomationTools] },
+  {
+    group: '浏览器',
+    tools: [...injectBrowserTools, ...nativeBrowserAutomationTools, ...egoBrowserTools]
+  },
+  { group: '文档处理', tools: [fileWriteXlsxTool] },
   { group: '专家管理', tools: agentTools },
   { group: '设计风格', tools: designStyleTools },
   { group: 'AI 热点', tools: aihotTools }
@@ -68,6 +72,8 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(injectBrowserTools, 'name'),
   ...objectify(injectFfmpegTools, 'name'),
   ...objectify(nativeBrowserAutomationTools, 'name'),
+  ...objectify(egoBrowserTools, 'name'),
+  ...objectify([fileWriteXlsxTool], 'name'),
   ...objectify(agentTools, 'name'),
   ...objectify(designStyleTools, 'name'),
   ...objectify(aihotTools, 'name'),
@@ -89,7 +95,6 @@ export function getDefaultTools(): ToolFunction[] {
     ...fileParseTools,
     ...nativeHttpTools,
     ...browserFetchTools,
-    ...egoBrowserTools,
     ...getNativeSearchTools()
   ]
 }

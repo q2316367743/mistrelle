@@ -44,8 +44,8 @@ ego-browser 命令**默认不在 PATH 中**（macOS 上 onboarding 注册到 `~/
 - `src/entity/setting/SettingSecured.ts` — `SettingSecuredRuntime.egoBrowser` 字段 +
   `getDefaultEgoBrowserPath()` 平台默认值推断（`buildSettingSecure()` 调用）
 - `src/store/setting/SettingSecureStore.ts` — `egoBrowserPath` getter 兜底链
-- `src/pages/setting/secure/SettingSecurePage.vue` — 「内置运行时」卡片新增 ego-browser 行
-- `src/modules/tool/index.ts` — 经 `getDefaultTools()` 注入（全局默认可用）
+- `src/pages/setting/secure/SettingSecurePage.vue` — 「内置运行时」卡片 ego-browser 行
+- `src/modules/tool/index.ts` — 经 `toolGroups`「浏览器」可选分组注入（发送框勾选 / 专家 `tools` 配置后可用，`toolMap` 按名解析）
 
 ## API 契约
 
@@ -89,7 +89,7 @@ ego-browser 命令**默认不在 PATH 中**（macOS 上 onboarding 注册到 `~/
 
 ## 注意事项
 
-- **安全边界**：`ego_browser_run` 的 `nodejs` 子命令可执行任意 JS（同 `node_run` 级别），
+- **安全边界**：`ego_browser_run` 的 `nodejs` 子命令可执行任意 JS（等价直接跑 node 脚本），
   但按需求定为 `risk: 'safe'` → 永不弹窗、计划模式也放行。兜底仅剩安全中心**文件黑名单
   子串扫描**（对全部字符串参数生效）；因参数名为 `subcommand` 而非 `command`，
   **`commandAskList`（shell 命令询问名单）不会命中 `ego-browser`**。

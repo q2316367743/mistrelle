@@ -3,7 +3,7 @@
  * 实现迁入 main（service/shellExec.ts + shellExecIpc.ts），签名不变。
  */
 import { ipcRenderer } from 'electron'
-import { ShellExecChannels, type CliRunOptions, type CliRunResult, type JsRunResult } from './channels'
+import { ShellExecChannels, type CliRunOptions, type CliRunResult } from './channels'
 
 export const shellExecApi = {
   /**
@@ -14,11 +14,5 @@ export const shellExecApi = {
     command: string,
     args: Array<string | number> = [],
     options: CliRunOptions = {}
-  ): Promise<CliRunResult> => ipcRenderer.invoke(ShellExecChannels.cliRun, command, args, options),
-
-  /**
-   * 在 worker 线程中执行 JS 沙箱（vm.runInNewContext 双重沙箱，30s 双保险超时）。
-   */
-  jsRun: (script: string, args: Record<string, unknown> = {}): Promise<JsRunResult> =>
-    ipcRenderer.invoke(ShellExecChannels.jsRun, script, args)
+  ): Promise<CliRunResult> => ipcRenderer.invoke(ShellExecChannels.cliRun, command, args, options)
 }

@@ -207,54 +207,56 @@ export const fileParseTools: ToolFunction[] = [
       const content = await parsePdf(path, pages)
       return { content }
     }
-  },
-  {
-    name: 'file_write_xlsx',
-    label: '写入 Excel 表格',
-    description: '创建或覆盖 .xlsx 文件，支持多工作表和单元格合并',
-    parameters: {
-      type: 'object',
-      properties: {
-        path: { type: 'string', description: '要写入的 .xlsx 文件路径' },
-        sheets: {
-          type: 'array',
-          description: '工作表列表',
-          items: {
-            type: 'object',
-            description: '单个工作表',
-            properties: {
-              name: { type: 'string', description: '工作表名称' },
-              data: {
-                type: 'array',
-                description: '二维数组，每个子数组为一行数据',
-                items: { type: 'array', description: '一行数据', items: { type: 'string', description: '单元格值' } }
-              },
-              merges: {
-                type: 'array',
-                description: '合并区域列表，行列索引从 0 开始',
-                items: {
-                  type: 'object',
-                  description: '合并区域',
-                  properties: {
-                    start: { type: 'array', description: '起始位置 [row, col]', items: { type: 'number', description: '索引' } },
-                    end: { type: 'array', description: '结束位置 [row, col]', items: { type: 'number', description: '索引' } }
-                  }
-                }
-              }
-            },
-            required: ['name', 'data']
-          }
-        }
-      },
-      required: ['path', 'sheets']
-    },
-    risk: 'sensitive',
-    handler: async (...params: unknown[]) => {
-      const { path, sheets } = params[0] as { path: string; sheets: SheetInput[] }
-      const error = checkBlacklist(path)
-      if (error) return { error }
-      await writeXlsx(path, sheets)
-      return { success: true }
-    }
   }
 ]
+
+/** 写入 Excel：低频写类工具，不进默认常驻，经「文档处理」可选分组按需勾选 */
+export const fileWriteXlsxTool: ToolFunction = {
+  name: 'file_write_xlsx',
+  label: '写入 Excel 表格',
+  description: '创建或覆盖 .xlsx 文件，支持多工作表和单元格合并',
+  parameters: {
+    type: 'object',
+    properties: {
+      path: { type: 'string', description: '要写入的 .xlsx 文件路径' },
+      sheets: {
+        type: 'array',
+        description: '工作表列表',
+        items: {
+          type: 'object',
+          description: '单个工作表',
+          properties: {
+            name: { type: 'string', description: '工作表名称' },
+            data: {
+              type: 'array',
+              description: '二维数组，每个子数组为一行数据',
+              items: { type: 'array', description: '一行数据', items: { type: 'string', description: '单元格值' } }
+            },
+            merges: {
+              type: 'array',
+              description: '合并区域列表，行列索引从 0 开始',
+              items: {
+                type: 'object',
+                description: '合并区域',
+                properties: {
+                  start: { type: 'array', description: '起始位置 [row, col]', items: { type: 'number', description: '索引' } },
+                  end: { type: 'array', description: '结束位置 [row, col]', items: { type: 'number', description: '索引' } }
+                }
+              }
+            }
+          },
+          required: ['name', 'data']
+        }
+      }
+    },
+    required: ['path', 'sheets']
+  },
+  risk: 'sensitive',
+  handler: async (...params: unknown[]) => {
+    const { path, sheets } = params[0] as { path: string; sheets: SheetInput[] }
+    const error = checkBlacklist(path)
+    if (error) return { error }
+    await writeXlsx(path, sheets)
+    return { success: true }
+  }
+}

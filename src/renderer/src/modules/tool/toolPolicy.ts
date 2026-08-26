@@ -235,11 +235,10 @@ function matchCommand(name: string, list: string[]): boolean {
 // ─── 执行类（shell）工具识别 ──────────────────────────────
 
 /**
- * 执行类（shell）工具名集合：底层都通过 cliRun 运行外部程序 / 脚本，
+ * 执行类（shell）工具名集合：底层通过 cliRun 运行外部程序 / 脚本，
  * 计划模式下需经用户审批，不可静默放行。
- * 说明：js_run 为受限 JS 沙箱（safe）、git_exec 为只读 git 操作（safe），均不在此列。
  */
-export const SHELL_EXEC_TOOL_NAMES = new Set<string>(['cli_run', 'python_run', 'node_run'])
+export const SHELL_EXEC_TOOL_NAMES = new Set<string>(['cli_run'])
 
 /** 判断某工具是否为执行类（shell）工具 */
 export function isShellExecTool(tool: ToolFunction): boolean {
@@ -248,7 +247,7 @@ export function isShellExecTool(tool: ToolFunction): boolean {
 
 /**
  * 判断本次调用是否为执行 skill 根目录内的脚本：
- * - python_run / node_run 的 file、cli_run 的 command 为脚本文件路径时，按路径前缀判定；
+ * - cli_run 的 command 为脚本文件路径时，按路径前缀判定；
  * - cli_run 的 command 为整条 shell 语句（模型未拆分参数，如 "find <skill 目录> -type f | head -20"）时，
  *   按 token 拆分后要求所有路径 token 均位于 skill 根目录下才放行，防止借 skill 路径夹带外部路径
  *   （如 "cat /etc/hosts <skill 目录>/x" 不放行）；写类命令指向 skill 目录内文件同样放行，
@@ -262,10 +261,6 @@ function isSkillScriptCall(
 ): boolean {
   if (!isShellExecTool(tool) || !ctx.skillRootDirs?.length) return false
   const roots = ctx.skillRootDirs
-  const file = args.file
-  if (typeof file === 'string' && file && roots.some((root) => isPathUnder(file, root))) {
-    return true
-  }
   const command = args.command
   if (typeof command !== 'string' || !command) return false
   if (roots.some((root) => isPathUnder(command, root))) return true
@@ -307,7 +302,7 @@ function hitSecurityBlacklist(args: Record<string, unknown>): boolean {
     if (typeof path === 'string' && path && isPathBlacklisted(path, sandbox.fileBlackList)) {
       return true
     }
-    // 2. 任意字符串参数包含黑名单目录（覆盖 cli_run 的 command、python_run/node_run 的 code/file/cwd）
+    // 2. 任意字符串参数包含黑名单目录（覆盖 cli_run 的 command / cwd 等字符串参数）
     for (const value of Object.values(args)) {
       if (typeof value === 'string' && argContainsBlacklistPath(value, sandbox.fileBlackList)) {
         return true

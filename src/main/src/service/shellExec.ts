@@ -3,11 +3,9 @@
  *
  * - cliRun：shell 字符串拼接 + spawn({shell:true})，10MB 输出上限、手动超时 kill、
  *   exit 后 close 宽限期兜底，任何情况下 Promise 必会 resolve
- * - jsRun：worker_threads + vm.runInNewContext 双重沙箱执行用户 JS，双保险超时
  */
 import { spawn } from 'node:child_process'
-import { Worker } from 'node:worker_threads'
-import type { CliRunOptions, CliRunResult, JsRunResult } from '~/channels'
+import type { CliRunOptions, CliRunResult } from '~/channels'
 
 const shellQuote = (value: string | number): string => {
   const text = String(value)
@@ -25,8 +23,6 @@ const MAX_OUTPUT_LENGTH = 10 * 1024 * 1024
 const LOGIN_PATH_TIMEOUT_MS = 2500
 // exit 后等待 close 的宽限期：后台孙进程占住管道时 close 不触发，超时即强制返回
 const CLOSE_GRACE_MS = 2500
-// JS 沙箱执行超时（与 worker 内 vm timeout 一致）
-const JS_RUN_TIMEOUT_MS = 30000
 
 let USER_PATH = process.env.PATH || ''
 
@@ -177,54 +173,5 @@ export const cliRun = (command: string, args: Array<string | number> = [], optio
     } catch (err) {
       done({ error: err instanceof Error ? err.message : String(err) })
     }
-  })
-}
-
-/**
- * 在 worker 线程中执行 JS 沙箱，彻底移出主线程，死循环等场景不再卡 UI。
- * 双保险超时：worker 内 vm timeout + 主线程 terminate 兜底。
- */
-export const jsRun = (script: string, args: Record<string, unknown> = {}): Promise<JsRunResult> => {
-  const timeout = JS_RUN_TIMEOUT_MS
-  return new Promise((resolve) => {
-    const workerCode = `
-      const { parentPort, workerData } = require('node:worker_threads')
-      const { runInNewContext } = require('node:vm')
-      const logs = []
-      const sandbox = {
-        args: workerData.args,
-        result: undefined,
-        console: {
-          log: (...items) => logs.push(items.map(String).join(' ')),
-          error: (...items) => logs.push(items.map(String).join(' ')),
-        },
-      }
-      try {
-        runInNewContext(workerData.script, sandbox, { timeout: workerData.timeout })
-        parentPort.postMessage({ result: sandbox.result ?? null, stdout: logs.join('\\n') })
-      } catch (err) {
-        parentPort.postMessage({ result: sandbox.result ?? null, stdout: logs.join('\\n'), error: err.message })
-      }
-    `
-    let worker: Worker
-    try {
-      worker = new Worker(workerCode, { eval: true, workerData: { script, args, timeout } })
-    } catch (err) {
-      resolve({ result: null, stdout: '', error: err instanceof Error ? err.message : String(err) })
-      return
-    }
-    // 兜底：worker 内脚本极端阻塞（vm timeout 无法中断）时强制终止
-    const killer = setTimeout(() => {
-      worker.terminate()
-      resolve({ result: null, stdout: '', error: `脚本执行超过 ${timeout}ms，已强制终止` })
-    }, timeout)
-    worker.once('message', (msg: JsRunResult) => {
-      clearTimeout(killer)
-      resolve(msg)
-    })
-    worker.once('error', (err) => {
-      clearTimeout(killer)
-      resolve({ result: null, stdout: '', error: err.message })
-    })
   })
 }

@@ -29,11 +29,6 @@ const props = defineProps({
   }
 })
 
-function truncate(str: string, max = 80): string {
-  if (!str) return ''
-  return str.length > max ? str.slice(0, max) + '…' : str
-}
-
 const commandText = computed(() => {
   const { toolCallName, args } = props.content.data
   if (!args) return toolCallName
@@ -42,18 +37,6 @@ const commandText = computed(() => {
     switch (toolCallName) {
       case 'cli_run':
         return `${parsed.command} ${(parsed.args || []).join(' ')}`.trim()
-      case 'js_run':
-        return `node -e "${truncate(parsed.script)}"`
-      case 'python_run':
-        return parsed.file
-          ? `python ${parsed.file}`
-          : `python -c "${truncate(parsed.code)}"`
-      case 'node_run':
-        return parsed.file
-          ? `node ${parsed.file}`
-          : `node -e "${truncate(parsed.code)}"`
-      case 'git_exec':
-        return `git ${(parsed.args || []).join(' ')}`
       default:
         return toolCallName
     }

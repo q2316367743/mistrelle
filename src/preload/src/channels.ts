@@ -130,8 +130,7 @@ export interface FsGrepResult {
 
 // ── shellExec ──────────────────────────────────────────────
 export const ShellExecChannels = {
-  cliRun: 'shellExec:cliRun',
-  jsRun: 'shellExec:jsRun'
+  cliRun: 'shellExec:cliRun'
 } as const
 
 export interface CliRunOptions {
@@ -146,12 +145,6 @@ export interface CliRunResult {
   stderr?: string
   exitCode?: number | null
   signal?: string
-  error?: string
-}
-
-export interface JsRunResult {
-  result?: unknown
-  stdout?: string
   error?: string
 }
 

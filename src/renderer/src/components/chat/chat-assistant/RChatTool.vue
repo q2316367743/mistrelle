@@ -33,7 +33,8 @@ const emit = defineEmits<{
   (e: 'view-sub-agent', subAgentId: string): void
 }>()
 
-const shellToolNames = new Set(['cli_run', 'js_run', 'python_run', 'node_run', 'git_exec'])
+// 已删除工具（js_run/python_run/node_run/git_exec 等）的历史调用回落通用工具渲染
+const shellToolNames = new Set(['cli_run'])
 const skillToolNames = new Set(['load_skill', 'read_skill_file'])
 const todoToolName = 'update_todo'
 const askToolName = 'ask'

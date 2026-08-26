@@ -1,4 +1,4 @@
-# 文件系统工具：file_read 按行分页、image_info、file_stat 与 file_glob / file_grep
+# 文件系统工具：file_read 按行分页、file_stat 与 file_glob / file_grep
 
 ## 背景
 
@@ -19,6 +19,10 @@
 
 - `image_info` 只负责**图片内容解析**（格式 / 宽高），不再返回 `size`。
 - 文件大小等**文件系统信息**由 `file_stat` 承担，基于 `fs.stat`，结果权威可靠。
+
+> 2026-08-26 默认工具精简：`image_info` 迁至设计场景工具集
+> （`tool/components/design/imageInfo.ts`，经 `createDesignTools` 随 design 聊天类型注入），
+> `file_exists` 删除（被 `file_stat` 完全覆盖：stat 成功即存在）。普通聊天不再默认注入二者。
 
 ### file_glob / file_grep 补全搜索能力
 
@@ -89,8 +93,8 @@
 - `src/main/src/ipc/fsIpc.ts` — `readFileLines` 流式 handler（窗口 / 预算 / EOF 语义）+ `globToRegex` / `walkFiles` / 其余 handler
 - `src/preload/src/fs.ts` — preload 桥 `readFileLines` / `glob` / `grep` 透传方法（本地声明 `FsReadLinesResult`）
 - `src/renderer/src/types/fs.d.ts` — 渲染侧 `FsApi` 声明同步（含 `FsReadLinesResult` / `FsGlobResult` / `FsGrepResult`）
-- `src/renderer/src/modules/tool/components/native/file.ts` — `file_read` 分页组装（双形态返回）+ `image_info` 调整 + `file_stat` /
-  `file_glob` / `file_grep` 工具定义
+- `src/renderer/src/modules/tool/components/native/file.ts` — `file_read` 分页组装（双形态返回）+ `file_stat` /
+  `file_glob` / `file_grep` 工具定义（`image_info` 已迁 `design/imageInfo.ts`）
 
 ## API 契约
 
@@ -118,11 +122,12 @@
 - `totalLines` 为 `null` 表示主进程提前停流、总行数未知（凭 `nextOffset` 续读即可）。
 - `offset` 超出总行数：`{ content: "", totalLines, offset, hint }`。
 
-### image_info
+### image_info（已迁移）
 
 输入：`{ path: string }`　输出：`{ path, format, width, height }`
 
 - 去掉 `size` 字段。文件大小请调用 `file_stat`。
+- 契约不变；定义迁至 `design/imageInfo.ts`，经 `createDesignTools` 随 design 聊天类型注入。
 
 ### file_stat
 
@@ -166,7 +171,7 @@
 
 ### 通用
 
-- 五个工具均 `risk: 'safe'`，经过沙盒黑名单校验（`checkBlacklist`）与默认工具策略的
+- `file_read` / `file_stat` / `file_glob` / `file_grep` 均 `risk: 'safe'`，经过沙盒黑名单校验（`checkBlacklist`）与默认工具策略的
   `args.path` 可信区域 / 白名单裁决。
 - `file_glob` / `file_grep` 在 handler 内先校验目录存在（`existsSync`）并 try/catch 兜底返回 `{ error }`。
 - 工具定义在 `fileTools` 数组追加即自动进入 `getDefaultTools()`，无需在 `toolMap` / `toolGroups` 登记。

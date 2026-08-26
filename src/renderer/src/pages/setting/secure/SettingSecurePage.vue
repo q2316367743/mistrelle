@@ -116,32 +116,11 @@
               <div class="card-title-row">
                 <span class="card-title">内置运行时</span>
               </div>
-              <div class="card-desc">指定 Python、Node.js、Git 与 ego-browser 的可执行文件路径，留空则使用系统默认路径</div>
+              <div class="card-desc">指定 ego-browser 的可执行文件路径，留空则使用系统默认路径</div>
             </div>
           </div>
         </div>
 
-        <RuntimeRow
-          icon="terminal"
-          name="Python"
-          description="通用编程语言，适用于脚本编写、自动化和数据处理"
-          placeholder="未设置则使用环境变量中的 Python"
-          v-model="state.runtime.python"
-        />
-        <RuntimeRow
-          icon="terminal"
-          name="Node.js"
-          description="基于 Chrome V8 引擎的 JavaScript 运行时，用于服务端开发"
-          placeholder="未设置则使用环境变量中的 Node.js"
-          v-model="state.runtime.node"
-        />
-        <RuntimeRow
-          icon="git-branch"
-          name="Git Bash"
-          description="分布式版本控制工具，用于代码克隆与提交"
-          placeholder="未设置则使用环境变量中的 Git"
-          v-model="state.runtime.git"
-        />
         <RuntimeRow
           icon="internet"
           name="ego-browser"

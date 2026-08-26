@@ -92,11 +92,14 @@ ConfirmChatTool 勾选批准 → bridge.resolve({ approved: true, allowDir })
 
 ### 2. skill 根目录内脚本免审批
 
-`cli_run` 的 `command`、`python_run` / `node_run` 的 `file` 位于任一 skill agent 根目录
+`cli_run` 的 `command` 位于任一 skill agent 根目录
 （系统默认 `~/.agents/skills`、`~/.mistrelle/skills` 与用户自定义 agent）之下 → allow，
 不依赖沙箱开关。根目录集合由 `AgentChat.buildPolicyContext` 调 `skillAgentList()` 注入
 `ctx.skillRootDirs`——**不是** toolPolicy 直接 import SkillService（其顶层 import `@/store`
 barrel，会复活上文 TDZ 循环链，这是本次实现时踩过并修正的点）。
+
+> 2026-08-26 默认工具精简：`python_run` / `node_run` 已删除，判定只剩 `cli_run` 的
+> `command`（脚本路径或整条 shell 语句两种形态均保留）。
 
 2026-08-25 增强：模型偶发把整条 shell 语句塞进 `command`（如 `find <skill 目录> -type f | head -20`），
 路径前缀匹配不上。`isSkillScriptCall` 对整串 `command` 按空白拆 token，**所有路径 token

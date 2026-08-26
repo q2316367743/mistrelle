@@ -51,14 +51,6 @@ declare global {
           signal?: string
           error?: string
         }>
-        jsRun(
-          script: string,
-          args?: Record<string, unknown>
-        ): Promise<{
-          result?: unknown
-          stdout?: string
-          error?: string
-        }>
       }
       axios: AxiosInstance
     }

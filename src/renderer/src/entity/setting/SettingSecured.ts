@@ -66,12 +66,9 @@ interface SettingSecuredData {
 }
 
 /**
- * 运行时目录，未设置则使用环境变量的
+ * 运行时目录，未设置则使用系统默认路径
  */
 interface SettingSecuredRuntime {
-  python: string
-  node: string
-  git: string
   /**
    * ego-browser CLI 可执行文件路径
    * > 该命令默认不在 PATH 中，留空则使用系统默认路径（见 getDefaultEgoBrowserPath）
@@ -139,9 +136,6 @@ export function buildSettingSecure(): SettingSecure {
       bulkDeleteApprovalThreshold: 50
     },
     runtime: {
-      python: '',
-      node: '',
-      git: '',
       egoBrowser: ''
     }
   }
