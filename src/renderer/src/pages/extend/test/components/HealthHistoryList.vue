@@ -1,12 +1,6 @@
 <template>
   <div class="history-list">
-    <t-table
-      row-key="id"
-      size="small"
-      :columns="columns"
-      :data="list"
-      :loading="initLoading"
-    >
+    <t-table row-key="id" size="small" :columns="columns" :data="list" :loading="initLoading">
       <template #time="{ row }">
         {{ formatTime(row.createdAt) }}
       </template>
@@ -64,10 +58,7 @@
 <script lang="ts" setup>
 import dayjs from 'dayjs'
 import type { TableProps } from 'tdesign-vue-next'
-import {
-  HEALTH_CONCLUSION_LABELS,
-  HEALTH_TASK_STATUS_LABELS
-} from '../health-report'
+import { HEALTH_CONCLUSION_LABELS, HEALTH_TASK_STATUS_LABELS } from '../health-report'
 import { parseHealthItems } from '../useHealthChecks'
 
 defineProps<{

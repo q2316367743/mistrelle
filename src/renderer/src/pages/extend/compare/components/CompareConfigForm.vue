@@ -73,9 +73,6 @@
           题库管理
         </t-button>
       </div>
-      <t-alert theme="info" class="config-alert">
-        密钥仅用于本次检测请求，不会写入对比记录或报告；判分为关键词自动初判，答案全文保留供人工复核。
-      </t-alert>
     </div>
 
     <div class="form-actions">

@@ -21,7 +21,7 @@
 import { h } from 'vue'
 import type { BaseTableCol, BaseTableCellParams, TableRowData } from 'tdesign-vue-next'
 import type { CompareRecord } from '../compare-types'
-import { modelLabel } from '../compare-metrics'
+import { modelFullLabel } from '../compare-metrics'
 import { openCompareAnswers } from '../modals/CompareAnswersDialog'
 
 interface MatrixMark {
@@ -39,7 +39,7 @@ interface MatrixRow {
 
 const props = defineProps<{ record: CompareRecord }>()
 
-const modelNames = computed(() => props.record.results.map(modelLabel))
+const modelNames = computed(() => props.record.results.map(modelFullLabel))
 
 const rows = computed<MatrixRow[]>(() => {
   const first = props.record.results[0]

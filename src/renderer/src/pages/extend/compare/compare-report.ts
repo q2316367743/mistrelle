@@ -16,6 +16,7 @@ import {
   buildSummaryLines,
   fmtRate,
   fmtSec,
+  modelFullLabel,
   modelLabel,
   truncateCount
 } from './compare-metrics'
@@ -76,7 +77,7 @@ export interface CompareReportVm {
 /** 组装报告 view model（模板只做展示循环） */
 export const buildCompareReportVm = (record: CompareRecord): CompareReportVm => {
   const { results } = record
-  const modelNames = results.map(modelLabel)
+  const modelNames = results.map(modelFullLabel)
 
   // 模型特征段
   const features = results.map((result) => {
@@ -91,11 +92,11 @@ export const buildCompareReportVm = (record: CompareRecord): CompareReportVm => 
       `累计 tokens：输入 ${result.usage.promptTokens} / 输出 ${result.usage.completionTokens} · 截断 ${truncateCount(result)} 次`
     ]
     if (result.error) lines.push(`异常：${result.error}`)
-    return { name: modelLabel(result), lines }
+    return { name: modelFullLabel(result), lines }
   })
 
   const speedDetails = results.map((result) => ({
-    name: modelLabel(result),
+    name: modelFullLabel(result),
     medianText: `${fmtSec(result.speedMedian?.ttftMs)} / ${fmtRate(result.speedMedian?.tokPerSec)} tok/s`,
     runs: result.speedRuns.map((run, index) => ({
       index: `${index + 1}`,
@@ -113,7 +114,7 @@ export const buildCompareReportVm = (record: CompareRecord): CompareReportVm => 
   }))
 
   const identityItems = results.map((result) => ({
-    name: modelLabel(result),
+    name: modelFullLabel(result),
     latency: result.identity ? fmtSec(result.identity.latencyMs) : '—',
     error: result.identity?.error ? mdCell(result.identity.error, 60) : '',
     lines: result.identity?.content ? mdLines(result.identity.content) : []
@@ -136,7 +137,7 @@ export const buildCompareReportVm = (record: CompareRecord): CompareReportVm => 
 
   // 答案全文块（按模型 × 题目，供人工复核）
   const answerBlocks = results.map((result) => ({
-    name: modelLabel(result),
+    name: modelFullLabel(result),
     items: result.questions.map((item) => ({
       tag: item.tag,
       lines: item.error
@@ -148,7 +149,7 @@ export const buildCompareReportVm = (record: CompareRecord): CompareReportVm => 
   }))
 
   const consistencyItems = results.map((result) => ({
-    name: modelLabel(result),
+    name: modelFullLabel(result),
     items: result.consistency.map((item) => ({
       tag: item.tag,
       allSameLabel: item.error ? '失败' : item.allSame ? '三次一致' : '存在波动',

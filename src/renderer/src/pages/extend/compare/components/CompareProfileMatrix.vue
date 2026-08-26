@@ -9,11 +9,11 @@
 import { h } from 'vue'
 import type { BaseTableCol, BaseTableCellParams, TableRowData } from 'tdesign-vue-next'
 import type { CompareRecord } from '../compare-types'
-import { buildProfileRows, modelLabel } from '../compare-metrics'
+import { buildProfileRows, modelFullLabel } from '../compare-metrics'
 
 const props = defineProps<{ record: CompareRecord }>()
 
-const modelNames = computed(() => props.record.results.map(modelLabel))
+const modelNames = computed(() => props.record.results.map(modelFullLabel))
 const rows = computed(() => buildProfileRows(props.record.results))
 
 const markClass = (text: string): string => {

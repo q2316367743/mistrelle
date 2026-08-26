@@ -7,6 +7,15 @@ import type { CompareModelResult } from './compare-types'
 export const modelLabel = (result: CompareModelResult): string =>
   result.target.modelName || result.target.modelId
 
+/**
+ * 完整模型标识：提供方 · 模型名（同款模型不同供应商的横向对比场景必须能区分；
+ * 报告表头 / 观察摘要 / 章节标题统一用此标识，参与模型明细表保留纯名 + 独立提供方列）。
+ */
+export const modelFullLabel = (result: CompareModelResult): string => {
+  const name = result.target.modelName || result.target.modelId
+  return result.target.provideName ? `${result.target.provideName} · ${name}` : name
+}
+
 export const fmtSec = (ms: number | null | undefined): string =>
   ms != null ? `${(ms / 1000).toFixed(2)}s` : '—'
 
@@ -131,7 +140,7 @@ export const buildSummaryLines = (results: CompareModelResult[]): string[] => {
     .sort((a, b) => (a.speedMedian?.ttftMs ?? 0) - (b.speedMedian?.ttftMs ?? 0))
   if (ttftRanked.length >= 2) {
     summary.push(
-      `首字延迟最快：${modelLabel(ttftRanked[0])}（${fmtSec(ttftRanked[0].speedMedian?.ttftMs)}），最慢：${modelLabel(ttftRanked[ttftRanked.length - 1])}（${fmtSec(ttftRanked[ttftRanked.length - 1].speedMedian?.ttftMs)}）`
+      `首字延迟最快：${modelFullLabel(ttftRanked[0])}（${fmtSec(ttftRanked[0].speedMedian?.ttftMs)}），最慢：${modelFullLabel(ttftRanked[ttftRanked.length - 1])}（${fmtSec(ttftRanked[ttftRanked.length - 1].speedMedian?.ttftMs)}）`
     )
   }
   const rateRanked = results
@@ -139,30 +148,30 @@ export const buildSummaryLines = (results: CompareModelResult[]): string[] => {
     .sort((a, b) => (b.speedMedian?.tokPerSec ?? 0) - (a.speedMedian?.tokPerSec ?? 0))
   if (rateRanked.length >= 2) {
     summary.push(
-      `生成速度最高：${modelLabel(rateRanked[0])}（${fmtRate(rateRanked[0].speedMedian?.tokPerSec)} tok/s），最低：${modelLabel(rateRanked[rateRanked.length - 1])}（${fmtRate(rateRanked[rateRanked.length - 1].speedMedian?.tokPerSec)} tok/s）`
+      `生成速度最高：${modelFullLabel(rateRanked[0])}（${fmtRate(rateRanked[0].speedMedian?.tokPerSec)} tok/s），最低：${modelFullLabel(rateRanked[rateRanked.length - 1])}（${fmtRate(rateRanked[rateRanked.length - 1].speedMedian?.tokPerSec)} tok/s）`
     )
   }
   const passRanked = [...results].sort((a, b) => passRate(b) - passRate(a))
   if (passRanked.length >= 2 && passRanked[0].questions.length > 0) {
     const last = passRanked[passRanked.length - 1]
     summary.push(
-      `题集通过率最高：${modelLabel(passRanked[0])}（${passRanked[0].questionPassed}/${passRanked[0].questions.length}），最低：${modelLabel(last)}（${last.questionPassed}/${last.questions.length}）`
+      `题集通过率最高：${modelFullLabel(passRanked[0])}（${passRanked[0].questionPassed}/${passRanked[0].questions.length}），最低：${modelFullLabel(last)}（${last.questionPassed}/${last.questions.length}）`
     )
   }
   const thinkers = results.filter((it) => it.speedRuns.some((run) => run.isThinking))
   if (thinkers.length) {
-    summary.push(`思考型模型（输出思考流）：${thinkers.map(modelLabel).join('、')}`)
+    summary.push(`思考型模型（输出思考流）：${thinkers.map(modelFullLabel).join('、')}`)
   }
   const unstable = results.filter((it) => it.consistency.length > 0 && !isStable(it))
   if (unstable.length) {
     summary.push(
-      `一致性轮答案存在波动：${unstable.map(modelLabel).join('、')}（temperature=0 下同题多次回答不完全一致）`
+      `一致性轮答案存在波动：${unstable.map(modelFullLabel).join('、')}（temperature=0 下同题多次回答不完全一致）`
     )
   }
   const truncated = results.filter((it) => truncateCount(it) >= 2)
   if (truncated.length) {
     summary.push(
-      `输出截断较多（触达生成上限）：${truncated.map((it) => `${modelLabel(it)}（${truncateCount(it)} 次）`).join('、')}`
+      `输出截断较多（触达生成上限）：${truncated.map((it) => `${modelFullLabel(it)}（${truncateCount(it)} 次）`).join('、')}`
     )
   }
   return summary

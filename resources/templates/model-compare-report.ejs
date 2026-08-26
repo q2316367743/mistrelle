@@ -1,22 +1,5 @@
 # 模型对比检测报告（markdown）
 
-<!--
-  模型对比检测审计报告模板（产出 markdown 纯文本，非 HTML）。
-  数据契约（渲染侧 compare-report.ts 预处理 view model，模板只做展示循环）：
-  { title, timeText, generatedText, statusLabel, durationText, execModeLabel,
-    speedRunsLabel, consistencyCountLabel, modelNames, modelMetas,
-    summary[], overviewRows[{metric, cells[{text,best,note}]}],
-    profileRows[{tag, cells[]}], features[{name, lines[]}],
-    speedDetails[{name, medianText, runs[{index,ttft,think,rate,tokens,inFlight,finish,error}]}],
-    identityItems[{name, latency, error, lines[]}], questionRows[{tag,question,reference,cells[]}],
-    answerBlocks[{name, items[{tag, lines[]}]}],
-    consistencyItems[{name, items[{tag, allSameLabel, answerLines[]}]}],
-    concurrencyNote, logs[{time, level, message}] }
-  例外说明：本项目 HTML 模板约定用 <%= %>（HTML 转义），但本模板产出 markdown 纯文本，
-  HTML 实体转义会把答案中的 < > ' 污染成 &lt; 等；所有文本已由 vm 侧 mdCell 统一清洗
-  （压空白 / 转义竖线 / 截断），故插值一律 <%- %> 原样输出。
--->
-
 <%- title %>
 
 - 检测时间：<%- timeText %>

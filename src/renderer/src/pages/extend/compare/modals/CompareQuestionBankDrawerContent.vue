@@ -1,8 +1,8 @@
 <template>
   <div class="bank-content">
     <t-alert theme="info" class="bank-tip">
-      题库入库 compare_question 表（不再手改 json 防格式错误）。判分规则：关键词全部包含
-      {{ '＋' }} 可选正则匹配；答案全文保留在对比记录中供人工复核。启用开关 / 编辑即时保存。
+      判分规则：关键词全部包含 {{ '＋' }} 可选正则匹配；答案全文保留在对比记录中供人工复核。启用开关
+      / 编辑即时保存。
     </t-alert>
 
     <t-table row-key="key" size="small" bordered :columns="columns" :data="bank" :loading="saving">

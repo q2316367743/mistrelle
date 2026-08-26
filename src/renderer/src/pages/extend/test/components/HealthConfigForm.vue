@@ -68,9 +68,6 @@
           <t-radio value="full">完整检测（12 项，约 2 分钟）</t-radio>
         </t-radio-group>
       </div>
-      <t-alert theme="info" class="config-alert">
-        密钥仅用于本次检测请求，不会保存到检测记录；检测结果仅供参考，不构成担保。
-      </t-alert>
     </div>
 
     <div class="form-actions">

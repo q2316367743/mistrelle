@@ -48,11 +48,11 @@
 
 <script lang="ts" setup>
 import type { CompareRecord } from '../compare-types'
-import { modelLabel } from '../compare-metrics'
+import { modelFullLabel } from '../compare-metrics'
 
 const props = defineProps<{ record: CompareRecord }>()
 
-const modelName = modelLabel
+const modelName = modelFullLabel
 
 const hasConsistency = computed(() =>
   props.record.results.some((it) => it.consistency.length > 0)

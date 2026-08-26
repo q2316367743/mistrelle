@@ -56,7 +56,11 @@
 <script lang="ts" setup>
 import dayjs from 'dayjs'
 import HealthResultView from '../components/HealthResultView.vue'
-import { HEALTH_CONCLUSION_LABELS, HEALTH_TASK_STATUS_LABELS, buildHealthReport } from '../health-report'
+import {
+  HEALTH_CONCLUSION_LABELS,
+  HEALTH_TASK_STATUS_LABELS,
+  buildHealthReport
+} from '../health-report'
 import { parseHealthItems, parseHealthLogs, useHealthChecks } from '../useHealthChecks'
 
 // eslint-disable-next-line no-undef
@@ -106,15 +110,15 @@ const STATUS_THEMES: Record<HealthTaskStatus, 'primary' | 'success' | 'warning'>
 }
 
 /** 导出报告：dialog.save 自选路径（exportReport 内部已定位文件）；用户取消 exportedPath 保持空 */
-  const handleExport = async () => {
-    exporting.value = true
-    try {
-      const path = await exportReport(current.value)
-      exportedPath.value = path ?? ''
-    } finally {
-      exporting.value = false
-    }
+const handleExport = async () => {
+  exporting.value = true
+  try {
+    const path = await exportReport(current.value)
+    exportedPath.value = path ?? ''
+  } finally {
+    exporting.value = false
   }
+}
 
 const locateExported = () => {
   if (exportedPath.value) window.preload.inject.shell.showItemInFolder(exportedPath.value)

@@ -15,12 +15,12 @@
 import { h } from 'vue'
 import type { BaseTableCol, BaseTableCellParams, TableRowData } from 'tdesign-vue-next'
 import type { CompareRecord } from '../compare-types'
-import { buildOverviewRows, buildSummaryLines, modelLabel } from '../compare-metrics'
+import { buildOverviewRows, buildSummaryLines, modelFullLabel } from '../compare-metrics'
 import type { MetricCell, OverviewMetricRow } from '../compare-metrics'
 
 const props = defineProps<{ record: CompareRecord }>()
 
-const modelNames = computed(() => props.record.results.map(modelLabel))
+const modelNames = computed(() => props.record.results.map(modelFullLabel))
 const summaryLines = computed(() => buildSummaryLines(props.record.results))
 const rows = computed(() => buildOverviewRows(props.record.results))
 
