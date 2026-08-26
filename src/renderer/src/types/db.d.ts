@@ -61,6 +61,8 @@ declare interface ChatItemInput {
   id: string
   name: string
   top: boolean
+  /** 隐私聊天标记：开启后不注入记忆 / 不注册记忆工具，会话不进入记忆提取 */
+  privacy: boolean
   workspace: string
   projectId?: string
   taskId?: string
@@ -69,11 +71,12 @@ declare interface ChatItemInput {
   updatedAt: number
 }
 
-/** 列表行（top 为 0/1 整数，渲染侧转 boolean） */
+/** 列表行（top / privacy 为 0/1 整数，渲染侧转 boolean） */
 declare interface ChatItemRow {
   id: string
   name: string
   top: number
+  privacy: number
   workspace: string
   projectId: string | null
   taskId: string | null
@@ -89,6 +92,7 @@ declare interface ChatContentResult {
 
 declare interface ChatDbApi {
   list: () => Promise<ChatItemRow[]>
+  getItem: (id: string) => Promise<ChatItemRow | null>
   upsertItem: (item: ChatItemInput) => Promise<void>
   deleteItem: (id: string) => Promise<void>
   getContent: (chatId: string) => Promise<ChatContentResult>

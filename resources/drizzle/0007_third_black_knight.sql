@@ -1,0 +1,1 @@
+ALTER TABLE `chat` ADD `privacy` integer DEFAULT 0 NOT NULL;

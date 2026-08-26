@@ -1,5 +1,12 @@
 import type { AIMessage, ChatMessage, UserMessage } from '@/domain'
-import { aiChatContentGet, aiChatContentStamp, aiChatList, buildChatMainKey } from '@/modules/chat/service/ChatService'
+import {
+  aiChatContentGet,
+  aiChatContentStamp,
+  aiChatGetItem,
+  aiChatList,
+  buildChatMainKey,
+  chatIdFromKey
+} from '@/modules/chat/service/ChatService'
 import { useLog } from '@/hooks/UseLog'
 import {
   EXTRACT_DEBOUNCE_MS,
@@ -92,6 +99,13 @@ export const extractSession = async (storageKey: string): Promise<ExtractResult>
   const from = state.extracted[storageKey] ?? 0
   const messages = content.messages
   if (messages.length <= from) return { ok: true, hadNew: false, entries: 0 }
+
+  // 隐私聊天：不提取任何内容，直接推进进度（防止之后关闭隐私时这段消息被补提进记忆）
+  const chatId = chatIdFromKey(storageKey)
+  if (chatId && (await aiChatGetItem(chatId))?.privacy) {
+    await setExtractedProgress(storageKey, messages.length)
+    return { ok: true, hadNew: false, entries: 0 }
+  }
 
   const transcript = flattenMessages(messages.slice(from))
   inFlight.add(storageKey)

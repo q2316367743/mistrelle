@@ -19,6 +19,7 @@ export function chatList() {
 const itemSet = {
   name: sql`excluded.name`,
   top: sql`excluded.top`,
+  privacy: sql`excluded.privacy`,
   workspace: sql`excluded.workspace`,
   projectId: sql`excluded.project_id`,
   taskId: sql`excluded.task_id`,
@@ -34,6 +35,7 @@ export function chatUpsertItem(item: ChatItemInput): void {
       id: item.id,
       name: item.name,
       top: item.top ? 1 : 0,
+      privacy: item.privacy ? 1 : 0,
       workspace: item.workspace,
       projectId: item.projectId ?? null,
       taskId: item.taskId ?? null,
@@ -43,6 +45,11 @@ export function chatUpsertItem(item: ChatItemInput): void {
     })
     .onConflictDoUpdate({ target: chat.id, set: itemSet })
     .run()
+}
+
+/** 单行读取（渲染侧隐私标记水合等轻量查询；缺行返回 null） */
+export function chatGetItem(id: string) {
+  return db().select().from(chat).where(eq(chat.id, id)).get() ?? null
 }
 
 export function chatDeleteItem(id: string): void {

@@ -16,7 +16,7 @@ import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/modules/chat/writingScene'
 import { getDefaultTools, isShellExecTool, toolMap } from '@/modules/tool'
 import type { ToolPolicyContext } from '@/modules/tool/toolPolicy'
-import { buildMemoryPrompt, buildMemoryToolPrompt } from '@/modules/memory'
+import { buildMemoryPrompt, buildMemoryToolPrompt, recordMemoryTool } from '@/modules/memory'
 import { buildPersonalizePrompt } from '@/modules/personalize'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
 import { SUB_AGENT_ALLOW } from '@/modules/subagent/types'
@@ -63,6 +63,8 @@ export interface UseChatOptions {
   workspace?: string
   /** 聊天模式（0 默认 / 1 计划 / 2 完全访问），用于约束工具执行行为 */
   mode?: AiChatMode
+  /** 隐私聊天（子 Agent 继承主 Agent 标记）：不注入记忆、不注册记忆工具 */
+  privacy?: boolean
   /** 聊天 ID（用于子 Agent 文件路径构建，主 Agent 必传） */
   chatId?: string
   /** 是否为子 Agent：禁用 spawn_agent 工具（防止嵌套派发导致路径错乱），且不注入子 Agent 使用指导 */
@@ -95,6 +97,8 @@ export class ToolChat {
   readonly allowedDirs = ref<string[]>([])
   /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
   private mode: AiChatMode = 0
+  /** 隐私聊天：不注入记忆、不注册记忆工具（发送时设置，标记持久化在 chat 表 privacy 列） */
+  private privacy = false
   /** 聊天类型（新建对话时选定，创建后锁定；缺省回退 office） */
   private chatType: ChatType = 'office'
   /** 聊天 ID（用于子 Agent 文件路径构建） */
@@ -128,6 +132,7 @@ export class ToolChat {
     this.functions = options.functions ?? []
     this.systemPrompt = options.systemPrompt ?? ''
     this.mode = options.mode ?? 0
+    this.privacy = options.privacy ?? false
     if (options.sandboxDir) this.sandboxDir = options.sandboxDir
     if (options.workspace) this.workspace = options.workspace
     if (options.chatId) this.chatId = options.chatId
@@ -176,6 +181,8 @@ export class ToolChat {
     ]) {
       // 子 Agent 不暴露 spawn_agent：防止嵌套派发（子 Agent 的 chatId 是自身 id，再派发路径会错乱）
       if (this.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) continue
+      // 隐私聊天不暴露记忆工具（用户 # 显式指定也不注入，防止对话内容经工具写入记忆）
+      if (this.privacy && fn.name === recordMemoryTool.name) continue
       // 主 Agent：按聊天类型裁剪 spawn_agent 的可用子 Agent 类型（SUB_AGENT_ALLOW 能力矩阵），减少模型试错
       if (!this.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) {
         map.set(fn.name, createSpawnAgentTool(SUB_AGENT_ALLOW[this.chatType]))
@@ -366,8 +373,9 @@ export class ToolChat {
       workspaceSettingsPrompt,
       // 聊天类型固定提示词 + writing 子场景提示词（类型与场景创建后锁定 → 前缀稳定可缓存；子 Agent 只读，无需类型指导）
       this.buildTypePrompt(),
-      // 记忆工具使用指导仅主 Agent 注入（record_memory 随默认工具注册，子 Agent 任务作用域不记全局记忆）
-      this.isSubAgent ? '' : buildMemoryToolPrompt(),
+      // 记忆工具使用指导仅主 Agent 注入（record_memory 随默认工具注册，子 Agent 任务作用域不记全局记忆）；
+      // 隐私聊天不注入（工具本身也已在 getFunctions 中过滤）
+      this.isSubAgent || this.privacy ? '' : buildMemoryToolPrompt(),
       // 子 Agent 使用指导仅主 Agent 注入（子 Agent 的 spawn_agent 已被过滤，指导无意义且会诱导嵌套）
       this.isSubAgent ? '' : this.buildSubAgentGuidancePrompt()
     ]
@@ -385,8 +393,9 @@ export class ToolChat {
     const todoStatePrompt = this.buildTodoStatePrompt()
     if (todoStatePrompt) systemMessages.push({ role: 'system', content: todoStatePrompt })
     // 记忆（长期 + 近期短期）作为独立 system 消息注入：内容按日变化，不污染稳定前缀；
-    // 子 Agent 任务作用域隔离，不注入全局记忆。内部按 mtime 缓存，agent loop 每轮调用无额外读盘
-    if (!this.isSubAgent) {
+    // 子 Agent 任务作用域隔离，不注入全局记忆。内部按 mtime 缓存，agent loop 每轮调用无额外读盘；
+    // 隐私聊天不注入记忆
+    if (!this.isSubAgent && !this.privacy) {
       const memoryPrompt = await buildMemoryPrompt()
       if (memoryPrompt) systemMessages.push({ role: 'system', content: memoryPrompt })
     }
@@ -837,6 +846,7 @@ export class ToolChat {
       sandboxDir: this.sandboxDir,
       workspace: this.workspace,
       mode: this.mode,
+      privacy: this.privacy,
       isSubAgent: this.isSubAgent,
       chatType: this.chatType,
       abortSignal: signal,
@@ -866,6 +876,11 @@ export class ToolChat {
 
   setMode(mode: AiChatMode): void {
     this.mode = mode
+  }
+
+  /** 设置隐私聊天标记（会话水合 / 子 Agent 继承时注入；创建后锁定，不随消息修改） */
+  setPrivacy(privacy: boolean): void {
+    this.privacy = privacy
   }
 
   /** 设置聊天类型（新建对话时选定，创建后锁定） */

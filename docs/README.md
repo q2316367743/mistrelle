@@ -118,6 +118,7 @@
 | [13-vision-image-passing.md](./chat/13-vision-image-passing.md)     | 模型识图：`AiModel.support` 能力位（独立 type）+ 弹窗 CheckboxGroup + 预设标注；请求构建时从磁盘路径重建图像块（全部历史保留），三格式适配器映射 `image_url` / `input_image` / anthropic source |
 | [14-send-scroll-to-bottom.md](./chat/14-send-scroll-to-bottom.md)   | 发送消息后滚动到底部：watch「列表增长且新末条为 user」+ ChatList expose 的 scrollToBottom（smooth），复位 tdesign 上滚暂停的自动跟随；user 消息异步追加故不挂 send 事件 |
 | [15-interactive-confirm-visibility.md](./chat/15-interactive-confirm-visibility.md) | 挂起确认的可见性与「停止≠拒绝」：confirm 卡片被超长结果推出视口致 agent 静默阻塞等批准的事故复盘；RChatList 顶部横幅+视口外自动滚动定位卡片（data-tool-call-id 锚点）、clear() 产生的 null 与用户拒绝分开文案、isSkillScriptCall 整串 command 的 token 级放行 |
+| [16-privacy-chat.md](./chat/16-privacy-chat.md)                     | 隐私聊天（创建后锁定）：chat 表 privacy 列（唯一写入口 AiChatStore.add）、不注入记忆 / 不注册 record_memory（含子 Agent 继承）、提取跳过但推进进度、聊天室开关禁用（lock-privacy）、引擎标题「私」tag |
 
 ### memory/ —— 记忆
 

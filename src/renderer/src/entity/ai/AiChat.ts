@@ -9,6 +9,8 @@ export interface AiChatItem extends BaseEntity {
   name: string
   // 是否置顶
   top: boolean
+  // 隐私聊天（创建后锁定）：开启后不注入记忆、不注册记忆工具，消息不进入短期 / 长期记忆（chat 表 privacy 列，0/1）
+  privacy: boolean
   // 工作空间，供列表按 workspace 分组
   workspace: string
   // 所属项目

@@ -32,6 +32,7 @@ import { imageDelete, imageList, imageUpsert } from '$/db/repo/imageRepo'
 import {
   chatDeleteItem,
   chatGetContent,
+  chatGetItem,
   chatGetStamp,
   chatGetSub,
   chatList,
@@ -57,6 +58,7 @@ export function registerDbIpc(): void {
   ipcMain.handle(DbChannels.aihotMarkRead, (_event, id: string): void => aiHotMarkRead(id))
 
   ipcMain.handle(DbChannels.chatList, (): ReturnType<typeof chatList> => chatList())
+  ipcMain.handle(DbChannels.chatGetItem, (_event, id: string) => chatGetItem(id))
   ipcMain.handle(DbChannels.chatUpsertItem, (_event, item: ChatItemInput): void =>
     chatUpsertItem(item)
   )

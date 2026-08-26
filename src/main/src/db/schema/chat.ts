@@ -16,6 +16,8 @@ export const chat = sqliteTable(
     name: text('name').notNull(),
     /** 置顶标记（0/1） */
     top: integer('top').notNull(),
+    /** 隐私聊天标记（0/1）：开启后不注入记忆 / 不注册记忆工具，会话不进入记忆提取 */
+    privacy: integer('privacy').notNull().default(0),
     /** 逻辑工作区分组字符串（可为空串，非路径层级） */
     workspace: text('workspace').notNull(),
     projectId: text('project_id'),

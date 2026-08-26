@@ -174,6 +174,8 @@ export const runSingleTool = async (
       thinking,
       reasoningEffort: reasoning_effort,
       subAgentType: resolved.type,
+      // 隐私聊天：子 Agent 继承标记（同样不注册记忆工具）
+      privacy: policyContext.privacy,
       // 主 Agent 终止时级联终止子 Agent
       parentSignal: policyContext.abortSignal
     })

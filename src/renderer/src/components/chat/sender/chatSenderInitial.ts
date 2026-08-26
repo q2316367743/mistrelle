@@ -13,6 +13,8 @@ export interface ChatSenderInitial {
   effort?: ThinkingEffort
   agentId?: string
   mode?: AiChatMode
+  // 隐私聊天：不注入记忆、不注册记忆工具，会话不进入记忆提取
+  privacy?: boolean
   type?: ChatType
   writingScene?: WritingScene
   // 设计风格 id（design 类型创建后锁定；聊天室展示只读标签）

@@ -65,6 +65,7 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       updatedAt: now,
       name: preview.slice(0, 10),
       top: false,
+      privacy: params.privacy ?? false,
       workspace: workspace || '',
       type: params.type
     }

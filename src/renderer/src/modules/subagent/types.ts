@@ -43,6 +43,8 @@ export interface SubAgentOptions {
   reasoningEffort?: 'low' | 'high' | 'max'
   /** 子 Agent 能力类型（缺省 research） */
   subAgentType?: SubAgentType
+  /** 隐私聊天标记（继承主 Agent）：子 Agent 同样不注入记忆、不注册记忆工具 */
+  privacy?: boolean
   /** 主 Agent 的 AbortSignal：主 Agent 终止时级联终止子 Agent */
   parentSignal?: AbortSignal
 }

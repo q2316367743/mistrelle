@@ -25,6 +25,7 @@
         :sandbox-dir="sandboxDir"
         :token-usage="tokenUsage"
         lock-workspace
+        lock-privacy
         @send="handleSend"
         @stop="handleStop()"
       />
@@ -56,6 +57,15 @@
     </t-aside>
     <div class="l-chat-tool__header" :class="{ collapsed: collapsed }">
       <div class="l-chat-tool__title">
+        <t-tag
+          v-if="privacy"
+          theme="danger"
+          variant="light"
+          size="small"
+          class="l-chat-tool__private"
+        >
+          私
+        </t-tag>
         <span class="ellipsis" :title="chatName">{{ chatName }}</span>
       </div>
       <div class="ml-auto flex gap-8px chat-operator">
@@ -93,11 +103,14 @@ const props = withDefaults(
     chatId: string
     chatName: string
     storageKey: string
+    /** 隐私聊天标记：标题前展示「私」标识 */
+    privacy?: boolean
     /** 外部指定沙盒目录，缺省时按 chatId 自动推导 */
     sandboxDir?: string
     height?: string
   }>(),
   {
+    privacy: false,
     height: '100vh'
   }
 )
@@ -243,6 +256,12 @@ const paddingRight = computed(() => `${8 + r1}px`)
     font-size: 20px;
     font-weight: 600;
     width: calc(100% - 240px);
+  }
+
+  &__private {
+    flex-shrink: 0;
+    margin-right: 8px;
+    font-weight: 500;
   }
 
   &__aside {

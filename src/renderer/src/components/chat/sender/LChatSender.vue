@@ -16,8 +16,10 @@
           <l-chat-attachment
             v-model:agent="agentId"
             v-model:mode="mode"
+            v-model:privacy="privacy"
             :sandbox-dir="sandboxDir"
             :workspace-dir="workspaceRef"
+            :lock-privacy="lockPrivacy"
             @add-skill="insertSkill"
             @add-tool="insertTool"
             @add-ref-file="insertFile"
@@ -27,44 +29,67 @@
             v-model="workspaceRef"
             :readonly="lockWorkspace"
           />
-          <t-tag
-            v-if="designStyleId"
-            theme="warning"
-            variant="light"
-            size="large"
-            :title="designStyleName"
-          >
-            <template #icon>
-              <palette-icon />
-            </template>
-            {{ designStyleName || '设计风格' }}
-          </t-tag>
-          <t-tag
-            v-if="mode === 1"
-            theme="primary"
-            variant="light"
-            closable
-            size="large"
-            @close="handleClearMode"
-          >
-            <template #icon>
-              <task-icon />
-            </template>
-            计划
-          </t-tag>
-          <t-tag
-            v-else-if="mode === 2"
-            theme="warning"
-            variant="light"
-            closable
-            size="large"
-            @close="handleClearMode"
-          >
-            <template #icon>
-              <lock-off-icon />
-            </template>
-            完全访问
-          </t-tag>
+          <div class="flex items-center gap-8px">
+            <t-tag
+              v-if="selectedAgent"
+              closable
+              theme="primary"
+              variant="light-outline"
+              @close="selectAgent('')"
+            >
+              <template #icon> <ai-education-icon /> </template>
+              {{ selectedAgent.name }}
+            </t-tag>
+            <t-tag
+              v-if="designStyleId"
+              theme="warning"
+              variant="light"
+              size="medium"
+              :title="designStyleName"
+            >
+              <template #icon>
+                <palette-icon />
+              </template>
+              {{ designStyleName || '设计风格' }}
+            </t-tag>
+            <t-tag
+              v-if="mode === 1"
+              theme="primary"
+              variant="light"
+              closable
+              @close="handleClearMode"
+            >
+              <template #icon>
+                <task-icon />
+              </template>
+              计划
+            </t-tag>
+            <t-tag
+              v-else-if="mode === 2"
+              theme="warning"
+              variant="light"
+              closable
+              @close="handleClearMode"
+            >
+              <template #icon>
+                <lock-off-icon />
+              </template>
+              完全访问
+            </t-tag>
+            <t-tag
+              v-if="privacy"
+              theme="danger"
+              variant="light-outline"
+              :closable="!lockPrivacy"
+              title="隐私聊天：不注入记忆，内容不进入记忆系统（创建后锁定）"
+              @close="privacy = false"
+            >
+              <template #icon>
+                <lock-on-icon />
+              </template>
+              隐私
+            </t-tag>
+          </div>
         </div>
         <div class="flex gap-8px items-center">
           <t-popup
@@ -113,7 +138,12 @@ import { mergeAttributes, Node as TiptapNode } from '@tiptap/core'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { localSkillList, type LocalSkill } from '@/modules/skill'
-import { useSettingAiStore, useSettingDefaultStore, useDesignStyleStore } from '@/store'
+import {
+  useSettingAiStore,
+  useSettingDefaultStore,
+  useDesignStyleStore,
+  useAiAgentStore
+} from '@/store'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
 import type {
   SkillItem,
@@ -137,7 +167,13 @@ import type { CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
 import type { PptNodeRef } from '@/components/chat/ppt/pptNodeBridge'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { AiChatMode } from '@/entity'
-import { LockOffIcon, PaletteIcon, TaskIcon } from 'tdesign-icons-vue-next'
+import {
+  AiEducationIcon,
+  LockOffIcon,
+  LockOnIcon,
+  PaletteIcon,
+  TaskIcon
+} from 'tdesign-icons-vue-next'
 
 const props = withDefaults(
   defineProps<{
@@ -149,6 +185,8 @@ const props = withDefaults(
     showWorkspace?: boolean
     /** 锁定工作空间（聊天室）：未选择时隐藏，已选择时只读不可修改 */
     lockWorkspace?: boolean
+    /** 锁定隐私标记（聊天室）：隐私为创建后锁定属性，开关禁用、tag 不可关闭，仅回显创建时的选择 */
+    lockPrivacy?: boolean
     tokenUsage?: {
       contextTokens: number
       contextWindow: number
@@ -162,7 +200,8 @@ const props = withDefaults(
     placeholder: '描述任务，/ 调用技能，# 使用工具，@ 添加上下文',
     sandboxDir: '',
     showWorkspace: true,
-    lockWorkspace: false
+    lockWorkspace: false,
+    lockPrivacy: false
   }
 )
 const emit = defineEmits<{
@@ -177,11 +216,14 @@ const thinking = ref(props.initial.thinking ?? true)
 const effort = ref<ThinkingEffort>(props.initial.effort ?? 'high')
 const agentId = ref(props.initial.agentId || '')
 const mode = ref<AiChatMode>(props.initial.mode ?? 0)
+const privacy = ref(props.initial.privacy ?? false)
 const type = ref<ChatType>(props.initial.type ?? 'office')
 const writingScene = ref<WritingScene>(props.initial.writingScene ?? 'article')
 const designStyleId = ref(props.initial.designStyleId ?? '')
 const workspaceRef = ref(props.initial.workspace || '')
 const files = computed(() => [...sandboxFiles.value])
+const agents = computed(() => useAiAgentStore().all)
+const selectedAgent = computed(() => agents.value.find((item) => item.id === agentId.value))
 
 /** 设计风格名称：从缓存列表取（列表缓存、详情不缓存），风格被删除时回退空串 */
 const designStyleName = computed(
@@ -209,6 +251,10 @@ type MentionState = {
   tools: ToolItem[]
   canvas: CanvasNodeRef[]
   ppt: PptNodeRef[]
+}
+
+const selectAgent = (res: string) => {
+  agentId.value = res
 }
 
 const extractMentions = (editor: Editor): MentionState => {
@@ -269,6 +315,7 @@ const buildUserMessage = (): ChatRequestParams | null => {
       reasoning_effort: effort.value
     },
     mode: mode.value,
+    privacy: privacy.value,
     agentId: agentId.value,
     workspace: workspaceRef.value,
     type: type.value,
@@ -644,6 +691,7 @@ watch(
     if (init.effort !== undefined) effort.value = init.effort
     if (init.agentId !== undefined) agentId.value = init.agentId
     if (init.mode !== undefined) mode.value = init.mode
+    if (init.privacy !== undefined) privacy.value = init.privacy
     if (init.type !== undefined) type.value = init.type
     if (init.writingScene !== undefined) writingScene.value = init.writingScene
     if (init.designStyleId !== undefined) designStyleId.value = init.designStyleId

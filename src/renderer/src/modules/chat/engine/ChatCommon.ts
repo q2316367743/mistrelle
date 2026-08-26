@@ -25,6 +25,8 @@ export interface ChatRequestParams {
   }
   // 模式
   mode: AiChatMode
+  // 隐私聊天：不注入记忆、不注册记忆工具，会话不进入记忆提取（仅创建时生效，创建后锁定；持久化在 chat 表 privacy 列）
+  privacy?: boolean
   agentId?: string
   workspace?: string
   // 聊天类型（新建对话时选定，创建后锁定；缺省回退 office）

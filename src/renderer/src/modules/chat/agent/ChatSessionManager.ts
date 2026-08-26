@@ -2,7 +2,7 @@ import { ref, toRaw, watch } from 'vue'
 import { throttledWatch } from '@vueuse/core'
 import type { ChatRequestParams, ChatStatus, ChatType, WritingScene } from '@/modules/chat'
 import type { AiChatMode } from '@/entity/ai'
-import { aiChatContentGet, aiChatContentSet } from '@/modules/chat/service/ChatService'
+import { aiChatContentGet, aiChatContentSet, aiChatGetItem, chatIdFromKey } from '@/modules/chat/service/ChatService'
 import { buildDesignStylePrompt } from '@/modules/design'
 import { useDesignStyleStore } from '@/store'
 import { extractSessionNow, scheduleExtraction } from '@/modules/memory'
@@ -30,6 +30,8 @@ export class ChatSession {
   readonly workspace = ref('')
   /** 跨挂载存活：聊天模式（0 默认 / 1 计划 / 2 完全访问） */
   readonly mode = ref<AiChatMode>(0)
+  /** 跨挂载存活：隐私聊天标记（不注入记忆 / 不注册记忆工具，持久化在 chat 表 privacy 列，创建后锁定） */
+  readonly privacy = ref(false)
   /** 跨挂载存活：聊天类型（新建对话时选定，创建后锁定） */
   readonly type = ref<ChatType>('office')
   /** 跨挂载存活：写作子场景（writing 类型内部分层，创建后锁定；缺省 article） */
@@ -116,6 +118,15 @@ export class ChatSession {
       }
       this.mode.value = content.mode
       this.chat.setMode(content.mode)
+      // 隐私聊天标记（chat 行级列，创建后锁定）：水合进会话与引擎，首轮草稿发送前即生效
+      const privacyChatId = chatIdFromKey(this.storageKey)
+      if (privacyChatId) {
+        const item = await aiChatGetItem(privacyChatId)
+        if (item?.privacy) {
+          this.privacy.value = true
+          this.chat.setPrivacy(true)
+        }
+      }
       // 聊天级目录白名单（确认卡片勾选「此目录以后都允许」累积），旧数据缺省为空
       if (content.allowedDirs?.length) this.chat.setAllowedDirs(content.allowedDirs)
       if (content.agentId) this.agentId.value = content.agentId
@@ -168,8 +179,8 @@ export class ChatSession {
     if (params.workspace) this.workspace.value = params.workspace
     this.mode.value = params.mode
     if (params.agentId) this.agentId.value = params.agentId
-    // 注意：聊天类型（type）、写作子场景（writingScene）与设计风格（designStyleId）均为「创建后锁定」属性，
-    // 由 load() 从持久化的 AiChatContent 恢复，此处不得随消息修改。
+    // 注意：聊天类型（type）、写作子场景（writingScene）、设计风格（designStyleId）与隐私标记
+    // （privacy）均为「创建后锁定」属性，由 load() 从聊天行 / 持久化内容恢复，此处不得随消息修改。
     await this.chat.sendUserMessage(params)
   }
 

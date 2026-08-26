@@ -126,6 +126,21 @@
                 </div>
                 <t-divider />
                 <div class="l-chat-attachment__mode-desc">{{ currentModeDesc }}</div>
+                <t-divider />
+                <div class="l-chat-attachment__mode-row" title="隐私聊天（创建后锁定）">
+                  <span class="l-chat-attachment__mode-label">隐私聊天</span>
+                  <span class="l-chat-attachment__mode-en">Privacy</span>
+                  <t-switch
+                    class="ml-auto"
+                    :value="privacy"
+                    :disabled="lockPrivacy"
+                    @change="togglePrivacy"
+                  />
+                </div>
+                <div class="l-chat-attachment__mode-desc">
+                  开启后此聊天不注入记忆、不提供记忆工具，对话内容不会进入短期 /
+                  长期记忆。仅创建聊天时可选，创建后锁定。
+                </div>
               </template>
 
               <!-- 添加文件 -->
@@ -253,16 +268,6 @@
         </div>
       </template>
     </t-popup>
-    <t-tag
-      v-if="selectedAgent"
-      closable
-      theme="primary"
-      variant="light-outline"
-      @close="selectAgent('')"
-    >
-      <template #icon> <ai-education-icon /> </template>
-      {{ selectedAgent.name }}
-    </t-tag>
   </div>
 </template>
 
@@ -310,12 +315,17 @@ const props = withDefaults(
   defineProps<{
     agent?: string
     mode?: AiChatMode
+    privacy?: boolean
+    /** 锁定隐私标记（聊天室）：隐私为创建后锁定属性，开关禁用仅回显 */
+    lockPrivacy?: boolean
     sandboxDir?: string
     workspaceDir?: string
   }>(),
   {
     agent: '',
     mode: 0,
+    privacy: false,
+    lockPrivacy: false,
     sandboxDir: '',
     workspaceDir: ''
   }
@@ -323,6 +333,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:agent': [agentId: string]
   'update:mode': [mode: AiChatMode]
+  'update:privacy': [privacy: boolean]
   addSkill: [skill: LocalSkill]
   addTool: [tool: ToolSuggestionItem]
   addRefFile: [file: ChatFileRef]
@@ -367,7 +378,6 @@ watch(
 
 // ─── Computed ─────────────────────────────────────────────
 const agents = computed(() => useAiAgentStore().all)
-const selectedAgent = computed(() => agents.value.find((item) => item.id === props.agent))
 const workspaceDir = computed(() => props.workspaceDir)
 const canBackWorkspace = computed(() => {
   if (!workspaceCurrentDir.value || !props.workspaceDir) return false
@@ -498,6 +508,10 @@ const selectMode = (res: AiChatMode) => {
     emit('update:mode', res)
   }
   keyword.value = ''
+}
+
+const togglePrivacy = (value: unknown) => {
+  emit('update:privacy', Boolean(value))
 }
 
 const selectRefFile = async () => {

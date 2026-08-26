@@ -13,6 +13,7 @@ export const DbChannels = {
   aihotGetMeta: 'db:aihot:getMeta',
   aihotMarkRead: 'db:aihot:markRead',
   chatList: 'db:chat:list',
+  chatGetItem: 'db:chat:getItem',
   chatUpsertItem: 'db:chat:upsertItem',
   chatDeleteItem: 'db:chat:deleteItem',
   chatGetContent: 'db:chat:getContent',
@@ -93,6 +94,8 @@ export interface ChatItemInput {
   id: string
   name: string
   top: boolean
+  /** 隐私聊天标记：开启后不注入记忆 / 不注册记忆工具，会话不进入记忆提取 */
+  privacy: boolean
   workspace: string
   projectId?: string
   taskId?: string

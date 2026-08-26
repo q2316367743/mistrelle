@@ -14,6 +14,15 @@
           <SlideshowIcon v-else-if="item.type === 'ppt'" />
           <EditIcon v-else-if="item.type === 'writing'" />
           <FolderIcon v-else class="menu-icon" />
+          <t-tag
+            v-if="item.privacy"
+            theme="danger"
+            variant="light"
+            size="small"
+            class="shrink-0"
+          >
+            私
+          </t-tag>
           <span class="ellipsis flex-1 min-w-0">{{ item.name }}</span>
           <t-loading v-if="isStreaming(item)" size="small" />
         </button>

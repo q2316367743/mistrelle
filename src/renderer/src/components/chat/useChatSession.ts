@@ -73,6 +73,7 @@ export const useChatSession = (options: UseChatSessionOptions) => {
   const writingScene = session.writingScene
 
   const handleSend = (message: ChatRequestParams) => {
+    // 隐私标记为「创建后锁定」属性（chat 表行级列）：存量聊天不随消息修改，仅新建时经 AiChatStore.add 写入
     void session.send(message)
   }
 
@@ -128,6 +129,7 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     effort: effort.value,
     agentId: agentId.value,
     mode: mode.value,
+    privacy: session.privacy.value,
     type: chatType.value,
     writingScene: writingScene.value,
     designStyleId: session.designStyleId.value || undefined,

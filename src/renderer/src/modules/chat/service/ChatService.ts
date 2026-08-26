@@ -34,23 +34,37 @@ const parseKey = (key: string): ParsedKey | null => {
   return null
 }
 
+/** chat 表行 → AiChatItem 映射（list / getItem 共用；top / privacy 0/1 转布尔） */
+const toItem = (row: ChatItemRow): AiChatItem => ({
+  id: row.id,
+  name: row.name,
+  top: row.top === 1,
+  privacy: row.privacy === 1,
+  workspace: row.workspace,
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt,
+  ...(row.projectId ? { projectId: row.projectId } : {}),
+  ...(row.taskId ? { taskId: row.taskId } : {}),
+  ...(row.type ? { type: row.type as ChatType } : {})
+})
+
 /**
  * 获取聊天列表（类型化列，免整份 index.json 解析）
  */
 export const aiChatList = async (): Promise<Array<AiChatItem>> => {
   const rows = await window.preload.db.chat.list()
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    top: row.top === 1,
-    workspace: row.workspace,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    ...(row.projectId ? { projectId: row.projectId } : {}),
-    ...(row.taskId ? { taskId: row.taskId } : {}),
-    ...(row.type ? { type: row.type as ChatType } : {})
-  }))
+  return rows.map(toItem)
 }
+
+/** 读取单个聊天行（隐私标记水合等轻量查询）；缺行返回 undefined */
+export const aiChatGetItem = async (id: string): Promise<AiChatItem | undefined> => {
+  const row = await window.preload.db.chat.getItem(id)
+  return row ? toItem(row) : undefined
+}
+
+/** 从 storageKey 解析聊天 id（仅 chat:{id} 键），非聊天主键返回 null */
+export const chatIdFromKey = (key: string): string | null =>
+  key.startsWith(CHAT_KEY_PREFIX) ? key.slice(CHAT_KEY_PREFIX.length) : null
 
 /** 列表行 upsert（新增 / 更名 / 置顶等） */
 export const aiChatUpsertItem = async (item: AiChatItem): Promise<void> => {

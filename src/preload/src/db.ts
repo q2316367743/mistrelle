@@ -23,9 +23,10 @@ import {
   type ImageRecordInput
 } from './dbChannels'
 
-/** 列表行（top 为 0/1 整数，渲染侧转 boolean） */
-export interface ChatItemRow extends Omit<ChatItemInput, 'top'> {
+/** 列表行（top / privacy 为 0/1 整数，渲染侧转 boolean） */
+export interface ChatItemRow extends Omit<ChatItemInput, 'top' | 'privacy'> {
   top: number
+  privacy: number
 }
 
 export const dbApi = {
@@ -44,8 +45,10 @@ export const dbApi = {
     markRead: (id: string): Promise<void> => ipcRenderer.invoke(DbChannels.aihotMarkRead, id)
   },
   chat: {
-    /** 聊天列表（created_at 倒序，top 为 0/1） */
+    /** 聊天列表（created_at 倒序，top / privacy 为 0/1） */
     list: (): Promise<ChatItemRow[]> => ipcRenderer.invoke(DbChannels.chatList),
+    /** 单行读取（隐私标记水合等轻量查询；缺行为 null） */
+    getItem: (id: string): Promise<ChatItemRow | null> => ipcRenderer.invoke(DbChannels.chatGetItem, id),
     /** 列表行 upsert（新增 / 更名 / 置顶等） */
     upsertItem: (item: ChatItemInput): Promise<void> =>
       ipcRenderer.invoke(DbChannels.chatUpsertItem, item),
