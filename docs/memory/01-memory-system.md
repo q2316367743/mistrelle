@@ -6,7 +6,8 @@
 
 ```text
 ~/.mistrelle/soul/
-├── MEMORY.md            # 长期记忆：LLM 合并生成，结构化分节，≤ 4000 字
+├── MEMORY.md            # 长期记忆：LLM 合并 + 代码渲染，结构化分节（分节字数预算合计 4000 字）
+├── MEMORY.md.bak        # MEMORY.md 覆写前的上一版备份（单代，自动/手动编辑都会留）
 ├── memory/
 │   └── YYYY-MM-DD.md    # 每日短期记忆：每行一条 `- [HH:mm] [类别] 内容`，≤ 2000 字/天
 └── state.json           # { memoryEnabled, lastConsolidateDate, lastConsolidatedAt?, extracted: Record<storageKey, 消息数> }
@@ -14,7 +15,7 @@
 # 同目录下的个性化设定文件（IDENTITY/DESIGN/WRITE/AGENT/USER.md）属个性化系统，@see docs/personalize
 ```
 
-路径工厂：`global/Constant.ts` 的 `getSoulDir / getSoulMemoryPath / getSoulMemoryDir / getSoulMemoryDayPath / getSoulStatePath`。
+路径工厂：`global/Constant.ts` 的 `getSoulDir / getSoulMemoryPath / getSoulMemoryBackupPath / getSoulMemoryDir / getSoulMemoryDayPath / getSoulStatePath`。
 
 ## 数据流
 
@@ -33,9 +34,12 @@ MemoryExtractor.extractSession(storageKey = `chat:{id}`)
 MemoryConsolidator.runConsolidation()
   先执行 extractPendingSessions 兜底补提（含 app 退出时丢在防抖窗口内的尾段）
   → 消费「日期 >= lastConsolidateDate 且 < 今天」的每日文件（今日文件不消费，天然与追加无竞争）
-  → 现有 MEMORY.md + 待合并文件 → LLM 合并去重/淘汰过时
-  → 超长按行截断硬保护 → 写回 MEMORY.md → lastConsolidateDate 推进到本次消费最大日期的下一天（nextDayKey）
-  → 合并成功后记录 lastConsolidatedAt（ISO 时间戳）；「暂无待合并 / 仅推进边界」早退分支不更新
+  → 现有 MEMORY.md + 待合并文件 → LLM 按 JSON 协议合并去重/淘汰过时（输出四类条目数组，各数组重要性降序）
+  → 容错解析（截取 {..} 后 JSON.parse，仅认四个类别键，过滤非法/去重）；失败附加提醒重试 1 次
+  → 仍失败或四节全空：保留原 MEMORY.md、不推进边界，下次自动重试（每日文件不删除）
+  → 分节预算裁剪（只丢超预算节的尾部低价值条目）→ 代码确定性渲染 markdown → 写回 MEMORY.md（覆写前留 .bak）
+  → lastConsolidateDate 推进到本次消费最大日期的下一天（nextDayKey）
+  → 合并成功后记录 lastConsolidatedAt（ISO 时间戳）；「暂无待合并 / 仅推进边界 / 解析失败早退」分支不更新
 
 新对话（主 Agent 每轮请求）
 AgentChat.buildRequestMessages
@@ -51,7 +55,9 @@ AgentChat.buildRequestMessages
   - 旧版语义为「已消费最大日期 + 严格大于」，存在启用当天（首启基线日）文件永不消费的缺陷；旧存量值在新语义下基线日文件至多被重新消费一次，由合并提示词去重吸收，无需数据迁移。
 - **首启基线**：state.json 首次创建时 `lastConsolidateDate = 今天`，不回溯提取历史会话，记忆从启用日开始积累，启用当天的每日文件自次日起可被合并消费。
 - **模型**：提取与合并走 `defaultSummaryModel || defaultQuickModel` 兜底链（同订阅总结），`createChatCompletion` 非流式调用。
-- **长度上限（MemoryConstant.ts）**：长期 4000 字（合并输出超限按行截断兜底）、单日 2000 字（追加时丢最旧）、注入每日预算 4000 字、提取输入 30k 字符。
+- **长度上限（MemoryConstant.ts）**：长期按 `MEMORY_SECTIONS` 分节预算（用户偏好 800 / 事实与背景 1200 / 进行中的事项 800 / 经验教训 1200，合计 `MEMORY_MAX_CHARS` 4000 字，由预算表派生）；单日 2000 字（追加时丢最旧）、注入每日预算 4000 字、提取输入 30k 字符。
+- **合并走 JSON 协议而非解析模型 markdown**：模型输出只被当作 JSON 数据信任（容错解析 + 重试 + 失败保底），markdown 的节标题与条目格式全部由代码渲染——不存在「模型标题写法漂移导致分节匹配失败」的路径。此前的整体截断兜底（超 4000 字从文件末尾按行删）会让排在最末的「## 经验教训」整节先被砍掉，已废除。
+- **数据安全三重保险**：① 每日短期记忆文件合并后不删除，原始素材永远可回查；② 解析失败 / 四节全空保留原长期记忆且不推进消费边界，下次自动重试同批数据；③ 每次覆写 MEMORY.md 前把现有内容备份到 `MEMORY.md.bak`（单代）。裁剪只可能丢弃超预算分节内部的尾部条目，不可能整节蒸发。
 - **注入缓存**：buildMemoryPrompt 按「开关 + MEMORY.md mtime + 各每日文件 mtime」签名缓存，agent loop 每轮调用无额外读盘；所有写入操作自动失效缓存。
 - **提取进度**：state.extracted 以 storageKey（`chat:{id}`，聊天消息体迁 SQLite 后由键路由替代原 main.json 路径；历史键由迁移脚本改写）为键记录已消费消息数；LLM 判定无可记（[NONE]）也推进进度，失败不推进（下次重试）。extractPendingSessions 以「最后合并日」为时间下界、按 `chat_content.updated_time` 记忆去重（替代原文件 mtime），重复调用只做轻量戳查询。
 
@@ -59,11 +65,11 @@ AgentChat.buildRequestMessages
 
 | 文件 | 职责 |
 |------|------|
-| `modules/memory/MemoryConstant.ts` | 长度上限、防抖延迟、日期工具 |
-| `modules/memory/MemoryPrompt.ts` | 提取 / 合并提示词、record_memory 使用指导 |
-| `modules/memory/MemoryService.ts` | soul 文件读写、状态管理、注入段组装（mtime 缓存）、LLM 调用封装 |
+| `modules/memory/MemoryConstant.ts` | 分节预算表、长度上限、防抖延迟、日期工具 |
+| `modules/memory/MemoryPrompt.ts` | 提取 / 合并（JSON 协议）提示词、record_memory 使用指导 |
+| `modules/memory/MemoryService.ts` | soul 文件读写（覆写前备份）、状态管理、注入段组装（mtime 缓存）、LLM 调用封装 |
 | `modules/memory/MemoryExtractor.ts` | 消息转写、增量提取、防抖调度、extractPendingSessions 全量扫描补提（mtime 去重） |
-| `modules/memory/MemoryConsolidator.ts` | 长期记忆合并（内存锁防并发 + 长度硬保护） |
+| `modules/memory/MemoryConsolidator.ts` | 长期记忆合并（内存锁防并发 + JSON 容错解析重试 + 分节预算裁剪 + 确定性渲染） |
 | `modules/memory/memoryTool.ts` | record_memory 工具 |
 | `modules/memory/index.ts` | 聚合导出 + initMemorySystem（定时器） |
 | `pages/setting/soul/SoulSettingPage.vue` | 管理页（开关 / 立即提取 / 编辑 / 每日查看删除 / 立即整理） |

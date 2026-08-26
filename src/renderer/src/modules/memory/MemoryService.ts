@@ -2,6 +2,7 @@ import { useSettingAiStore, useSettingDefaultStore } from '@/store'
 import { createChatCompletion } from '@/modules/ai'
 import { readJsonFile, writeJsonFile } from '@/utils/native'
 import {
+  getSoulMemoryBackupPath,
   getSoulMemoryDir,
   getSoulMemoryDayPath,
   getSoulMemoryPath,
@@ -81,9 +82,14 @@ export const readLongTermMemory = async (): Promise<string> => {
   }
 }
 
-/** 全量覆写长期记忆 */
+/**
+ * 全量覆写长期记忆。覆写前把现有内容备份到 MEMORY.md.bak（单代），
+ * 自动合并与设置页手动编辑同受保护，任何环节写坏都可从备份找回。
+ */
 export const writeLongTermMemory = async (content: string): Promise<void> => {
   await ensureSoulDirs()
+  const existing = await readLongTermMemory()
+  if (existing) await window.preload.fs.writeTextFile(getSoulMemoryBackupPath(), existing)
   await window.preload.fs.writeTextFile(getSoulMemoryPath(), content)
   invalidateMemoryPromptCache()
 }

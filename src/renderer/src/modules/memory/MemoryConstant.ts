@@ -3,8 +3,23 @@
  * 上限是硬约束：提示词内约束模型输出，代码层再做兜底保护。
  */
 
-/** 长期记忆（MEMORY.md）最大字符数：提示词约束 + 代码层截断兜底（超限按行丢弃） */
-export const MEMORY_MAX_CHARS = 4000
+/** 长期记忆条目类别（与短期记忆提取的四种类别语义对齐） */
+export type MemoryCategory = 'preference' | 'fact' | 'progress' | 'lesson'
+
+/** 长期记忆固定分节：类别 → 节标题 → 该节条目内容字符预算（不含标题行），权重向「经验教训」「事实与背景」倾斜 */
+export const MEMORY_SECTIONS: ReadonlyArray<{
+  category: MemoryCategory
+  header: string
+  budget: number
+}> = [
+  { category: 'preference', header: '## 用户偏好', budget: 800 },
+  { category: 'fact', header: '## 事实与背景', budget: 1200 },
+  { category: 'progress', header: '## 进行中的事项', budget: 800 },
+  { category: 'lesson', header: '## 经验教训', budget: 1200 }
+]
+
+/** 长期记忆（MEMORY.md）总字符上限 = 各分节预算之和（派生单一事实源），设置页编辑校验用 */
+export const MEMORY_MAX_CHARS = MEMORY_SECTIONS.reduce((sum, section) => sum + section.budget, 0)
 
 /** 单日短期记忆（memory/YYYY-MM-DD.md）最大字符数，超出时丢弃最旧条目 */
 export const DAY_MEMORY_MAX_CHARS = 2000

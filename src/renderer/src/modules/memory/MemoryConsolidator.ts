@@ -1,5 +1,11 @@
 import { useLog } from '@/hooks/UseLog'
-import { MEMORY_MAX_CHARS, nextDayKey, toDateKey } from './MemoryConstant'
+import {
+  MEMORY_MAX_CHARS,
+  MEMORY_SECTIONS,
+  nextDayKey,
+  toDateKey,
+  type MemoryCategory
+} from './MemoryConstant'
 import { MEMORY_CONSOLIDATE_PROMPT } from './MemoryPrompt'
 import { extractPendingSessions } from './MemoryExtractor'
 import {
@@ -21,10 +27,78 @@ export interface ConsolidateResult {
   message: string
 }
 
+/** 解析结果：类别 → 条目数组（已过滤非法项、压缩换行、去重） */
+type MemorySectionsData = Partial<Record<MemoryCategory, string[]>>
+
+const isMemoryCategory = (key: string): key is MemoryCategory =>
+  MEMORY_SECTIONS.some((s) => s.category === key)
+
+/**
+ * 容错解析模型合并输出：截取首个 `{` 到末个 `}` 后 JSON.parse（天然容忍围栏与前后杂文），
+ * 仅保留四个已知类别的合法条目；无法解析或四个类别全部缺失时返回 null。
+ */
+const parseMemoryJson = (raw: string): MemorySectionsData | null => {
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+  if (start < 0 || end <= start) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw.slice(start, end + 1))
+  } catch {
+    return null
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null
+  const result: MemorySectionsData = {}
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!isMemoryCategory(key) || !Array.isArray(value)) continue
+    const seen = new Set<string>()
+    const items: string[] = []
+    for (const entry of value) {
+      if (typeof entry !== 'string') continue
+      const item = entry.replace(/\s*\n+\s*/g, ' ').trim()
+      if (!item || seen.has(item)) continue
+      seen.add(item)
+      items.push(item)
+    }
+    result[key] = items
+  }
+  return Object.keys(result).length > 0 ? result : null
+}
+
+/**
+ * 分节预算裁剪 + 确定性渲染：markdown 结构由代码生成，不依赖模型输出格式。
+ * 数组已要求按重要性降序，超预算只丢弃该节尾部（重要性最低）条目，不影响其它分节。
+ */
+const renderMemoryMarkdown = (data: MemorySectionsData): string => {
+  const blocks: string[] = []
+  for (const section of MEMORY_SECTIONS) {
+    const items = data[section.category]
+    if (!items || items.length === 0) continue
+    const kept: string[] = []
+    let used = 0
+    for (const item of items) {
+      const cost = item.length + 3 // "- " 前缀 + 换行
+      if (used + cost > section.budget) break
+      kept.push(item)
+      used += cost
+    }
+    if (kept.length < items.length) {
+      logger.warn(
+        `「${section.header}」超出分节预算 ${section.budget} 字：保留前 ${kept.length} 条，丢弃尾部 ${items.length - kept.length} 条`
+      )
+    }
+    if (kept.length > 0) blocks.push(`${section.header}\n${kept.map((i) => `- ${i}`).join('\n')}`)
+  }
+  return blocks.join('\n\n')
+}
+
 /**
  * 长期记忆合并（每日后台定时或设置页手动触发）：
  * 兜底补提漏提取会话 → 读取「日期 > lastConsolidateDate 且 < 今天」的每日文件 →
- * 与现有 MEMORY.md 一起交由 LLM 合并去重 → 长度硬保护后写回。
+ * 与现有 MEMORY.md 一起交由 LLM 以 JSON 协议合并去重 → 分节预算裁剪后渲染回 markdown 写回。
+ *
+ * 数据安全：解析失败先重试一次，仍失败或四节全空则保留原长期记忆且不推进消费边界
+ * （每日文件不删除，下次定时/手动自动重试同批数据）；裁剪只发生在超预算分节内部。
  *
  * lastConsolidateDate 语义为「下一个待消费日期（含边界）」：合并后推进到本次消费最大日期的
  * 下一天，消费条件为「日期 >= 该值 且 < 今天」，每个日期的文件恰好被消费一次。
@@ -71,21 +145,35 @@ export const runConsolidation = async (
       sections.join('\n\n')
     ].join('\n')
 
-    let merged = await memoryChatCompletion(MEMORY_CONSOLIDATE_PROMPT, user)
-    // 模型可能无视指令带代码块围栏，剥掉
-    merged = merged
-      .replace(/^```(?:markdown)?\s*\n?/, '')
-      .replace(/\n?\s*```\s*$/, '')
-      .trim()
-    if (!merged) throw new Error('模型未返回内容')
+    let data = parseMemoryJson(await memoryChatCompletion(MEMORY_CONSOLIDATE_PROMPT, user))
+    if (!data) {
+      logger.warn('合并输出不是合法 JSON，附加提醒后重试一次')
+      data = parseMemoryJson(
+        await memoryChatCompletion(
+          MEMORY_CONSOLIDATE_PROMPT,
+          `${user}\n\n（上次输出不是合法 JSON，请只输出 JSON 本体，不要任何其它内容）`
+        )
+      )
+    }
+    if (!data) {
+      logger.warn('合并输出解析失败，保留原长期记忆，下次自动重试')
+      return { ok: false, message: '合并输出解析失败，已保留原长期记忆，下次自动重试' }
+    }
+    const totalItems = MEMORY_SECTIONS.reduce(
+      (sum, section) => sum + (data[section.category]?.length ?? 0),
+      0
+    )
+    if (totalItems === 0) {
+      // 四节条目全空大概率是模型异常而非记忆真被清空，保底不写入
+      logger.warn('合并输出四节均为空，疑似模型异常，保留原长期记忆')
+      return { ok: false, message: '合并输出为空，已保留原长期记忆，下次自动重试' }
+    }
 
-    // 长度硬保护：超上限按行（条目）截断，单行超长时直接字符截断
+    let merged = renderMemoryMarkdown(data)
     if (merged.length > MEMORY_MAX_CHARS) {
-      const lines = merged.split('\n')
-      while (lines.join('\n').length > MEMORY_MAX_CHARS && lines.length > 1) lines.pop()
-      merged = lines.join('\n')
-      if (merged.length > MEMORY_MAX_CHARS) merged = merged.slice(0, MEMORY_MAX_CHARS)
-      logger.warn(`合并输出超过长度上限，已截断至 ${merged.length} 字`)
+      // 分节预算下理论上不会触发，最终兜底
+      merged = merged.slice(0, MEMORY_MAX_CHARS)
+      logger.warn(`合并输出超过总上限，已截断至 ${merged.length} 字`)
     }
 
     await writeLongTermMemory(merged)

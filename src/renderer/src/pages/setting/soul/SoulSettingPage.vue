@@ -50,7 +50,9 @@
       <div class="section-header">
         <span class="section-title">长期记忆</span>
         <span class="section-tip"
-          >MEMORY.md · 跨会话持久保留，整理时自动去重淘汰，上限 {{ MEMORY_MAX_CHARS }} 字</span
+          >MEMORY.md · 跨会话持久保留，整理时自动去重淘汰，上限 {{ MEMORY_MAX_CHARS }} 字（{{
+            memorySectionLimitsLabel()
+          }}）</span
         >
       </div>
       <t-textarea
@@ -114,6 +116,7 @@ import {
   MEMORY_MAX_CHARS,
   extractPendingSessions,
   listDayMemoryDates,
+  memorySectionLimitsLabel,
   readDayMemory,
   readLongTermMemory,
   readSoulState,

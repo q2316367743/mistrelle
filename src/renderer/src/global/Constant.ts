@@ -71,6 +71,10 @@ export const getSoulFilePath = (fileName: string) =>
 // 长期记忆：~/.mistrelle/soul/MEMORY.md
 export const getSoulMemoryPath = () => window.preload.path.join(getSoulDir(), 'MEMORY.md')
 
+// 长期记忆覆写前备份（单代）：~/.mistrelle/soul/MEMORY.md.bak
+export const getSoulMemoryBackupPath = () =>
+  window.preload.path.join(getSoulDir(), 'MEMORY.md.bak')
+
 // 每日短期记忆目录：~/.mistrelle/soul/memory/YYYY-MM-DD.md
 export const getSoulMemoryDir = () => window.preload.path.join(getSoulDir(), 'memory')
 
