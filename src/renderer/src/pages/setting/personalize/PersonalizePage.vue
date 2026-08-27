@@ -19,7 +19,12 @@
               :placeholder="item.placeholder"
             />
             <div class="editor-footer">
-              <span class="footer-tip">保存后在新一轮对话中生效，文件可直接用编辑器修改</span>
+              <div>
+                <span v-if="drafts[item.field]" class="char-count">
+                  {{ drafts[item.field]?.length }} 字 -
+                </span>
+                <span class="footer-tip">保存后在新一轮对话中生效，文件可直接用编辑器修改</span>
+              </div>
               <t-button
                 size="small"
                 theme="primary"
@@ -38,7 +43,11 @@
 </template>
 <script lang="ts" setup>
 import { MessageUtil } from '@/utils/modal'
-import { PERSONALIZE_FILE_CONFIG, type PersonalizeFileConfig, type PersonalizeScope } from '@/entity'
+import {
+  PERSONALIZE_FILE_CONFIG,
+  type PersonalizeFileConfig,
+  type PersonalizeScope
+} from '@/entity'
 import { readPersonalizeFile, writePersonalizeFile } from '@/modules/personalize'
 
 const active = ref(PERSONALIZE_FILE_CONFIG[0].field)
@@ -99,6 +108,10 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-top: 8px;
+  .char-count {
+    font-size: 12px;
+    color: var(--td-text-color-placeholder);
+  }
 }
 
 .footer-tip {
