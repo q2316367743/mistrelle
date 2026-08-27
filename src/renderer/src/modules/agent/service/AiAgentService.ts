@@ -1,7 +1,7 @@
 import { AiAgent } from '@/entity/ai'
 import { getAgentPath } from '@/global/Constant'
 
-// AI Agent 配置文件：~/.mistrelle/agent.json
+// AI Agent 配置文件：~/.mistrelle/setting/agent.json
 
 /**
  * 读取全部用户自建 Agent；文件不存在时返回空数组

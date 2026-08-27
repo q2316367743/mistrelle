@@ -167,6 +167,7 @@
 | [08-search-tools.md](./tool/08-search-tools.md)         | 搜索工具：`getDefaultTools()` 动态组装；`zhihu_search` 仅配置 Access Secret 时注入 + `any_search` 可匿名；账号设置知乎项与鉴权头 |
 | [09-aihot-tools.md](./tool/09-aihot-tools.md)         | AIHOT 资讯工具：匿名只读公开 API 客户端（`modules/api/aihot` 全 8 端点，skillhub 同款模式）+ 4 个 safe 工具与资讯页四页签一一对应（精选=本地镜像查询、动态=在线公开池检索、热点=热门榜、日报）；事件时间线 / 日报归档索引仅保留在页面 UI 不暴露为工具；镜像由应用侧 AihotSelectedService 维护，工具不暴露 snapshot+changes 账本协议 |
 | [10-default-tools-slimming.md](./tool/10-default-tools-slimming.md) | 默认工具精简（28→20）：shell 只留 cli_run（js/python/node/git_run 彻底删+死配置清理）、浏览器只留 browser_fetch（ego 移可选）、file_exists/read_skill_file 删除（被 file_stat/file_read 覆盖）、file_write_xlsx 移「文档处理」可选组、image_info 迁 design 场景注入；历史兼容按名集合保留清单 |
+| [11-progressive-tool-collection.md](./tool/11-progressive-tool-collection.md) | 渐进式工具加载：`ToolGroup` 增加 id/description、`<available_tool_collections>` 目录 + `load_tool_collection(ids)` 整组装载、beginRequest 每轮清空（不落库）+ 执行前拦截器跨消息自愈；list_tools 同步集合维度；真问题是能力自助化而非省 token |
 
 ### writing/ —— 写作
 

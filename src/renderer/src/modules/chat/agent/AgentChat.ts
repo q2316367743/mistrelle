@@ -14,8 +14,12 @@ import type { AiChatMode } from '@/entity'
 import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/modules/chat/writingScene'
-import { getDefaultTools, isShellExecTool, toolMap } from '@/modules/tool'
+import { getDefaultTools, isShellExecTool, toolMap, toolOwnerGroupId } from '@/modules/tool'
 import type { ToolPolicyContext } from '@/modules/tool/toolPolicy'
+import {
+  buildToolCatalogPrompt,
+  createToolLoadTool
+} from '@/modules/tool/components/collectionLoader'
 import { buildMemoryPrompt, buildMemoryToolPrompt, recordMemoryTool } from '@/modules/memory'
 import { buildPersonalizePrompt } from '@/modules/personalize'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
@@ -84,6 +88,8 @@ export class ToolChat {
   readonly todos = ref<TodoItem[]>([])
   /** ask / confirm 交互桥：供 UI 卡片注入并作答 */
   readonly interactive = new InteractiveBridge()
+  /** 本条消息内已装载的工具集合 id（渐进式加载临时态：每轮请求开始清空，不落库不持久化） */
+  private readonly loadedCollections = ref<string[]>([])
   /** 最近一轮是否因达到工具调用步数上限而结束（子 Agent 摘要提取据此区分是否正常收尾） */
   readonly hitMaxSteps = ref(false)
   /** 本轮是否触达过工具调用步数上限（finalizeOnMaxSteps 成功收尾时 hitMaxSteps 保持 false，但触顶事实需透出给调用方追加备注） */
@@ -177,7 +183,9 @@ export class ToolChat {
       // 默认工具（动态：如知乎 key 未配置则不含 zhihu_search）
       ...getDefaultTools(),
       // 待办工具
-      createTodoTool(this.todos)
+      createTodoTool(this.todos),
+      // 渐进式工具加载：模型按 <available_tool_collections> 目录整组装载可选能力集（主/子 Agent 统一）
+      createToolLoadTool(this.loadedCollections)
     ]) {
       // 子 Agent 不暴露 spawn_agent：防止嵌套派发（子 Agent 的 chatId 是自身 id，再派发路径会错乱）
       if (this.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) continue
@@ -237,6 +245,24 @@ export class ToolChat {
       return functions.filter((fn) => fn.risk === 'safe' || isShellExecTool(fn))
     }
     return functions
+  }
+
+  /**
+   * 渐进式加载拦截器：模型凭历史记忆 / 幻觉调用了未装载集合中的工具时，
+   * 自动装载其所属集合并放行本次执行（跨消息自愈，见 docs/tool/11）。
+   * @returns 是否发生了新装载——有则调用方须重建函数表后再执行工具调用
+   */
+  private ensureCollectionsLoaded(names: string[]): boolean {
+    const missing = [
+      ...new Set(
+        names
+          .map((name) => toolOwnerGroupId[name])
+          .filter((id): id is string => !!id && !this.loadedCollections.value.includes(id))
+      )
+    ]
+    if (missing.length === 0) return false
+    this.loadedCollections.value = [...this.loadedCollections.value, ...missing]
+    return true
   }
 
   /**
@@ -368,6 +394,8 @@ export class ToolChat {
       agentPrompt,
       personalizePrompt,
       catalogPrompt,
+      // 可选工具集合目录（静态可缓存）：配合 load_tool_collection 实现按需整组装载
+      buildToolCatalogPrompt(),
       buildTodoPrompt(),
       workspacePrompt,
       workspaceSettingsPrompt,
@@ -473,7 +501,7 @@ export class ToolChat {
     let lastTools: AiTool[] = []
     while (seq === this.ctx.requestSeq && !signal.aborted && step < maxSteps) {
       step++
-      const functions = this.filterToolsByMode(this.getFunctions(params))
+      let functions = this.filterToolsByMode(this.getFunctions(params))
       const resolvedParams = await this.resolveModel(params)
       lastApiMessages = await this.buildRequestMessages(resolvedParams, assistantMessageId)
       lastTools = this.buildTools(functions)
@@ -498,6 +526,10 @@ export class ToolChat {
       }
 
       this.toolCalls.value.push(...result.toolCalls)
+      // 拦截器：引用了未装载集合的工具 → 先装载其所在集合并重建函数表再执行（当轮放行，下一轮请求带全组 schema）
+      if (this.ensureCollectionsLoaded(result.toolCalls.map((call) => call.toolCallName))) {
+        functions = this.filterToolsByMode(this.getFunctions(params))
+      }
       await executeToolCalls(
         this.messages,
         assistantMessageId,
@@ -601,6 +633,8 @@ export class ToolChat {
     this.ctx.requestSeq += 1
     this.ctx.abortController = new AbortController()
     this.toolCalls.value = []
+    // 渐进式加载临时态随新请求清空：仅本次消息任务有效（temp.md 的 Loop 级自动清理）
+    this.loadedCollections.value = []
     // 新请求抢占：解除此前挂起的 ask/confirm 决策，避免双循环或 Promise 泄漏
     this.interactive.clear()
     this.status.value = 'pending'
@@ -739,7 +773,11 @@ export class ToolChat {
     if (!target) return
     const { assistantMessageId, call } = target
     const params = this.buildResumeRequestParams(target)
-    const functions = this.filterToolsByMode(this.getFunctions(params))
+    let functions = this.filterToolsByMode(this.getFunctions(params))
+    // 重启恢复挂起审批时同样走拦截器，避免挂起中的集合工具因未装载而「未找到」
+    if (this.ensureCollectionsLoaded([call.toolCallName])) {
+      functions = this.filterToolsByMode(this.getFunctions(params))
+    }
     const fn = functions.find((item) => item.name === call.toolCallName)
     if (fn) {
       let args: Record<string, unknown>
@@ -938,6 +976,7 @@ export class ToolChat {
     this.status.value = 'idle'
     this.toolCalls.value = []
     this.todos.value = []
+    this.loadedCollections.value = []
     this.interactive.clear()
   }
 }

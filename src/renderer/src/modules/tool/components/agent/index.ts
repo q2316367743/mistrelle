@@ -76,9 +76,12 @@ export const agentTools: ToolFunction[] = [
     internal: true,
     handler: async () => {
       return {
-        // 可分配工具：专家 tools 字段的合法取值来源
+        // 可分配工具：专家 tools 字段的合法取值来源（id/description 为集合维度，
+        // 供了解对话期可经 load_tool_collection 按 id 整组装载；不影响按工具名分配的语义）
         groups: toolGroups.map((g) => ({
+          id: g.id,
           group: g.group,
+          description: g.description,
           tools: g.tools.map((t) => ({
             name: t.name,
             label: t.label,
@@ -88,7 +91,9 @@ export const agentTools: ToolFunction[] = [
         })),
         // 常驻工具：每次对话自动注入（shell/文件/http/skill 等），不要写进 tools 字段
         builtinDefaults: getDefaultTools().map((t) => ({ name: t.name, label: t.label })),
-        note: '专家的 tools 字段只需填写 groups 中的工具名；builtinDefaults 为对话常驻工具，无需声明。'
+        note:
+          '专家的 tools 字段只需填写 groups 中的工具名；builtinDefaults 为对话常驻工具，无需声明。' +
+          'groups 的 id/description 同时是渐进式装载目录：普通对话中 AI 可用 load_tool_collection(ids) 按集合整组启用这些工具。'
       }
     }
   },

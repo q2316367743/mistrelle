@@ -13,14 +13,8 @@
           <PaletteIcon v-if="item.type === 'design'" />
           <SlideshowIcon v-else-if="item.type === 'ppt'" />
           <EditIcon v-else-if="item.type === 'writing'" />
-          <FolderIcon v-else class="menu-icon" />
-          <t-tag
-            v-if="item.privacy"
-            theme="danger"
-            variant="light"
-            size="small"
-            class="shrink-0"
-          >
+          <WorkIcon v-else class="menu-icon" />
+          <t-tag v-if="item.privacy" theme="danger" variant="light" size="small" class="shrink-0">
             私
           </t-tag>
           <span class="ellipsis flex-1 min-w-0">{{ item.name }}</span>
@@ -33,7 +27,7 @@
 
 <script lang="ts" setup>
 import { VList } from 'virtua/vue'
-import { EditIcon, FolderIcon, PaletteIcon, SlideshowIcon } from 'tdesign-icons-vue-next'
+import { EditIcon, WorkIcon, PaletteIcon, SlideshowIcon } from 'tdesign-icons-vue-next'
 import type { AiChatItem } from '@/entity/ai'
 import { useAiChatStore } from '@/store'
 import { buildChatMainKey, getChatSessionStatus } from '@/modules/chat'
