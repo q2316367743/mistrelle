@@ -1,26 +1,44 @@
 <template>
-  <div class="chat-tool">
-    <div class="tool-row">
-      <TerminalIcon class="tool-icon" />
+  <div class="chat-tool" :class="{ 'is-expanded': expanded }">
+    <div class="tool-row" @click="toggle">
+      <TerminalIcon v-if="!expanded" class="tool-icon" />
+      <ChevronRightIcon v-else class="tool-chevron" />
       <span class="tool-value tool-command">{{ commandText }}</span>
       <div class="tool-end">
         <t-loading v-if="isLoading" size="small" />
-        <t-tag
-          v-if="statusConfig"
-          :theme="statusConfig.theme"
-          variant="light-outline"
-          size="small"
-        >
+        <t-tag v-if="statusConfig" :theme="statusConfig.theme" variant="light-outline" size="small">
           {{ statusConfig.label }}
         </t-tag>
       </div>
     </div>
+    <!-- 终端样式详情：$ 命令 + 标准输入 + 输出，暗色固定画布（明暗主题下均为终端观感） -->
+    <div v-if="expanded" class="tool-terminal">
+      <div class="term-line">
+        <span class="term-prompt">$</span>
+        <code class="term-command">{{ commandText }}</code>
+      </div>
+      <template v-if="stdinText !== ''">
+        <div class="term-section-label">标准输入</div>
+        <pre class="term-stdin"><code>{{ stdinText }}</code></pre>
+      </template>
+      <div v-if="outputText || isLoading" class="term-section-label">输出</div>
+      <pre
+        v-if="outputText"
+        class="term-output"
+        :class="{ 'term-output--error': isError }"
+      ><code>{{ outputText }}</code></pre>
+      <div v-else-if="isLoading" class="term-running">
+        <t-loading size="small" theme="dots" />
+        <span class="term-caret" />
+      </div>
+      <div v-else class="term-empty">(无输出)</div>
+    </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
-import { TerminalIcon } from 'tdesign-icons-vue-next'
+import { ChevronRightIcon, TerminalIcon } from 'tdesign-icons-vue-next'
 
 const props = defineProps({
   content: {
@@ -29,26 +47,57 @@ const props = defineProps({
   }
 })
 
-const commandText = computed(() => {
-  const { toolCallName, args } = props.content.data
-  if (!args) return toolCallName
+const expanded = ref(false)
+const toggle = () => {
+  expanded.value = !expanded.value
+}
+
+/** cli_run 的入参对象：command / args[] / stdin，解析失败回退空对象 */
+const cliArgs = computed<Record<string, unknown>>(() => {
   try {
-    const parsed = JSON.parse(args)
-    switch (toolCallName) {
-      case 'cli_run':
-        return `${parsed.command} ${(parsed.args || []).join(' ')}`.trim()
-      default:
-        return toolCallName
-    }
+    const parsed = JSON.parse(props.content.data.args ?? '')
+    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {}
   } catch {
-    return toolCallName
+    return {}
   }
 })
+
+const commandText = computed(() => {
+  const name = props.content.data.toolCallName
+  const { command, args } = cliArgs.value
+  if (name === 'cli_run' && typeof command === 'string') {
+    const rest = Array.isArray(args)
+      ? args.filter((e): e is string => typeof e === 'string').join(' ')
+      : ''
+    return `${command} ${rest}`.trim()
+  }
+  return name
+})
+
+const stdinText = computed(() => {
+  const stdin = cliArgs.value.stdin
+  return typeof stdin === 'string' ? stdin : ''
+})
+
+const outputText = computed(() => props.content.data.result || '')
+
+const isError = computed(
+  () =>
+    props.content.status === 'error' ||
+    (props.content.status === 'complete' && outputText.value.startsWith('错误'))
+)
 
 interface StatusConfig {
   theme: 'default' | 'primary' | 'success' | 'warning' | 'danger'
   label: string
 }
+
+// 终态覆盖：结果文本已落（result 存在）即按完成渲染——对冲一切「状态字段未推进」的悬停
+const effectiveStatus = computed(() => {
+  const s = props.content.status
+  if ((s === 'pending' || s === 'streaming') && props.content.data.result) return 'complete'
+  return s
+})
 
 const statusConfig = computed<StatusConfig | null>(() => {
   const map: Record<string, StatusConfig> = {
@@ -58,13 +107,20 @@ const statusConfig = computed<StatusConfig | null>(() => {
     stop: { theme: 'default', label: '已停止' },
     error: { theme: 'danger', label: '错误' }
   }
-  return props.content.status ? (map[props.content.status] ?? null) : null
+  return effectiveStatus.value ? (map[effectiveStatus.value] ?? null) : null
 })
 
 const isLoading = computed(() => {
-  const s = props.content.status
+  const s = effectiveStatus.value
   return s === 'pending' || s === 'streaming'
 })
+
+// 临时探针（定位卡头状态不更新），确认后移除：观察状态字段的真实流转序列
+watch(
+  () => `${props.content.data.toolCallName}/${props.content.data.toolCallId} status=${props.content.status}`,
+  (sig) => console.log(`[ToolStat][卡] ${sig}`),
+  { immediate: true }
+)
 </script>
 <style scoped lang="less">
 .chat-tool {
@@ -73,6 +129,10 @@ const isLoading = computed(() => {
   background: var(--td-bg-color-container);
   border: 1px solid var(--td-component-border);
   overflow: hidden;
+
+  &.is-expanded {
+    border-color: var(--td-component-stroke);
+  }
 }
 
 .tool-row {
@@ -81,15 +141,23 @@ const isLoading = computed(() => {
   gap: var(--td-comp-margin-s);
   padding: var(--td-comp-paddingTB-xs) var(--td-comp-paddingLR-s);
   min-width: 0;
+  cursor: pointer;
+  user-select: none;
 }
 
 .tool-icon {
   flex-shrink: 0;
   color: var(--td-text-color-placeholder);
+  font-size: var(--td-font-size-body-large);
 }
 
+.tool-icon {
+  display: inline-flex;
+}
+
+
 .tool-command {
-  font-family: var(--td-font-family-mono, 'Cascadia Code', 'Fira Code', 'Consolas', monospace);
+  font-family: var(--td-font-family-mono, 'Cascadia Code', 'Fira Code', 'Consolas', monospace), serif;
 }
 
 .tool-value {
@@ -108,5 +176,93 @@ const isLoading = computed(() => {
   gap: var(--td-comp-margin-s);
   flex-shrink: 0;
   margin-left: auto;
+}
+
+// ─── 终端画布：明暗主题均保持暗色终端观感（灰色阶为固定色板不随主题翻转） ───
+
+.tool-terminal {
+  padding: var(--td-comp-paddingTB-s) var(--td-comp-paddingLR-m);
+  background: var(--td-gray-color-14);
+  border-top: 1px solid var(--td-component-border);
+  font-family: var(--td-font-family-mono, 'Cascadia Code', 'Fira Code', 'Consolas', monospace), serif;
+}
+
+.term-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--td-comp-margin-s);
+}
+
+.term-prompt {
+  flex-shrink: 0;
+  color: var(--td-success-color-5);
+  font-weight: 600;
+  user-select: none;
+}
+
+.term-command {
+  color: var(--td-font-white-1);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.term-section-label {
+  margin: var(--td-comp-margin-s) 0 var(--td-comp-margin-xxs);
+  font-size: var(--td-font-size-body-small);
+  color: var(--td-font-white-3);
+}
+
+.term-stdin,
+.term-output {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font: var(--td-font-body-small);
+  font-family: inherit;
+  color: var(--td-font-white-2);
+}
+
+.term-stdin {
+  padding: var(--td-comp-paddingTB-xs) var(--td-comp-paddingLR-s);
+  border-radius: var(--td-radius-small);
+  background: var(--td-gray-color-12);
+
+  code {
+    color: var(--td-font-white-2);
+  }
+}
+
+.term-output--error code {
+  color: var(--td-error-color-5);
+}
+
+.term-running {
+  display: flex;
+  align-items: center;
+  gap: var(--td-comp-margin-s);
+  color: var(--td-font-white-3);
+  font: var(--td-font-body-small);
+}
+
+// 执行中闪烁光标
+.term-caret {
+  width: 8px;
+  height: 16px;
+  background: var(--td-font-white-2);
+  animation: term-caret-blink 1s step-end infinite;
+}
+
+@keyframes term-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.term-empty {
+  margin-top: var(--td-comp-margin-xs);
+  color: var(--td-font-white-3);
+  font: var(--td-font-body-small);
 }
 </style>

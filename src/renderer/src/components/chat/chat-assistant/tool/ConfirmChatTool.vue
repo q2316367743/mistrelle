@@ -19,14 +19,14 @@
         <t-button theme="default" variant="outline" size="small" @click="reject">拒绝</t-button>
       </div>
     </template>
-    <div v-else-if="isExecuting" class="confirm-executing">
+    <div v-else-if="showExecutingFallback" class="confirm-executing">
       <t-loading size="small" />
       <span>执行中…</span>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject, ref } from 'vue'
 import type { PropType } from 'vue'
 import type { ToolCallContent } from '@tdesign-vue-next/chat'
 import { ShieldErrorIcon } from 'tdesign-icons-vue-next'
@@ -45,6 +45,15 @@ const bridge = inject(INTERACTIVE_KEY)
 const toolCallName = computed(() => props.content.data.toolCallName)
 const label = computed(() => toolMap[toolCallName.value]?.label ?? toolCallName.value)
 
+// 卡片自持解析自身参数：并行审批下不依赖桥的单激活位（pending.args 只对激活项成立）
+const selfArgs = computed<Record<string, unknown>>(() => {
+  try {
+    return JSON.parse(props.content.data.args ?? '{}') as Record<string, unknown>
+  } catch {
+    return {}
+  }
+})
+
 const formattedArgs = computed(() => {
   const raw = props.content.data.args
   if (!raw) return ''
@@ -60,16 +69,9 @@ const toolCallId = computed(() => props.content.data.toolCallId)
 /** 「此目录以后都允许」勾选状态；带 path 参数的确认卡片才展示 */
 const rememberDir = ref(false)
 const confirmPath = computed(() => {
-  const path = bridge?.pending.value?.args?.path
+  const path = selfArgs.value.path
   return typeof path === 'string' && path ? path : ''
 })
-// 切换到新的挂起确认（不同 toolCallId）时重置勾选，避免上一卡的选择带入
-watch(
-  () => bridge?.pending.value?.toolCallId,
-  () => {
-    rememberDir.value = false
-  }
-)
 
 const approve = () => {
   if (rememberDir.value && confirmPath.value) {
@@ -86,15 +88,14 @@ const reject = () => {
   bridge?.resolve(toolCallId.value, false)
 }
 
-const matched = computed(() => bridge?.pending.value?.toolCallId === toolCallId.value)
-const isInteractive = computed(
-  () => (props.content.status === 'pending' || props.content.status === 'streaming') && !!bridge && matched.value
+const isWaitingState = computed(
+  () => props.content.status === 'pending' || props.content.status === 'streaming'
 )
-// 决策通过后、handler 执行期间的状态占位
-const isExecuting = computed(() => {
-  const s = props.content.status
-  return (s === 'pending' || s === 'streaming') && !matched.value
-})
+// 并行审批：凡待审块（未完成 + 桥存在）都直接可作答——resolve(toolCallId) 支持对排队项出队兑现，
+// 不再要求本块是桥的单激活项；否则批量调用中非队首的待审块永远拿不到审批按钮
+const isInteractive = computed(() => isWaitingState.value && !!bridge)
+// 无桥环境（桥被禁用 / 异常水合）的兜底占位
+const showExecutingFallback = computed(() => isWaitingState.value && !bridge)
 </script>
 <style scoped lang="less">
 .confirm-chat-tool {

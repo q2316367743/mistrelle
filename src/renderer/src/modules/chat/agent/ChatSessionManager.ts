@@ -254,6 +254,11 @@ export const getChatSession = (
     })
     session = created
     sessions.set(storageKey, session)
+    // 临时探针（定位卡头状态不更新），确认后移除
+    console.log(`[ToolStat][实例] 创建 ${storageKey}`)
+  } else {
+    // 临时探针（同上）
+    console.log(`[ToolStat][实例] 复用 ${storageKey} messages=${session.messages.value.length}`)
   }
   session.touch()
   return session

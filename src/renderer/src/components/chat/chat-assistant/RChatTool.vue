@@ -6,7 +6,11 @@
     <file-chat-tool v-else-if="isFileTool" :content="content" />
     <shell-chat-tool v-else-if="isShellTool" :content="content" />
     <skill-chat-tool v-else-if="isSkillTool" :content="content" />
-    <sub-agent-chat-tool v-else-if="isSpawnAgentTool" :content="content" @view="handleViewSubAgent" />
+    <sub-agent-chat-tool
+      v-else-if="isSpawnAgentTool"
+      :content="content"
+      @view="handleViewSubAgent"
+    />
     <default-chat-tool v-else-if="!isTodoTool" :content="content" />
   </div>
 </template>
@@ -48,9 +52,7 @@ const isFontPickTool = computed(() => toolCallName.value === fontPickToolName)
 // 仅未完成态接入 confirm 卡片；决策完成（complete）后回落到各工具自有渲染展示结果
 const isConfirmPending = computed(() => {
   const s = props.content.status
-  return (
-    props.content.ext?.interactive === 'confirm' && (s === 'pending' || s === 'streaming')
-  )
+  return props.content.ext?.interactive === 'confirm' && (s === 'pending' || s === 'streaming')
 })
 const isFileTool = computed(() => toolCallName.value.startsWith('file_'))
 const isShellTool = computed(() => shellToolNames.has(toolCallName.value))

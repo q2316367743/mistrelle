@@ -1,7 +1,12 @@
 import type { Ref } from 'vue'
 import type { ChatMessage, ToolFunction } from '@/domain'
 import type { ToolCall } from './agentTypes'
-import { appendSubAgentId, markToolInteractive, updateToolCallContent } from './agentMessages'
+import {
+  appendSubAgentId,
+  markToolExecuting,
+  markToolInteractive,
+  updateToolCallContent
+} from './agentMessages'
 import { resolveToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
 import { MAX_TOOL_RESULT_BYTES } from '@/global/Constant'
 import type { InteractiveBridge } from './interactive'
@@ -150,7 +155,7 @@ export const runSingleTool = async (
     // 解析并校验子 Agent 类型（按当前聊天类型能力矩阵 SUB_AGENT_ALLOW，缺省 research）
     const resolved = resolveSubAgentType(args.type, policyContext.chatType ?? 'office')
     if (!resolved.ok) {
-      applyResult(messages, assistantMessageId, call, `错误：spawn_agent ${resolved.message}`)
+      applyResult(messages, assistantMessageId, call, `错误: spawn_agent ${resolved.message}`)
       return
     }
     const { model, provide, thinking, reasoning_effort } = findLastUserModel(messages)
@@ -158,6 +163,7 @@ export const runSingleTool = async (
       applyResult(messages, assistantMessageId, call, '错误：无法确定子 Agent 使用的模型')
       return
     }
+    markToolExecuting(messages, assistantMessageId, call.toolCallId)
     // 动态导入避免循环依赖（subagent/runner → AgentChat → agentTools → subagent/runner）
     const { runSubAgent } = await import('@/modules/subagent')
     // 预生成 subId 并立即标记到消息：使 UI 在子 Agent 运行期间即可显示标签并支持切换到其实时视图
@@ -208,6 +214,9 @@ export const runSingleTool = async (
       policyContext.onAllowDir?.(decision.allowDir)
     }
   }
+
+  // verdict=allow 直通 / 审批通过后的真实执行期：进入「执行中」态
+  markToolExecuting(messages, assistantMessageId, call.toolCallId)
 
   try {
     applyResult(messages, assistantMessageId, call, serializeResult(await fn.handler(args)))

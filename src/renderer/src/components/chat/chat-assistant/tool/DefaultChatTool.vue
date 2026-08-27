@@ -66,13 +66,27 @@ const statusConfig = computed<StatusConfig | null>(() => {
     stop: { theme: 'default', label: '已停止' },
     error: { theme: 'danger', label: '错误' }
   }
-  return props.content.status ? (map[props.content.status] ?? null) : null
+  return effectiveStatus.value ? (map[effectiveStatus.value] ?? null) : null
+})
+
+// 终态覆盖：结果文本已落（result 存在）即按完成渲染——对冲一切「状态字段未推进」的悬停
+const effectiveStatus = computed(() => {
+  const s = props.content.status
+  if ((s === 'pending' || s === 'streaming') && props.content.data.result) return 'complete'
+  return s
 })
 
 const isLoading = computed(() => {
-  const s = props.content.status
+  const s = effectiveStatus.value
   return s === 'pending' || s === 'streaming'
 })
+
+// 临时探针（定位卡头状态不更新），确认后移除：观察状态字段的真实流转序列
+watch(
+  () => `${props.content.data.toolCallName}/${props.content.data.toolCallId} status=${props.content.status}`,
+  (sig) => console.log(`[ToolStat][卡] ${sig}`),
+  { immediate: true }
+)
 </script>
 <style scoped lang="less">
 .chat-tool {

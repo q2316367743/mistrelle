@@ -71,10 +71,22 @@ export const appendAssistantContent = (
   }
 
   contents.push(content)
-  if (!last) return
-  last.status = 'complete'
-  if (last.type === 'thinking') {
-    last.data.title = `思考完成 (用时 ${prettyDurationTime(Date.now() - last.time)})`
+  // 只收尾流式文本类前块：text/markdown/reasoning/thinking 需要在后续内容开始时结束流式态；
+  // toolcall 等结构块的生命周期归执行器管理（pending → complete 由结果回填驱动）。
+  // 若在此无条件改写，同一批后续工具块入列会把先行的待审批块误标为 complete，
+  // 卡片/横幅以「未完成」为判定条件，导致非末位待审操作永不渲染（2026-08-27 实证）
+  const previous = contents[contents.length - 2]
+  if (
+    previous &&
+    (previous.type === 'text' ||
+      previous.type === 'markdown' ||
+      previous.type === 'reasoning' ||
+      previous.type === 'thinking')
+  ) {
+    previous.status = 'complete'
+    if (previous.type === 'thinking') {
+      previous.data.title = `思考完成 (用时 ${prettyDurationTime(Date.now() - previous.time)})`
+    }
   }
 }
 
@@ -152,6 +164,25 @@ export const markToolInteractive = (
   )
   if (!content) return
   content.ext = { ...(content.ext ?? {}), interactive: kind }
+}
+
+/**
+ * 标记工具进入「执行中」（handler 实际开始前调用）：生命周期显式三段式
+ * pending（已接收 / 待审批）→ streaming（执行中）→ complete（applyResult 终态）。
+ * pending 不再承担执行中语义，任何未被 applyResult 触达的块都能被状态判定准确识别。
+ */
+export const markToolExecuting = (
+  messages: Ref<ChatMessage[]>,
+  messageId: string,
+  toolCallId: string
+): void => {
+  const assistant = getAssistant(messages, messageId)
+  const content = assistant?.content?.findLast(
+    (item): item is ToolCallContent =>
+      item.type === 'toolcall' && item.data.toolCallId === toolCallId
+  )
+  if (!content || content.status === 'complete') return
+  content.status = 'streaming'
 }
 
 export const setAssistantStatus = (

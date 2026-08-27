@@ -50,6 +50,11 @@ export const useChatSession = (options: UseChatSessionOptions) => {
   })
   const instance = session.chat
 
+  // 临时探针（定位卡头状态不更新），确认后移除：记录页面绑定的树快照规模
+  console.log(
+    `[ToolStat][绑定] ${storageKey} messages=${instance.messages.value.length}`
+  )
+
   // 交互桥供 ask/confirm 卡片注入作答；本组件是 UI 消费方，使能后挂起决策才能被作答
   provide(INTERACTIVE_KEY, instance.interactive)
   instance.interactive.setEnabled(true)

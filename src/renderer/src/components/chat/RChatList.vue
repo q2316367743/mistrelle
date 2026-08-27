@@ -37,11 +37,18 @@
       </div>
     </ChatList>
     <!-- 挂起中的 confirm 决策提示：卡片可能被超长工具结果推出视口，用户看不到时 agent 循环
-         一直阻塞等批准（表现为页面卡住），横幅常驻提示 + 点击滚动定位 -->
-    <div v-if="pendingConfirmId" class="r-chat-list__confirm-banner">
+         一直阻塞等批准（表现为页面卡住），横幅常驻提示 + 点击滚动定位；
+         并行审批下多个待审块共存，计数显示并定位第一个未决块 -->
+    <div v-if="firstPendingConfirmId" class="r-chat-list__confirm-banner">
       <ShieldErrorIcon class="r-chat-list__confirm-icon" />
-      <span class="r-chat-list__confirm-text">有操作等待你的批准</span>
-      <t-button size="small" variant="outline" @click="scrollToToolCall(pendingConfirmId)">
+      <span class="r-chat-list__confirm-text">
+        {{
+          pendingConfirmItems.length > 1
+            ? `有 ${pendingConfirmItems.length} 个操作等待你的批准`
+            : '有操作等待你的批准'
+        }}
+      </span>
+      <t-button size="small" variant="outline" @click="scrollToToolCall(firstPendingConfirmId)">
         前往
       </t-button>
     </div>
@@ -69,8 +76,13 @@
 <script lang="ts" setup>
 import { ChatList, ChatMessage } from '@tdesign-vue-next/chat'
 import { ShieldErrorIcon } from 'tdesign-icons-vue-next'
-import { ChatMessage as ChatMessageType, ChatStatus, UserMessage } from '@/domain'
-import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
+import {
+  AIMessage,
+  ToolCallContent,
+  ChatMessage as ChatMessageType,
+  ChatStatus,
+  UserMessage
+} from '@/domain'
 import type { PropType } from 'vue'
 
 const props = defineProps({
@@ -120,13 +132,33 @@ const userMessages = computed(() =>
 
 // ─── 挂起确认的可见性 ────────────────────────────────────────────────
 
-const bridge = inject(INTERACTIVE_KEY)
+const isAssistantMessage = (message: ChatMessageType): message is AIMessage =>
+  message.role === 'assistant'
 
-/** 当前挂起等待批准的 confirm 决策 ID（无或非 confirm 时为 null） */
-const pendingConfirmId = computed(() => {
-  const pending = bridge?.pending.value
-  return pending?.kind === 'confirm' ? pending.toolCallId : null
+/**
+ * 全部待审批的 confirm 工具块：以消息内容为唯一事实源（ext.interactive + 未完成），
+ * 不依赖交互桥的单激活时机——并行审批下多个待审块（含排在批次后面的块）
+ * 都能被横幅计数提示与「前往」定位。
+ */
+const pendingConfirmItems = computed<ToolCallContent[]>(() => {
+  const items: ToolCallContent[] = []
+  for (const message of props.messages) {
+    if (!isAssistantMessage(message)) continue
+    for (const content of message.content ?? []) {
+      if (
+        content.type === 'toolcall' &&
+        content.ext?.interactive === 'confirm' &&
+        (content.status === 'pending' || content.status === 'streaming')
+      ) {
+        items.push(content)
+      }
+    }
+  }
+  return items
 })
+
+/** 第一个未决块的 id：横幅显隐与「前往」的定位目标 */
+const firstPendingConfirmId = computed(() => pendingConfirmItems.value[0]?.data.toolCallId ?? null)
 
 /** 滚动定位到指定确认卡片（卡片根元素带 data-tool-call-id 锚点） */
 const scrollToToolCall = (toolCallId: string) => {
@@ -136,9 +168,9 @@ const scrollToToolCall = (toolCallId: string) => {
   target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
-// 挂起确认激活时卡片不在可视区域则自动滚动一次：ChatList 的自动跟随会被用户上滚暂停，
+// 挂起确认出现时卡片不在可视区域则自动滚动一次：ChatList 的自动跟随会被用户上滚暂停，
 // 超长工具结果也会把卡片推出视口，不主动滚动用户可能永远看不到卡片
-watch(pendingConfirmId, async (id) => {
+watch(firstPendingConfirmId, async (id) => {
   if (!id) return
   await nextTick()
   const target = document.querySelector<HTMLElement>(

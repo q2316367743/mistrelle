@@ -106,14 +106,20 @@ export const toolGroups: Array<ToolGroup> = [
   .map((g) => ({ ...g, tools: g.tools.filter((t) => !t.internal) }))
   .filter((g) => g.tools.length > 0)
 
-/** id → 工具集合映射：load_tool_collection 装载通道据此取整组 schema 与工具清单 */
-export const toolCollectionMap: Record<string, ToolGroup> = Object.fromEntries(
-  toolGroups.map((g) => [g.id, g])
-)
+export interface ToolRegistryEntry {
+  fn: ToolFunction
+  /** 归属集合 id：隐式命中时据此整组装载 */
+  groupId: string
+}
 
-/** 工具名 → 所属集合 id：拦截器恢复未装载调用时反查归属 */
-export const toolOwnerGroupId: Record<string, string> = Object.fromEntries(
-  toolGroups.flatMap((g) => g.tools.map((t) => [t.name, g.id]))
+/**
+ * 全局工具注册表（name → entry），基于过滤后的 toolGroups 构建。
+ * 洋葱式解析的第③层兜底：内置常驻 → 本消息已装载 → 此处全局命中
+ * （命中即静默装载其所在集合，实现跨 Loop 的自动恢复）。
+ * internal 工具不入表，防止幻觉调用解锁 list_tools 等内部工具。
+ */
+export const toolRegistry: Record<string, ToolRegistryEntry> = Object.fromEntries(
+  toolGroups.flatMap((g) => g.tools.map((t) => [t.name, { fn: t, groupId: g.id }]))
 )
 
 // 此处都是附加能力

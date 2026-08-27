@@ -14,7 +14,7 @@ import type { AiChatMode } from '@/entity'
 import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/modules/chat/writingScene'
-import { getDefaultTools, isShellExecTool, toolMap, toolOwnerGroupId } from '@/modules/tool'
+import { getDefaultTools, isShellExecTool, toolMap, toolRegistry } from '@/modules/tool'
 import type { ToolPolicyContext } from '@/modules/tool/toolPolicy'
 import {
   buildToolCatalogPrompt,
@@ -168,7 +168,11 @@ export class ToolChat {
       .map((content) => content.data.name)
   }
 
-  private getFunctions(params: ChatRequestParams): ToolFunction[] {
+  /**
+   * 第①层基础函数表：常驻默认 + 类型场景 + 显式勾选 + todo + 装载器。
+   * 含子 Agent / 隐私聊天 / spawn_agent 裁剪规则；不含渐进式集合工具（第②层负责）。
+   */
+  private buildBaseFunctions(params: ChatRequestParams): Map<string, ToolFunction> {
     const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
     const names = [...(agent?.tools ?? []), ...this.getUserToolNames(params)]
     const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
@@ -198,7 +202,53 @@ export class ToolChat {
       }
       map.set(fn.name, fn)
     }
+    return map
+  }
+
+  /**
+   * 第②层「已装载」：本条消息内已装载集合的工具整组并入（洋葱查找之已载入层）。
+   * 显式选择过的名字不覆盖；请求侧 schema 下发与执行期解析共用。
+   */
+  private applyLoadedCollections(map: Map<string, ToolFunction>): void {
+    if (this.loadedCollections.value.length === 0) return
+    const loaded = new Set(this.loadedCollections.value)
+    for (const entry of Object.values(toolRegistry)) {
+      if (!loaded.has(entry.groupId) || map.has(entry.fn.name)) continue
+      map.set(entry.fn.name, entry.fn)
+    }
+  }
+
+  /**
+   * 请求侧函数表 = 第①层基础 + 第②层已装载。未装载的可选集合不下发 schema（保持轻量）；
+   * 模型凭历史记忆调用未装载工具时由 resolveForExecution 在执行期兜底恢复。
+   */
+  private getFunctions(params: ChatRequestParams): ToolFunction[] {
+    const map = this.buildBaseFunctions(params)
+    this.applyLoadedCollections(map)
     return Array.from(map.values())
+  }
+
+  /**
+   * 执行前洋葱解析：① 基础表 → ② 已装载集合 → ③ 全局注册表 toolRegistry 兜底。
+   * 第③层命中即静默装载其所属集合并并入——跨 Loop 自动恢复的载体：
+   * Loop 结束已装载状态被清空，模型凭历史记忆直呼工具名时由此自动复装并放行本次调用，
+   * 后续轮次该组 schema 常驻。有装载发生时按计划模式过滤后返回新表，无变化原样返回 base。
+   */
+  private resolveForExecution(names: string[], base: ToolFunction[]): ToolFunction[] {
+    const map = new Map(base.map((fn) => [fn.name, fn]))
+    this.applyLoadedCollections(map)
+    let changed = false
+    for (const name of names) {
+      if (map.has(name)) continue
+      const entry = toolRegistry[name]
+      if (!entry) continue
+      if (!this.loadedCollections.value.includes(entry.groupId)) {
+        this.loadedCollections.value = [...this.loadedCollections.value, entry.groupId]
+      }
+      map.set(name, entry.fn)
+      changed = true
+    }
+    return changed ? this.filterToolsByMode(Array.from(map.values())) : base
   }
 
   /**
@@ -245,24 +295,6 @@ export class ToolChat {
       return functions.filter((fn) => fn.risk === 'safe' || isShellExecTool(fn))
     }
     return functions
-  }
-
-  /**
-   * 渐进式加载拦截器：模型凭历史记忆 / 幻觉调用了未装载集合中的工具时，
-   * 自动装载其所属集合并放行本次执行（跨消息自愈，见 docs/tool/11）。
-   * @returns 是否发生了新装载——有则调用方须重建函数表后再执行工具调用
-   */
-  private ensureCollectionsLoaded(names: string[]): boolean {
-    const missing = [
-      ...new Set(
-        names
-          .map((name) => toolOwnerGroupId[name])
-          .filter((id): id is string => !!id && !this.loadedCollections.value.includes(id))
-      )
-    ]
-    if (missing.length === 0) return false
-    this.loadedCollections.value = [...this.loadedCollections.value, ...missing]
-    return true
   }
 
   /**
@@ -526,10 +558,11 @@ export class ToolChat {
       }
 
       this.toolCalls.value.push(...result.toolCalls)
-      // 拦截器：引用了未装载集合的工具 → 先装载其所在集合并重建函数表再执行（当轮放行，下一轮请求带全组 schema）
-      if (this.ensureCollectionsLoaded(result.toolCalls.map((call) => call.toolCallName))) {
-        functions = this.filterToolsByMode(this.getFunctions(params))
-      }
+      // 执行前洋葱解析：③ 全局注册表兜底（含跨 Loop 自动恢复），命中即装载其集合并放行本次调用
+      functions = this.resolveForExecution(
+        result.toolCalls.map((call) => call.toolCallName),
+        functions
+      )
       await executeToolCalls(
         this.messages,
         assistantMessageId,
@@ -644,6 +677,36 @@ export class ToolChat {
     }
   }
 
+  /**
+   * 收口收割：把悬停在非终态的工具块推进到正确状态。
+   * - 已有结果却未标完成（持久化快照竞态 / 历史脏数据）→ 补 complete
+   * - 无结果的漏网块（非交互）→ stop + 「本轮已停止，工具未执行」
+   * - 仍在等待交互决策的块（ext.interactive 且未完成）保留——它们是 resume 恢复审批的合法素材，
+   *   收割会跳过，不误杀跨重启的真挂起
+   */
+  private sweepPendingToolCalls(assistantMessageId?: string): void {
+    const targets = assistantMessageId
+      ? this.messages.value.filter((message) => message.id === assistantMessageId)
+      : this.messages.value
+    for (const message of targets) {
+      if (message.role !== 'assistant') continue
+      for (const content of message.content ?? []) {
+        if (content.type !== 'toolcall') continue
+        if (content.status === 'complete' || content.status === 'stop') continue
+        if (content.data.result) {
+          content.status = 'complete'
+          continue
+        }
+        const interactive = content.ext?.interactive
+        if (interactive === 'confirm' || interactive === 'ask' || interactive === 'font_pick') {
+          continue
+        }
+        content.status = 'stop'
+        content.data.result = '本轮已停止，工具未执行'
+      }
+    }
+  }
+
   private async executeRequest(
     requestParams: ChatRequestParams,
     assistantMessageId: string
@@ -651,6 +714,8 @@ export class ToolChat {
     const { seq, signal } = this.beginRequest()
     try {
       await this.runAgentLoop(requestParams, assistantMessageId, signal, seq)
+      // 循环收束即本轮交互结算完毕，残余非终态工具块统一定格，避免永久悬停的「等待中」
+      this.sweepPendingToolCalls(assistantMessageId)
       if (seq === this.ctx.requestSeq && !signal.aborted) {
         const status = this.status.value === 'idle' ? 'complete' : this.status.value
         setAssistantStatus(this.messages, assistantMessageId, status)
@@ -680,6 +745,8 @@ export class ToolChat {
     console.error(`[AgentChat] 请求出错 (assistantMessageId=${assistantMessageId})`, error)
     this.status.value = 'error'
     this.ctx.config.onError?.(error instanceof Error ? error : new Error(String(error)))
+    // 异常路径同样收口：错误帧前后未走完的工具块统一定格
+    this.sweepPendingToolCalls(assistantMessageId)
     appendAssistantContent(this.messages, assistantMessageId, {
       type: 'text',
       data: error instanceof Error ? error.message : String(error),
@@ -773,11 +840,9 @@ export class ToolChat {
     if (!target) return
     const { assistantMessageId, call } = target
     const params = this.buildResumeRequestParams(target)
-    let functions = this.filterToolsByMode(this.getFunctions(params))
-    // 重启恢复挂起审批时同样走拦截器，避免挂起中的集合工具因未装载而「未找到」
-    if (this.ensureCollectionsLoaded([call.toolCallName])) {
-      functions = this.filterToolsByMode(this.getFunctions(params))
-    }
+    const baseFunctions = this.filterToolsByMode(this.getFunctions(params))
+    // 重启恢复同样走洋葱解析兜底，避免挂起中的集合工具因未装载而「未找到」
+    const functions = this.resolveForExecution([call.toolCallName], baseFunctions)
     const fn = functions.find((item) => item.name === call.toolCallName)
     if (fn) {
       let args: Record<string, unknown>
@@ -948,12 +1013,15 @@ export class ToolChat {
 
   init(initialMessages?: ChatMessage[]): void {
     if (initialMessages) this.messages.value = [...initialMessages]
+    // 水合即清洗：治愈存量残缺状态（结果在而未标完成），保留等待审批的挂起块供 resume
+    this.sweepPendingToolCalls()
   }
 
   setMessages(messages: ChatMessage[], mode: ChatMessageSetterMode = 'replace'): void {
     if (mode === 'replace') this.messages.value = [...messages]
     else if (mode === 'prepend') this.messages.value = [...messages, ...this.messages.value]
     else this.messages.value = [...this.messages.value, ...messages]
+    this.sweepPendingToolCalls()
   }
 
   setTodos(todos: TodoItem[]): void {
