@@ -19,9 +19,9 @@ DeepSeek 模型在输出最终回答前会先输出思维链（`reasoning_conten
 注意：
 
 - 自统一 AI 请求模块（`modules/ai`）落地后，`thinking` 直接放入 chat 格式请求 body 由 chat 适配器完成（见 `docs/ai/01-ai-request-module.md`），不再经过 openai SDK。
-- 流式响应思维链通过 `delta.reasoning_content` 返回，已由 `ChatCommon.extractReasoningContent` 处理并渲染为 `thinking` 内容块。
+- 流式响应思维链通过 `delta.reasoning_content` 返回，已由 `ChatCommon.extractReasoningContent` 处理并渲染为 `thinking` 内容块；部分网关（OpenRouter 等）字段名为 `delta.reasoning`，已一并兼容（缺失思考会导致工具轮次无法回传 `reasoning_content`，见下）。
 - 思考模式下不支持 `temperature` / `top_p` 等采样参数（传入不报错但不生效）。
-- 工具调用场景：带 `tools` 的请求需在后续轮次完整回传 `reasoning_content`，否则 API 返回 400（当前实现由多轮拼接逻辑保证）。
+- 工具调用场景（DeepSeek / GLM 契约，已实证）：思考模式下会话中一旦发生过工具调用，历史中**每条带 `tool_calls` 的 assistant 消息必须回传 `reasoning_content`**（原样、不截断），字段缺失 API 返回 400 `"The reasoning_content in the thinking mode must be passed back to the API"`。由 `agentContext.appendAssistantStep` 保证：思考开启（`thinking !== false`）时凡带 `tool_calls` 的消息无条件写 `reasoning_content`，历史步无思考文本（会话中途开思考、模型空思考）时补空串。
 
 ## 字段设计（扁平字段）
 
@@ -115,9 +115,10 @@ interface ChatSenderInitial {
 | 文件 | 作用 |
 |---|---|
 | `src/domain/ChatMessage.ts` | `ThinkingEffort` 类型；消息字段 |
-| `src/modules/chat/engine/ChatCommon.ts` | `ChatRequestParams` 请求参数 |
-| `src/modules/ai/types.ts` | `AiRequestParams` 统一请求参数（含 thinking / reasoningEffort） |
+| `src/modules/chat/engine/ChatCommon.ts` | `ChatRequestParams` 请求参数；`extractReasoningContent` 兼容 `reasoning_content` / `reasoning` 两种字段名 |
+| `src/modules/ai/types.ts` | `AiRequestParams` 统一请求参数（含 thinking / reasoningEffort）；delta 增量含 `reasoning` 网关兼容字段 |
 | `src/modules/ai/formats/chat.ts` | chat 格式请求体构建（`thinking` / `reasoning_effort` 落 body） |
+| `src/modules/chat/agent/agentContext.ts` | 重建 assistant 请求消息：思考开启时带 `tool_calls` 的消息强制回传 `reasoning_content`（空缺补空串） |
 | `src/modules/chat/agent/agentStream.ts` | 扁平参数 → `createChatStream` 透传 |
 | `src/components/chat/AiModelSelect.vue` | 思考开关 + 强度选择器 UI |
 | `src/components/chat/sender/LChatSender.vue` | 接线发送参数（`initial` 对象初始化） |
