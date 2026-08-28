@@ -4,15 +4,15 @@
       <template #default="{ item }">
         <button
           class="menu-item"
-          :class="{ active: isActive(`/chat/${item.id}`) }"
+          :class="{ active: isActive(`/chat/${item.id}`), privacy: item.privacy }"
           type="button"
           :title="item.name"
           @contextmenu="onContextmenu($event, item)"
           @click="goTo(`/chat/${item.id}`)"
         >
-          <PaletteIcon v-if="item.type === 'design'" />
-          <SlideshowIcon v-else-if="item.type === 'ppt'" />
-          <EditIcon v-else-if="item.type === 'writing'" />
+          <PaletteIcon v-if="item.type === 'design'" class="menu-icon" />
+          <SlideshowIcon v-else-if="item.type === 'ppt'" class="menu-icon" />
+          <EditIcon v-else-if="item.type === 'writing'" class="menu-icon" />
           <WorkIcon v-else class="menu-icon" />
           <t-tag v-if="item.privacy" theme="danger" variant="light" size="small" class="shrink-0">
             私
@@ -123,6 +123,11 @@ const onContextmenu = (e: MouseEvent, item: AiChatItem) => {
 
     &::before {
       background: var(--fluent-item-selected-border);
+    }
+  }
+  &.privacy {
+    .menu-icon {
+      color: var(--td-error-color);
     }
   }
 }

@@ -467,7 +467,8 @@ export class ToolChat {
       this.messages.value,
       assistantMessageId,
       this.buildReferenceContext(vision?.attachedUrls),
-      vision?.blocksByMessageId
+      vision?.blocksByMessageId,
+      params.message.thinking !== false
     )
     return [...systemMessages, ...messages]
   }

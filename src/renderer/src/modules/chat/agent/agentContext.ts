@@ -36,7 +36,8 @@ const appendAssistantStep = (
   out: AiMessageParam[],
   contents: AIMessageContent[],
   filterSkillTools: boolean,
-  compactPlan: ToolCallCompactPlan
+  compactPlan: ToolCallCompactPlan,
+  thinking: boolean
 ): void => {
   const toolContents = contents.filter(
     (item): item is ToolCallContent =>
@@ -52,7 +53,11 @@ const appendAssistantStep = (
     role: 'assistant',
     content: text || (toolContents.length > 0 ? null : '')
   }
-  if (reasoning) assistantMessage.reasoning_content = reasoning
+  // 思考模式下带 tool_calls 的 assistant 消息必须回传 reasoning_content（DeepSeek/GLM 契约，
+  // 缺失返回 400 "must be passed back"），历史步无思考文本（中途开思考 / 模型空思考）时补空串
+  if (reasoning || (thinking && toolContents.length > 0)) {
+    assistantMessage.reasoning_content = reasoning
+  }
   if (toolContents.length > 0) {
     assistantMessage.tool_calls = toolContents.map((item): AiToolCallParam => ({
       id: item.data.toolCallId,
@@ -80,14 +85,15 @@ const appendAssistantMessage = (
   out: AiMessageParam[],
   message: AIMessage,
   filterSkillTools: boolean,
-  compactPlan: ToolCallCompactPlan
+  compactPlan: ToolCallCompactPlan,
+  thinking: boolean
 ): void => {
   const contents = message.content ?? []
   let step: AIMessageContent[] = []
   let stepId: string | undefined
 
   const flush = () => {
-    appendAssistantStep(out, step, filterSkillTools, compactPlan)
+    appendAssistantStep(out, step, filterSkillTools, compactPlan, thinking)
     step = []
     stepId = undefined
   }
@@ -166,7 +172,9 @@ export const toAgentRequestMessages = (
   activeAssistantMessageId: string,
   activeReferenceContext = '',
   /** 消息 id → 图像内容块（识图模型时由调用方异步预构建，全部历史保留） */
-  imagesByMessageId: Map<string, AiImageBlock[]> = new Map()
+  imagesByMessageId: Map<string, AiImageBlock[]> = new Map(),
+  /** 本次请求思考模式是否开启（未显式关闭视为开启，与服务端默认一致） */
+  thinking = true
 ): AiMessageParam[] => {
   const out: AiMessageParam[] = []
   const activeAssistantIndex = messages.findIndex(
@@ -213,7 +221,7 @@ export const toAgentRequestMessages = (
       continue
     }
 
-    appendAssistantMessage(out, message, message.id !== activeAssistantMessageId, compactPlan)
+    appendAssistantMessage(out, message, message.id !== activeAssistantMessageId, compactPlan, thinking)
   }
 
   return out

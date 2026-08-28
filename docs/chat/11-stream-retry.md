@@ -10,7 +10,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/renderer/src/modules/chat/agent/agentStream.ts` | 重试循环：`runOnce(stepId)` 单次尝试（原流消费逻辑）+ 外层 attempt 循环、`isRetryableError`、`abortableDelay`；流正常结束但无内容 / 无工具调用 / 无 finish_reason 时 `logger.warn` 空流告警（典型：200 + 非 SSE 响应体解析为 0 帧、服务端空补全）；工具参数 JSON 落历史前校验，非法抛可重试错误（见错误分类表） |
+| `src/renderer/src/modules/chat/agent/agentStream.ts` | 重试循环：`runOnce(stepId)` 单次尝试（原流消费逻辑）+ 外层 attempt 循环、`isRetryableError`、`abortableDelay`；**流完整性校验**（见下节）；工具参数 JSON 落历史前校验，非法抛可重试错误（见错误分类表） |
 | `src/renderer/src/modules/chat/agent/agentMessages.ts` | `removeStepContents`（按 stepId 清半截内容）、`upsertStepNotice`（提示块原地更新 / 追加） |
 | `src/renderer/src/modules/ai/transport.ts` | `HttpError = Error & { status }` 与 `isHttpError` 守卫（`buildHttpError` 构造时附带状态码） |
 | `src/renderer/src/components/chat/chat-assistant/MChatAssistant.vue` | `isRetryNotice` 分支：提示块渲染为 `RefreshIcon` + 灰色状态行 |
@@ -27,6 +27,21 @@
 | 服务端错误帧（200 + SSE `error` 帧，chat 格式 code 为数字） | 转 `HttpError` 按状态码分类：429/5xx 重试，其余 4xx 上抛 |
 | 工具调用参数 JSON 非法（`runOnce` 落历史前校验） | 重试（重掷大概率得到合法 JSON；防止非法参数污染历史导致会话 brick） |
 | 非 Error 抛出值 | 不重试 |
+
+## 流完整性校验（2026-08-27 增）
+
+此前「流不完整结束」零防御：连接被网关 / 代理中途干净切断（无 `finish_reason`、无 error，Node http 层表现为正常 end）或 200 + 非 SSE 响应体（`chat.ts` 对 JSON 解析失败帧静默丢弃 → 0 帧）时，`runOnce` 正常返回 → `AgentChat` 一律按 `complete` 收尾，界面表现为「突然停止、半截内容被当完整回答、无任何错误」。现于流循环结束后校验（在错误分类表所列重试机制之前）：
+
+| 判定 | 行为 |
+|------|------|
+| `signal.aborted`（中止落在流中段，preload 桥按正常收尾返回） | 返回 `cancelled: true`，走既有「停止」路径，不再误标 complete |
+| `finishReason == null && accumulated.size === 0`（半截截断或 0 帧，含已收部分内容的场景） | 抛普通 Error「流提前结束，未收到完整响应」→ 可重试（自动清理半截内容），耗尽后错误气泡可见；同时 `logger.warn` 记录 model / baseURL / receivedContent |
+| `finish_reason === 'tool_calls'` 但零工具增量（非流式形状 / 截断） | 抛普通 Error「模型请求调用工具但未收到工具调用数据」→ 可重试 |
+
+配套修正：`finishReason = choice.finish_reason` 原为无条件覆盖，后续不带 `finish_reason` 的帧会抹掉已收到的终局标记，改为仅在 truthy 时更新。
+
+- 收到 `tool_calls` 增量但无 `finish_reason` 的流放行（循环继续执行工具，良性）；
+- 极少数从不返回 `finish_reason` 的网关将从「无声成功」变为可见错误 + 重试，属有意的可观测性改善。
 
 ## 重试流程（attempt 循环）
 

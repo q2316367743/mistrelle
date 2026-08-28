@@ -103,7 +103,7 @@
 
 | 文档                                                                | 描述                                                                              |
 |---------------------------------------------------------------------|-----------------------------------------------------------------------------------|
-| [01-thinking-mode.md](./chat/01-thinking-mode.md)                   | DeepSeek 思考模式：`thinking` / `reasoning_effort` 参数、扁平字段设计、思维链渲染 |
+| [01-thinking-mode.md](./chat/01-thinking-mode.md)                   | DeepSeek 思考模式：`thinking` / `reasoning_effort` 参数、扁平字段设计、思维链渲染、`delta.reasoning` 网关兼容、工具轮次 `reasoning_content` 强制回传契约（缺失补空串防 400） |
 | [02-chat-locator.md](./chat/02-chat-locator.md)                     | 对话侧边定位器（RChatList Locator）：仅用户消息展示、tooltip 预览前 10 字         |
 | [03-canvas-node-reference.md](./chat/03-canvas-node-reference.md)   | 画布节点引用：双击节点 → 输入框 canvasMention → `CanvasContent` 结构化注入        |
 | [04-chat-session-lifecycle.md](./chat/04-chat-session-lifecycle.md) | 会话生命周期与空闲自动回收：挂载/运行豁免、5 分钟 TTL 过期销毁、回收后磁盘水合    |
@@ -113,7 +113,7 @@
 | [08-new-page-keep-alive.md](./chat/08-new-page-keep-alive.md)       | 新建聊天页 keep-alive 保活：router-view 外套 keep-alive 缓存 /new 页（组件名 PageNew），发送后重置全部表单数据 |
 | [09-user-message-expand.md](./chat/09-user-message-expand.md)       | 用户消息折叠 / 展开：限高 3 行 + 底部 backdrop-filter 渐变模糊、模糊区中央向下箭头展开 / 展开后居中向上箭头收起；图片附件 hover 用 t-popup+t-image 预览，点击标签在文件夹中显示 |
 | [10-ai-workspace.md](./chat/10-ai-workspace.md)                     | AiWorkspace 工作目录选择器：非只读 dropdown 选择/清除/历史，只读锁定态点击 shell.openPath 打开目录（cursor default 无动画） |
-| [11-stream-retry.md](./chat/11-stream-retry.md)                     | 流式请求自动重试：agent 层指数退避（2s→4s→8s，默认 3 次）、失败清半截内容防重复、`ext.retryKey` 提示块随消息持久化；4xx（含 axios「status code 403」空壳）不重试 |
+| [11-stream-retry.md](./chat/11-stream-retry.md)                     | 流式请求自动重试：agent 层指数退避（2s→4s→8s，默认 3 次）、失败清半截内容防重复、`ext.retryKey` 提示块随消息持久化；流完整性校验（无 finish_reason 截断/0 帧抛可重试错、abort 转 cancelled、tool_calls 零增量抛错）；4xx（含 axios「status code 403」空壳）不重试 |
 | [12-agent-context-compaction.md](./chat/12-agent-context-compaction.md) | 历史工具上下文紧凑化：请求构建时按 `toolContextRules` 注册表处理历史——写类同资源仅保留最后一次成功写完整原文、其余（含失败写）整对剔除，读类同资源仅保留最新（写入使旧读过期），仅历史消息生效、持久化原文不动；含两轮「args 中间态被模型复读」故障记录（占位串、删字段后的 `{}`，args 侧禁止任何改写） |
 | [13-vision-image-passing.md](./chat/13-vision-image-passing.md)     | 模型识图：`AiModel.support` 能力位（独立 type）+ 弹窗 CheckboxGroup + 预设标注；请求构建时从磁盘路径重建图像块（全部历史保留），三格式适配器映射 `image_url` / `input_image` / anthropic source |
 | [14-send-scroll-to-bottom.md](./chat/14-send-scroll-to-bottom.md)   | 发送消息后滚动到底部：watch「列表增长且新末条为 user」+ ChatList expose 的 scrollToBottom（smooth），复位 tdesign 上滚暂停的自动跟随；user 消息异步追加故不挂 send 事件 |

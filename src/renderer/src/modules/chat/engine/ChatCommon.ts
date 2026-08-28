@@ -96,7 +96,9 @@ export interface ChatContext {
 export function extractReasoningContent(
   delta: NonNullable<AiStreamChunk['choices']>[number]['delta']
 ): string | undefined {
-  return delta.reasoning_content
+  // 部分网关思考增量字段名为 reasoning（语义同 reasoning_content），缺失思考会导致
+  // 工具调用轮次无法回传 reasoning_content，被 DeepSeek/GLM 以 400 拒绝
+  return delta.reasoning_content ?? delta.reasoning
 }
 
 export function finishReasonToStatus(reason: string | null | undefined): ChatMessageStatus {

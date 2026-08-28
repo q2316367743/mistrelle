@@ -149,7 +149,8 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
       if (!choice) continue
       const sseChunk: SSEChunkData = { data: chunk, event: 'data' }
       if (options.config.isValidChunk && !options.config.isValidChunk(sseChunk)) continue
-      finishReason = choice.finish_reason
+      // 仅在真值时更新：后续不带 finish_reason 的帧不得抹掉已收到的终局标记
+      if (choice.finish_reason) finishReason = choice.finish_reason
       const delta = choice.delta
       const reasoning = extractReasoningContent(delta)
       if (reasoning) {
@@ -183,13 +184,23 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
     }
 
     if (options.seq !== options.currentSeq()) return { cancelled: true, toolCalls: [], usage }
-    // 流体面正常结束但一无所获：无内容、无工具调用、无 finish_reason（典型：200 + 非 SSE 响应体
-    // 被解析为 0 帧、或服务端空补全；错误帧已由适配器转抛，不会走到这里），不告警则用户只能看到界面无声终止
-    if (!receivedContent && !finishReason && accumulated.size === 0) {
-      logger.warn('流正常结束但未收到任何有效内容', {
+    // 中止落在流中段时 preload 桥按正常收尾返回（break 而非报错），此处转为取消，
+    // 交由上层走既有「停止」路径，避免半截内容被误标为完整回答
+    if (options.signal.aborted) return { cancelled: true, toolCalls: [], usage }
+    // 流完整性校验：无 finish_reason 且无工具调用 = 连接被提前切断（半截内容）或 200 非 SSE
+    // 响应体（0 帧，JSON 解析失败帧已被适配器静默丢弃）。不抛错则界面无声终止或半截被当完整回答；
+    // 抛普通 Error 走下方既有重试（重试前 removeStepContents 清理半截内容），耗尽后错误气泡可见
+    if (finishReason == null && accumulated.size === 0) {
+      logger.warn('流提前结束，未收到完整响应', {
         model: options.requestParams.message.model,
-        baseURL: options.requestParams.baseURL
+        baseURL: options.requestParams.baseURL,
+        receivedContent
       })
+      throw new Error('流提前结束，未收到完整响应（连接可能被中断或响应体异常）')
+    }
+    // finish_reason 声明 tool_calls 却无增量数据（非流式形状 / 截断）：按错误重试，否则调用被静默丢弃
+    if (finishReason === 'tool_calls' && accumulated.size === 0) {
+      throw new Error('模型请求调用工具但未收到工具调用数据')
     }
     // 工具参数落历史前校验 JSON：模型偶发生成非法参数（多余引号/语法残缺），一旦入库，
     // 本会话后续每轮请求都会被服务端以参数解析失败拒绝（实测 200 + error 帧循环失败，会话 brick）。
