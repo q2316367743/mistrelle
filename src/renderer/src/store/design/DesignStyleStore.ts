@@ -3,8 +3,10 @@ import {
   AiDesignStyle,
   AiDesignStyleForm,
   AiDesignStyleItem,
+  buildAiDesignStyleTypography,
   buildAiDesignStyleTokens,
   normalizeDesignStyleCategory,
+  normalizeDesignStyleItem,
   normalizeWhitespaceRatio
 } from '@/entity'
 import { DESIGN_STYLE_PRESETS } from '@/global/DesignStylePresets'
@@ -31,7 +33,9 @@ export const useDesignStyleStore = defineStore('design:style', () => {
   ])
 
   const init = async () => {
-    state.value = await designStyleList()
+    const list = await designStyleList()
+    // 旧索引数据缺渲染规范字段时兜底补齐（下次 put 自动落盘补全）
+    state.value = list.map(normalizeDesignStyleItem)
   }
 
   init()
@@ -61,6 +65,7 @@ export const useDesignStyleStore = defineStore('design:style', () => {
     return {
       ...style,
       category: normalizeDesignStyleCategory(style.category),
+      typography: buildAiDesignStyleTypography(style.typography),
       tokens: buildAiDesignStyleTokens(style.tokens),
       aliases: style.aliases ?? [],
       signature: style.signature ?? '',
@@ -89,6 +94,9 @@ export const useDesignStyleStore = defineStore('design:style', () => {
         category: form.category,
         tags: form.tags,
         colorPalette: form.colorPalette,
+        typography: form.typography,
+        tokens: form.tokens,
+        whitespaceRatio: form.whitespaceRatio,
         createdAt: state.value[idx].createdAt,
         updatedAt: now
       }
@@ -105,6 +113,9 @@ export const useDesignStyleStore = defineStore('design:style', () => {
       category: form.category,
       tags: form.tags,
       colorPalette: form.colorPalette,
+      typography: form.typography,
+      tokens: form.tokens,
+      whitespaceRatio: form.whitespaceRatio,
       createdAt: now,
       updatedAt: now
     }

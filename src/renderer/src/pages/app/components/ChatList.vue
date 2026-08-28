@@ -125,11 +125,6 @@ const onContextmenu = (e: MouseEvent, item: AiChatItem) => {
       background: var(--fluent-item-selected-border);
     }
   }
-  &.privacy {
-    .menu-icon {
-      color: var(--td-error-color);
-    }
-  }
 }
 
 .menu-icon {

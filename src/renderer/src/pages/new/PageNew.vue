@@ -29,13 +29,28 @@
               :label="group.label"
             >
               <t-option v-for="s in group.items" :key="s.id" :value="s.id" :label="s.name">
-                <div class="page-new__style-option">
-                  <span class="page-new__style-option-name">
-                    {{ s.name }}
-                    <t-tag v-if="s.isSystem" theme="primary" variant="light" size="small">内置</t-tag>
-                  </span>
-                  <span class="page-new__style-option-desc">{{ s.description }}</span>
-                </div>
+                <t-popup
+                  trigger="hover"
+                  placement="right-top"
+                  :show-arrow="false"
+                  :delay="[120, 100]"
+                  :overlay-inner-style="{ padding: '0' }"
+                >
+                  <div class="page-new__style-option">
+                    <span class="page-new__style-option-name">
+                      {{ s.name }}
+                      <t-tag v-if="s.isSystem" theme="primary" variant="light" size="small"
+                        >内置</t-tag
+                      >
+                    </span>
+                    <span class="page-new__style-option-desc">{{ s.description }}</span>
+                  </div>
+                  <template #content>
+                    <div class="page-new__style-preview">
+                      <style-card-face :style="s" variant="compact" :scale="0.5" />
+                    </div>
+                  </template>
+                </t-popup>
               </t-option>
             </t-option-group>
           </t-select>
@@ -54,6 +69,7 @@ import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { CHAT_TYPE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { toggleCollapsed } from '@/global/BeanFactory'
+import StyleCardFace from '@/pages/design/components/StyleCardFace.vue'
 
 /** 显式组件名：App.vue 的 keep-alive 按此名对「新建聊天」页保活 */
 defineOptions({ name: 'PageNew' })
@@ -185,6 +201,11 @@ watch(
 .page-new__style-option-desc {
   font-size: var(--td-font-size-body-small);
   color: var(--td-text-color-secondary);
+}
+
+.page-new__style-preview {
+  width: 300px;
+  padding: 8px;
 }
 
 .page-new__sender {

@@ -199,10 +199,16 @@ export interface AiDesignStyleCore {
 
 /**
  * 列表使用（index.json 索引项）
- * > 含配色方案，供列表卡片直接预览色板，无需读单条文件
+ * > 含配色方案与渲染规范（字体 / tokens / 留白），供列表卡片整卡按风格渲染，无需读单条文件
  */
 export interface AiDesignStyleItem extends BaseEntity, AiDesignStyleCore {
   colorPalette: AiDesignStyleColorPalette
+  /** 字体规范（标题 / 正文 / 辅助层级），卡片文字按此渲染 */
+  typography: AiDesignStyleTypography
+  /** 全局样式细节规范：间距 / 圆角 / 边框 / 阴影 / 动效，卡片外观按此渲染 */
+  tokens: AiDesignStyleTokens
+  /** 留白档位，映射卡片内边距密度 */
+  whitespaceRatio: AiDesignStyleWhitespaceRatio
 }
 
 export interface AiDesignStyleForm extends AiDesignStyleCore {
@@ -319,6 +325,35 @@ export const normalizeWhitespaceRatio = (
   return 55
 }
 
+/** typography 默认值，并用默认值兜底合并部分传入（兼容旧数据 / agent 部分传参） */
+export const buildAiDesignStyleTypography = (
+  partial?: Partial<AiDesignStyleTypography>
+): AiDesignStyleTypography => {
+  const base: AiDesignStyleTypography = {
+    heading: { font: '', weight: 600, size: 28, lineHeight: 1.4 },
+    body: { font: '', weight: 400, size: 16, lineHeight: 1.6 },
+    caption: { font: '', weight: 400, size: 12, lineHeight: 1.5 }
+  }
+  if (!partial) return base
+  return {
+    heading: { ...base.heading, ...partial.heading },
+    body: { ...base.body, ...partial.body },
+    caption: { ...base.caption, ...partial.caption }
+  }
+}
+
+/** 索引项归一化：旧 index.json 缺渲染规范字段时兜底补齐，保证列表卡片可按风格渲染 */
+export const normalizeDesignStyleItem = (
+  item: AiDesignStyleItem
+): AiDesignStyleItem => ({
+  ...item,
+  category: normalizeDesignStyleCategory(item.category),
+  colorPalette: item.colorPalette,
+  typography: buildAiDesignStyleTypography(item.typography),
+  tokens: buildAiDesignStyleTokens(item.tokens),
+  whitespaceRatio: normalizeWhitespaceRatio(item.whitespaceRatio)
+})
+
 /** 新建时的默认表单值 */
 export const buildAiDesignStyleForm = (): AiDesignStyleForm => ({
   name: '',
@@ -335,11 +370,7 @@ export const buildAiDesignStyleForm = (): AiDesignStyleForm => ({
     text_primary: '#1f2329',
     text_secondary: '#6b7785'
   },
-  typography: {
-    heading: { font: '', weight: 600, size: 28, lineHeight: 1.4 },
-    body: { font: '', weight: 400, size: 16, lineHeight: 1.6 },
-    caption: { font: '', weight: 400, size: 12, lineHeight: 1.5 }
-  },
+  typography: buildAiDesignStyleTypography(),
   layoutRules: [],
   tokens: buildAiDesignStyleTokens(),
   aliases: [],

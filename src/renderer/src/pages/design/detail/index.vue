@@ -26,6 +26,13 @@
 
     <div v-else-if="style" class="detail">
       <section class="detail-block">
+        <div class="detail-block__title">效果预览</div>
+        <div class="detail-block__body">
+          <style-card-face :style="style" variant="full" />
+        </div>
+      </section>
+
+      <section class="detail-block">
         <div class="detail-block__title">基础信息</div>
         <div class="detail-block__body">
           <div class="detail-basic">
@@ -92,16 +99,10 @@
       <section class="detail-block">
         <div class="detail-block__title">视觉提示</div>
         <div class="detail-block__body">
-          <div class="detail-prompt">
-            <div class="detail-prompt__label">正向风格描述词</div>
-            <pre class="detail-prompt__content">{{ style.visualPrompt || '未填写' }}</pre>
-          </div>
-          <div class="detail-prompt">
-            <div class="detail-prompt__label">反向排除词</div>
-            <pre class="detail-prompt__content detail-prompt__content--muted">{{
-              style.negativePrompt || '未填写'
-            }}</pre>
-          </div>
+          <style-prompt-block
+            :visual-prompt="style.visualPrompt"
+            :negative-prompt="style.negativePrompt"
+          />
         </div>
       </section>
 
@@ -136,6 +137,8 @@ import { openDesignStylePut } from '@/pages/design/list/modals/DesignStylePutDia
 import StylePaletteBlock from './components/StylePaletteBlock.vue'
 import StyleTypographyBlock from './components/StyleTypographyBlock.vue'
 import StyleTokenBlock from './components/StyleTokenBlock.vue'
+import StylePromptBlock from './components/StylePromptBlock.vue'
+import StyleCardFace from '@/pages/design/components/StyleCardFace.vue'
 import { useTitlePadding } from '@/hooks'
 
 const route = useRoute()
@@ -234,34 +237,6 @@ const handleEdit = async () => {
     flex-shrink: 0;
     width: 72px;
     color: var(--td-text-color-placeholder);
-  }
-}
-
-.detail-prompt {
-  & + & {
-    margin-top: 16px;
-  }
-
-  &__label {
-    margin-bottom: 8px;
-    font: var(--td-font-body-small);
-    color: var(--td-text-color-placeholder);
-  }
-
-  &__content {
-    margin: 0;
-    padding: 12px;
-    font: var(--td-font-body-medium);
-    line-height: 1.6;
-    color: var(--td-text-color-primary);
-    background: var(--td-bg-color-component);
-    border-radius: var(--td-radius-default);
-    white-space: pre-wrap;
-    word-break: break-word;
-
-    &--muted {
-      color: var(--td-text-color-secondary);
-    }
   }
 }
 
