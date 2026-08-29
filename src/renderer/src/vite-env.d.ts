@@ -54,7 +54,5 @@ declare global {
       }
       axios: AxiosInstance
     }
-    /** 工作条窗口独立 preload（src/preload/toolbar.ts），仅工作条窗口存在 */
-    workbar: ToolbarApi
   }
 }

@@ -26,30 +26,12 @@ export default defineConfig({
         '~': resolve('src/preload/src'),
         $: resolve('src/main/src')
       }
-    },
-    build: {
-      rollupOptions: {
-        // 多入口：index=主应用全量桥；toolbar=工作条窗口极简桥（独立最小 API 面）
-        input: {
-          index: resolve('src/preload/index.ts'),
-          toolbar: resolve('src/preload/toolbar.ts')
-        }
-      }
     }
   },
   renderer: {
     resolve: {
       alias: {
         '@': resolve('src/renderer/src')
-      }
-    },
-    build: {
-      rollupOptions: {
-        // 多页入口：index=主应用；toolbar=工作条窗口（缺省仅会产出 index.html）
-        input: {
-          index: resolve('src/renderer/index.html'),
-          toolbar: resolve('src/renderer/toolbar.html')
-        }
       }
     },
     plugins: [

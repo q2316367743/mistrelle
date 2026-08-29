@@ -1,6 +1,6 @@
 /**
  * AI 主窗口模块：启动即创建（index.ts 调 createAiWindow），默认显示；
- * 关闭只隐藏（before-quit 置位放行真关闭），入口为托盘「显示 AI 窗口」/ 工作条内置「AI」。
+ * 关闭只隐藏（before-quit 置位放行真关闭），入口为托盘「显示 AI 窗口」/ Dock 点击。
  */
 import { BrowserWindow, shell } from 'electron'
 import type { BrowserWindowConstructorOptions } from 'electron'
