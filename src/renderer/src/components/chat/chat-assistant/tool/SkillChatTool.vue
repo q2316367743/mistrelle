@@ -14,7 +14,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { ToolCallContent } from '@tdesign-vue-next/chat'
+import type { ToolCallContent } from '@/domain'
 import { LightbulbIcon, FileIcon } from 'tdesign-icons-vue-next'
 
 const props = defineProps({

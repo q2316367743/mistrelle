@@ -19,7 +19,7 @@
     </div>
     <div v-else-if="isWaiting" class="ask-waiting">
       <t-loading size="small" />
-      <span>等待用户回答…</span>
+      <span>处理中…</span>
     </div>
     <div v-else-if="resultItems.length" class="ask-result">
       <div v-for="(item, idx) in resultItems" :key="idx" class="ask-result-item">
@@ -39,9 +39,10 @@
 <script lang="ts" setup>
 import { computed, inject, ref } from 'vue'
 import type { PropType } from 'vue'
-import type { ToolCallContent } from '@tdesign-vue-next/chat'
+import type { ToolCallContent } from '@/domain'
 import { CheckCircleIcon, HelpCircleIcon } from 'tdesign-icons-vue-next'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
+import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
 import {
   normalizeAskArgs,
   type AskAnswerItem,
@@ -85,18 +86,11 @@ const allAnswered = computed(
 
 const toolCallId = computed(() => props.content.data.toolCallId)
 
-const matched = computed(() => bridge?.pending.value?.toolCallId === toolCallId.value)
-// 流结束后 setAssistantStatus 会把 toolcall status 置为 streaming，等待期需同时认 pending/streaming
-const isInteractive = computed(
-  () =>
-    (props.content.status === 'pending' || props.content.status === 'streaming') &&
-    !!bridge &&
-    matched.value
-)
-const isWaiting = computed(() => {
-  const s = props.content.status
-  return (s === 'pending' || s === 'streaming') && !matched.value
-})
+// 纯状态驱动：confirm 相即出表单——并行 ask 全部呈现，作答经 bridge.resolve(toolCallId)
+// 定向兑现（桥支持排队项直接出队），不再依赖单激活位匹配；pending/executing 为执行期占位
+const phase = computed(() => toolPhaseOf(props.content))
+const isInteractive = computed(() => phase.value === 'confirm')
+const isWaiting = computed(() => phase.value === 'pending' || phase.value === 'executing')
 const resultText = computed(() => props.content.data.result ?? '')
 
 // 结构化问答对：agentTools 作答后写入 ext.askItems，旧数据无则回退显示 resultText

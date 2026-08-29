@@ -16,7 +16,8 @@
 </template>
 <script lang="ts" setup>
 import { computed } from 'vue'
-import type { ToolCallContent } from '@tdesign-vue-next/chat'
+import type { ToolCallContent } from '@/domain'
+import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
 import AskChatTool from '@/components/chat/chat-assistant/tool/AskChatTool.vue'
 import FontPickChatTool from '@/components/chat/chat-assistant/tool/FontPickChatTool.vue'
 import ConfirmChatTool from '@/components/chat/chat-assistant/tool/ConfirmChatTool.vue'
@@ -49,11 +50,11 @@ const toolCallName = computed(() => props.content.data.toolCallName)
 
 const isAskTool = computed(() => toolCallName.value === askToolName)
 const isFontPickTool = computed(() => toolCallName.value === fontPickToolName)
-// 仅未完成态接入 confirm 卡片；决策完成（complete）后回落到各工具自有渲染展示结果
-const isConfirmPending = computed(() => {
-  const s = props.content.status
-  return props.content.ext?.interactive === 'confirm' && (s === 'pending' || s === 'streaming')
-})
+// 仅待决策（confirm 相）接入 confirm 卡片；决策后（executing/complete）回落各工具自有渲染
+const isConfirmPending = computed(
+  () =>
+    props.content.ext?.interactive === 'confirm' && toolPhaseOf(props.content) === 'confirm'
+)
 const isFileTool = computed(() => toolCallName.value.startsWith('file_'))
 const isShellTool = computed(() => shellToolNames.has(toolCallName.value))
 const isSkillTool = computed(() => skillToolNames.has(toolCallName.value))

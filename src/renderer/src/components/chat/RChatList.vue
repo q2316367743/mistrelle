@@ -83,6 +83,7 @@ import {
   ChatStatus,
   UserMessage
 } from '@/domain'
+import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
 import type { PropType } from 'vue'
 
 const props = defineProps({
@@ -136,9 +137,9 @@ const isAssistantMessage = (message: ChatMessageType): message is AIMessage =>
   message.role === 'assistant'
 
 /**
- * 全部待审批的 confirm 工具块：以消息内容为唯一事实源（ext.interactive + 未完成），
+ * 全部待审批的 confirm 工具块：以消息内容为唯一事实源（ext.interactive + confirm 相），
  * 不依赖交互桥的单激活时机——并行审批下多个待审块（含排在批次后面的块）
- * 都能被横幅计数提示与「前往」定位。
+ * 都能被横幅计数提示与「前往」定位。executing 及之后为已批准的执行期，不计入待审。
  */
 const pendingConfirmItems = computed<ToolCallContent[]>(() => {
   const items: ToolCallContent[] = []
@@ -148,7 +149,7 @@ const pendingConfirmItems = computed<ToolCallContent[]>(() => {
       if (
         content.type === 'toolcall' &&
         content.ext?.interactive === 'confirm' &&
-        (content.status === 'pending' || content.status === 'streaming')
+        toolPhaseOf(content) === 'confirm'
       ) {
         items.push(content)
       }

@@ -36,8 +36,11 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
-import type { ToolCallContent } from '@tdesign-vue-next/chat'
+import { computed, ref } from 'vue'
+import type { PropType } from 'vue'
+import type { ToolCallContent } from '@/domain'
+import type { ToolPhase } from '@/domain'
+import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
 import { ChevronRightIcon, TerminalIcon } from 'tdesign-icons-vue-next'
 
 const props = defineProps({
@@ -81,10 +84,12 @@ const stdinText = computed(() => {
 
 const outputText = computed(() => props.content.data.result || '')
 
+// 纯状态驱动：块级四态由执行器独占推进（toolPhaseOf 含历史旧值归一），无需终态覆盖
+const phase = computed(() => toolPhaseOf(props.content))
+
 const isError = computed(
   () =>
-    props.content.status === 'error' ||
-    (props.content.status === 'complete' && outputText.value.startsWith('错误'))
+    (phase.value === 'complete' || phase.value === 'stop') && outputText.value.startsWith('错误')
 )
 
 interface StatusConfig {
@@ -92,35 +97,18 @@ interface StatusConfig {
   label: string
 }
 
-// 终态覆盖：结果文本已落（result 存在）即按完成渲染——对冲一切「状态字段未推进」的悬停
-const effectiveStatus = computed(() => {
-  const s = props.content.status
-  if ((s === 'pending' || s === 'streaming') && props.content.data.result) return 'complete'
-  return s
-})
-
-const statusConfig = computed<StatusConfig | null>(() => {
-  const map: Record<string, StatusConfig> = {
+const statusConfig = computed<StatusConfig>(() => {
+  const map: Record<ToolPhase, StatusConfig> = {
     pending: { theme: 'default', label: '等待中' },
-    streaming: { theme: 'primary', label: '执行中' },
+    confirm: { theme: 'warning', label: '审批中' },
+    executing: { theme: 'primary', label: '执行中' },
     complete: { theme: 'success', label: '完成' },
-    stop: { theme: 'default', label: '已停止' },
-    error: { theme: 'danger', label: '错误' }
+    stop: { theme: 'default', label: '已停止' }
   }
-  return effectiveStatus.value ? (map[effectiveStatus.value] ?? null) : null
+  return map[phase.value]
 })
 
-const isLoading = computed(() => {
-  const s = effectiveStatus.value
-  return s === 'pending' || s === 'streaming'
-})
-
-// 临时探针（定位卡头状态不更新），确认后移除：观察状态字段的真实流转序列
-watch(
-  () => `${props.content.data.toolCallName}/${props.content.data.toolCallId} status=${props.content.status}`,
-  (sig) => console.log(`[ToolStat][卡] ${sig}`),
-  { immediate: true }
-)
+const isLoading = computed(() => phase.value === 'pending' || phase.value === 'executing')
 </script>
 <style scoped lang="less">
 .chat-tool {

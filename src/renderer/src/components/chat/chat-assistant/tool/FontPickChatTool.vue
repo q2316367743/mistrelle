@@ -85,10 +85,10 @@
       </div>
     </div>
 
-    <!-- 等待态 -->
+    <!-- 执行期 / 结果回填前的短暂窗口 -->
     <div v-else-if="isWaiting" class="font-pick-waiting">
       <t-loading size="small" />
-      <span>等待用户选择字体…</span>
+      <span>处理中…</span>
     </div>
 
     <!-- 结果态 -->
@@ -102,9 +102,10 @@
 <script lang="ts" setup>
 import { computed, inject, onMounted, ref, watchEffect } from 'vue'
 import type { PropType } from 'vue'
-import type { ToolCallContent } from '@tdesign-vue-next/chat'
+import type { ToolCallContent } from '@/domain'
 import { CheckCircleIcon } from 'tdesign-icons-vue-next'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
+import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
 import { normalizeFontPickArgs } from '@/modules/tool/components/design/fontTools'
 import FontPreviewText from '@/components/FontPreviewText.vue'
 import { FontItem } from '@/domain/FontItem'
@@ -166,20 +167,11 @@ watchEffect(() => {
   if (first?.font) selected.value = first.font.name
 })
 
-const matched = computed(() => bridge?.pending.value?.toolCallId === toolCallId.value)
-const isInteractive = computed(
-  () =>
-    (props.content.status === 'pending' || props.content.status === 'streaming') &&
-    !!bridge &&
-    matched.value
-)
-const isWaiting = computed(
-  () =>
-    (props.content.status === 'pending' || props.content.status === 'streaming') && !matched.value
-)
-const isDone = computed(
-  () => props.content.status === 'complete' || props.content.status === 'error'
-)
+// 纯状态驱动：confirm 相即出面（并行交互全呈现，作答经 bridge.resolve(toolCallId) 定向兑现）
+const phase = computed(() => toolPhaseOf(props.content))
+const isInteractive = computed(() => phase.value === 'confirm')
+const isWaiting = computed(() => phase.value === 'pending' || phase.value === 'executing')
+const isDone = computed(() => phase.value === 'complete' || phase.value === 'stop')
 const pickedFont = computed(() =>
   typeof props.content.ext?.pickedFont === 'string' ? props.content.ext.pickedFont : ''
 )

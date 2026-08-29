@@ -6,7 +6,8 @@ import type {
   ChatMessageStatus,
   ChatUsage,
   TokenBreakdown,
-  ToolCallContent
+  ToolCallContent,
+  ToolPhase
 } from '@/domain'
 import { nanoid } from 'nanoid'
 import { prettyDurationTime, toDateString } from '@/utils/lang'
@@ -128,6 +129,21 @@ export const upsertStepNotice = (
   })
 }
 
+/**
+ * 归一 toolcall 块级生命周期：新值（ToolPhase）直通；历史落库旧值按数据形状映射——
+ * pending + 交互标记 → confirm（旧模型 pending 兼具等待审批语义）；
+ * streaming → 有结果判 complete、有交互标记判 confirm、否则 executing；
+ * error → stop。渲染 / sweep / resume 判定一律经此函数，不直接读 status 字段。
+ */
+export const toolPhaseOf = (content: ToolCallContent): ToolPhase => {
+  const s = content.status
+  if (s === 'confirm' || s === 'executing' || s === 'complete' || s === 'stop') return s
+  if (s === 'pending') return content.ext?.interactive ? 'confirm' : 'pending'
+  if (content.data.result) return 'complete'
+  if (s === 'error') return 'stop'
+  return content.ext?.interactive ? 'confirm' : 'executing'
+}
+
 export const updateToolCallContent = (
   messages: Ref<ChatMessage[]>,
   messageId: string,
@@ -148,8 +164,8 @@ export const updateToolCallContent = (
 }
 
 /**
- * 标记工具调用为「等待用户决策」的交互类型（ask / confirm）。
- * 该标记随消息持久化，应用重启后据此恢复挂起的交互。
+ * 标记工具调用进入「等待用户决策」态（ask / confirm / font_pick 共用 confirm 相）。
+ * kind 随消息持久化，应用重启后据此恢复挂起的交互。
  */
 export const markToolInteractive = (
   messages: Ref<ChatMessage[]>,
@@ -163,13 +179,14 @@ export const markToolInteractive = (
       item.type === 'toolcall' && item.data.toolCallId === toolCallId
   )
   if (!content) return
+  content.status = 'confirm'
   content.ext = { ...(content.ext ?? {}), interactive: kind }
 }
 
 /**
- * 标记工具进入「执行中」（handler 实际开始前调用）：生命周期显式三段式
- * pending（已接收 / 待审批）→ streaming（执行中）→ complete（applyResult 终态）。
- * pending 不再承担执行中语义，任何未被 applyResult 触达的块都能被状态判定准确识别。
+ * 标记工具进入「执行中」（handler 实际开始前调用）：四态生命周期
+ * pending（等待）→ confirm（待决策）→ executing（执行中）→ complete（结果回填）。
+ * 块级状态只归执行器推进，消息级状态收尾（setAssistantStatus）永不触碰结构块。
  */
 export const markToolExecuting = (
   messages: Ref<ChatMessage[]>,
@@ -182,7 +199,7 @@ export const markToolExecuting = (
       item.type === 'toolcall' && item.data.toolCallId === toolCallId
   )
   if (!content || content.status === 'complete') return
-  content.status = 'streaming'
+  content.status = 'executing'
 }
 
 export const setAssistantStatus = (
@@ -194,7 +211,19 @@ export const setAssistantStatus = (
   if (!assistant) return
   assistant.status = status
   const last = assistant.content?.[assistant.content.length - 1]
-  if (last) last.status = status
+  if (!last) return
+  // 消息级状态只连坐流式文本类末块；toolcall 等结构块的生命周期归执行器管理
+  // （pending → confirm → executing → complete）。曾在此无条件改写：
+  // ① 流结束时把刚入列的待审批块连坐成 streaming，审批卡永不渲染（显示「执行中」）；
+  // ② 下一 step 开始时把已 complete 的工具块改回 streaming，UI 永久「执行中」。
+  if (
+    last.type === 'text' ||
+    last.type === 'markdown' ||
+    last.type === 'reasoning' ||
+    last.type === 'thinking'
+  ) {
+    last.status = status
+  }
   if (status === 'complete' || status === 'stop') {
     assistant.finishedAt = Date.now()
   }
@@ -265,8 +294,8 @@ export const collectSubAgents = (messages: ChatMessage[]): SubAgentInfo[] => {
       } catch {
         // args 解析失败则忽略任务摘要与类型
       }
-      const s = content.status
-      const status = s === 'error' ? 'error' : s === 'pending' || s === 'streaming' ? 'running' : 'completed'
+      const phase = toolPhaseOf(content)
+      const status = phase === 'complete' || phase === 'stop' ? 'completed' : 'running'
       result.push({ subId, task, type, status, messageIndex: assistantIndex })
     }
   }

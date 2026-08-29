@@ -19,18 +19,19 @@
         <t-button theme="default" variant="outline" size="small" @click="reject">拒绝</t-button>
       </div>
     </template>
-    <div v-else-if="showExecutingFallback" class="confirm-executing">
+    <div v-else-if="isExecuting || showExecutingFallback" class="confirm-executing">
       <t-loading size="small" />
-      <span>执行中…</span>
+      <span>{{ showExecutingFallback ? '等待交互桥…' : '执行中…' }}</span>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { computed, inject, ref } from 'vue'
 import type { PropType } from 'vue'
-import type { ToolCallContent } from '@tdesign-vue-next/chat'
+import type { ToolCallContent } from '@/domain'
 import { ShieldErrorIcon } from 'tdesign-icons-vue-next'
 import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
+import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
 import { toolMap } from '@/modules/tool'
 
 const props = defineProps({
@@ -88,14 +89,13 @@ const reject = () => {
   bridge?.resolve(toolCallId.value, false)
 }
 
-const isWaitingState = computed(
-  () => props.content.status === 'pending' || props.content.status === 'streaming'
-)
-// 并行审批：凡待审块（未完成 + 桥存在）都直接可作答——resolve(toolCallId) 支持对排队项出队兑现，
-// 不再要求本块是桥的单激活项；否则批量调用中非队首的待审块永远拿不到审批按钮
-const isInteractive = computed(() => isWaitingState.value && !!bridge)
+// 纯状态驱动：confirm 相 = 等待用户决策（出按钮，数据自持不依赖桥激活匹配）；
+// pending / executing = 执行期占位。块级四态由执行器独占推进，消息级收尾不再触碰
+const phase = computed(() => toolPhaseOf(props.content))
+const isInteractive = computed(() => phase.value === 'confirm' && !!bridge)
+const isExecuting = computed(() => phase.value === 'pending' || phase.value === 'executing')
 // 无桥环境（桥被禁用 / 异常水合）的兜底占位
-const showExecutingFallback = computed(() => isWaitingState.value && !bridge)
+const showExecutingFallback = computed(() => phase.value === 'confirm' && !bridge)
 </script>
 <style scoped lang="less">
 .confirm-chat-tool {

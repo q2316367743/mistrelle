@@ -2,6 +2,7 @@ import type { InjectionKey } from 'vue'
 import { ref } from 'vue'
 import type { ChatMessage } from '@/domain'
 import type { ToolCall } from './agentTypes'
+import { toolPhaseOf } from './agentMessages'
 
 /**
  * confirm 类交互的决策：用户批准 / 拒绝工具执行。
@@ -109,8 +110,8 @@ export class InteractiveBridge {
 export const INTERACTIVE_KEY: InjectionKey<InteractiveBridge> = Symbol('interactiveBridge')
 
 /**
- * 从消息流末尾向前查找最后一个「等待用户决策」的交互 toolcall。
- * 交互状态隐式落在持久化消息中（ext.interactive + 未完成），应用重启后可据此恢复。
+ * 从消息流末尾向前查找最后一个「等待用户决策」的交互 toolcall（confirm 相）。
+ * 交互状态隐式落在持久化消息中（ext.interactive + confirm 相），应用重启后可据此恢复。
  */
 export const findPendingInteractiveToolcall = (
   messages: ChatMessage[]
@@ -122,8 +123,7 @@ export const findPendingInteractiveToolcall = (
     for (let j = contents.length - 1; j >= 0; j--) {
       const item = contents[j]
       if (item.type !== 'toolcall') continue
-      const kind = item.ext?.interactive
-      if ((kind === 'ask' || kind === 'confirm' || kind === 'font_pick') && item.status !== 'complete') {
+      if (item.ext?.interactive && toolPhaseOf(item) === 'confirm') {
         return {
           assistantMessageId: message.id,
           call: {

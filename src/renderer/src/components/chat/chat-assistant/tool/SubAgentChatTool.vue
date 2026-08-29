@@ -19,8 +19,9 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { ToolCallContent } from '@tdesign-vue-next/chat'
+import type { ToolCallContent, ToolPhase } from '@/domain'
 import { ChevronRightIcon, UserIcon } from 'tdesign-icons-vue-next'
+import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
 
 const props = defineProps<{
   content: ToolCallContent
@@ -42,25 +43,24 @@ const taskText = computed(() => {
   }
 })
 
+const phase = computed(() => toolPhaseOf(props.content))
+
 const statusConfig = computed(() => {
-  const map: Record<string, { theme: 'default' | 'primary' | 'success' | 'danger'; label: string }> = {
+  const map: Record<ToolPhase, { theme: 'default' | 'primary' | 'success' | 'danger'; label: string }> = {
     pending: { theme: 'default', label: '等待中' },
-    streaming: { theme: 'primary', label: '执行中' },
+    confirm: { theme: 'default', label: '等待中' },
+    executing: { theme: 'primary', label: '执行中' },
     complete: { theme: 'success', label: '已完成' },
-    stop: { theme: 'default', label: '已停止' },
-    error: { theme: 'danger', label: '出错' }
+    stop: { theme: 'default', label: '已停止' }
   }
-  return props.content.status ? (map[props.content.status] ?? null) : null
+  return map[phase.value]
 })
 
-const isLoading = computed(() => {
-  const s = props.content.status
-  return s === 'pending' || s === 'streaming'
-})
+const isLoading = computed(() => phase.value === 'pending' || phase.value === 'executing')
 
 const handleClick = () => {
   const subAgentId = props.content.ext?.subAgentId
-  if (subAgentId) emit('view', subAgentId)
+  if (typeof subAgentId === 'string' && subAgentId) emit('view', subAgentId)
 }
 </script>
 <style scoped lang="less">

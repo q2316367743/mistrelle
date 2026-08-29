@@ -1,30 +1,12 @@
-import type { AiMessageParam, AiTool } from '@/modules/ai'
-import type {
-  AttachmentContent,
-  ChatMessage,
-  TodoItem,
-  ToolContent,
-  ToolFunction,
-  UserMessage
-} from '@/domain'
+import type { AiMessageParam } from '@/modules/ai'
+import type { ChatMessage, TodoItem, ToolFunction, UserMessage } from '@/domain'
 import { nanoid } from 'nanoid'
-import { buildSkillCatalogPrompt, localSkillList, skillAgentList } from '@/modules/skill'
-import { buildAiAgentPrompt } from '@/entity/ai'
+import { skillAgentList } from '@/modules/skill'
 import type { AiChatMode } from '@/entity'
 import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
-import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/modules/chat/writingScene'
-import { getDefaultTools, isShellExecTool, toolMap, toolRegistry } from '@/modules/tool'
 import type { ToolPolicyContext } from '@/modules/tool/toolPolicy'
-import {
-  buildToolCatalogPrompt,
-  createToolLoadTool
-} from '@/modules/tool/components/collectionLoader'
-import { buildMemoryPrompt, buildMemoryToolPrompt, recordMemoryTool } from '@/modules/memory'
-import { buildPersonalizePrompt } from '@/modules/personalize'
-import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/modules/subagent/tool'
-import { SUB_AGENT_ALLOW } from '@/modules/subagent/types'
-import { useAiAgentStore, useSettingAiStore, useSettingSkillStore } from '@/store'
+import { useSettingAiStore } from '@/store'
 import type {
   ChatContext,
   ChatMessageSetterMode,
@@ -33,29 +15,27 @@ import type {
   ChatStatus,
   ResolvedChatRequestParams
 } from '@/modules/chat'
-import { toAgentRequestMessages } from './agentContext'
-import { collectVisionBlocks } from './visionBlocks'
-import {
-  appendAssistantContent,
-  createPendingAssistantMessage,
-  setAssistantStatus,
-  setAssistantTokenBreakdown,
-  setAssistantUsage,
-  updateToolCallContent
-} from './agentMessages'
-import { streamAgentStep } from './agentStream'
-import { executeToolCalls, parseArguments, runSingleTool } from './agentTools'
+import { createPendingAssistantMessage } from './agentMessages'
 import type { ToolCall } from './agentTypes'
-import { estimateTokenBreakdown, normalizeTokenBreakdown } from '@/utils/tokenEstimate'
-import { InteractiveBridge, findPendingInteractiveToolcall } from './interactive'
+import { InteractiveBridge } from './interactive'
 import { copyToInputs } from '@/utils/chatSender'
 import { isPathUnder } from '@/utils/sandbox'
-import { MAX_AGENT_STEPS } from '@/global/Constant'
-import { createTodoTool, buildTodoPrompt } from './todo'
-
-/** 触顶收尾指令：子 Agent 步数耗尽时以独立 system 消息注入，强制其基于中间结果立即输出最终总结 */
-const FINALIZE_PROMPT =
-  '已到达最大迭代次数，请立即基于当前已收集的所有信息输出最终总结，直接给出结论，不要再调用任何工具。'
+import { executeAgentRequest } from './agentLoop'
+import {
+  continueAgentRun,
+  resumePendingInteractives as resumeInteractives,
+  sweepPendingToolCalls as sweepToolCalls
+} from './agentResume'
+import {
+  buildAgentRequestMessages,
+  type PromptContext,
+  type WorkspaceSettingsCache
+} from './agentPrompts'
+import {
+  getToolFunctions,
+  resolveForExecution as resolveLoadedTools,
+  type ToolSurfaceContext
+} from './agentFunctions'
 
 export interface UseChatOptions {
   defaultMessages?: ChatMessage[]
@@ -81,6 +61,11 @@ export interface UseChatOptions {
   finalizeOnMaxSteps?: boolean
 }
 
+/**
+ * 会话引擎门面：持有响应式状态与配置，循环编排（agentLoop）、恢复续跑（agentResume）、
+ * 提示词（agentPrompts）、函数表（agentFunctions）经快照/实例协作。
+ * 标注「协作面」的成员供 agent/ 内部模块访问，不属于对外 API。
+ */
 export class ToolChat {
   readonly messages = ref<ChatMessage[]>([])
   readonly status = ref<ChatStatus>('idle')
@@ -88,29 +73,31 @@ export class ToolChat {
   readonly todos = ref<TodoItem[]>([])
   /** ask / confirm 交互桥：供 UI 卡片注入并作答 */
   readonly interactive = new InteractiveBridge()
-  /** 本条消息内已装载的工具集合 id（渐进式加载临时态：每轮请求开始清空，不落库不持久化） */
-  private readonly loadedCollections = ref<string[]>([])
+  /** 本条消息内已装载的工具集合 id（渐进式加载临时态：每轮请求开始清空，不落库不持久化）【协作面】 */
+  readonly loadedCollections = ref<string[]>([])
   /** 最近一轮是否因达到工具调用步数上限而结束（子 Agent 摘要提取据此区分是否正常收尾） */
   readonly hitMaxSteps = ref(false)
   /** 本轮是否触达过工具调用步数上限（finalizeOnMaxSteps 成功收尾时 hitMaxSteps 保持 false，但触顶事实需透出给调用方追加备注） */
   readonly reachedMaxSteps = ref(false)
-  private readonly ctx: ChatContext
+  /** 请求上下文（seq 抢占 + abort 信号 + 回调配置）【协作面：agentLoop 读写】 */
+  readonly ctx: ChatContext
   private readonly functions: ToolFunction[]
   private readonly systemPrompt: string
   private sandboxDir = ''
-  private workspace = ''
+  /** 当前工作空间（resume 重建参数时读取）【协作面】 */
+  workspace = ''
   /** 聊天级目录白名单（用户在确认卡片勾选「此目录以后都允许」累积），响应式供会话 watch 持久化 */
   readonly allowedDirs = ref<string[]>([])
-  /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
-  private mode: AiChatMode = 0
+  /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问【协作面：agentLoop 按模式决定步数上限】 */
+  mode: AiChatMode = 0
   /** 隐私聊天：不注入记忆、不注册记忆工具（发送时设置，标记持久化在 chat 表 privacy 列） */
   private privacy = false
   /** 聊天类型（新建对话时选定，创建后锁定；缺省回退 office） */
   private chatType: ChatType = 'office'
   /** 聊天 ID（用于子 Agent 文件路径构建） */
   private chatId = ''
-  /** 是否为子 Agent（禁用 spawn_agent 工具，防止嵌套派发） */
-  private isSubAgent = false
+  /** 是否为子 Agent（禁用 spawn_agent 工具，防止嵌套派发）【协作面：agentLoop 触顶提示裁剪】 */
+  readonly isSubAgent: boolean = false
   /** 子 Agent 能力场景（design 型子 Agent 为 'design'，用于注入画布工具）；research 型子 Agent / 主 Agent 缺省 */
   private sceneType?: ChatType
   /** 写作子场景（writing 类型内部分层，新建对话时选定，创建后锁定；缺省 article） */
@@ -118,13 +105,13 @@ export class ToolChat {
   /** 设计风格提示词（design 类型，创建后锁定；会话水合时由设计风格对象构建，缺省空串不注入） */
   private designStylePrompt = ''
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
-  private workspaceSettingsCache: { path: string; content: string } | null = null
-  /** 最近一次构建请求时的技能目录提示词（用于 token 构成估算，随消息持久化） */
-  private lastSkillCatalogPrompt = ''
-  /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS */
-  private maxSteps?: number
-  /** 触顶步数后是否执行最后一次无工具收尾调用，强制模型立即输出总结（子 Agent 使用） */
-  private finalizeOnMaxSteps = false
+  private workspaceSettingsCache: WorkspaceSettingsCache | null = null
+  /** 最近一次构建请求时的技能目录提示词（用于 token 构成估算，随消息持久化）【协作面：agentLoop 估算读取】 */
+  lastSkillCatalogPrompt = ''
+  /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS【协作面】 */
+  readonly maxSteps?: number
+  /** 触顶步数后是否执行最后一次无工具收尾调用，强制模型立即输出总结（子 Agent 使用）【协作面】 */
+  readonly finalizeOnMaxSteps: boolean = false
   /** 锚点修改模式的锚点节点 id 集合（空 = 非锚点模式，AI 可自由修改） */
   private anchorNodeIds: string[] = []
 
@@ -142,13 +129,14 @@ export class ToolChat {
     if (options.sandboxDir) this.sandboxDir = options.sandboxDir
     if (options.workspace) this.workspace = options.workspace
     if (options.chatId) this.chatId = options.chatId
-    this.isSubAgent = options.isSubAgent ?? false
+    if (options.isSubAgent) this.isSubAgent = true
     this.sceneType = options.sceneType
     if (options.maxSteps) this.maxSteps = options.maxSteps
     if (options.finalizeOnMaxSteps) this.finalizeOnMaxSteps = true
   }
 
-  private async resolveModel(params: ChatRequestParams): Promise<ResolvedChatRequestParams> {
+  /** 解析模型配置（provider:key → 请求参数）【协作面：agentLoop 每步调用】 */
+  async resolveModel(params: ChatRequestParams): Promise<ResolvedChatRequestParams> {
     const store = useSettingAiStore()
     if (!store.ready) await store.initPromise
     const option = store.optionMap.get(`${params.message.provide}:${params.message.model}`)
@@ -162,101 +150,6 @@ export class ToolChat {
     }
   }
 
-  private getUserToolNames(params: ChatRequestParams): string[] {
-    return params.message.content
-      .filter((content): content is ToolContent => content.type === 'tool')
-      .map((content) => content.data.name)
-  }
-
-  /**
-   * 第①层基础函数表：常驻默认 + 类型场景 + 显式勾选 + todo + 装载器。
-   * 含子 Agent / 隐私聊天 / spawn_agent 裁剪规则；不含渐进式集合工具（第②层负责）。
-   */
-  private buildBaseFunctions(params: ChatRequestParams): Map<string, ToolFunction> {
-    const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
-    const names = [...(agent?.tools ?? []), ...this.getUserToolNames(params)]
-    const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
-    const map = new Map<string, ToolFunction>()
-    for (const fn of [
-      // agent 带的工具
-      ...this.functions,
-      // 类型带的工具
-      ...this.getTypeTools(),
-      // 用户主动选择的工具
-      ...selected,
-      // 默认工具（动态：如知乎 key 未配置则不含 zhihu_search）
-      ...getDefaultTools(),
-      // 待办工具
-      createTodoTool(this.todos),
-      // 渐进式工具加载：模型按 <available_tool_collections> 目录整组装载可选能力集（主/子 Agent 统一）
-      createToolLoadTool(this.loadedCollections)
-    ]) {
-      // 子 Agent 不暴露 spawn_agent：防止嵌套派发（子 Agent 的 chatId 是自身 id，再派发路径会错乱）
-      if (this.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) continue
-      // 隐私聊天不暴露记忆工具（用户 # 显式指定也不注入，防止对话内容经工具写入记忆）
-      if (this.privacy && fn.name === recordMemoryTool.name) continue
-      // 主 Agent：按聊天类型裁剪 spawn_agent 的可用子 Agent 类型（SUB_AGENT_ALLOW 能力矩阵），减少模型试错
-      if (!this.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) {
-        map.set(fn.name, createSpawnAgentTool(SUB_AGENT_ALLOW[this.chatType]))
-        continue
-      }
-      map.set(fn.name, fn)
-    }
-    return map
-  }
-
-  /**
-   * 第②层「已装载」：本条消息内已装载集合的工具整组并入（洋葱查找之已载入层）。
-   * 显式选择过的名字不覆盖；请求侧 schema 下发与执行期解析共用。
-   */
-  private applyLoadedCollections(map: Map<string, ToolFunction>): void {
-    if (this.loadedCollections.value.length === 0) return
-    const loaded = new Set(this.loadedCollections.value)
-    for (const entry of Object.values(toolRegistry)) {
-      if (!loaded.has(entry.groupId) || map.has(entry.fn.name)) continue
-      map.set(entry.fn.name, entry.fn)
-    }
-  }
-
-  /**
-   * 请求侧函数表 = 第①层基础 + 第②层已装载。未装载的可选集合不下发 schema（保持轻量）；
-   * 模型凭历史记忆调用未装载工具时由 resolveForExecution 在执行期兜底恢复。
-   */
-  private getFunctions(params: ChatRequestParams): ToolFunction[] {
-    const map = this.buildBaseFunctions(params)
-    this.applyLoadedCollections(map)
-    return Array.from(map.values())
-  }
-
-  /**
-   * 执行前洋葱解析：① 基础表 → ② 已装载集合 → ③ 全局注册表 toolRegistry 兜底。
-   * 第③层命中即静默装载其所属集合并并入——跨 Loop 自动恢复的载体：
-   * Loop 结束已装载状态被清空，模型凭历史记忆直呼工具名时由此自动复装并放行本次调用，
-   * 后续轮次该组 schema 常驻。有装载发生时按计划模式过滤后返回新表，无变化原样返回 base。
-   */
-  private resolveForExecution(names: string[], base: ToolFunction[]): ToolFunction[] {
-    const map = new Map(base.map((fn) => [fn.name, fn]))
-    this.applyLoadedCollections(map)
-    let changed = false
-    for (const name of names) {
-      if (map.has(name)) continue
-      const entry = toolRegistry[name]
-      if (!entry) continue
-      if (!this.loadedCollections.value.includes(entry.groupId)) {
-        this.loadedCollections.value = [...this.loadedCollections.value, entry.groupId]
-      }
-      map.set(name, entry.fn)
-      changed = true
-    }
-    return changed ? this.filterToolsByMode(Array.from(map.values())) : base
-  }
-
-  /**
-   * 按聊天类型 / 子 Agent 能力场景注入场景级工具（design → canvas_*）。
-   * 工具列表由 CHAT_TYPE_CONFIG 工厂提供，所有类型在此一处维护，新增类型无需改动本方法。
-   * - 主 Agent：按 chatType 注入
-   * - 子 Agent：仅当显式指定能力场景（design 型 → 画布工具）时注入；research 型子 Agent 无场景工具
-   */
   /** 场景工具注入上下文（统一构造，避免各工具 ctx 遗漏字段） */
   private typeToolsContext(): ChatTypeToolContext {
     return {
@@ -267,493 +160,73 @@ export class ToolChat {
     }
   }
 
-  private getTypeTools(): ToolFunction[] {
-    if (this.isSubAgent) {
-      return this.sceneType ? CHAT_TYPE_CONFIG[this.sceneType].tools(this.typeToolsContext()) : []
+  /** 函数表构建上下文快照（agentFunctions 用，每次构建新取以反映最新会话配置） */
+  private toolSurface(): ToolSurfaceContext {
+    return {
+      functions: this.functions,
+      isSubAgent: this.isSubAgent,
+      privacy: this.privacy,
+      mode: this.mode,
+      chatType: this.chatType,
+      sceneType: this.sceneType,
+      typeTools: this.typeToolsContext(),
+      todos: this.todos,
+      loadedCollections: this.loadedCollections
     }
-    return CHAT_TYPE_CONFIG[this.chatType].tools(this.typeToolsContext())
   }
 
-  private buildTools(functions: ToolFunction[]): AiTool[] {
-    return functions.map((fn) => ({
-      type: 'function',
-      function: {
-        name: fn.name,
-        description: fn.description,
-        parameters: fn.parameters
-      }
-    }))
-  }
-
-  /**
-   * 按当前聊天模式过滤暴露给模型的工具，作为模型层兜底：
-   * - 1 计划模式：仅暴露只读 / 分析类（safe）与执行类（shell）工具，写入 / 修改类物理隐藏
-   * - 0 默认 / 2 完全访问：原样返回
-   */
-  private filterToolsByMode(functions: ToolFunction[]): ToolFunction[] {
-    if (this.mode === 1) {
-      return functions.filter((fn) => fn.risk === 'safe' || isShellExecTool(fn))
+  /** 提示词构建上下文快照（agentPrompts 用） */
+  private promptContext(): PromptContext {
+    return {
+      messages: this.messages,
+      systemPrompt: this.systemPrompt,
+      isSubAgent: this.isSubAgent,
+      privacy: this.privacy,
+      mode: this.mode,
+      chatType: this.chatType,
+      writingScene: this.writingScene,
+      designStylePrompt: this.designStylePrompt,
+      anchorNodeIds: this.anchorNodeIds,
+      sandboxDir: this.sandboxDir,
+      workspace: this.workspace,
+      typeTools: this.typeToolsContext(),
+      todos: this.todos
     }
-    return functions
   }
 
-  /**
-   * 聊天类型提示词（工厂按场景上下文动态组装）+ writing 子场景提示词拼接。
-   * 类型与场景均在创建后锁定，组合稳定 → 进入稳定 system 前缀；design 提示词可随运行时设置
-   * （是否配置生图模型）动态变化，与注入工具保持一致。
-   */
-  private buildTypePrompt(): string {
-    if (this.isSubAgent) return ''
-    const base = CHAT_TYPE_CONFIG[this.chatType].prompt(this.typeToolsContext())
-    // 设计风格（design / ppt 创建后锁定）：附加在类型提示词之后
-    if ((this.chatType === 'design' || this.chatType === 'ppt') && this.designStylePrompt) {
-      return [base, this.designStylePrompt].filter(Boolean).join('\n\n')
-    }
-    if (this.chatType !== 'writing') return base
-    const scenePrompt = WRITING_SCENE_CONFIG[this.writingScene].prompt
-    return scenePrompt ? [base, scenePrompt].filter(Boolean).join('\n\n') : base
+  /** 请求侧函数表（第①层基础 + 第②层已装载集合）【协作面：agentLoop / agentResume】 */
+  getFunctions(params: ChatRequestParams): ToolFunction[] {
+    return getToolFunctions(this.toolSurface(), params)
   }
 
-  private buildWorkspacePrompt(): string {
-    const parts: string[] = ['## 文件系统']
-    if (this.sandboxDir) {
-      parts.push(
-        `- 沙盒目录：${this.sandboxDir}/outputs/：你的产出文件（无工作空间时的默认输出位置）`
-      )
-    }
-    if (this.workspace) {
-      parts.push(`- 用户工作空间：${this.workspace}`)
-      parts.push(`  最终交付物优先写入工作空间。`)
-    } else {
-      parts.push(`- 用户工作空间：（无）`)
-    }
-    parts.push(`用户消息中引用的文件路径为绝对路径，可直接读取。`)
-    return parts.join('\n')
+  /** 执行前洋葱解析（含跨 Loop 自动恢复）【协作面：agentLoop / agentResume】 */
+  resolveForExecution(names: string[], base: ToolFunction[]): ToolFunction[] {
+    return resolveLoadedTools(this.toolSurface(), names, base)
   }
 
-  /**
-   * 读取工作空间下的设定文件（AGENTS.md / CLAUDE.md）并组装为提示词段落。
-   * 设定文件包含项目约束与开发约定，需在系统提示词中告知模型遵循；
-   * 使用缓存避免 agent 循环中重复读取磁盘。
-   */
-  private async buildWorkspaceSettingsPrompt(): Promise<string> {
-    if (!this.workspace) return ''
-    if (this.workspaceSettingsCache && this.workspaceSettingsCache.path === this.workspace) {
-      return this.workspaceSettingsCache.content
-    }
-    const settingFiles = ['AGENTS.md', 'CLAUDE.md']
-    const sections: string[] = []
-    for (const fileName of settingFiles) {
-      const filePath = window.preload.path.join(this.workspace, fileName)
-      if (!window.preload.fs.existsSync(filePath)) continue
-      try {
-        const content = await window.preload.fs.readTextFile(filePath)
-        if (content.trim()) sections.push(`### ${fileName}\n\n${content.trim()}`)
-      } catch {
-        // 读取失败（权限/编码）不阻断对话，跳过该设定文件
-        continue
-      }
-    }
-    const content = sections.length
-      ? `## 工作空间设定文件\n\n以下是工作空间（${this.workspace}）下的设定文件内容，请严格遵循其中的约束与开发约定：\n\n${sections.join('\n\n')}`
-      : ''
-    this.workspaceSettingsCache = { path: this.workspace, content }
-    return content
-  }
-
-  private buildReferenceContext(attachedImageUrls: Set<string> = new Set()): string {
-    const lastUserMessage = [...this.messages.value].reverse().find((m) => m.role === 'user')
-    if (!lastUserMessage || lastUserMessage.role !== 'user') return ''
-    const contents = lastUserMessage.content
-    const attachments = contents
-      .filter((content): content is AttachmentContent => content.type === 'attachment')
-      .flatMap((content) => content.data)
-    if (attachments.length === 0) return ''
-    const parts = attachments.map((item) => {
-      // 已转为图像块随请求发送的图片加标注，避免模型再用工具重复读取
-      const attached = item.url !== undefined && attachedImageUrls.has(item.url)
-        ? '（已作为图片附于本消息）'
-        : ''
-      return `## File: ${item.name ?? item.url}${attached}\n路径：${item.url}\n`
-    })
-    return `\n\n---\n以下是用户在输入框中引用的上下文，请结合这些内容回答：\n\n${parts.join('\n---\n')}`
-  }
-
-  /**
-   * 子 Agent 使用指导：告知主 Agent 何时应派发子 Agent，避免其惯性自己读大量文件撑爆上下文。
-   * 仅主 Agent 注入（子 Agent 不注入，且其 spawn_agent 工具已被过滤）。
-   * 内容稳定，写入稳定 system 前缀不影响缓存命中。
-   */
-  private buildSubAgentGuidancePrompt(): string {
-    return [
-      '## 子 Agent 使用指导',
-      '你可以通过 spawn_agent 工具将复杂调研任务派发给子 Agent。子 Agent 拥有独立的上下文窗口和步数预算，',
-      '执行完毕后只返回最终摘要，中间过程不占用你的上下文，能显著节省你的 token 与步数。',
-      '',
-      '适合派发：',
-      '- 需要读取 3 个以上文件或大规模代码搜索的任务',
-      '- 独立子问题的调研（可与你的其他工作推进解耦）',
-      '- 会产生大量中间结果但最终只需要结论的任务',
-      '',
-      '不适合派发：',
-      '- 单文件快速查看、单步工具调用',
-      '- 需要用户交互确认的任务（子 Agent 无法向用户提问）',
-      '- 需要写入 / 修改文件的任务（子 Agent 仅只读，写入会被安全策略拦截）',
-      '',
-      '派发时 task 必须自包含（含文件路径、搜索关键词、明确目标），让子 Agent 能独立完成；',
-      '收到摘要后基于摘要继续推进，无需重复读取子 Agent 已读过的文件。'
-    ].join('\n')
-  }
-
-  private async buildRequestMessages(
+  /** 组装单次请求的完整 API 消息【协作面：agentLoop】 */
+  async buildRequestMessages(
     params: ResolvedChatRequestParams,
     assistantMessageId: string
   ): Promise<AiMessageParam[]> {
-    const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
-    const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
-    // 被禁用的 skill 不注入目录（模型不可见即不会调用 load_skill），SkillLocal 管理页仍可见全量
-    const skillStore = useSettingSkillStore()
-    const skills = (await localSkillList()).filter((e) => skillStore.isSkillEnabled(e))
-    const catalogPrompt = buildSkillCatalogPrompt(skills)
-    this.lastSkillCatalogPrompt = catalogPrompt
-    const workspacePrompt = this.buildWorkspacePrompt()
-    const workspaceSettingsPrompt = await this.buildWorkspaceSettingsPrompt()
-    // 个性化设定（soul/*.md，用户手编、极少变化 → 稳定可缓存；子 Agent 任务作用域不注入）
-    const personalizePrompt = this.isSubAgent ? '' : await buildPersonalizePrompt(this.chatType)
-    // system 前缀保持稳定的可缓存内容；skill 正文由 load_skill 工具按需在对话中加载，不进 system
-    const systemPrompt = [
-      this.systemPrompt,
-      agentPrompt,
-      personalizePrompt,
-      catalogPrompt,
-      // 可选工具集合目录（静态可缓存）：配合 load_tool_collection 实现按需整组装载
-      buildToolCatalogPrompt(),
-      buildTodoPrompt(),
-      workspacePrompt,
-      workspaceSettingsPrompt,
-      // 聊天类型固定提示词 + writing 子场景提示词（类型与场景创建后锁定 → 前缀稳定可缓存；子 Agent 只读，无需类型指导）
-      this.buildTypePrompt(),
-      // 记忆工具使用指导仅主 Agent 注入（record_memory 随默认工具注册，子 Agent 任务作用域不记全局记忆）；
-      // 隐私聊天不注入（工具本身也已在 getFunctions 中过滤）
-      this.isSubAgent || this.privacy ? '' : buildMemoryToolPrompt(),
-      // 子 Agent 使用指导仅主 Agent 注入（子 Agent 的 spawn_agent 已被过滤，指导无意义且会诱导嵌套）
-      this.isSubAgent ? '' : this.buildSubAgentGuidancePrompt()
-    ]
-      .filter(Boolean)
-      .join('\n\n')
-    const systemMessages: AiMessageParam[] = []
-    if (systemPrompt) systemMessages.push({ role: 'system', content: systemPrompt })
-    // 模式指令作为独立 system 消息追加（不污染稳定 system 提示词，保留缓存前缀）
-    const modeInstruction = this.buildModeInstruction()
-    if (modeInstruction) systemMessages.push({ role: 'system', content: modeInstruction })
-    // 锚点修改约束作为独立 system 消息注入（随选中动态变化，不进稳定前缀）
-    const anchorInstruction = this.buildAnchorInstruction()
-    if (anchorInstruction) systemMessages.push({ role: 'system', content: anchorInstruction })
-    // 当前待办状态同样作为独立 system 消息注入，让模型跨轮次感知进度而不依赖历史工具调用
-    const todoStatePrompt = this.buildTodoStatePrompt()
-    if (todoStatePrompt) systemMessages.push({ role: 'system', content: todoStatePrompt })
-    // 记忆（长期 + 近期短期）作为独立 system 消息注入：内容按日变化，不污染稳定前缀；
-    // 子 Agent 任务作用域隔离，不注入全局记忆。内部按 mtime 缓存，agent loop 每轮调用无额外读盘；
-    // 隐私聊天不注入记忆
-    if (!this.isSubAgent && !this.privacy) {
-      const memoryPrompt = await buildMemoryPrompt()
-      if (memoryPrompt) systemMessages.push({ role: 'system', content: memoryPrompt })
-    }
-    // 识图模型：把全部历史用户消息引用的图片重建为图像内容块（每次从磁盘路径读取，落库仍为路径引用）
-    const vision = params.support?.includes('image')
-      ? await collectVisionBlocks(this.messages.value)
-      : undefined
-    const messages = toAgentRequestMessages(
-      this.messages.value,
+    const built = await buildAgentRequestMessages(
+      this.promptContext(),
+      params,
       assistantMessageId,
-      this.buildReferenceContext(vision?.attachedUrls),
-      vision?.blocksByMessageId,
-      params.message.thinking !== false
+      this.workspaceSettingsCache
     )
-    return [...systemMessages, ...messages]
+    this.lastSkillCatalogPrompt = built.skillCatalogPrompt
+    this.workspaceSettingsCache = built.settingsCache
+    return built.apiMessages
   }
 
-  /**
-   * 根据当前聊天模式生成一段"模式指令"，作为独立 system 消息追加到稳定 system 之后。
-   * 不写入稳定 system 提示词，以保留其缓存前缀；参考 opencode 做法，让 AI 自行收敛行为：
-   * - 1 计划模式：可读取 / 分析、可运行 shell（需审批），但严禁写入 / 修改文件，建议先给计划
-   * - 0 默认 / 2 完全访问：无附加指令
-   */
-  private buildModeInstruction(): string {
-    if (this.mode === 1) {
-      return '【计划模式】当前处于计划模式。你可以读取、分析文件，也可以运行 shell 命令（运行前会请求用户批准）。但你没有任何写入 / 修改文件的权限，禁止创建、编辑或删除任何文件。建议先给出清晰的执行计划，涉及写文件的操作请明确说明并交由用户在默认模式下执行。'
-    }
-    return ''
-  }
-
-  /** 将当前待办清单序列化为 system 消息，作为模型每轮请求可见的最新进度快照 */
-  private buildTodoStatePrompt(): string {
-    if (this.todos.value.length === 0) return ''
-    const lines = this.todos.value.map((todo) => {
-      const statusLabel = { pending: '待开始', in_progress: '进行中', completed: '已完成' }[
-        todo.status
-      ]
-      return `- [${statusLabel}] ${todo.content}`
-    })
-    return `## 当前待办清单\n\n以下是你当前维护的待办清单，请据此推进任务；需要变更时调用 update_todo 工具全量替换：\n\n${lines.join('\n')}`
-  }
-
-  /** 锚点修改模式指令：告知模型只能修改用户选中的锚点元素（读全局、改局部） */
-  private buildAnchorInstruction(): string {
-    if (this.anchorNodeIds.length === 0) return ''
-    const list = this.anchorNodeIds.map((id) => `- ${id}`).join('\n')
-    return [
-      '【锚点修改模式】用户选定了以下元素作为修改锚点：',
-      list,
-      '',
-      '约束：',
-      '- 只能修改 / 移动 / 删除上述锚点元素（update / move / delete / image 的目标必须属于锚点）。',
-      '- 锚点之外的所有元素必须保持完全不变（不能移动、不能改属性、不能删除）。',
-      '- 允许 insert 新增元素，新增元素可挂到锚点元素内部或画布根节点。',
-      '- 可读取整个画布（canvas_get_nodes / canvas_inspect / canvas_read）理解上下文。',
-      '- 若用户需求涉及锚点之外的元素，先说明「该元素不在选中范围内」，不要擅自修改。'
-    ].join('\n')
-  }
-
-  /** 在同一个 assistant 聊天记录中循环请求模型并执行工具。 */
-  private async runAgentLoop(
-    params: ChatRequestParams,
-    assistantMessageId: string,
-    signal: AbortSignal,
-    seq: number
-  ): Promise<void> {
-    this.status.value = 'streaming'
-
-    let step = 0
-    // 完全访问模式（mode=2）下不限制连续工具调用步数，循环只能由用户手动中断
-    const maxSteps = this.mode === 2 ? Infinity : (this.maxSteps ?? MAX_AGENT_STEPS)
-    this.hitMaxSteps.value = false
-    this.reachedMaxSteps.value = false
-    // 最近一次请求的 API 消息与工具定义（用于完成时估算 token 构成）
-    let lastApiMessages: AiMessageParam[] = []
-    let lastTools: AiTool[] = []
-    while (seq === this.ctx.requestSeq && !signal.aborted && step < maxSteps) {
-      step++
-      let functions = this.filterToolsByMode(this.getFunctions(params))
-      const resolvedParams = await this.resolveModel(params)
-      lastApiMessages = await this.buildRequestMessages(resolvedParams, assistantMessageId)
-      lastTools = this.buildTools(functions)
-      const result = await streamAgentStep({
-        messages: this.messages,
-        assistantMessageId,
-        requestParams: resolvedParams,
-        apiMessages: lastApiMessages,
-        tools: lastTools,
-        config: this.ctx.config,
-        signal,
-        seq,
-        currentSeq: () => this.ctx.requestSeq
-      })
-      if (result.cancelled) return
-      if (result.usage) setAssistantUsage(this.messages, assistantMessageId, result.usage)
-      if (result.toolCalls.length === 0) {
-        this.status.value = result.finishReason === 'length' ? 'stop' : 'complete'
-        this.estimateAndStoreBreakdown(assistantMessageId, lastApiMessages, lastTools)
-        this.ctx.config.onComplete?.(false, resolvedParams)
-        return
-      }
-
-      this.toolCalls.value.push(...result.toolCalls)
-      // 执行前洋葱解析：③ 全局注册表兜底（含跨 Loop 自动恢复），命中即装载其集合并放行本次调用
-      functions = this.resolveForExecution(
-        result.toolCalls.map((call) => call.toolCallName),
-        functions
-      )
-      await executeToolCalls(
-        this.messages,
-        assistantMessageId,
-        result.toolCalls,
-        functions,
-        this.buildPolicyContext(signal),
-        this.interactive
-      )
-      this.toolCalls.value = [...this.toolCalls.value]
-      await nextTick()
-    }
-
-    // 超过单轮工具调用上限：
-    // - finalizeOnMaxSteps（子 Agent）：执行最后一次无工具收尾调用强制输出最终总结，成功则不标记触顶
-    // - 其余：主 Agent 追加提示按钮供续跑；未开启收尾的子 Agent 不追加（无继续 UI，避免污染摘要与文件）
-    if (seq === this.ctx.requestSeq && !signal.aborted && step >= maxSteps) {
-      this.reachedMaxSteps.value = true
-      if (this.finalizeOnMaxSteps) {
-        const finalized = await this.runFinalizeStep(params, assistantMessageId, signal, seq)
-        if (!finalized) this.hitMaxSteps.value = true
-      } else {
-        this.hitMaxSteps.value = true
-        if (!this.isSubAgent) {
-          appendAssistantContent(this.messages, assistantMessageId, {
-            type: 'text',
-            data: '\n\n[已到达本轮连续工具调用上限，点击「继续推进」可让 AI 接着执行。]',
-            time: Date.now(),
-            // 标记提示文本：UI 渲染为可点击按钮，continueAgent 续跑前会移除
-            ext: { continueHint: true }
-          })
-        }
-        this.estimateAndStoreBreakdown(assistantMessageId, lastApiMessages, lastTools)
-      }
-      this.status.value = 'complete'
-    }
-  }
-
-  /**
-   * 估算当前上下文的 token 构成并写入消息（归一化到该消息 usage.promptTokens）。
-   * usage 缺失时跳过，避免渲染无意义的全 0 明细。
-   */
-  private estimateAndStoreBreakdown(
-    assistantMessageId: string,
-    apiMessages: AiMessageParam[],
-    tools: AiTool[]
-  ): void {
-    const assistant = this.messages.value.find((m) => m.id === assistantMessageId)
-    if (!assistant || assistant.role !== 'assistant' || !assistant.usage) return
-    if (!apiMessages || apiMessages.length === 0) return
-    const breakdown = normalizeTokenBreakdown(
-      estimateTokenBreakdown(apiMessages, tools, this.lastSkillCatalogPrompt),
-      assistant.usage.promptTokens
-    )
-    setAssistantTokenBreakdown(this.messages, assistantMessageId, breakdown)
-  }
-
-  /**
-   * 触顶收尾调用：步数耗尽时执行最后一次无工具调用，注入收尾指令强制模型立即输出最终总结。
-   * 指令以独立 system 消息注入（不进消息历史、不落盘），tools 置空防止模型再次调用工具。
-   * 成功产出总结文本返回 true；AbortError 向上抛（走既有停止路径），其余失败返回 false 交由上层降级。
-   */
-  private async runFinalizeStep(
-    params: ChatRequestParams,
-    assistantMessageId: string,
-    signal: AbortSignal,
-    seq: number
-  ): Promise<boolean> {
-    const resolvedParams = await this.resolveModel(params)
-    const apiMessages = await this.buildRequestMessages(resolvedParams, assistantMessageId)
-    apiMessages.push({ role: 'system', content: FINALIZE_PROMPT })
-    const before =
-      this.messages.value.find((m) => m.id === assistantMessageId)?.content?.length ?? 0
-    try {
-      const result = await streamAgentStep({
-        messages: this.messages,
-        assistantMessageId,
-        requestParams: resolvedParams,
-        apiMessages,
-        tools: [],
-        config: this.ctx.config,
-        signal,
-        seq,
-        currentSeq: () => this.ctx.requestSeq
-      })
-      if (result.cancelled) return false
-      if (result.usage) setAssistantUsage(this.messages, assistantMessageId, result.usage)
-      this.estimateAndStoreBreakdown(assistantMessageId, apiMessages, [])
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'AbortError') throw error
-      return false
-    }
-    const content = this.messages.value.find((m) => m.id === assistantMessageId)?.content ?? []
-    return content.slice(before).some((c) => c.type === 'text' || c.type === 'markdown')
-  }
-
-  private canStartRequest(): boolean {
+  canStartRequest(): boolean {
     return ['idle', 'complete', 'error', 'stop'].includes(this.status.value)
   }
 
-  private beginRequest(): { seq: number; signal: AbortSignal } {
-    this.ctx.requestSeq += 1
-    this.ctx.abortController = new AbortController()
-    this.toolCalls.value = []
-    // 渐进式加载临时态随新请求清空：仅本次消息任务有效（temp.md 的 Loop 级自动清理）
-    this.loadedCollections.value = []
-    // 新请求抢占：解除此前挂起的 ask/confirm 决策，避免双循环或 Promise 泄漏
-    this.interactive.clear()
-    this.status.value = 'pending'
-    return {
-      seq: this.ctx.requestSeq,
-      signal: this.ctx.abortController.signal
-    }
-  }
-
-  /**
-   * 收口收割：把悬停在非终态的工具块推进到正确状态。
-   * - 已有结果却未标完成（持久化快照竞态 / 历史脏数据）→ 补 complete
-   * - 无结果的漏网块（非交互）→ stop + 「本轮已停止，工具未执行」
-   * - 仍在等待交互决策的块（ext.interactive 且未完成）保留——它们是 resume 恢复审批的合法素材，
-   *   收割会跳过，不误杀跨重启的真挂起
-   */
-  private sweepPendingToolCalls(assistantMessageId?: string): void {
-    const targets = assistantMessageId
-      ? this.messages.value.filter((message) => message.id === assistantMessageId)
-      : this.messages.value
-    for (const message of targets) {
-      if (message.role !== 'assistant') continue
-      for (const content of message.content ?? []) {
-        if (content.type !== 'toolcall') continue
-        if (content.status === 'complete' || content.status === 'stop') continue
-        if (content.data.result) {
-          content.status = 'complete'
-          continue
-        }
-        const interactive = content.ext?.interactive
-        if (interactive === 'confirm' || interactive === 'ask' || interactive === 'font_pick') {
-          continue
-        }
-        content.status = 'stop'
-        content.data.result = '本轮已停止，工具未执行'
-      }
-    }
-  }
-
-  private async executeRequest(
-    requestParams: ChatRequestParams,
-    assistantMessageId: string
-  ): Promise<void> {
-    const { seq, signal } = this.beginRequest()
-    try {
-      await this.runAgentLoop(requestParams, assistantMessageId, signal, seq)
-      // 循环收束即本轮交互结算完毕，残余非终态工具块统一定格，避免永久悬停的「等待中」
-      this.sweepPendingToolCalls(assistantMessageId)
-      if (seq === this.ctx.requestSeq && !signal.aborted) {
-        const status = this.status.value === 'idle' ? 'complete' : this.status.value
-        setAssistantStatus(this.messages, assistantMessageId, status)
-      } else if (signal.aborted) {
-        // 停止：abort 落在工具执行间隙时循环正常退出（非 AbortError 抛错），需显式回写消息状态，
-        // 否则消息停留在 streaming，折叠等依赖状态判断的 UI 会失效
-        setAssistantStatus(this.messages, assistantMessageId, 'stop')
-      }
-    } catch (error: unknown) {
-      this.handleRequestError(error, requestParams, assistantMessageId)
-    }
-  }
-
-  private handleRequestError(
-    error: unknown,
-    _requestParams: ChatRequestParams,
-    assistantMessageId: string
-  ): void {
-    if (error instanceof Error && error.name === 'AbortError') {
-      this.status.value = 'stop'
-      this.ctx.config.onComplete?.(true)
-      setAssistantStatus(this.messages, assistantMessageId, 'stop')
-      return
-    }
-
-    // 排查用：气泡只展示 error.message 会丢堆栈，控制台补全量错误定位真实抛出点
-    console.error(`[AgentChat] 请求出错 (assistantMessageId=${assistantMessageId})`, error)
-    this.status.value = 'error'
-    this.ctx.config.onError?.(error instanceof Error ? error : new Error(String(error)))
-    // 异常路径同样收口：错误帧前后未走完的工具块统一定格
-    this.sweepPendingToolCalls(assistantMessageId)
-    appendAssistantContent(this.messages, assistantMessageId, {
-      type: 'text',
-      data: error instanceof Error ? error.message : String(error),
-      time: Date.now()
-    })
-    setAssistantStatus(this.messages, assistantMessageId, 'error')
+  /** 收口收割（agentResume 提供）：水合 / 循环收束 / 异常路径统一定格非终态工具块 */
+  sweepPendingToolCalls(assistantMessageId?: string): void {
+    sweepToolCalls(this, assistantMessageId)
   }
 
   private async resolveAttachmentFiles(requestParams: ChatRequestParams): Promise<void> {
@@ -804,99 +277,20 @@ export class ToolChat {
       reasoningEffort: message.reasoning_effort
     })
     this.messages.value = [...this.messages.value, userMessage, assistantMessage]
-    await this.executeRequest(requestParams, assistantMessage.id)
+    await executeAgentRequest(this, requestParams, assistantMessage.id)
   }
 
   /**
-   * 根据存储的 assistant 消息重建恢复请求参数：模型信息来自 assistant 消息，
-   * 用户内容取它前一条 user 消息，供 resume 续跑同一轮使用。
-   */
-  private buildResumeRequestParams(target: { assistantMessageId: string }): ChatRequestParams {
-    const index = this.messages.value.findIndex((m) => m.id === target.assistantMessageId)
-    const assistant = this.messages.value[index]
-    const prev = index > 0 ? this.messages.value[index - 1] : undefined
-    const userMessage = prev?.role === 'user' ? prev : undefined
-    return {
-      message: {
-        content: userMessage?.content ?? [],
-        model: assistant?.role === 'assistant' ? assistant.model : '',
-        provide: assistant?.role === 'assistant' ? assistant.provide : '',
-        thinking: userMessage?.thinking,
-        reasoning_effort: userMessage?.reasoning_effort
-      },
-      mode: assistant?.role === 'assistant' ? assistant.mode : this.mode,
-      agentId: assistant?.role === 'assistant' ? assistant.agentId : undefined,
-      workspace: this.workspace
-    }
-  }
-
-  /**
-   * 应用重启后恢复上次挂起的 ask / confirm 决策。
-   * 挂起状态隐式落在持久化消息中（pending toolcall + ext.interactive），
-   * 这里重新挂起等用户作答，作答后复用同一条 assistant 消息续跑同一轮。
+   * 应用重启后恢复上次挂起的 ask / confirm 决策（agentResume 提供）：
+   * 重新挂起等用户作答，作答后复用同一条 assistant 消息续跑同一轮。
    */
   async resumePendingInteractives(): Promise<void> {
-    if (!this.canStartRequest()) return
-    const target = findPendingInteractiveToolcall(this.messages.value)
-    if (!target) return
-    const { assistantMessageId, call } = target
-    const params = this.buildResumeRequestParams(target)
-    const baseFunctions = this.filterToolsByMode(this.getFunctions(params))
-    // 重启恢复同样走洋葱解析兜底，避免挂起中的集合工具因未装载而「未找到」
-    const functions = this.resolveForExecution([call.toolCallName], baseFunctions)
-    const fn = functions.find((item) => item.name === call.toolCallName)
-    if (fn) {
-      let args: Record<string, unknown>
-      try {
-        args = parseArguments(call.args)
-      } catch {
-        args = {}
-      }
-      await runSingleTool(
-        this.messages,
-        assistantMessageId,
-        call,
-        fn,
-        args,
-        this.buildPolicyContext(this.ctx.abortController?.signal),
-        this.interactive
-      )
-    } else {
-      updateToolCallContent(
-        this.messages,
-        assistantMessageId,
-        call.toolCallId,
-        `错误: 未找到工具 "${call.toolCallName}"`
-      )
-    }
-    // 作答期间若用户已另发起新请求，放弃续跑，避免并发循环
-    if (!this.canStartRequest()) return
-    await this.executeRequest(params, assistantMessageId)
+    await resumeInteractives(this)
   }
 
-  /**
-   * 连续工具调用达到上限后，点击提示按钮继续推进同一轮。
-   * 先移除提示文本（避免残留进模型上下文），再复用同一条 assistant 消息续跑，
-   * 模型拿到历史 tool 结果后继续执行，步数计数重新开始。
-   */
+  /** 连续工具调用达到上限后继续推进同一轮（agentResume 提供） */
   async continueAgent(assistantMessageId: string): Promise<void> {
-    if (!this.canStartRequest()) return
-    this.removeContinueHint(assistantMessageId)
-    const params = this.buildResumeRequestParams({ assistantMessageId })
-    await this.executeRequest(params, assistantMessageId)
-  }
-
-  /** 移除 assistant 消息中的「继续推进」提示文本 */
-  private removeContinueHint(assistantMessageId: string): void {
-    const message = this.messages.value.find((m) => m.id === assistantMessageId)
-    if (!message || message.role !== 'assistant' || !message.content) return
-    const before = message.content.length
-    message.content = message.content.filter(
-      (item) => !(item.type === 'text' && item.ext?.continueHint === true)
-    )
-    if (message.content.length !== before) {
-      this.messages.value = [...this.messages.value]
-    }
+    await continueAgentRun(this, assistantMessageId)
   }
 
   deleteFromUserMessage(messageId: string): void {
@@ -944,7 +338,7 @@ export class ToolChat {
   }
 
   /** 组装工具策略上下文（主循环与 resume 共用）：主 Agent 携带聊天白名单及其回写，子 Agent 保持只读不带 */
-  private buildPolicyContext(signal?: AbortSignal): ToolPolicyContext {
+  buildPolicyContext(signal?: AbortSignal): ToolPolicyContext {
     const ctx: ToolPolicyContext = {
       chatId: this.chatId,
       sandboxDir: this.sandboxDir,

@@ -2,6 +2,15 @@ import { AiChatMode } from '@/entity'
 
 export type ChatMessageRole = 'user' | 'assistant' | 'system'
 export type ChatMessageStatus = 'pending' | 'streaming' | 'complete' | 'stop' | 'error'
+/**
+ * 工具调用块级生命周期（独立于消息级状态，UI 按此纯状态驱动渲染）：
+ * - pending：已入列未开始（同批其他工具执行中）
+ * - confirm：等待用户决策（审批 / ask / font_pick）
+ * - executing：handler 执行中
+ * - complete：已回填结果
+ * - stop：本轮中止，未执行
+ */
+export type ToolPhase = 'pending' | 'confirm' | 'executing' | 'complete' | 'stop'
 export type ChatStatus = 'idle' | ChatMessageStatus
 export type ChatContentType =
   | 'text'
@@ -125,7 +134,10 @@ export type ToolCall = {
   // 负载
   payload?: Record<string, unknown>
 }
-export type ToolCallContent = ChatBaseContent<'toolcall', ToolCall>
+export type ToolCallContent = Omit<ChatBaseContent<'toolcall', ToolCall>, 'status'> & {
+  /** 块级生命周期：写入只允许 ToolPhase；streaming / error 为历史落库值，读取一律经 toolPhaseOf 归一 */
+  status?: ToolPhase | ChatMessageStatus
+}
 export type ActivityData<TContent = Record<string, unknown>> = {
   activityType: string
   messageId?: string
