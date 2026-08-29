@@ -8,7 +8,7 @@
  * - model 为生成时的模型名快照（设置中的默认生图模型后期变化不影响历史记录展示）。
  */
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import type { ImageGenerateStatus } from '~/dbChannels'
+import type { ImageGenerateStatus } from '~/ipc/dbChannels'
 
 export const imageGenerations = sqliteTable(
   'image_generate',

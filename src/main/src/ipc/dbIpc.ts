@@ -15,7 +15,7 @@ import {
   type HealthRecordInput,
   type ImageListParams,
   type ImageRecordInput
-} from '~/dbChannels'
+} from '~/ipc/dbChannels'
 import { initDb } from '$/db/client'
 import { aiHotApplyBatch, aiHotClear, aiHotGetMeta, aiHotList, aiHotMarkRead } from '$/db/repo/aihotRepo'
 import {

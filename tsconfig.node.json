@@ -11,6 +11,9 @@
       ],
       "~/*": [
         "src/preload/src/*"
+      ],
+      "@resources/*": [
+        "resources/*"
       ]
     }
   }

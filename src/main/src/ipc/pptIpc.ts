@@ -9,7 +9,7 @@ import {
   PptExportPptxOptions,
   PptExportSnapshot,
   PptWritePngFilesOptions
-} from '~/channels'
+} from '~/ipc/channels'
 import { exportSnapshotToPptx } from '../ppt/pptxExport'
 import { writePngFiles } from '../ppt/pngWriter'
 

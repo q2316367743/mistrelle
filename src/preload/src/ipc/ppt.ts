@@ -9,7 +9,7 @@ import {
   PptExportPptxOptions,
   PptExportSnapshot,
   PptWritePngFilesOptions
-} from '~/channels'
+} from './channels'
 
 export const pptApi = {
   /** 快照 → 构建 PPTX 并落盘，返回文件路径 */

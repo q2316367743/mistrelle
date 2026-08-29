@@ -12,6 +12,7 @@ import { registerBrowserToolIpc } from './browserToolIpc'
 import { registerSafeStorageIpc } from './safeStorageIpc'
 import { registerDbIpc } from './dbIpc'
 import { registerTemplateIpc } from './templateIpc'
+import { registerToolbarIpc } from './toolbarIpc'
 
 export function registerIpc(): void {
   registerShellIpc()
@@ -30,4 +31,5 @@ export function registerIpc(): void {
   registerSafeStorageIpc()
   registerDbIpc()
   registerTemplateIpc()
+  registerToolbarIpc()
 }

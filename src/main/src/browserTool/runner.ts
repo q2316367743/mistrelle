@@ -18,7 +18,7 @@ import type {
   BrowserToolFetchPayload,
   BrowserToolPayload,
   BrowserToolResult
-} from '~/channels'
+} from '~/ipc/channels'
 import {
   callCode,
   dispatchClick,

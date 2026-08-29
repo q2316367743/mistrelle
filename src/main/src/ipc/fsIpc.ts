@@ -14,7 +14,7 @@ import {
   type FsGrepMatch,
   type FsGrepOptions,
   type FsGrepResult
-} from '~/channels'
+} from '~/ipc/channels'
 
 interface FileEntry {
   name: string

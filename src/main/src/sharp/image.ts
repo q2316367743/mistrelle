@@ -13,7 +13,7 @@ import type {
   SharpMetadata,
   SharpRegion,
   SharpRemoveBackgroundResult
-} from '~/channels'
+} from '~/ipc/channels'
 
 /** 解析目标背景色：hex / rgb() / [r,g,b]，非法或缺省回退纯白 */
 const parseTargetColor = (color: string | number[] | undefined): [number, number, number] => {

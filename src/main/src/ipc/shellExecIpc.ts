@@ -3,7 +3,7 @@
  */
 import { ipcMain } from 'electron'
 import { cliRun } from '$/service/shellExec'
-import { ShellExecChannels, type CliRunOptions } from '~/channels'
+import { ShellExecChannels, type CliRunOptions } from '~/ipc/channels'
 
 export function registerShellExecIpc(): void {
   ipcMain.handle(

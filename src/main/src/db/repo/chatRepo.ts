@@ -9,7 +9,7 @@
 import { db } from '../client'
 import { desc, eq, sql } from 'drizzle-orm'
 import { chat, chatContent, chatSub } from '../schema/chat'
-import type { ChatContentResult, ChatItemInput } from '~/dbChannels'
+import type { ChatContentResult, ChatItemInput } from '~/ipc/dbChannels'
 
 /** 列表行（top 为 0/1 整数，投影 / 可选列以 drizzle 行类型为准，渲染侧转 boolean） */
 export function chatList() {

@@ -54,7 +54,6 @@ export const OsChannels = {
   getAppName: 'os:getAppName',
   /** 模块级同步初始化依赖（Constant.ts），使用 sendSync */
   getPath: 'os:getPath',
-  getFileIcon: 'os:getFileIcon',
   getCursorScreenPoint: 'os:getCursorScreenPoint'
 } as const
 

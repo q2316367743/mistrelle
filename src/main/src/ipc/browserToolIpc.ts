@@ -3,7 +3,7 @@
  * 载荷为判别联合（fetch / actions），由 BrowserToolRunner 在主进程内直接执行。
  */
 import { ipcMain } from 'electron'
-import { BrowserToolChannels, type BrowserToolPayload, type BrowserToolResult } from '~/channels'
+import { BrowserToolChannels, type BrowserToolPayload, type BrowserToolResult } from '~/ipc/channels'
 import { BrowserToolRunner } from '$/browserTool/runner'
 
 export function registerBrowserToolIpc(): void {

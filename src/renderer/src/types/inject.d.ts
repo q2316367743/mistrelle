@@ -105,7 +105,6 @@ interface InjectOs {
       | 'logs'
       | 'pepperFlashSystemPlugin'
   ): string
-  getFileIcon(filePath: string): Promise<string>
   getCursorScreenPoint(): Promise<{ x: number; y: number }>
 }
 

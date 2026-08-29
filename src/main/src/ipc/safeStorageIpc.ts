@@ -3,7 +3,7 @@
  * 加密数据绑定本机；不可用（如 Linux 无 keyring）或解密失败时返回 null，由调用方决定降级策略。
  */
 import { ipcMain, safeStorage } from 'electron'
-import { SafeStorageChannels } from '~/channels'
+import { SafeStorageChannels } from '~/ipc/channels'
 
 export function registerSafeStorageIpc(): void {
   ipcMain.handle(SafeStorageChannels.encrypt, (_event, plain: string): string | null => {

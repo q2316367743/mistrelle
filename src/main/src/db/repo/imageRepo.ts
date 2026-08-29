@@ -9,7 +9,7 @@ import { db } from '../client'
 import { and, count, desc, eq, like, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { imageGenerations } from '../schema/image'
-import type { ImageListFilter, ImageListResult, ImageRecordInput } from '~/dbChannels'
+import type { ImageListFilter, ImageListResult, ImageRecordInput } from '~/ipc/dbChannels'
 
 export function imageList(filter: ImageListFilter, limit: number, offset: number): ImageListResult {
   const conds: Array<SQL | undefined> = []

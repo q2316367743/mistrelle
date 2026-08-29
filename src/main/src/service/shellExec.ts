@@ -5,7 +5,7 @@
  *   exit 后 close 宽限期兜底，任何情况下 Promise 必会 resolve
  */
 import { spawn } from 'node:child_process'
-import type { CliRunOptions, CliRunResult } from '~/channels'
+import type { CliRunOptions, CliRunResult } from '~/ipc/channels'
 
 const shellQuote = (value: string | number): string => {
   const text = String(value)

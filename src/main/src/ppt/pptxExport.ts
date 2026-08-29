@@ -14,7 +14,7 @@ import type {
   PptFillInput,
   PptShadowInput,
   PptStrokeInput
-} from '~/channels'
+} from '~/ipc/channels'
 
 const PX_PER_IN = 96
 const px2in = (px: number): number => px / PX_PER_IN

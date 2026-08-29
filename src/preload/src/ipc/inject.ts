@@ -101,8 +101,6 @@ const os = {
   getAppName: (): Promise<string> => ipcRenderer.invoke(OsChannels.getAppName),
   /** 唯一同步方法：Constant.ts 在模块级同步初始化中依赖（sendSync） */
   getPath: (name: string): string => ipcRenderer.sendSync(OsChannels.getPath, name),
-  getFileIcon: (filePath: string): Promise<string> =>
-    ipcRenderer.invoke(OsChannels.getFileIcon, filePath),
   getCursorScreenPoint: (): Promise<{ x: number; y: number }> =>
     ipcRenderer.invoke(OsChannels.getCursorScreenPoint)
 }

@@ -29,7 +29,7 @@ import {
   OsChannels,
   DisplayChannels,
   NotificationChannels
-} from '~/channels'
+} from '~/ipc/channels'
 
 // ── shell ──────────────────────────────────────────────────
 
@@ -220,15 +220,6 @@ export function registerOsIpc(): void {
   // sendSync：Constant.ts 在模块级同步初始化中调用 getPath('appData'/'home')
   ipcMain.on(OsChannels.getPath, (event: IpcMainEvent, name: string): void => {
     event.returnValue = resolveOsPath(name)
-  })
-
-  ipcMain.handle(OsChannels.getFileIcon, async (_event, filePath: string): Promise<string> => {
-    try {
-      const icon = await app.getFileIcon(filePath)
-      return icon.toDataURL()
-    } catch {
-      return ''
-    }
   })
 
   ipcMain.handle(OsChannels.getCursorScreenPoint, () => screen.getCursorScreenPoint())

@@ -13,7 +13,7 @@ import {
   parseFontFamilyNameApi,
   readFont
 } from '$/font'
-import { FontChannels } from '~/channels'
+import { FontChannels } from '~/ipc/channels'
 
 export function registerFontIpc(): void {
   ipcMain.handle(FontChannels.listFonts, () => listFonts())

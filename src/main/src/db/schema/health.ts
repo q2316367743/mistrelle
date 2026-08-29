@@ -13,7 +13,7 @@ import type {
   HealthCheckMode,
   HealthConclusion,
   HealthTaskStatus
-} from '~/dbChannels'
+} from '~/ipc/dbChannels'
 
 export const modelHealths = sqliteTable(
   'model_health',

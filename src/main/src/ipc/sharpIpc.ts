@@ -8,7 +8,7 @@ import {
   sharpRemoveBackground,
   sharpColorMap
 } from '$/sharp/image'
-import { SharpChannels, type SharpRegion } from '~/channels'
+import { SharpChannels, type SharpRegion } from '~/ipc/channels'
 
 export function registerSharpIpc(): void {
   ipcMain.handle(SharpChannels.metadata, (_event, input: string | Uint8Array) =>

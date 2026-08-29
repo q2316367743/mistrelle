@@ -9,6 +9,13 @@
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [AppSide.md](./app/AppSide.md)       | 主应用左侧导航栏：AppSide 外壳 + SideMenu/SideMenuNode 递归菜单组件（SideMenuItem 数据模型、active 推导、展开/收起高度动画）、menuTree 映射与导航约定 |
+| [01-app-shell.md](./app/01-app-shell.md) | 应用外壳生命周期：托盘常驻 + **双窗口启动即建**（AI 窗口默认显示/关闭只隐藏、工作条默认隐藏/失焦隐藏/无控制按钮）、托盘双入口（显示工具条/显示 AI 窗口/退出）、闪退修复（close 拦截只隐藏 + before-quit 放行真退出 + closed 置空引用）、AI 主窗口模块（createAiWindow/showAiWindow）与工作条/托盘模块划分、index.ts 仅生命周期编排 |
+
+### toolbar/ —— 工作条
+
+| 文档                                                          | 描述                                                                                                          |
+|---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| [01-toolbar-workbar.md](./toolbar/01-toolbar-workbar.md)      | uTools 式工作条：Alt+Space 全局唤起顶部悬浮搜索条（懒创建/失焦隐藏/多屏跟随）、类型化条目 ToolbarItem（app/builtin，激活按类型分发：应用 openPath 带伪造路径校验、内置 AI→懒创建主窗口）、darwin 应用扫描（三目录去重）、**图标走 mistrelle://icon/<target> 协议 + .icns 自解析（app.getFileIcon 在 macOS 26.5 触发 NSImage 断言崩溃，全库禁用）**、独立 preload（`window.workbar` 极简桥，勿用 window.toolbar 撞 BarProp）、pinyin-pro 拼音/首字母渲染层本地过滤、electron.vite 多入口配置、preload src 平铺重组为 ipc/ + lib/ |
 
 ### ai/ —— AI 请求
 

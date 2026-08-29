@@ -10,7 +10,7 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { ensureFfmpegBinary } from '$/service/ffmpegBinary'
-import { FfmpegChannels, type FfmpegDonePayload, type FfmpegProgress } from '~/channels'
+import { FfmpegChannels, type FfmpegDonePayload, type FfmpegProgress } from '~/ipc/channels'
 
 interface RunningFfmpeg {
   child: ChildProcessWithoutNullStreams
