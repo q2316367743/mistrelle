@@ -11,7 +11,7 @@
   - **激活分发**（toolbarIpc）：`builtin` 按 target 分发（'ai' → 主窗口）；`app` 先校验 target 来自扫描列表（防渲染层伪造任意路径）再 `shell.openPath`。返回空串成功 / 错误信息。
 - **搜索匹配在渲染层**：仅启动时 1 次 `getItems` IPC 拉全量条目，`pinyin-pro` 动态 `import`（词典大，不阻塞首屏）预建「归一化名称 / 全拼 / 首字母」三字段索引；键入本地过滤（`includes` 三路命中，名称/全拼前缀优先排序），零逐键 IPC。
 - **图标走 `mistrelle://icon/<target>` 自定义协议（防崩溃）**：列表不携带图标（应用项 `icon:''`），渲染层 `<img>` 直接引用协议 URL，浏览器按需请求 + 自发缓存；协议 handler（protocol.ts）校验 target 在扫描列表后调 `getAppIconPng` 串行取 PNG。**「application/getFileIcon」在 macOS 26.5 × Electron 39 上会触发 NSImage 断言崩溃（SIGTRAP brk 0，两次崩溃报告同一原生偏移；JS 串行亦无效——该 API 内部仍在 Chromium 线程池做 NSImage 操作）→ 已根治为不调用该 API，改读 `.app/Contents/Resources/*.icns` 自解析内嵌 PNG（纯 Buffer 解析，见 `appScanner.ts`），无 icns 的应用由首字母头像兜底；无调用方的 `os:getFileIcon` 孤儿通道亦已删除**。今后取图标一律走 icns 自解析，勿引入 `app.getFileIcon`。
-- **独立 preload**：工作条窗口不挂主应用 `preload/index.js` 全量 API 面，用独立入口 `src/preload/toolbar.ts` 只暴露 4 个方法（最小 API 面，窗口不开 `nodeIntegration`）。
+- **独立 preload**：工作条窗口不挂主应用 `preload/index.js` 全量 API 面，用独立入口 `src/preload/toolbar.ts` 只暴露 3 个方法（`getItems`/`activate`/`hide`，最小 API 面，窗口不开 `nodeIntegration`）。
 
 ## 关键文件
 
@@ -26,7 +26,7 @@
 | `src/main/src/ipc/toolbarIpc.ts` | 3 个 handler + 激活按类型分发，经 `registerIpc.ts` 注册 |
 | `electron.vite.config.ts` | renderer/preload 各补 `rollupOptions.input` 多入口（**缺省只产出 index，不补则生产构建没有 toolbar.html**） |
 | `src/renderer/src/windows/toolbar/main.ts` | 渲染入口：轻量秒开，不挂 router/pinia/monaco |
-| `src/renderer/src/windows/toolbar/ToolbarApp.vue` | t-input（自动聚焦）+ t-list 结果列表（内置项带「内置」t-tag）+ t-empty/t-loading；↑↓/Enter/Esc 键盘导航 |
+| `src/renderer/src/windows/toolbar/ToolbarApp.vue` | t-input（自动聚焦）+ t-list 结果列表（内置项带「内置」t-tag）+ t-empty/t-loading；hover 悬停高亮不抢占选中，点击提交选中并打开；window 级键盘监听（↑↓/Home/End/PageUp/PageDown 移动选中、Enter/空格打开、Esc 先清空查询词再隐藏） |
 | `src/renderer/src/windows/toolbar/useAppSearch.ts` | 拼音索引构建 + 本地过滤（模块级单例） |
 | `src/renderer/src/types/toolbar.d.ts` | `ToolbarItem`/`ToolbarApi` 渲染层契约 |
 
@@ -55,6 +55,8 @@ hide(): Promise<void>
 - 应用列表（`Dirent[]` 显式标注 `readdir` 返回，规避 Buffer 泛型陷阱）；win32/linux 扫描策略不同，暂未实现。
 - 渲染层空查询=全部条目（内置排最前）；结果上限 50 条。
 - 每次 `focus`（即每次唤起）重置查询词、选中项并聚焦输入框。
+- **选中与悬停分离**：hover 只显示悬停高亮（`--td-bg-color-container-hover`），不改变键盘选中项；点击才提交选中（`activeIndex`）并打开该条。键盘操作挂在 `window` 级 `keydown`（焦点不在输入框时同样生效）：↑↓/Home/End/PageUp/PageDown 移动选中、Enter/空格打开选中项、Esc 有查询词先清空（再按一次才隐藏）、无查询词直接隐藏。
+- **空格不再作为输入字符**：空格键解析为「启动选中项」（输入法组词期间被 `isComposing` 守卫拦下不受影响）。搜索不受影响——索引键均已去空白归一化，带空格的查询词仍能命中（如 `google chrome` 与 `googlechrome` 等价）。
 - 新增内置应用：在 `builtinItems.ts` 加条目（定 target 标识）+ 在 `toolbarIpc.activateItem` 加分发分支即可，渲染层零改动。
 
 ## preload src 平铺重组（同批落地）

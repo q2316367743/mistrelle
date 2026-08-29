@@ -10,7 +10,6 @@
           borderless
           clearable
           placeholder="搜索应用（名称 / 拼音 / 首字母）"
-          @keydown="onKeydown"
         >
           <template #prefixIcon><search-icon /></template>
         </t-input>
@@ -25,8 +24,7 @@
             :key="`${item.type}:${item.target}`"
             class="app-item"
             :class="{ active: index === activeIndex }"
-            @mouseenter="activeIndex = index"
-            @click="activate(item)"
+            @click="activate(item, index)"
           >
             <div class="item-main">
               <img
@@ -60,8 +58,8 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { SearchIcon } from 'tdesign-icons-vue-next'
-import type { InputProps } from 'tdesign-vue-next'
 import { useAppSearch } from './useAppSearch'
+import { cloneDeep } from 'es-toolkit'
 
 const { query, results, loading, loadError, ensureItems } = useAppSearch()
 
@@ -88,9 +86,7 @@ watch(query, () => {
 
 // 键盘上下选择时保持高亮项可见
 watch(activeIndex, () => {
-  listRef.value
-    ?.querySelector('.app-item.active')
-    ?.scrollIntoView({ block: 'nearest' })
+  listRef.value?.querySelector('.app-item.active')?.scrollIntoView({ block: 'nearest' })
 })
 
 function onWindowFocus(): void {
@@ -100,36 +96,65 @@ function onWindowFocus(): void {
   inputRef.value?.focus?.()
 }
 
-/** 激活条目：应用启动 / 内置功能分发（均在主进程），随后隐藏工作条 */
-async function activate(item: ToolbarItem): Promise<void> {
-  await window.workbar.activate(item)
+/** 激活条目：先提交选中项，再应用启动 / 内置功能分发（均在主进程），随后隐藏工作条 */
+async function activate(item: ToolbarItem, index = activeIndex.value): Promise<void> {
+  activeIndex.value = index
+  await window.workbar.activate(cloneDeep(item))
   await window.workbar.hide()
 }
 
-const onKeydown: InputProps['onKeydown'] = (_value, { e }) => {
+const onKeydown = (e: KeyboardEvent): void => {
   if (e.isComposing) return // 输入法组词过程不响应导航键
+  const last = results.value.length - 1
+  if (last < 0) {
+    // 列表为空时仅响应退出
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      void window.workbar.hide()
+    }
+    return
+  }
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    activeIndex.value = Math.min(activeIndex.value + 1, results.value.length - 1)
+    activeIndex.value = Math.min(activeIndex.value + 1, last)
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
     activeIndex.value = Math.max(activeIndex.value - 1, 0)
-  } else if (e.key === 'Enter') {
+  } else if (e.key === 'Home') {
+    e.preventDefault()
+    activeIndex.value = 0
+  } else if (e.key === 'End') {
+    e.preventDefault()
+    activeIndex.value = last
+  } else if (e.key === 'PageDown') {
+    e.preventDefault()
+    activeIndex.value = Math.min(activeIndex.value + 10, last)
+  } else if (e.key === 'PageUp') {
+    e.preventDefault()
+    activeIndex.value = Math.max(activeIndex.value - 10, 0)
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    // 空格与回车等效启动选中项（输入法组词已在上方 isComposing 拦下）
+    e.preventDefault()
     const item = results.value[activeIndex.value]
     if (item) void activate(item)
   } else if (e.key === 'Escape') {
-    void window.workbar.hide()
+    e.preventDefault()
+    if (query.value)
+      query.value = '' // 先清空查询，再按一次才隐藏
+    else void window.workbar.hide()
   }
 }
 
 onMounted(() => {
   window.addEventListener('focus', onWindowFocus)
+  window.addEventListener('keydown', onKeydown)
   void ensureItems()
   inputRef.value?.focus?.()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('focus', onWindowFocus)
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 
@@ -175,6 +200,10 @@ onBeforeUnmount(() => {
   padding: 0;
   border-radius: 8px;
   cursor: pointer;
+
+  &:hover {
+    background: var(--td-bg-color-container-hover);
+  }
 
   &.active {
     background: var(--td-bg-color-secondarycontainer);
