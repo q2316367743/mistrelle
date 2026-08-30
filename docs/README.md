@@ -34,7 +34,7 @@
 
 | 文档                                                                           | 描述                                                                                                                                                     |
 |--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload，例外：net 下载因 onDownloadProgress 回调无法过 IPC 而保留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 首次远程下载、sharp 移植、renderer 异步化适配清单 |
+| [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload，例外：net 下载因 onDownloadProgress 回调无法过 IPC 而保留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 二进制随包分发（见 build/03，旧远程下载方案已移除）、sharp 移植、renderer 异步化适配清单 |
 | [02-local-protocol.md](./migration/02-local-protocol.md)                       | `mistrelle://` 本地资源协议：渲染层 URL 加载本地字体/图片，规避 dev 下 http 页面加载 file:// 被 Chromium 拦截；`registerLocalSchemes` 须在 app ready 前注册、handler 读盘返回 |
 | [03-lmdb-to-json.md](./migration/03-lmdb-to-json.md)                           | lmdb → 本地 JSON 收尾迁移：剩余消费点（network/global/secure/default setting、workspace 历史）映射与行为变化（rev 删除、不预写空文件、init 后注册 watch、孤儿 AiWorkspaceStore 直接删除）、lmdb 全链路删除清单、`~/.mistrelle/` JSON 存储全景 |
 
@@ -188,6 +188,7 @@
 |--------------------------------------------------------|------------------------------------------------------------------------------------------|
 | [01-app-icon.md](./build/01-app-icon.md)               | 应用图标生成机制：electron-builder 自动从 `build/icon.png` 转换 icns/ico，禁止手动预生成  |
 | [02-monaco-editor.md](./build/02-monaco-editor.md)     | Monaco worker 配置：`vite-plugin-monaco-editor` 已移除，改 `?worker` 原生导入 + `MonacoEnvironment` label 分发 |
+| [03-ffmpeg-bundling.md](./build/03-ffmpeg-bundling.md) | ffmpeg 二进制随包分发：`scripts/fetch-ffmpeg.mjs` 从 npmmirror 镜像拉取到 `resources/ffmpeg/{os}-{arch}/`（gitignore），electron-builder `extraResources` 按平台注入（asar 外可直接 spawn）、运行时同步解析无下载；打包前必须先跑 fetch 脚本 |
 
 ### todo/ —— 规划与待办
 

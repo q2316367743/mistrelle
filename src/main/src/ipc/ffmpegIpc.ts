@@ -80,7 +80,7 @@ const emitDone = (
 
 export function registerFfmpegIpc(): void {
   ipcMain.handle(FfmpegChannels.run, async (event, args: string[]) => {
-    const binary = await ensureFfmpegBinary()
+    const binary = ensureFfmpegBinary()
     const id = nextId++
     // 追加进度输出；用户 args 已含 -progress 时 ffmpeg 会报错，属预期
     const child = spawn(binary, [...args.map(String), '-progress', 'pipe:2'], {

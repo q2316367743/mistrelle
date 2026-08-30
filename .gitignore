@@ -10,3 +10,6 @@ out
 .workbuddy
 .opencode
 stats.html
+
+# ffmpeg 二进制由 scripts/fetch-ffmpeg.mjs 拉取，不入库
+resources/ffmpeg

@@ -78,10 +78,8 @@ sharp（metadata/crop/removeBackground）
 
 ## 五、ffmpeg（`src/main/src/service/ffmpegBinary.ts` + `ipc/ffmpegIpc.ts`）
 
-- **首次使用远程下载**到 `~/.mistrelle/extends/ffmpeg`（win 加 `.exe`），下载后写 `ffmpeg.json` 保存版本与可执行路径
-- 下载源：**ffbinaries-prebuilt v6.1**（GitHub Releases），URL 模板 `https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v6.1/ffmpeg-6.1-{os}-{arch}.zip`
-  - 平台映射：`macos-64`（Apple Silicon 走 Rosetta，URL 表独立成常量便于替换 arm64 源）/ `win-64` / `linux-64` / `linux-arm-64`
-- 流程：run 前校验二进制 → 缺失则 axios 流式下载 → adm-zip 解压 → chmod +x → `-version` 验证 → 写 meta
+- **二进制随安装包分发**（2026-08-30 起，方案与打包细节见 [build/03-ffmpeg-bundling.md](../build/03-ffmpeg-bundling.md)）：`scripts/fetch-ffmpeg.mjs` 从 npmmirror 镜像（ffmpeg-static 6.1.1）拉取到 `resources/ffmpeg/{os}-{arch}/`，electron-builder `extraResources` 按平台注入；早期「首次使用远程下载到 `~/.mistrelle/extends`」方案已整体移除
+- 运行前 `ensureFfmpegBinary()` 同步解析内置路径 + `-version` 校验，缺失时抛错提示跑 fetch 脚本
 - 运行：spawn + 自动追加 `-progress pipe:2`，解析 `frame=/fps=/bitrate=/total_size=/out_time_us=/speed=/q=` 行推送进度
 - 取消：`kill()`=SIGKILL；`quit()`=向 stdin 写 `q`；exit 0 resolve / 非 0 reject（stderr 尾部）
 - preload 侧 `ffmpeg.run(args, onProgress)` 返回带 `kill()/quit()` 的 Promise（兼容 `InjectFfmpegPromise`，`canvasVideoExport.ts` 的取消逻辑不受影响）；run 未返回 id 时 kill/quit 先挂起、id 到达后补发（取消竞态安全）
