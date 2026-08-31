@@ -20,7 +20,12 @@ const FFMPEG_NAME = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
 const bundledFfmpegPath = (): string =>
   app.isPackaged
     ? join(process.resourcesPath, 'ffmpeg', FFMPEG_NAME)
-    : join(__dirname, '../../resources/ffmpeg', `${process.platform}-${process.arch}`, FFMPEG_NAME)
+    : join(
+        __dirname,
+        '../../resources/ffmpeg',
+        `${process.platform === 'darwin' ? 'mac' : process.platform}-${process.arch}`,
+        FFMPEG_NAME
+      )
 
 /** 校验二进制可执行（-version 退出码为 0 即视为可用） */
 const verifyBinary = (binaryPath: string): boolean => {
