@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createAiWindow, markQuitting, showAiWindow } from '$/aiWindow/aiWindow'
+import { init as initAuth } from '$/auth/AuthService'
 import { registerIpc } from '$/ipc/registerIpc'
 import { registerLocalSchemes, registerLocalProtocol } from '$/protocol'
 import { registerAppTray } from '$/tray/appTray'
@@ -23,6 +24,9 @@ app.whenReady().then(() => {
 
   // 注册全部业务 IPC（shell/dialog/clipboard/os/display/notification/fs/net/shellExec/font/db/ffmpeg/sharp）
   registerIpc()
+
+  // 服务端账号初始化（读本地凭证校验登录态，非阻塞，失败不阻塞启动）
+  initAuth()
 
   // 注册 mistrelle:// 协议处理（依赖 registerLocalSchemes 已就绪）
   registerLocalProtocol()

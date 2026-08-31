@@ -1,0 +1,102 @@
+/**
+ * 服务端账号 store：镜像主进程 AuthService 单例状态，多页面（AppSide / 账户设置页）共享。
+ * 状态源在 main（登录/登出/凭证管理全在主进程），本 store 只负责拉取快照 + 订阅推送。
+ */
+import { defineStore } from 'pinia'
+import { MessageUtil } from '@/utils/modal'
+
+export const useAuthStore = defineStore('auth', () => {
+  const status = ref<AuthStatus>('unknown')
+  const user = ref<AuthUser | null>(null)
+  const balance = ref<AuthBalance | null>(null)
+  /** 公开档位列表（未登录态额度展示，无需登录） */
+  const tiers = ref<AuthTierInfo[]>([])
+  /** 登录 / 注册请求进行中（弹窗按钮 loading，防重复提交） */
+  const submitting = ref(false)
+
+  function apply(state: AuthState): void {
+    status.value = state.status
+    user.value = state.user
+    balance.value = state.balance
+  }
+
+  async function loadTiers(): Promise<void> {
+    try {
+      tiers.value = await window.preload.auth.tiers()
+    } catch (error) {
+      tiers.value = []
+      console.error('[auth] 获取公开档位失败', error)
+    }
+  }
+
+  // store 单例，以下仅初始化一次：
+  // 启动拉快照（弥补推送前的时间窗）+ 订阅主进程变更推送（登录/登出/刷新后自动同步）+ 拉公开档位
+  window.preload.auth.getState().then(apply)
+  window.preload.auth.onChanged(apply)
+  loadTiers()
+
+  /** 邮箱密码登录 */
+  async function signIn(email: string, password: string): Promise<boolean> {
+    submitting.value = true
+    try {
+      const res = await window.preload.auth.signIn({ email, password })
+      if (!res.ok) MessageUtil.error(res.msg)
+      return res.ok
+    } finally {
+      submitting.value = false
+    }
+  }
+
+  /** 邮箱密码注册（注册即登录） */
+  async function signUp(name: string, email: string, password: string): Promise<boolean> {
+    submitting.value = true
+    try {
+      const res = await window.preload.auth.signUp({ name, email, password })
+      if (!res.ok) MessageUtil.error(res.msg)
+      return res.ok
+    } finally {
+      submitting.value = false
+    }
+  }
+
+  /** 登出：服务端注销 + 本地凭证清除 */
+  async function signOut(): Promise<boolean> {
+    const res = await window.preload.auth.signOut()
+    if (!res.ok) MessageUtil.error(res.msg)
+    return res.ok
+  }
+
+  /** 修改用户名（成功后主进程刷新资料并广播，UI 经订阅自动同步） */
+  async function updateName(name: string): Promise<boolean> {
+    const res = await window.preload.auth.updateUser({ name })
+    if (!res.ok) MessageUtil.error(res.msg)
+    return res.ok
+  }
+
+  /** 修改密码（当前会话保持有效） */
+  async function changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
+    const res = await window.preload.auth.changePassword({ currentPassword, newPassword })
+    if (!res.ok) MessageUtil.error(res.msg)
+    return res.ok
+  }
+
+  /** 手动刷新资料与余额（账户页「刷新 / 重试」按钮） */
+  async function refresh(): Promise<void> {
+    apply(await window.preload.auth.refresh())
+  }
+
+  return {
+    status,
+    user,
+    balance,
+    tiers,
+    submitting,
+    loadTiers,
+    signIn,
+    signUp,
+    signOut,
+    updateName,
+    changePassword,
+    refresh
+  }
+})

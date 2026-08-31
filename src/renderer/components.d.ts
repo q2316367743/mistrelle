@@ -34,6 +34,7 @@ declare module 'vue' {
     LChatSender: typeof import('./src/components/chat/sender/LChatSender.vue')['default']
     LinkPreviewContent: typeof import('./src/components/preview/LinkPreviewContent.vue')['default']
     LoadingResult: typeof import('./src/components/Result/LoadingResult.vue')['default']
+    LoginContent: typeof import('./src/components/modals/LoginContent.vue')['default']
     MChatAssistant: typeof import('./src/components/chat/chat-assistant/MChatAssistant.vue')['default']
     MChatUser: typeof import('./src/components/chat/chat-user/MChatUser.vue')['default']
     MLink: typeof import('./src/components/ui/MLink.vue')['default']

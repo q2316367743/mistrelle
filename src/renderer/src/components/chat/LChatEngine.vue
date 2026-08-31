@@ -237,7 +237,6 @@ const paddingRight = computed(() => `${8 + r1}px`)
     height: 48px;
     box-sizing: border-box;
     color: var(--td-text-color-primary);
-    padding: 8px v-bind(paddingRight);
     transition: padding-left 0.1s ease-in-out;
     border-bottom: 1px solid var(--td-border-level-1-color);
 
@@ -245,6 +244,7 @@ const paddingRight = computed(() => `${8 + r1}px`)
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
+    padding: 8px v-bind(paddingRight) 8px 240px;
 
     &.collapsed {
       padding-left: v-bind(paddingLeft);

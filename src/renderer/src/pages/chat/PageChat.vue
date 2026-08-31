@@ -16,7 +16,9 @@ import { buildChatMainKey } from '@/modules/chat'
 const route = useRoute()
 
 // 直接从 store 计算（非快照）：置顶 / 更名 / 隐私标记等行级更新替换数组元素后，标题与标识仍实时生效
-const chat = computed(() => useAiChatStore().state.find((e) => e.id === (route.params.id as string)))
+const chat = computed(() =>
+  useAiChatStore().state.find((e) => e.id === (route.params.id as string))
+)
 const storageKey = ref<string>()
 
 watch(

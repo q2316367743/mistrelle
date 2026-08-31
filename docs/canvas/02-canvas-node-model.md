@@ -171,9 +171,11 @@ interface CanvasDoc {
   vertical 行间距靠 `gap` 显式写、居中交引擎双向 CENTER、同构卡片先建模板再 copy 复用、跨批 `parent` 用真实 id）、
   **主视觉来源策略**（每个设计必须有 hero；无真实素材时 `image_generate` 生图是首选，避免纯文字海报）、
   **几何核对主动校验**（每轮 batch_edit 后主动用 `canvas_inspect` 核对四边边距 / 间距 / 对齐，不目测、不写像素脚本）、
-  **排版防错规则**（垂直间距、几何中心定位、文字垂直居中 0.58 系数、宽度估算、居中禁止「估宽 + 目测 x」、嵌图居中用 group 而非
+  **排版防错规则**（垂直间距、几何中心定位、文字垂直居中 0.58 系数、宽度估算（中英混排分段累加：`中文字数×字号 + 拉丁×0.55×字号`，估算后立即
+  `canvas_inspect` 验证 ≤ 内容区宽）、居中禁止「估宽 + 目测 x」、嵌图居中用 group 而非
   rect、svg 图标嵌圆底用 `layoutPositioning:"ABSOLUTE"` 叠圆心（排布型 layout 会并排）、**多行正文禁用 `\n` 换行**——拆多个单行 text +
-  容器 vertical 堆叠（引擎对含 `\n` 的 text 行数测量不稳定，高度被低估会溢出背景）、**四边安全边距**：四边留白 ≥ 画布短边 × 4% 且底部 ≥ 顶部）、按需加载指令。
+  容器 vertical 堆叠（引擎对含 `\n` 的 text 行数测量不稳定，高度被低估会溢出背景）、**四边安全边距**：四边留白 ≥ 画布短边 × 4% 且底部 ≥ 顶部、
+  **收尾全局收口检查**（每张卡收尾 inspect 底部元素 + 「改一处查三处」：上方间隙 / 下方重叠 / 左右对齐））、按需加载指令。
   - **动态生图规则**：`hasImageGenerate = !!useSettingDefaultStore().state.defaultImageModel`，与 `createDesignTools` 的工具注入同源判断。
     仅配置默认生图模型（`image_generate` 工具已注入）时，提示词才追加生图增强规则（主视觉生图首选 + sprite 合并 + `image_crop` 切分 +
     `canvas_guidelines("image-generation")` 引用），避免「提示词提到 image_generate、工具却未注入」的错配；未配置时主视觉来源只用真实素材 +
@@ -181,8 +183,9 @@ interface CanvasDoc {
 - **内置参考**（`guidelines.ts`：静态 md 用 `?raw` 打包；`styles` 由 `DESIGN_STYLE_PRESETS` 运行时生成）：
   - `styles`：**动态风格目录**（id / 别名 / 签名手法 / 画幅 / 适合），未指定风格时协商用
   - `style-guide.md`：反 AI 俗套铁律 + 风格协商 / 四步法 + 创意武器库
-  - `composition.md`：构图法则 + 定量门槛（字号倍率 / 留白 / 边距 4% 硬底线 + 6%~9% 观感）+ 尺寸表
-  - `typography.md`：字体层级 / 中文行长与断行 / 字距行距
+  - `composition.md`：构图法则 + 定量门槛（字号倍率 / 留白 / 边距 4% 硬底线 + 6%~9% 观感 / 间距量化下限：卡片 gap ≥ 24、padding ≥ 36-44、
+    区块 ≥ 32-40 / 左右分屏网格先行：列宽 + gutter 40 + 顶部同线 + 底部对齐）+ 尺寸表
+  - `typography.md`：字体层级 / 中文行长与断行 / 字距行距 / 中英混排宽度估算公式
   - `operations.md`：batch_edit 操作与节点速查 + 示例
   - `workflow.md`：端到端工作流（问平台 → 文案额度 → 风格 → 构建 → inspect / 15% 缩略）
   - 场景指南：`poster` / `book-cover` / `album-cover` / `social-media` / `knowledge-card`

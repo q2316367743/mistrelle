@@ -11,6 +11,12 @@
 | [AppSide.md](./app/AppSide.md)       | 主应用左侧导航栏：AppSide 外壳 + SideMenu/SideMenuNode 递归菜单组件（SideMenuItem 数据模型、active 推导、展开/收起高度动画）、menuTree 映射与导航约定 |
 | [01-app-shell.md](./app/01-app-shell.md) | 应用外壳生命周期：托盘常驻（显示 AI 窗口/退出）+ AI 主窗口启动即建（默认显示/关闭只隐藏）、Dock 点击打开主窗口、闪退修复（close 拦截只隐藏 + before-quit 放行真退出 + closed 置空引用）、AI 主窗口模块（createAiWindow/showAiWindow）、index.ts 仅生命周期编排 |
 
+### auth/ —— 服务端账号
+
+| 文档                                                          | 描述                                                                                                          |
+|---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| [01-server-auth.md](./auth/01-server-auth.md)                 | 服务端账号接入（better-auth）：主进程 AuthService 单例共享状态 + 状态广播、API Key + 会话双存凭证（safeStorage 落盘）、Bearer 规避 CSRF、`/api/auth/*` 与 `/api/user/*` 契约、登录弹窗与用户菜单接入 |
+
 ### ai/ —— AI 请求
 
 | 文档                                                          | 描述                                                                                                          |

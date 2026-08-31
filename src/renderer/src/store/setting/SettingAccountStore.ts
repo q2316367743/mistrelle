@@ -30,13 +30,6 @@ export const useSettingAccountStore = defineStore('setting:account', () => {
     }
   })
 
-  // 配置了 Context7 key 则在请求头携带 Authorization，否则返回空配置（走免 key 匿名额度）
-  const context7Config = computed<Partial<HttpRequest>>(() => {
-    if (!state.value.context7) return {}
-    return {
-      headers: { Authorization: `Bearer ${state.value.context7}` }
-    }
-  })
 
   /** 知乎开放平台鉴权头；时间戳须在每次请求时现取，故用函数而非静态 computed */
   const zhihuConfig = (): Partial<HttpRequest> => {
@@ -53,7 +46,6 @@ export const useSettingAccountStore = defineStore('setting:account', () => {
   return {
     state,
     skillhubConfig,
-    context7Config,
     zhihuConfig
   }
 })

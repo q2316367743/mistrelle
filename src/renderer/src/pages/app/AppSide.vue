@@ -21,15 +21,14 @@
           min-column-width="188px"
         >
           <button class="menu-item" type="button">
-            <user-woman-icon v-if="avatar === 'woman'" />
-            <user-man-icon v-else />
-            <span>{{ nickname }}</span>
+            <user-circle-icon />
+            <span>{{ displayName }}</span>
           </button>
           <t-dropdown-menu>
             <t-dropdown-item
-              v-for="item in settingOptions"
+              v-for="item in menuItems"
               :key="item.value"
-              @click="handleSettingClick(item.value)"
+              @click="handleMenuClick(item.value)"
             >
               <template #prefix-icon>
                 <component :is="item.icon" />
@@ -63,17 +62,20 @@ import {
   ComponentRadioIcon,
   AiImageIcon,
   ArrowLeftRight1Icon,
-  Calculation1Icon
+  Calculation1Icon,
+  LoginIcon,
+  LogoutIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
-import { useSettingAccountStore } from '@/store'
+import { useAuthStore } from '@/store'
+import { MessageUtil } from '@/utils/modal'
+import { openLogin } from '@/components/modals/LoginDialog'
 import ChatList from './components/ChatList.vue'
 import SideMenu, { type SideMenuItem } from './components/SideMenu.vue'
 import { Constant } from '@/global/Constant'
-import UserManIcon from '@/assets/icons/UserManIcon.vue'
-import UserWomanIcon from '@/assets/icons/UserWomanIcon.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const settingOptions = [
   { label: '系统设置', icon: Setting1Icon, value: 'global' },
@@ -118,10 +120,34 @@ const menuTree: SideMenuItem[] = [
   }
 ]
 
-const avatar = computed(() => useSettingAccountStore().state.avatar)
-const nickname = computed(() => useSettingAccountStore().state.nickname)
+// 已登录展示服务端账号昵称/邮箱，未登录展示「未登录」
+const displayName = computed(() => {
+  const account = authStore.user
+  if (account && (account.name || account.email)) return account.name || account.email
+  return '未登录'
+})
 
-const handleSettingClick = (key: string) => router.push(`/setting/${key}`)
+// 用户菜单：未登录时顶部提供「登录 / 注册」入口，已登录时底部提供「退出登录」
+const menuItems = computed(() => {
+  const settings = settingOptions.map((item) => ({ ...item }))
+  if (authStore.status === 'signed-in') {
+    return [...settings, { label: '退出登录', icon: LogoutIcon, value: 'logout' }]
+  }
+  return [{ label: '登录 / 注册', icon: LoginIcon, value: 'login' }, ...settings]
+})
+
+const handleMenuClick = async (key: string) => {
+  if (key === 'login') {
+    openLogin()
+    return
+  }
+  if (key === 'logout') {
+    const ok = await authStore.signOut()
+    if (ok) MessageUtil.success('已退出登录')
+    return
+  }
+  router.push(`/setting/${key}`)
+}
 
 onMounted(() => {
   console.log('plugin enter', isDark.value)

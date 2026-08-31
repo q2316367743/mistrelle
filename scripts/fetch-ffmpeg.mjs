@@ -46,7 +46,7 @@ for (const [os, arch] of PLATFORMS) {
   }
   const cache = join(CACHE_DIR, `ffmpeg-${os}-${arch}`)
   if (force || !existsSync(cache)) {
-    await download(`${MIRROR}/b${VERSION}/ffmpeg-${os}-${arch}`, cache)
+    await download(`${MIRROR}/b${VERSION}/ffmpeg-${os === 'darwin' ? 'mac' : os}-${arch}`, cache)
     console.log(`已下载 ${label}`)
   }
   mkdirSync(dirname(dest), { recursive: true })

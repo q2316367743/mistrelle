@@ -10,3 +10,5 @@ export * from '@/store/ai/AiChatStore'
 export * from '@/store/ai/AiAgentStore'
 
 export * from './design/DesignStyleStore'
+
+export * from './AuthStore'
