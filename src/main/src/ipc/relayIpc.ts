@@ -1,48 +1,68 @@
 /**
  * 服务端中转 IPC handler（main 进程）：relay 域透传 RelayService。
- * 与 aiStream 桥同款约定（见 preload/src/ipc/aiStream.ts）：
- * - chatStream 为 invoke：main 内完整跑完中转流，onStart / onChunk 经 contextBridge
- *   代理回调，Promise 在流结束 / 中止后 resolve（{ aborted }），失败 reject。
- * - 取消：relay:abortStream(requestId)（requestId 经 onStart 回传，与 aiStream 相同）。
+ *
  * - listModels：普通 invoke 返回模型列表。
+ * - chatStream：invoke 只收可克隆的 params + requestId（函数无法 structured clone，
+ *   不能把 onStart/onChunk 当 invoke 参数，否则报 An object could not be cloned）。
+ *   流式回调经 webContents.send 回推 start/chunk/end；结束以 end 事件为准。
+ * - 取消：relay:abortStream(requestId)（requestId 经 start 事件回传）。
  */
-import { ipcMain } from 'electron'
+import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import {
   RelayChannels,
   type RelayChatParams,
-  type RelayStreamHandlers
+  type RelayStreamEndPayload
 } from '~/ipc/relayChannels'
 import { chatStream, listModels } from '$/auth/RelayService'
 
 const controllers = new Map<string, AbortController>()
-let seq = 0
-const nextRequestId = (): string => `relay-stream-${Date.now()}-${seq++}`
+
+const send = (event: IpcMainInvokeEvent, channel: string, ...args: unknown[]): void => {
+  if (event.sender.isDestroyed()) return
+  event.sender.send(channel, ...args)
+}
 
 export function registerRelayIpc(): void {
   ipcMain.handle(RelayChannels.listModels, (): Promise<Array<{ id: string }>> => listModels())
 
   ipcMain.handle(
     RelayChannels.chatStream,
-    (_event, params: RelayChatParams, handlers: RelayStreamHandlers): Promise<{ aborted: boolean }> => {
-      const requestId = nextRequestId()
+    async (
+      event: IpcMainInvokeEvent,
+      params: RelayChatParams,
+      requestId: string
+    ): Promise<void> => {
+      if (typeof requestId !== 'string' || requestId.length === 0) {
+        throw new Error('invalid requestId')
+      }
       const controller = new AbortController()
       controllers.set(requestId, controller)
-      const { onStart, onChunk } = handlers ?? {}
-      return chatStream(params, controller.signal, {
-        onStart: (info) => {
-          onStart?.({ requestId, status: info.status, headers: info.headers })
-        },
-        onChunk: (chunk) => {
-          onChunk?.(chunk)
+      const emitEnd = (payload: Omit<RelayStreamEndPayload, 'requestId'>): void => {
+        send(event, RelayChannels.chatStreamEnd, { requestId, ...payload })
+      }
+      try {
+        const result = await chatStream(params, controller.signal, {
+          onStart: (info) => {
+            send(event, RelayChannels.chatStreamStart, {
+              requestId,
+              status: info.status,
+              headers: info.headers
+            })
+          },
+          onChunk: (chunk) => {
+            send(event, RelayChannels.chatStreamChunk, requestId, chunk)
+          }
+        })
+        emitEnd({ aborted: result.aborted })
+      } catch (error: unknown) {
+        if (controller.signal.aborted) {
+          emitEnd({ aborted: true })
+          return
         }
-      })
-        .catch((error: unknown) => {
-          if (controller.signal.aborted) return { aborted: true }
-          throw error
-        })
-        .finally(() => {
-          controllers.delete(requestId)
-        })
+        emitEnd({ error: error instanceof Error ? error.message : String(error) })
+      } finally {
+        controllers.delete(requestId)
+      }
     }
   )
 

@@ -33,15 +33,18 @@ import {
 export function registerAuthIpc(): void {
   ipcMain.handle(AuthChannels.getState, (): AuthState => current())
   ipcMain.handle(AuthChannels.tiers, (): Promise<AuthTierInfo[]> => tiers())
-  ipcMain.handle(AuthChannels.signIn, (_event, params: AuthSignInParams): Promise<AuthActionResult> =>
-    signIn(params)
+  ipcMain.handle(
+    AuthChannels.signIn,
+    (_event, params: AuthSignInParams): Promise<AuthActionResult> => signIn(params)
   )
-  ipcMain.handle(AuthChannels.signUp, (_event, params: AuthSignUpParams): Promise<AuthActionResult> =>
-    signUp(params)
+  ipcMain.handle(
+    AuthChannels.signUp,
+    (_event, params: AuthSignUpParams): Promise<AuthActionResult> => signUp(params)
   )
   ipcMain.handle(AuthChannels.signOut, (): Promise<AuthActionResult> => signOut())
-  ipcMain.handle(AuthChannels.updateUser, (_event, params: AuthNameParams): Promise<AuthActionResult> =>
-    updateUser(params.name)
+  ipcMain.handle(
+    AuthChannels.updateUser,
+    (_event, params: AuthNameParams): Promise<AuthActionResult> => updateUser(params.name)
   )
   ipcMain.handle(
     AuthChannels.changePassword,

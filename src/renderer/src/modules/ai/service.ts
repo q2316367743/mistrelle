@@ -118,6 +118,7 @@ function extractRelayError(status: number, body: string): string {
  * 走主进程 relay IPC（main 注入 `Authorization: Bearer <apiKey>` + 透传 session_id），
  * 复用 chat 适配器构造 OpenAI chat 形状请求体与归一化 chunk；
  * 产出与 createChatStream 相同形状的 AiStreamChunk（协议解析仍在渲染层）。
+ * 流式字节经 preload 事件桥回推（handlers 不进 invoke，避免 structured clone 失败）。
  * 取消：signal.abort 触发 preload 桥 relay:abortStream 中止底层请求。
  */
 export async function* createRelayChatStream(
@@ -163,6 +164,8 @@ export async function* createRelayChatStream(
   donePromise.then(
     () => {
       settled = true
+      // 取消发生在响应头之前时 onStart 不会触发，避免 infoPromise 悬挂
+      if (!infoResolved) rejectInfo(new DOMException('Aborted', 'AbortError'))
       wake()
     },
     (error: unknown) => {

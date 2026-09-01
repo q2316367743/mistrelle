@@ -266,6 +266,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
       }
       return result
     } catch (error) {
+      console.error(error)
       // 中止不重试（走既有「停止」路径）；过期请求（新一轮已开始）静默取消
       if (options.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
         throw error

@@ -29,9 +29,9 @@
 |---|---|
 | `src/main/src/auth/AuthService.ts` | 新增导出 `getRelayContext()`：返回 `{ baseUrl, apiKey } | null`（无凭证 null；仅主进程内部使用） |
 | `src/main/src/auth/RelayService.ts` | `listModels()` / `chatStream()`（axios stream + AbortSignal 取消） |
-| `src/main/src/ipc/relayIpc.ts` | `relay:listModels` / `relay:chatStream` / `relay:abortStream`（与 aiStream 桥同款约定：invoke 内跑完流 + contextBridge 回调代理） |
-| `src/preload/src/ipc/relayChannels.ts` | 通道常量 + `RelayChatParams` / `RelayStreamHandlers` 类型 |
-| `src/preload/src/ipc/relay.ts` | preload 桥 `window.preload.relay.{listModels, chatStream, streamAbort}` |
+| `src/main/src/ipc/relayIpc.ts` | `relay:listModels` / `relay:chatStream` / `relay:abortStream`；流式 start/chunk/end 经 `webContents.send` 回推（handlers 不进 invoke） |
+| `src/preload/src/ipc/relayChannels.ts` | 通道常量 + `RelayChatParams` / `RelayStreamHandlers` / `RelayStreamEndPayload` |
+| `src/preload/src/ipc/relay.ts` | preload 桥 `window.preload.relay.{listModels, chatStream, streamAbort}`；invoke 只传可克隆参数，本地调 handlers |
 | `src/renderer/src/modules/ai/service.ts` | `listRelayModels()` + `createRelayChatStream()`（内置对话流，复用 `chatAdapter` + `SseParser`） |
 | `src/renderer/src/store/setting/SettingAiStore.ts` | 内置 provider 注入 / 门控过滤 / `refreshBuiltinModels` |
 | `src/renderer/src/pages/setting/ai/SettingAi.vue` | 内置只读面板 + 刷新按钮 + 登录守卫 |
@@ -69,4 +69,4 @@
 - `session_id`：内置对话流透传当前 chatId（服务端用量统计）；缺省服务端回退 user / 用户 id。
 - 免费档判定走 `features.thirdPartyRelay`（AuthStore 已把未登录/unknown 折叠为 false），页面不直接判 `status`；登录态判定（守卫用）走 `authStore.status === 'signed-in'`。
 - `SettingAiStore` 引 `useAuthStore` 直连 `@/store/AuthStore`（经 `@/store` index 可能成环，与 DesignStyleStore 先例一致）。
-- relay IPC 桥与 `aiStream` 桥同款约定：只做字节转发，`onStart`/`onChunk` 经 contextBridge 代理，取消走 `streamAbort(requestId)`（requestId 经 onStart 回传）。
+- relay 流式 IPC **不能**照抄 `aiStream`：`aiStream` 的 HTTP 跑在 preload 同进程，handlers 可直接调用；relay 必须在 main 注入凭证。把 `onStart`/`onChunk` 塞进 `ipcRenderer.invoke` 会触发 structured clone 失败（`An object could not be cloned`）。正确做法：invoke 只传 `params` + `requestId`，main 经 `relay:chatStreamStart` / `Chunk` / `End` 事件回推，preload 本地调 handlers。取消仍走 `streamAbort(requestId)`（requestId 经 onStart 回传）。结束以 `End` 事件为准，避免 invoke 回包赶超最后几个 chunk。
