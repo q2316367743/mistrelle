@@ -109,6 +109,7 @@ import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
 import { normalizeFontPickArgs } from '@/modules/tool/components/design/fontTools'
 import FontPreviewText from '@/components/FontPreviewText.vue'
 import { FontItem } from '@/domain/FontItem'
+import { useAuthStore } from '@/store'
 
 const props = defineProps({
   content: {
@@ -136,7 +137,11 @@ const fonts = ref<FontItem[]>([])
 const loadingFonts = ref(true)
 onMounted(async () => {
   try {
-    fonts.value = await window.preload.font.listFonts()
+    const list = await window.preload.font.listFonts()
+    // 资源库字体（自定义字体）为会员功能：AI 面不可见
+    fonts.value = useAuthStore().features.customFonts
+      ? list
+      : list.filter((f) => f.source === 'system')
   } finally {
     loadingFonts.value = false
   }

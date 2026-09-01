@@ -8,6 +8,10 @@ import {
   AuthChannels,
   type AuthActionResult,
   type AuthChangePasswordParams,
+  type AuthCodeActionResult,
+  type AuthCodeParams,
+  type AuthCodeRedeemResult,
+  type AuthCodeVerifyResult,
   type AuthNameParams,
   type AuthSignInParams,
   type AuthSignUpParams,
@@ -34,6 +38,12 @@ export const authApi = {
   /** 修改密码（当前会话保持有效） */
   changePassword: (params: AuthChangePasswordParams): Promise<AuthActionResult> =>
     ipcRenderer.invoke(AuthChannels.changePassword, params),
+  /** 验证激活码：只返回可激活内容（会员档位或积分包），不执行激活 */
+  verifyCode: (params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeVerifyResult>> =>
+    ipcRenderer.invoke(AuthChannels.verifyCode, params),
+  /** 激活激活码：成功后主进程刷新资料并广播（UI 自动同步档位与余额） */
+  redeemCode: (params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeRedeemResult>> =>
+    ipcRenderer.invoke(AuthChannels.redeemCode, params),
   /** 手动刷新资料与余额（账户页「刷新」按钮） */
   refresh: (): Promise<AuthState> => ipcRenderer.invoke(AuthChannels.refresh),
   /** 订阅主进程状态变更推送；返回取消订阅函数 */

@@ -28,7 +28,13 @@
               :key="group.category"
               :label="group.label"
             >
-              <t-option v-for="s in group.items" :key="s.id" :value="s.id" :label="s.name">
+              <t-option
+                v-for="s in group.items"
+                :key="s.id"
+                :value="s.id"
+                :label="s.name"
+                :disabled="!s.isSystem && stylesLocked"
+              >
                 <t-popup
                   trigger="hover"
                   placement="right-top"
@@ -64,7 +70,7 @@
 </template>
 <script lang="ts" setup>
 import { groupDesignStylesByCategory } from '@/entity'
-import { useAiChatStore, useDesignStyleStore, useSettingDefaultStore } from '@/store'
+import { useAuthStore, useAiChatStore, useDesignStyleStore, useSettingDefaultStore } from '@/store'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { CHAT_TYPE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
@@ -89,6 +95,8 @@ const currentOption = computed(() => typeOptions.find((option) => option.value =
 const currentScene = computed(() => sceneOptions.find((option) => option.value === scene.value))
 
 const designStyleStore = useDesignStyleStore()
+/** 自定义设计风格为会员功能：非会员在下拉中可见但锁定选择 */
+const stylesLocked = computed(() => !useAuthStore().features.extendedDesignStyles)
 /** 按分组聚合的设计风格选项（预设 + 用户自建） */
 const designStyleGroups = computed(() =>
   groupDesignStylesByCategory(

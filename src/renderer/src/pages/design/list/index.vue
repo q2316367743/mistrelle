@@ -4,10 +4,12 @@
       <div class="style-hero__left">
         <h1 class="style-hero__title">设计风格</h1>
         <p class="style-hero__subtitle">沉淀统一的设计语言，让 AI 生成始终保持一致的视觉风格</p>
-        <t-button theme="primary" size="large" @click="handleAdd">
-          <template #icon><AddIcon /></template>
-          新建风格
-        </t-button>
+        <t-badge :count="stylesLocked ? '会员' : 0">
+          <t-button theme="primary" size="large" :disabled="stylesLocked" @click="handleAdd">
+            <template #icon><AddIcon /></template>
+            新建风格
+          </t-button>
+        </t-badge>
       </div>
     </section>
 
@@ -61,13 +63,16 @@ import {
   groupDesignStylesByCategory,
   normalizeDesignStyleCategory
 } from '@/entity'
-import { useDesignStyleStore } from '@/store'
+import { useAuthStore, useDesignStyleStore } from '@/store'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import DesignStyleCard from './components/DesignStyleCard.vue'
 import { openDesignStylePut } from './modals/DesignStylePutDialog'
 
 const router = useRouter()
 const store = useDesignStyleStore()
+/** 自定义设计风格为会员功能：非会员可见但锁定新建/编辑/删除（查看不拦） */
+const stylesLocked = computed(() => !useAuthStore().features.extendedDesignStyles)
+const STYLES_LOCKED_MSG = '自定义设计风格为会员功能，可在 设置 → 账户 开通'
 
 const keyword = ref('')
 const category = ref('')
@@ -76,10 +81,7 @@ const filterOptions = [{ label: '全部分组', value: '' }, ...DESIGN_STYLE_CAT
 const filteredList = computed(() => {
   const text = keyword.value.trim().toLowerCase()
   return store.all.filter((s) => {
-    if (
-      category.value &&
-      normalizeDesignStyleCategory(s.category) !== category.value
-    ) {
+    if (category.value && normalizeDesignStyleCategory(s.category) !== category.value) {
       return false
     }
     if (!text) return true
@@ -95,9 +97,20 @@ const groupedList = computed(() => groupDesignStylesByCategory(filteredList.valu
 
 const handleAdd = () => openDesignStylePut()
 const handleOpen = (id: string) => router.push(`/design/detail/${id}`)
-const handleEdit = (id: string) => openDesignStylePut(id)
+
+const handleEdit = (id: string) => {
+  if (stylesLocked.value) {
+    MessageUtil.warning(STYLES_LOCKED_MSG)
+    return
+  }
+  openDesignStylePut(id)
+}
 
 const handleDelete = async (id: string) => {
+  if (stylesLocked.value) {
+    MessageUtil.warning(STYLES_LOCKED_MSG)
+    return
+  }
   const s = store.getById(id)
   if (!s) return
   try {

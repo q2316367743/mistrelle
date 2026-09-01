@@ -19,6 +19,8 @@ import {
 } from '@/modules/design'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
+// 直连文件而非 '@/store'（index 会再导出本模块，经 index 会成环）
+import { useAuthStore } from '@/store/AuthStore'
 
 export const useDesignStyleStore = defineStore('design:style', () => {
   const logger = useLog({ name: 'store:design-style' })
@@ -79,10 +81,12 @@ export const useDesignStyleStore = defineStore('design:style', () => {
   /**
    * 新增或更新设计风格，同步写 index.json 与单条文件，返回该风格的 id。
    * 内置预设只读：传入预设 id 时直接拒绝，不做任何写入，返回 undefined。
+   * 自定义设计风格为会员功能：非会员兜底拒绝写入（UI 入口已锁，防 AI 工具旁路）。
    */
   const put = async (form: AiDesignStyleForm, id?: string): Promise<string | undefined> => {
     // 内置预设只读，拒绝写入
     if (isSystem(id)) return undefined
+    if (!useAuthStore().features.extendedDesignStyles) return undefined
     const now = Date.now()
     if (id) {
       const idx = state.value.findIndex((e) => e.id === id)
@@ -126,8 +130,8 @@ export const useDesignStyleStore = defineStore('design:style', () => {
   }
 
   const remove = async (id: string) => {
-    // 内置预设只读，拒绝删除
-    if (isSystem(id)) return
+    // 内置预设只读，拒绝删除；自定义风格为会员功能，非会员兜底拒绝（UI 入口已提示）
+    if (isSystem(id) || !useAuthStore().features.extendedDesignStyles) return
     state.value = state.value.filter((e) => e.id !== id)
     await designStyleListSave(state.value)
     await designStyleRemove(id)

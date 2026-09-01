@@ -27,6 +27,7 @@
       </div>
       <div class="server-account-card__actions">
         <t-button size="small" variant="outline" @click="handleMemberTier">我的会员</t-button>
+        <t-button size="small" variant="outline" @click="openRedeemCode">激活码</t-button>
         <t-button size="small" variant="outline" @click="handleEditName">修改用户名</t-button>
         <t-button size="small" variant="outline" @click="handleChangePassword">修改密码</t-button>
         <t-button size="small" variant="outline" :loading="refreshing" @click="handleRefresh">
@@ -67,6 +68,7 @@ import { openLogin } from '@/components/modals/LoginDialog'
 import { openEditName } from '../modals/EditNameDialog'
 import { openChangePassword } from '../modals/ChangePasswordDialog'
 import { openMemberTier } from '../modals/MemberTierDialog'
+import { openRedeemCode } from '../modals/RedeemCodeDialog'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)

@@ -7,6 +7,10 @@ import {
   AuthChannels,
   type AuthActionResult,
   type AuthChangePasswordParams,
+  type AuthCodeActionResult,
+  type AuthCodeParams,
+  type AuthCodeRedeemResult,
+  type AuthCodeVerifyResult,
   type AuthNameParams,
   type AuthSignInParams,
   type AuthSignUpParams,
@@ -17,11 +21,13 @@ import {
   changePassword,
   current,
   refresh,
+  redeemActivationCode,
   signIn,
   signOut,
   signUp,
   tiers,
-  updateUser
+  updateUser,
+  verifyActivationCode
 } from '$/auth/AuthService'
 
 export function registerAuthIpc(): void {
@@ -43,4 +49,14 @@ export function registerAuthIpc(): void {
       changePassword(params.currentPassword, params.newPassword)
   )
   ipcMain.handle(AuthChannels.refresh, (): Promise<AuthState> => refresh())
+  ipcMain.handle(
+    AuthChannels.verifyCode,
+    (_event, params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeVerifyResult>> =>
+      verifyActivationCode(params)
+  )
+  ipcMain.handle(
+    AuthChannels.redeemCode,
+    (_event, params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeRedeemResult>> =>
+      redeemActivationCode(params)
+  )
 }

@@ -16,6 +16,7 @@
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [01-server-auth.md](./auth/01-server-auth.md)                 | 服务端账号接入（better-auth）：主进程 AuthService 单例共享状态 + 状态广播、API Key + 会话双存凭证（safeStorage 落盘）、Bearer 规避 CSRF、`/api/auth/*` 与 `/api/user/*` 契约、登录弹窗与用户菜单接入 |
+| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播）、AuthStore.features 门控统一消费点（未登录=免费档）、customFonts/extendedDesignStyles「UI 可见锁定 + AI 面过滤 + 渲染不拦」落点清单 |
 
 ### ai/ —— AI 请求
 

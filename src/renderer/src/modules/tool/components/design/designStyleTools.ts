@@ -16,7 +16,7 @@ import {
   normalizeWhitespaceRatio,
   toAiDesignStyleForm
 } from '@/entity/ai'
-import { useDesignStyleStore } from '@/store'
+import { useAuthStore, useDesignStyleStore } from '@/store'
 
 const CATEGORY_VALUES = DESIGN_STYLE_CATEGORY_OPTIONS.map((e) => e.value)
 
@@ -198,6 +198,11 @@ const toSummary = (style: AiDesignStyleItem | AiDesignStyle) => ({
   suitableFor: 'suitableFor' in style ? style.suitableFor : undefined
 })
 
+/** 自定义设计风格为会员功能：非会员 AI 面不可见不可写（系统预设照常可用） */
+const stylesLocked = () => !useAuthStore().features.extendedDesignStyles
+
+const STYLES_LOCKED_ERROR = '自定义设计风格为会员功能，请引导用户到 设置 → 账户 开通会员'
+
 export const designStyleTools: ToolFunction[] = [
   {
     name: 'list_design_styles',
@@ -208,7 +213,11 @@ export const designStyleTools: ToolFunction[] = [
     risk: 'safe',
     internal: true,
     handler: async () => {
-      return { styles: useDesignStyleStore().all.map(toSummary) }
+      const store = useDesignStyleStore()
+      const styles = stylesLocked()
+        ? store.all.filter((s) => 'isSystem' in s && s.isSystem)
+        : store.all
+      return { styles: styles.map(toSummary) }
     }
   },
   {
@@ -246,6 +255,7 @@ export const designStyleTools: ToolFunction[] = [
     internal: true,
     handler: async (...params: unknown[]) => {
       const args = params[0] as DesignStyleFormArgs
+      if (stylesLocked()) return { error: STYLES_LOCKED_ERROR }
       const name = args.name?.trim()
       if (!name) return { error: '风格名称（name）不能为空' }
       if (invalidCategory(args.category)) return categoryError(args.category as string)
@@ -280,6 +290,7 @@ export const designStyleTools: ToolFunction[] = [
     handler: async (...params: unknown[]) => {
       const { id, ...rest } = params[0] as { id: string } & DesignStyleFormArgs
       const store = useDesignStyleStore()
+      if (stylesLocked()) return { error: STYLES_LOCKED_ERROR }
       if (store.isSystem(id)) return { error: '系统预设只读，不允许修改' }
       const old = await store.getDetail(id)
       if (!old) return { error: `未找到 id 为 "${id}" 的设计风格` }

@@ -6,6 +6,12 @@
 /** 登录状态：unknown=尚未确认（启动中 / 服务端不可达），guest=未登录，signed-in=已登录 */
 declare type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 
+/** 档位能力键：thirdPartyRelay 暂不消费（模型侧不变，仅透传） */
+declare type AuthFeatureKey = 'thirdPartyRelay' | 'customFonts' | 'extendedDesignStyles'
+
+/** 档位能力契约（feature 名 → 是否开放） */
+declare type AuthFeatures = Record<AuthFeatureKey, boolean>
+
 /** 当前用户资料（GET /api/user/me 归一后的域模型） */
 declare interface AuthUser {
   id: string
@@ -16,7 +22,7 @@ declare interface AuthUser {
   tier: string | null
   membership: { tier: string; expiresAt: string | null } | null
   /** 档位能力契约（feature 名 → 是否开放） */
-  features: Record<string, boolean>
+  features: AuthFeatures
   dailyGiftPoints: number
 }
 
@@ -82,6 +88,35 @@ declare interface AuthChangePasswordParams {
   newPassword: string
 }
 
+declare interface AuthCodeParams {
+  code: string
+}
+
+/**
+ * 激活码验证结果（不执行激活）。展示按 tier / points 是否非空判别：
+ * tier 非空=会员码（附档位与时长），points 非空=积分包；不依赖 type 字符串值。
+ */
+declare interface AuthCodeVerifyResult {
+  type: string
+  tier: { code: string; name: string; level: number; months: number } | null
+  points: number | null
+  expiresAt: number | null
+}
+
+/** 激活结果（时间戳为毫秒） */
+declare interface AuthCodeRedeemResult {
+  type: string
+  tier: string
+  tierName: string
+  startedAt: number
+  expiresAt: number
+  grantedPoints: number
+  membership: { tier: string; expiresAt: number | null } | null
+}
+
+/** 激活码操作结果：失败时 msg 为可直接展示的中文原因，成功携带业务数据 */
+declare type AuthCodeActionResult<T> = { ok: true; data: T } | { ok: false; msg: string }
+
 declare interface AuthApi {
   getState(): Promise<AuthState>
   /** 公开档位列表（无需登录） */
@@ -93,6 +128,10 @@ declare interface AuthApi {
   updateUser(params: AuthNameParams): Promise<AuthActionResult>
   /** 修改密码（当前会话保持有效） */
   changePassword(params: AuthChangePasswordParams): Promise<AuthActionResult>
+  /** 验证激活码：只返回可激活内容（会员档位或积分包），不执行激活 */
+  verifyCode(params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeVerifyResult>>
+  /** 激活激活码：成功后主进程刷新资料并广播（UI 自动同步档位与余额） */
+  redeemCode(params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeRedeemResult>>
   refresh(): Promise<AuthState>
   /** 订阅主进程状态变更推送；返回取消订阅函数 */
   onChanged(callback: (state: AuthState) => void): () => void

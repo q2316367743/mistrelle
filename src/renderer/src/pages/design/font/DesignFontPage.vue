@@ -10,10 +10,12 @@
         <t-button theme="primary" variant="outline" shape="square" @click="openFolder">
           <template #icon><FolderOpenIcon /></template>
         </t-button>
-        <t-button theme="primary" @click="addFont">
-          <template #icon><AddIcon /></template>
-          添加字体
-        </t-button>
+        <t-badge :count="fontsLocked ? '会员' : 0">
+          <t-button theme="primary" :disabled="fontsLocked" @click="addFont">
+            <template #icon><AddIcon /></template>
+            添加字体
+          </t-button>
+        </t-badge>
       </div>
     </template>
 
@@ -90,11 +92,19 @@
         <font-preview-text :font="row" />
       </template>
       <template #op="{ row }">
-        <t-button variant="text" theme="primary" @click="editFont(row)">编辑</t-button>
+        <t-button
+          variant="text"
+          theme="primary"
+          :disabled="row.source === 'library' && fontsLocked"
+          @click="editFont(row)"
+        >
+          编辑
+        </t-button>
         <t-button
           v-if="row.source === 'library'"
           variant="text"
           theme="danger"
+          :disabled="fontsLocked"
           @click="removeFont(row)"
         >
           删除
@@ -120,6 +130,11 @@ import { openFontMetaDialog } from './modals/FontMetaDialog'
 import FontPreviewText from '@/components/FontPreviewText.vue'
 import { clearFontPreviewCache } from '@/utils/fontPreview'
 import { FontItem, FontItemWithMeta } from '@/domain/FontItem'
+import { useAuthStore } from '@/store'
+
+const authStore = useAuthStore()
+/** 资源库字体（自定义字体）为会员功能：非会员可见但锁定添加/编辑/删除 */
+const fontsLocked = computed(() => !authStore.features.customFonts)
 
 const fonts = ref<FontItem[]>([])
 const loading = ref(false)

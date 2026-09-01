@@ -17,7 +17,13 @@
           placeholder="选择字体"
         >
           <t-option-group v-for="group in fontGroups" :key="group.label" :label="group.label">
-            <t-option v-for="f in group.items" :key="`${group.label}-${f.name}`" :value="f.name" :label="f.name">
+            <t-option
+              v-for="f in group.items"
+              :key="`${group.label}-${f.name}`"
+              :value="f.name"
+              :label="f.name"
+              :disabled="group.disabled"
+            >
               <div class="text-property-fields__font-option">
                 <font-preview-text :font="f" class="text-property-fields__font-preview" />
                 <span class="text-property-fields__font-name">{{ f.name }}</span>
@@ -61,6 +67,7 @@
 import { computed, onMounted, ref } from 'vue'
 import FontPreviewText from '@/components/FontPreviewText.vue'
 import type { FontItem } from '@/domain/FontItem'
+import { useAuthStore } from '@/store'
 import type { PropertyDraft } from './usePropertyDraft'
 
 const props = defineProps<{
@@ -118,14 +125,20 @@ onMounted(async () => {
 })
 
 const fontGroups = computed(() => {
+  // 资源库字体（自定义字体）为会员功能：非会员可见但锁定选择
+  const fontsLocked = !useAuthStore().features.customFonts
   const groups = [
-    { label: '系统字体', items: fonts.value.filter((f) => f.source === 'system') },
-    { label: '资源库字体', items: fonts.value.filter((f) => f.source === 'library') }
+    { label: '系统字体', items: fonts.value.filter((f) => f.source === 'system'), disabled: false },
+    {
+      label: fontsLocked ? '资源库字体（会员）' : '资源库字体',
+      items: fonts.value.filter((f) => f.source === 'library'),
+      disabled: fontsLocked
+    }
   ]
   // 当前字体不在本机列表（如 AI 写入未安装字体）时兜底展示，避免下拉显示空白
   const current = props.draft.fontFamily
   if (current && !fonts.value.some((f) => f.name === current)) {
-    groups.unshift({ label: '当前字体', items: [{ name: current, path: '', source: 'system' }] })
+    groups.unshift({ label: '当前字体', items: [{ name: current, path: '', source: 'system' }], disabled: false })
   }
   return groups.filter((g) => g.items.length)
 })

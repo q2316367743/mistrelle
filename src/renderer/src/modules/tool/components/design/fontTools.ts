@@ -20,6 +20,7 @@ import {
   type FontMetaFilter
 } from '@/utils/fontMeta'
 import { registerToolPolicy } from '@/modules/tool/toolPolicy'
+import { useAuthStore } from '@/store'
 
 /** 字体列表默认上限：避免超 MAX_TOOL_RESULT_BYTES，模型可按 query / offset 翻页 */
 const DEFAULT_LIMIT = 100
@@ -89,8 +90,11 @@ export const createFontListTool = (): ToolFunction => ({
       offset?: number
     } & FontMetaFilter
     const all = await window.preload.font.listFonts()
+    // 资源库字体（自定义字体）为会员功能：非会员对 AI 不可见
+    const fontsLocked = !useAuthStore().features.customFonts
+    const visible = fontsLocked ? all.filter((f) => f.source !== 'library') : all
     const kw = args.query?.trim().toLowerCase()
-    const filtered = filterFontsByMeta(all, {
+    const filtered = filterFontsByMeta(visible, {
       type: args.type,
       style: args.style,
       weight: args.weight,
@@ -112,7 +116,9 @@ export const createFontListTool = (): ToolFunction => ({
       note:
         filtered.length > safeLimit
           ? `共 ${filtered.length} 个匹配字体，已返回第 ${safeOffset + 1}~${safeOffset + page.length} 条；可调 limit/offset 翻页或用 query / 分类条件缩小范围`
-          : undefined
+          : fontsLocked
+            ? '当前账号仅可使用系统字体（资源库自定义字体为会员功能）'
+            : undefined
     }
   }
 })

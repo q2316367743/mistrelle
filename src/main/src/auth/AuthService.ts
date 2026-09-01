@@ -15,8 +15,13 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import {
   AuthChannels,
+  normalizeAuthFeatures,
   type AuthActionResult,
   type AuthBalance,
+  type AuthCodeActionResult,
+  type AuthCodeParams,
+  type AuthCodeRedeemResult,
+  type AuthCodeVerifyResult,
   type AuthState,
   type AuthTierInfo,
   type AuthSignInParams,
@@ -160,6 +165,16 @@ async function apiGet<T>(path: string, token: string): Promise<T> {
   const res = await request<{ success: boolean; code: number; msg: string; data: T }>('GET', path, {
     token
   })
+  if (!res.success) throw new AuthFailure(res.msg || '请求失败', res.code)
+  return res.data
+}
+
+async function apiPost<T>(path: string, body: unknown, token: string): Promise<T> {
+  const res = await request<{ success: boolean; code: number; msg: string; data: T }>(
+    'POST',
+    path,
+    { body, token }
+  )
   if (!res.success) throw new AuthFailure(res.msg || '请求失败', res.code)
   return res.data
 }
@@ -346,6 +361,43 @@ export async function changePassword(
   }
 }
 
+/** 验证激活码：只返回可激活内容（会员档位或积分包），不执行激活 */
+export async function verifyActivationCode(
+  params: AuthCodeParams
+): Promise<AuthCodeActionResult<AuthCodeVerifyResult>> {
+  const cred = loadCredential()
+  if (!cred) return { ok: false, msg: '未登录' }
+  try {
+    const data = await apiPost<AuthCodeVerifyResult>(
+      '/api/user/activation-codes/verify',
+      { code: params.code.trim() },
+      cred.apiKey
+    )
+    return { ok: true, data }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+/** 激活激活码：成功后刷新资料（tier/features/余额经 auth:changed 广播自动同步全部 UI） */
+export async function redeemActivationCode(
+  params: AuthCodeParams
+): Promise<AuthCodeActionResult<AuthCodeRedeemResult>> {
+  const cred = loadCredential()
+  if (!cred) return { ok: false, msg: '未登录' }
+  try {
+    const data = await apiPost<AuthCodeRedeemResult>(
+      '/api/user/activation-codes/redeem',
+      { code: params.code.trim() },
+      cred.apiKey
+    )
+    await refresh()
+    return { ok: true, data }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
 // ── 服务端调用细节 ──
 
 /** 登录/注册端点：成功返回会话 token + 签名会话 Cookie（后者供 api-key/sign-out 鉴权） */
@@ -433,10 +485,7 @@ async function fetchMe(apiKey: string): Promise<AuthUser> {
     isAdmin: me.isAdmin === true,
     tier: typeof me.tier === 'string' ? me.tier : null,
     membership: me.membership ?? null,
-    features:
-      me.features && typeof me.features === 'object'
-        ? (me.features as Record<string, boolean>)
-        : {},
+    features: normalizeAuthFeatures(me.features),
     dailyGiftPoints: typeof me.dailyGiftPoints === 'number' ? me.dailyGiftPoints : 0
   }
 }
@@ -445,7 +494,7 @@ async function fetchBalance(apiKey: string): Promise<AuthBalance> {
   return apiGet<AuthBalance>('/api/user/balance', apiKey)
 }
 
-function fail(error: unknown): AuthActionResult {
+function fail(error: unknown): { ok: false; msg: string } {
   const msg = error instanceof Error ? error.message : '未知错误'
   console.error('[auth] 操作失败', msg)
   return { ok: false, msg }
