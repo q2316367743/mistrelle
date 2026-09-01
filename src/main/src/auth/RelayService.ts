@@ -5,9 +5,9 @@
  * - 凭证（长期 API Key）只存在于 AuthService，本服务经 getRelayContext() 取上下文后注入
  *   `Authorization: Bearer <apiKey>` 转发到 /v1/*，渲染层不可见凭证。
  * - listModels：GET {server}/v1/models（模型列表，OpenAI list 形状，仅需登录即有 apiKey）。
- * - chatStream：POST {server}/v1/chat/completions（OpenAI 兼容流式 SSE，服务端按积分记账，
- *   session_id 可选，缺省服务端回退 user / 用户 id）；字节流经 onChunk 逐块回调，
- *   abort 经 signal 取消（axios signal 会同时取消未发起的请求与进行中的流）。
+ * - chatStream：POST {server}/v1/chat/completions（OpenAI 兼容流式 SSE，服务端按积分记账；
+ *   透传 session_id 作渠道亲和键、request_id 只作对账；缺省服务端回退 user / 用户 id）；
+ *   字节流经 onChunk 逐块回调，abort 经 signal 取消（axios signal 会同时取消未发起的请求与进行中的流）。
  */
 import axios from 'axios'
 import type { Readable } from 'node:stream'
@@ -79,6 +79,7 @@ export async function chatStream(
   if (!ctx) throw new Error('未登录，无法使用内置供应商')
   const body: Record<string, unknown> = { ...params.body }
   if (params.sessionId) body.session_id = params.sessionId
+  if (params.requestId) body.request_id = params.requestId
 
   let response
   try {

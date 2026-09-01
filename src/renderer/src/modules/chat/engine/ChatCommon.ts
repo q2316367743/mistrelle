@@ -49,7 +49,7 @@ export interface ResolvedChatRequestParams extends ChatRequestParams {
    * 不直连第三方 baseURL；baseURL/apiKey 在此场景下为占位值。
    */
   builtin?: boolean
-  /** 内置供应商中转会话 id（透传 session_id，用于服务端用量统计；缺省服务端回退 user / 用户 id） */
+  /** 内置供应商中转会话 id（透传 session_id，作渠道亲和键；缺省服务端回退 user / 用户 id） */
   sessionId?: string
 }
 

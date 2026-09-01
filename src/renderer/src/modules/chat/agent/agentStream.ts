@@ -130,6 +130,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
       headers: requestHeaders,
       bodyOverride,
       sessionId: options.requestParams.sessionId,
+      requestId: stepId,
       builtin: options.requestParams.builtin
     })
 
@@ -160,6 +161,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
         receivedContent = true
         appendAssistantContent(options.messages, options.assistantMessageId, {
           type: 'thinking',
+          id: stepId,
           stepId,
           data: { text: reasoning, title: '正在思考' },
           status: 'streaming',
@@ -170,6 +172,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
         receivedContent = true
         appendAssistantContent(options.messages, options.assistantMessageId, {
           type: 'markdown',
+          id: stepId,
           stepId,
           data: delta.content,
           status: 'streaming',
@@ -228,6 +231,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
     for (const call of toolCalls) {
       appendAssistantContent(options.messages, options.assistantMessageId, {
         type: 'toolcall',
+        id: stepId,
         stepId,
         status: 'pending',
         data: {

@@ -149,6 +149,8 @@ declare interface AuthPointsTransaction {
   paidAfter: number
   bizType: string | null
   bizId: string | null
+  sessionId: string | null
+  requestId: string | null
   remark: string | null
   createdAt: string
 }

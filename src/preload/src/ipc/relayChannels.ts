@@ -40,8 +40,10 @@ export interface RelayModel {
  */
 export interface RelayChatParams {
   body: Record<string, unknown>
-  /** 会话 id（透传 session_id，用于服务端用量统计） */
+  /** 会话 id（透传 session_id，作 newapi 渠道亲和键；缺省服务端回退 user / 用户 id） */
   sessionId?: string
+  /** 单次 completions 记录 id（透传 request_id，只作对账，不参与选渠） */
+  requestId?: string
 }
 
 /** 中转流式回调（只做字节转发，协议解析在渲染层 modules/ai；仅 preload 本地调用） */

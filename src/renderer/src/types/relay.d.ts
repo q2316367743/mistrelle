@@ -12,6 +12,7 @@ export interface RelayModel {
 export interface RelayChatParams {
   body: Record<string, unknown>
   sessionId?: string
+  requestId?: string
 }
 
 export interface RelayStreamInfo {

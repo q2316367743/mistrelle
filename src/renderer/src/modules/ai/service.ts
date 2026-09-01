@@ -115,7 +115,7 @@ function extractRelayError(status: number, body: string): string {
 
 /**
  * 内置供应商（服务端中转站）流式对话入口。
- * 走主进程 relay IPC（main 注入 `Authorization: Bearer <apiKey>` + 透传 session_id），
+ * 走主进程 relay IPC（main 注入 `Authorization: Bearer <apiKey>` + 透传 session_id / request_id），
  * 复用 chat 适配器构造 OpenAI chat 形状请求体与归一化 chunk；
  * 产出与 createChatStream 相同形状的 AiStreamChunk（协议解析仍在渲染层）。
  * 流式字节经 preload 事件桥回推（handlers 不进 invoke，避免 structured clone 失败）。
@@ -149,7 +149,7 @@ export async function* createRelayChatStream(
   }
 
   const donePromise = window.preload.relay.chatStream(
-    { body, sessionId: params.sessionId },
+    { body, sessionId: params.sessionId, requestId: params.requestId },
     {
       onStart: (info) => {
         infoResolved = true
