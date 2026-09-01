@@ -74,13 +74,13 @@ type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 | preload 桥 | `src/preload/src/ipc/auth.ts` | `window.preload.auth.*` 薄桥 + `onChanged` 订阅 |
 | 渲染 store | `src/renderer/src/store/AuthStore.ts` | 拉取快照 + 订阅推送，跨页共享 |
 | 登录弹窗 | `src/renderer/src/components/modals/LoginDialog.tsx` + `LoginContent.vue` | DialogPlugin 命令式弹窗（登录/注册页签），AGENTS.md 拆壳约定 |
-| 页面接入 | `AppSide.vue`、`pages/setting/account/components/ServerAccountCard.vue`、`pages/setting/account/modals/` | 用户菜单（登录入口/登出/服务端昵称，「未登录」态展示）、账户页服务端账号卡片（已登录展示档位/余额/修改用户名/修改密码/我的会员，未登录展示公共档位额度）与三个命令式弹窗（EditNameDialog / ChangePasswordDialog / MemberTierDialog，会员档位卡片 n 个） |
+| 页面接入 | `AppSide.vue`、`pages/setting/account/`（见 [06-account-page.md](../setting/06-account-page.md)）、`pages/setting/account/modals/` | 用户菜单（登录入口/登出/服务端昵称，「未登录」态展示）；账户页为身份主视觉 + 账户与安全设置行 + 第三方密钥，弹窗仍为 EditName / ChangePassword / MemberTier / RedeemCode（命令式） |
 
 ## 未登录展示（参考 workbuddy）
 
 - AppSide 左下角用户菜单：未登录显示「未登录」（通用图标），已登录显示服务端昵称/邮箱。
 - 本地用户名/头像设置已**整体移除**（`SettingAccount` 实体删除 `avatar`/`nickname`，账户页「用户名」项删除）——登录后昵称以服务端账号为准，无本地回退。
-- 账户页服务端账号卡片未登录态：展示**公开档位额度**（`auth:tiers`，每日赠送积分），明确「积分余额需登录后查看」。
+- 账户页未登录态：身份区提示登录后可查看积分；「会员档位」打开公开档位列表（`auth:tiers`）。积分数字仅已登录且 `balance` 有值时展示。
 
 ## 注意事项
 

@@ -1,90 +1,116 @@
 <template>
-  <t-card title="服务端账号" :bordered="false" class="server-account-card">
+  <section class="identity">
     <template v-if="authStore.status === 'signed-in'">
-      <div class="server-account-card__identity">
-        <div class="server-account-card__name">
-          <span class="server-account-card__name-text">{{ user?.name || '未设置昵称' }}</span>
-          <t-tag v-if="user?.tier" variant="light" size="small">{{ user.tier }}</t-tag>
+      <div class="identity__hero">
+        <t-avatar class="identity__avatar" size="72px">{{ avatarText }}</t-avatar>
+        <div class="identity__meta">
+          <div class="identity__name-row">
+            <h2 class="identity__name">{{ displayName }}</h2>
+            <t-tag v-if="tierLabel" theme="primary" variant="light" size="small">
+              {{ tierLabel }}
+            </t-tag>
+          </div>
+          <p class="identity__email">{{ user?.email }}</p>
+          <p v-if="expireLabel" class="identity__expire">会员至 {{ expireLabel }}</p>
         </div>
-        <div class="server-account-card__email">{{ user?.email }}</div>
-      </div>
-      <div v-if="balance" class="server-account-card__balance">
-        <div class="server-account-card__balance-row">
-          <span>总积分</span>
-          <span>{{ balance.total }}</span>
-        </div>
-        <div class="server-account-card__balance-row">
-          <span>每日赠送</span>
-          <span
-            >{{ balance.pointsGift
-            }}<em v-if="balance.giftQuota"> / 额度 {{ balance.giftQuota }}</em></span
-          >
-        </div>
-        <div class="server-account-card__balance-row">
-          <span>充值积分</span>
-          <span>{{ balance.pointsPaid }}</span>
-        </div>
-      </div>
-      <div class="server-account-card__actions">
-        <t-button size="small" variant="outline" @click="handleMemberTier">我的会员</t-button>
-        <t-button size="small" variant="outline" @click="openRedeemCode">激活码</t-button>
-        <t-button size="small" variant="outline" @click="handleEditName">修改用户名</t-button>
-        <t-button size="small" variant="outline" @click="handleChangePassword">修改密码</t-button>
-        <t-button size="small" variant="outline" :loading="refreshing" @click="handleRefresh">
+        <t-button
+          class="identity__refresh"
+          variant="text"
+          size="small"
+          :loading="refreshing"
+          @click="handleRefresh"
+        >
           刷新
         </t-button>
-        <t-button size="small" variant="outline" theme="danger" @click="handleSignOut">
-          退出登录
-        </t-button>
+      </div>
+      <div v-if="balance" class="identity__metrics">
+        <div class="metric">
+          <span class="metric__label">总积分</span>
+          <span class="metric__value">{{ balance.total }}</span>
+        </div>
+        <div class="metric">
+          <span class="metric__label">每日赠送</span>
+          <span class="metric__value">
+            <span>{{ balance.giftQuota }}</span>
+            <span> / </span>
+            <span v-if="balance.giftQuota" class="metric__hint"> {{ balance.pointsGift }}</span>
+          </span>
+        </div>
+        <div class="metric">
+          <span class="metric__label">充值积分</span>
+          <span class="metric__value">{{ balance.pointsPaid }}</span>
+        </div>
       </div>
     </template>
+
     <template v-else-if="authStore.status === 'unknown'">
-      <div class="server-account-card__hint">
-        正在连接服务端或服务不可用，请确认本地服务已启动后重试
-      </div>
-      <div class="server-account-card__actions">
+      <div class="identity__hero">
+        <t-avatar class="identity__avatar" size="72px">
+          <template #icon>
+            <t-icon name="user" />
+          </template>
+        </t-avatar>
+        <div class="identity__meta">
+          <h2 class="identity__name">正在连接服务端</h2>
+          <p class="identity__email">请确认本地服务已启动后重试</p>
+        </div>
         <t-button size="small" variant="outline" :loading="refreshing" @click="handleRefresh">
           重试连接
         </t-button>
       </div>
     </template>
+
     <template v-else>
-      <div class="server-account-card__hint">
-        未登录本地服务端账号；积分余额需登录后查看（档位额度为公开信息）
-      </div>
-      <div class="server-account-card__actions">
-        <t-button size="small" theme="primary" @click="openLogin()">登录 / 注册</t-button>
-        <t-button size="small" variant="outline" @click="handleMemberTier">
-          会员档位{{ authStore.tiers.length ? `（${authStore.tiers.length} 个）` : '' }}
-        </t-button>
+      <div class="identity__hero">
+        <t-avatar class="identity__avatar" size="72px">
+          <template #icon>
+            <t-icon name="user" />
+          </template>
+        </t-avatar>
+        <div class="identity__meta">
+          <h2 class="identity__name">未登录</h2>
+          <p class="identity__email">登录后可查看积分余额，并管理会员与账号安全</p>
+        </div>
+        <div class="identity__cta">
+          <t-button size="small" theme="primary" @click="openLogin()">登录 / 注册</t-button>
+          <t-button size="small" variant="outline" @click="handleMemberTier">会员档位</t-button>
+        </div>
       </div>
     </template>
-  </t-card>
+  </section>
 </template>
 <script lang="ts" setup>
 import { useAuthStore } from '@/store'
-import { MessageUtil } from '@/utils/modal'
+import { toDateString } from '@/utils/lang/FormatUtil'
 import { openLogin } from '@/components/modals/LoginDialog'
-import { openEditName } from '../modals/EditNameDialog'
-import { openChangePassword } from '../modals/ChangePasswordDialog'
 import { openMemberTier } from '../modals/MemberTierDialog'
-import { openRedeemCode } from '../modals/RedeemCodeDialog'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const balance = computed(() => authStore.balance)
 const refreshing = ref(false)
 
+const displayName = computed(() => user.value?.name || '未设置昵称')
+
+const avatarText = computed(() => {
+  const name = user.value?.name?.trim()
+  return name ? name.slice(0, 1) : '未'
+})
+
+const tierLabel = computed(() => {
+  const code = user.value?.tier
+  if (!code) return null
+  return authStore.tiers.find((item) => item.code === code)?.name ?? code
+})
+
+const expireLabel = computed(() => {
+  const expiresAt = user.value?.membership?.expiresAt
+  if (!expiresAt) return null
+  return toDateString(expiresAt, 'YYYY年M月D日')
+})
+
 function handleMemberTier(): void {
   openMemberTier(authStore.tiers, authStore.user?.tier ?? null)
-}
-
-function handleEditName(): void {
-  openEditName(authStore.user?.name ?? '')
-}
-
-function handleChangePassword(): void {
-  openChangePassword()
 }
 
 async function handleRefresh(): Promise<void> {
@@ -95,71 +121,111 @@ async function handleRefresh(): Promise<void> {
     refreshing.value = false
   }
 }
-
-async function handleSignOut(): Promise<void> {
-  const ok = await authStore.signOut()
-  if (ok) MessageUtil.success('已退出登录')
-}
 </script>
 <style scoped lang="less">
-.server-account-card {
-  margin: 16px;
+.identity {
+  background: var(--fluent-card-bg);
+  border: 1px solid var(--fluent-card-border);
+  border-radius: var(--fluent-radius-card);
+  box-shadow: var(--fluent-elevation-1);
+  overflow: hidden;
+}
 
-  &__identity {
-    margin-bottom: var(--td-comp-margin-s);
+.identity__hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 20px 16px;
+}
+
+.identity__avatar {
+  flex: none;
+  background: var(--td-brand-color);
+  color: var(--td-text-color-anti);
+  font: var(--td-font-title-large);
+}
+
+.identity__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.identity__name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.identity__name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--td-font-title-large);
+  color: var(--td-text-color-primary);
+}
+
+.identity__email,
+.identity__expire {
+  margin: 4px 0 0;
+  font: var(--td-font-body-medium);
+  color: var(--td-text-color-secondary);
+}
+
+.identity__refresh,
+.identity__cta {
+  flex: none;
+}
+
+.identity__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.identity__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--td-component-stroke);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 20px 16px;
+
+  & + & {
+    border-left: 1px solid var(--td-component-stroke);
   }
 
-  &__name {
-    display: flex;
-    align-items: center;
-    gap: var(--td-comp-margin-s);
-    font: var(--td-font-title-medium);
-    color: var(--td-text-color-primary);
-
-    &-text {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-
-  &__email {
-    margin-top: var(--td-comp-margin-xxs);
-    font: var(--td-font-body-medium);
+  &__label {
+    font: var(--td-font-body-small);
     color: var(--td-text-color-secondary);
   }
 
-  &__balance {
-    display: flex;
-    flex-direction: column;
-    gap: var(--td-comp-margin-xxs);
-    padding: var(--td-comp-paddingLR-xs) var(--td-comp-paddingLR-s);
-    background: var(--td-bg-color-container-hover);
-    border-radius: var(--td-radius-medium);
-
-    &-row {
-      display: flex;
-      justify-content: space-between;
-      font: var(--td-font-body-medium);
-      color: var(--td-text-color-primary);
-
-      em {
-        font-style: normal;
-        color: var(--td-text-color-secondary);
-      }
-    }
-  }
-
-  &__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--td-comp-margin-s);
-    margin-top: var(--td-comp-margin-m);
+  &__value {
+    font: var(--td-font-title-medium);
+    color: var(--td-text-color-primary);
   }
 
   &__hint {
-    font: var(--td-font-body-medium);
-    color: var(--td-text-color-secondary);
+    color: var(--td-text-color-placeholder);
+  }
+}
+
+@media (max-width: 640px) {
+  .identity__hero {
+    flex-wrap: wrap;
+  }
+
+  .identity__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .metric + .metric {
+    border-left: none;
+    border-top: 1px solid var(--td-component-stroke);
   }
 }
 </style>
