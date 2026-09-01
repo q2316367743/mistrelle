@@ -45,7 +45,7 @@
 | `pages/setting/account/components/ThirdPartyAccountCard.vue` | 第三方密钥：`v-model` 到 `SettingAccountStore` |
 | `pages/setting/account/components/AccountSettingRow.vue` | 通用设置行（图标 + 标题/描述 + 操作 / 箭头） |
 
-弹窗未改：`EditNameDialog` / `ChangePasswordDialog` / `MemberTierDialog` / `RedeemCodeDialog` / `LoginDialog`。
+弹窗：`EditNameDialog` / `ChangePasswordDialog` / `RedeemCodeDialog` / `LoginDialog` 仍为原流程。`MemberTierDialog` 改为账单列表（全宽行：档位名 + 额度 + 已含权益 / 右侧价格与「当前」标注），不再用横向窄卡片。
 
 ## 设计约定
 

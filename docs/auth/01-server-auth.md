@@ -46,7 +46,7 @@ better-auth 的 origin-check/formCsrf 中间件只对**携带 Cookie / Origin / 
 - `POST /auth/api/sign-in/email`、`/sign-up/email`（注册即登录）：响应 `{ redirect, token, user }`（sign-up 的 token 可能为 null）。
 - `POST /auth/api/update-user`（会话）：body `{ name? }`，改用户名后客户端 `refresh()` 广播。
 - `POST /auth/api/change-password`（会话）：body `{ currentPassword, newPassword }`（不传 `revokeOtherSessions`，当前会话保持有效、不轮换 token）。
-- `GET /api/tiers/`（**公开，无需登录**）→ 启用中的档位列表 `{ code, name, category, level, basePoints, dailyGiftPoints, price, thirdPartyRelay, customFonts, extendedDesignStyles, ... }`，通道 `auth:tiers` 供会员档位卡片展示（价格元/月、能力打勾列表、免费档不打勾）。
+- `GET /api/tiers/`（**公开，无需登录**）→ 启用中的档位列表 `{ code, name, category, level, basePoints, dailyGiftPoints, price, thirdPartyRelay, customFonts, extendedDesignStyles, ... }`，通道 `auth:tiers` 供会员档位账单列表展示（按 `level` 升序全宽行：额度文案 + 已含权益勾选、未含能力不展示叉号、右侧价格元/月、当前档位标注）。
 - `GET /api/user/me` → `{ id, name, email, isAdmin, tier, membership, features: AuthFeatures, dailyGiftPoints }`（features 归一为三键布尔，见 [02-activation-and-features.md](./02-activation-and-features.md)）。
 - `GET /api/user/balance` → `{ pointsGift, pointsTotal, pointsPaid, giftQuota, giftResetDate, total }`。
 - `POST /api/user/activation-codes/verify|redeem`（Bearer）：激活码验证 / 兑换，链路与门控见 [02-activation-and-features.md](./02-activation-and-features.md)。

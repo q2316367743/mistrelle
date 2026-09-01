@@ -42,12 +42,12 @@ export interface PersonalizeFileConfig {
 
 export const PERSONALIZE_FILE_CONFIG: Array<PersonalizeFileConfig> = [
   {
-    field: 'style',
-    file: 'IDENTITY.md',
-    title: '身份与风格',
-    description: '基本风格和语调，影响所有对话',
+    field: 'AGENTS',
+    file: 'AGENT.md',
+    title: '行为准则',
+    description: '希望助手始终遵循的规则和偏好，直接影响所有对话',
     scope: 'all',
-    placeholder: '例如：专业严谨，回答清晰准确；技术解释附带简要示例'
+    placeholder: '例如：回复默认使用中文；改代码前先说明方案；不确定时先提问'
   },
   {
     field: 'design',
@@ -66,12 +66,12 @@ export const PERSONALIZE_FILE_CONFIG: Array<PersonalizeFileConfig> = [
     placeholder: '例如：口语化表达，少用长句，避免 AI 腔和排比堆砌'
   },
   {
-    field: 'AGENTS',
-    file: 'AGENT.md',
-    title: '行为准则',
-    description: '希望助手始终遵循的规则和偏好，直接影响所有对话',
+    field: 'style',
+    file: 'IDENTITY.md',
+    title: '身份与风格',
+    description: '基本风格和语调，影响所有对话',
     scope: 'all',
-    placeholder: '例如：回复默认使用中文；改代码前先说明方案；不确定时先提问'
+    placeholder: '例如：专业严谨，回答清晰准确；技术解释附带简要示例'
   },
   {
     field: 'USER',
