@@ -13,6 +13,7 @@ import { registerSafeStorageIpc } from './safeStorageIpc'
 import { registerDbIpc } from './dbIpc'
 import { registerTemplateIpc } from './templateIpc'
 import { registerAuthIpc } from './authIpc'
+import { registerRelayIpc } from './relayIpc'
 
 export function registerIpc(): void {
   registerShellIpc()
@@ -32,4 +33,5 @@ export function registerIpc(): void {
   registerDbIpc()
   registerTemplateIpc()
   registerAuthIpc()
+  registerRelayIpc()
 }

@@ -214,6 +214,7 @@ export const memoryChatCompletion = async (system: string, user: string): Promis
     apiKey: option.key,
     format: option.format ?? 'chat',
     model: option.model,
+    builtin: option.builtin,
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: user }

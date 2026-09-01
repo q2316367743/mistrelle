@@ -146,7 +146,9 @@ export class ToolChat {
       baseURL: option.baseUrl,
       apiKey: option.key,
       format: option.format ?? 'chat',
-      support: option.support
+      support: option.support,
+      builtin: option.builtin,
+      sessionId: this.chatId || undefined
     }
   }
 

@@ -113,6 +113,7 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
 
   /** 单次尝试：发起请求并消费流。stepId 每次尝试新生成，失败重试前按它清理已写入的半截内容 */
   const runOnce = async (stepId: string): Promise<StreamStepResult> => {
+    // 内置供应商（服务端中转）经 createChatStream 内部分流走主进程 relay IPC
     const stream = createChatStream({
       baseURL: options.requestParams.baseURL,
       apiKey: options.requestParams.apiKey,
@@ -127,7 +128,9 @@ export const streamAgentStep = async (options: StreamOptions): Promise<StreamSte
       reasoningEffort: options.requestParams.message.reasoning_effort,
       signal: options.signal,
       headers: requestHeaders,
-      bodyOverride
+      bodyOverride,
+      sessionId: options.requestParams.sessionId,
+      builtin: options.requestParams.builtin
     })
 
     const accumulated = new Map<number, { id: string; name: string; args: string }>()

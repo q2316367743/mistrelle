@@ -16,7 +16,7 @@
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [01-server-auth.md](./auth/01-server-auth.md)                 | 服务端账号接入（better-auth）：主进程 AuthService 单例共享状态 + 状态广播、API Key + 会话双存凭证（safeStorage 落盘）、Bearer 规避 CSRF、`/api/auth/*` 与 `/api/user/*` 契约、登录弹窗与用户菜单接入 |
-| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播）、AuthStore.features 门控统一消费点（未登录=免费档）、customFonts/extendedDesignStyles「UI 可见锁定 + AI 面过滤 + 渲染不拦」落点清单 |
+| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播）、AuthStore.features 门控统一消费点（未登录=免费档）、customFonts/extendedDesignStyles「UI 可见锁定 + AI 面过滤 + 渲染不拦」落点清单、thirdPartyRelay（自定义供应商）整组隐藏门控落点 |
 
 ### ai/ —— AI 请求
 
@@ -150,6 +150,7 @@
 | [02-ai-model-store.md](./setting/02-ai-model-store.md) | AI 模型配置存储：`~/.mistrelle/model.json`（`ModelService` 读写 + `SettingAiStore` 契约）；提供方 `enable` 与 sortablejs 拖拽排序 |
 | [03-window-glass-titlebar.md](./setting/03-window-glass-titlebar.md) | 窗口配置：三平台隐藏标题栏（macOS hiddenInset + trafficLightPosition 下移交通灯 / 其他 titleBarOverlay）+ 系统级毛玻璃（vibrancy / acrylic）；毛玻璃需透明背景才可见；useTitlePadding 跨平台标题边距（macOS 左避交通灯 / Windows 右避 overlay，l1/l2/l3/r1 数值推导与消费方） |
 | [04-account-store.md](./setting/04-account-store.md) | 账户配置存储：`~/.mistrelle/account.json`（`SettingAccountService` 读写 + safeStorage 整文件加密，含明文降级）；Store 契约 `state` + 三个鉴权配置不变 |
+| [05-ai-provider-builtin-relay.md](./setting/05-ai-provider-builtin-relay.md) | AI 设置内置供应商（服务端中转站）：主进程 relay IPC（Bearer 凭证不下发渲染层）代理 `/v1/models` + `/v1/chat/completions`；左侧「内置/自定义」分组 + `thirdPartyRelay` 门控（免费档只显示内置）；登录守卫（未登录提示登录回设置页） |
 
 ### skill/ —— 本地 Skill
 

@@ -44,6 +44,13 @@ export interface ResolvedChatRequestParams extends ChatRequestParams {
   format?: AiProvideFormat
   /** 模型能力位（识图时用户引用的图片随请求传递） */
   support?: AiModelSupport[]
+  /**
+   * 内置供应商（服务端中转站）标记：请求走主进程 relay IPC（注入服务端 apiKey + session_id），
+   * 不直连第三方 baseURL；baseURL/apiKey 在此场景下为占位值。
+   */
+  builtin?: boolean
+  /** 内置供应商中转会话 id（透传 session_id，用于服务端用量统计；缺省服务端回退 user / 用户 id） */
+  sessionId?: string
 }
 
 /** onRequest 可返回的请求覆盖项；刻意不含 fetch 的 `mode` 等会与 chat 字段冲突的项 */

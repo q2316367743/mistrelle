@@ -220,6 +220,17 @@ export function current(): AuthState {
   return state
 }
 
+/**
+ * 中转上下文（内置供应商 = 服务端 OpenAI 兼容中转站 /v1/*）。
+ * 返回当前登录凭证与服务端地址；未登录返回 null。
+ * 仅供主进程 RelayService 使用，凭证绝不下发渲染层。
+ */
+export function getRelayContext(): { baseUrl: string; apiKey: string } | null {
+  const cred = loadCredential()
+  if (!cred) return null
+  return { baseUrl: baseUrl(), apiKey: cred.apiKey }
+}
+
 /** app ready 后调用一次：读取本地凭证并校验，非阻塞（失败不阻塞启动） */
 let initializing: Promise<void> | null = null
 export function init(): Promise<void> {

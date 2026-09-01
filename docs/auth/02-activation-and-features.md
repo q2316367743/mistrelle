@@ -5,9 +5,9 @@
 服务端（mistrelle-server）提供激活码（会员档位 / 积分包）与会员档位能力契约 `features`。本文档覆盖两件事：
 
 1. **激活码兑换**：`verify`（预检不执行）→ `redeem`（激活）全链路与弹窗 UI。
-2. **档位功能门控**：`features.customFonts`（自定义字体 = 资源库字体）与 `features.extendedDesignStyles`（自定义设计风格 = 用户自建风格，非内置预设）两项能力的客户端控制。
+2. **档位功能门控**：`features.customFonts`（自定义字体 = 资源库字体）、`features.extendedDesignStyles`（自定义设计风格 = 用户自建风格，非内置预设）与 `features.thirdPartyRelay`（自定义供应商 = 第三方中转，见「thirdPartyRelay 落点」小节）三项能力的客户端控制。
 
-`features.thirdPartyRelay` 暂不消费（模型侧不变，仅透传与展示）。
+`features.thirdPartyRelay` 已消费：自定义供应商（第三方中转）受其门控，详见下方「thirdPartyRelay（自定义供应商）落点」。
 
 ## 激活码链路（照 auth 域五层模式）
 
@@ -63,6 +63,19 @@
 | `pages/design/list/index.vue` | 「新建风格」disabled + 会员 tag；`handleEdit`/`handleDelete` 拦截提示（查看详情不拦） |
 | `pages/new/PageNew.vue` 风格下拉 | 自建风格项 t-option disabled（内置预设可选） |
 | `modules/tool/components/design/designStyleTools.ts` | `list_design_styles` 只回内置预设；`create/update_design_style` 返回「会员功能」error；`get_design_style` 不拦 |
+
+### thirdPartyRelay（自定义供应商 = 第三方中转）落点
+
+与 customFonts / extendedDesignStyles 的「可见但锁定」不同，AI 设置页采用**整组隐藏**：免费档（未登录 + 已登录无会员）只显示「内置」分组，自定义供应商分组与「添加供应商」按钮整体不渲染，不产生禁用噪音。付费档（`features.thirdPartyRelay === true`）才显示自定义供应商并可增删改。
+
+| 落点 | 行为（免费档 / thirdPartyRelay=false） |
+|---|---|
+| `store/setting/SettingAiStore.ts` | `visibleItems` 过滤：只保留内置供应商；`options`/`vectorOptions`/`imageOptions`/`optionMap` 均只含内置模型（启用项自动为内置）；内置供应商由 `init()` 注入 items 首项（`BUILTIN_PROVIDER_ID='builtin'`，不落盘） |
+| `pages/setting/ai/components/SettingAiSidebar.vue` | 只渲染「内置」分组；自定义分组与「添加供应商」按钮隐藏；内置项禁用拖拽/删除/启用开关 |
+| `pages/setting/ai/SettingAi.vue` | 免费档强制回选内置；内置面板只读展示 + 「刷新模型列表」；登录守卫：guest 提示登录 + `openLogin`，unknown 先 `authStore.refresh()` 再判 |
+| `components/chat/AiModelSelect.vue` | 「模型设置」入口：未登录提示登录（登录成功回 `/setting/ai`）；unknown 先 refresh 再判定 |
+
+**内置供应商 = 服务端中转站**（详见 `docs/setting/05-ai-provider-builtin-relay.md`）：模型列表来自 `GET {server}/v1/models`，对话走主进程 relay IPC 代理 `POST {server}/v1/chat/completions`（服务端 apiKey 由主进程注入，渲染层不接触凭证），免费档可用（消耗赠送/总积分）。
 
 ## 注意事项
 

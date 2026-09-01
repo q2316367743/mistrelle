@@ -64,6 +64,12 @@ export interface AiProvideCore {
    * @default 'chat'
    */
   format?: AiProvideFormat
+
+  /**
+   * 内置供应商（服务端中转站）标记：仅运行时由 SettingAiStore 注入，不落盘 model.json。
+   * 内置供应商的请求走主进程 relay IPC（服务端凭证由主进程注入），baseUrl/key 为占位值。
+   */
+  builtin?: boolean
 }
 
 /**

@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { AiStreamApi } from '@/types/aiStream'
+import { RelayApi } from '@/types/relay'
 
 declare global {
   interface Window {
@@ -36,6 +37,7 @@ declare global {
       webUtils: WebUtilsApi
       db: DbApi
       auth: AuthApi
+      relay: RelayApi
       template: {
         /** 渲染 resources/templates/<name>.ejs 并返回完整 HTML 字符串（实现位于 main） */
         render(params: { name: string; data: Record<string, unknown> }): Promise<string>

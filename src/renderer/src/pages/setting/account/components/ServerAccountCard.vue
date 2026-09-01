@@ -53,7 +53,7 @@
         未登录本地服务端账号；积分余额需登录后查看（档位额度为公开信息）
       </div>
       <div class="server-account-card__actions">
-        <t-button size="small" theme="primary" @click="openLogin">登录 / 注册</t-button>
+        <t-button size="small" theme="primary" @click="openLogin()">登录 / 注册</t-button>
         <t-button size="small" variant="outline" @click="handleMemberTier">
           会员档位{{ authStore.tiers.length ? `（${authStore.tiers.length} 个）` : '' }}
         </t-button>

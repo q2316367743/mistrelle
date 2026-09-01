@@ -115,4 +115,8 @@ export interface AiRequestParams {
   headers?: Record<string, string>
   /** 格式原生 body 覆盖（onRequest 覆盖，spread 进请求体，优先级最高） */
   bodyOverride?: Record<string, unknown>
+  /** 服务端中转会话 id（内置供应商透传 session_id，用于服务端用量统计；缺省服务端回退 user / 用户 id） */
+  sessionId?: string
+  /** 内置供应商（服务端中转站）标记：请求走主进程 relay IPC（服务端 apiKey 由主进程注入），不直连 baseURL */
+  builtin?: boolean
 }

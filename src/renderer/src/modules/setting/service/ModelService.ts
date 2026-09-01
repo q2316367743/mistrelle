@@ -14,7 +14,9 @@ export const modelList = async (): Promise<Array<AiProvide>> => {
 
 /**
  * 全量写入模型提供方列表
+ * 内置供应商（builtin 标记）为运行时注入、不落盘，落盘前剔除防污染 model.json
  */
 export const modelSave = async (list: Array<AiProvide>) => {
-  await window.preload.fs.writeTextFile(getModelPath(), JSON.stringify(list))
+  const persist = list.filter((item) => !item.builtin)
+  await window.preload.fs.writeTextFile(getModelPath(), JSON.stringify(persist))
 }

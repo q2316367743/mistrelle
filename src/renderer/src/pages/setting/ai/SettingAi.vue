@@ -14,203 +14,105 @@
         <template v-if="!selectedId && !isCreating">
           <t-empty description="请选择一个提供方或新增" />
         </template>
-        <template v-else>
-          <!-- 基本信息 -->
-          <t-form :data="form" layout="vertical" class="ai-setting-form">
-            <t-form-item label="名称" name="name">
-              <t-auto-complete
-                v-model="form.name"
-                :options="namePresets"
-                placeholder="选择或输入，例如：OpenAI、DeepSeek"
-                @change="onNameChange"
-              />
-            </t-form-item>
-            <t-form-item label="Base URL" name="baseUrl">
-              <t-input v-model="form.baseUrl" placeholder="例如：https://api.openai.com/v1" />
-            </t-form-item>
-            <t-form-item label="API Key" name="key">
-              <t-input
-                v-model="form.key"
-                type="password"
-                placeholder="请输入 API Key"
-                allow-clear
-              />
-            </t-form-item>
-            <t-form-item label="API 格式" name="key">
-              <t-select v-model="form.format" default-value="chat">
-                <t-option value="anthropic" label="Anthropic Message (/v1/messages)" />
-                <t-option value="chat" label="Chat Completions (/chat/completions)" />
-                <t-option value="responses" label="Responses (/responses)" />
-              </t-select>
-            </t-form-item>
-            <t-form-item>
-              <t-space>
-                <t-button
-                  theme="primary"
-                  :loading="saving"
-                  :disabled="!form.baseUrl.trim() || form.models.length === 0"
-                  @click="handleSave"
-                >
-                  保存
-                </t-button>
-                <t-button
-                  :disabled="!form.baseUrl.trim()"
-                  :loading="fetching"
-                  @click="handleFetchModels"
-                >
-                  从接口获取模型
-                </t-button>
-              </t-space>
-            </t-form-item>
-          </t-form>
-
-          <t-divider />
-
-          <!-- 模型管理 -->
-          <div class="model-section">
-            <div class="model-section__header">
-              <span class="model-section__title">模型列表</span>
-              <t-button size="small" @click="handleAddModel">
-                <template #icon><AddIcon /></template>
-                添加模型
-              </t-button>
-            </div>
-            <t-input
-              v-model="modelKeyword"
-              clearable
-              placeholder="搜索模型 ID 或名称"
-              class="model-section__search"
-            >
-              <template #prefixIcon>
-                <SearchIcon />
-              </template>
-            </t-input>
-
-            <template v-if="form.models.length > 0">
-              <template v-for="group in modelGroups" :key="group.family">
-                <div class="model-group">
-                  <div class="model-group__title">{{ group.family }}</div>
-                  <div v-for="model in group.models" :key="model.identifier" class="model-item">
-                    <div class="model-item__info">
-                      <t-tag
-                        v-if="model.type !== 'chat'"
-                        size="small"
-                        variant="light"
-                        :theme="MODEL_TYPE_THEME[model.type]"
-                      >
-                        {{ MODEL_TYPE_LABEL[model.type] }}
-                      </t-tag>
-                      <t-tooltip :content="model.identifier" placement="top">
-                        <span class="model-item__name">{{ model.model || model.identifier }}</span>
-                      </t-tooltip>
-                    </div>
-                    <div class="model-item__actions">
-                      <t-switch
-                        :value="model.enable"
-                        @change="(val: any) => handleModelEnableChange(model, Boolean(val))"
-                      />
-                      <t-button
-                        theme="primary"
-                        variant="text"
-                        size="small"
-                        shape="square"
-                        @click="handleEditModel(model)"
-                      >
-                        <template #icon><EditIcon /></template>
-                      </t-button>
-                      <t-button
-                        theme="danger"
-                        variant="text"
-                        size="small"
-                        shape="square"
-                        @click="handleDeleteModel(model)"
-                      >
-                        <template #icon><DeleteIcon /></template>
-                      </t-button>
-                    </div>
-                  </div>
-                </div>
-              </template>
-              <t-empty
-                v-if="modelGroups.length === 0"
-                description="未找到匹配的模型"
-                style="margin-top: 12px"
-              />
-            </template>
-            <t-empty
-              v-else
-              description="暂无模型，请从接口获取或手动添加"
-              style="margin-top: 12px"
-            />
-          </div>
-        </template>
+        <!-- 内置供应商（服务端中转站）：只读展示 + 刷新模型列表 -->
+        <builtin-provider-panel
+          v-else-if="isBuiltinSelected"
+          :name="builtinItem?.name ?? ''"
+          :models="builtinModels"
+          :refreshing="store.refreshingBuiltin"
+          :signed-in="isSignedIn"
+          @refresh="handleRefreshBuiltin"
+        />
+        <!-- 自定义供应商：表单 + 模型管理 -->
+        <provider-editor
+          v-else
+          :form="form"
+          :saving="saving"
+          :fetching="modelsApi.fetching.value"
+          :name-presets="PROVIDER_NAME_PRESETS"
+          :provider-presets="PROVIDER_PRESETS"
+          @save="handleSave"
+          @fetch-models="modelsApi.fetchModels(form)"
+          @add-model="modelsApi.addModel"
+          @edit-model="modelsApi.editModel"
+          @delete-model="modelsApi.deleteModel"
+          @toggle-model="modelsApi.toggleModel"
+        />
       </div>
     </div>
   </page-layout>
 </template>
 
 <script lang="ts" setup>
-import { AddIcon, DeleteIcon, EditIcon, SearchIcon } from 'tdesign-icons-vue-next'
-import { useSettingAiStore } from '@/store'
-import { AiModel, AiProvideFormat } from '@/entity'
-import { listAiModels } from '@/modules/ai'
+import { useSettingAiStore, useAuthStore, BUILTIN_PROVIDER_ID } from '@/store'
+import { AiProvideFormat } from '@/entity'
 import { MessageUtil } from '@/utils/modal'
-import {
-  MODEL_TYPE_LABEL,
-  MODEL_TYPE_THEME,
-  guessModelParams,
-  guessModelType
-} from '@/utils/aiModel'
-import { openModelDialog } from './modals/OpenModelDialog'
-import { fetchModelsDrawer } from './modals/FetchModelsDrawer'
+import { openLogin } from '@/components/modals/LoginDialog'
+import { PROVIDER_NAME_PRESETS, PROVIDER_PRESETS } from './providerPresets'
+import { useProviderModels } from './useProviderModels'
 import SettingAiSidebar from './components/SettingAiSidebar.vue'
+import BuiltinProviderPanel from './components/BuiltinProviderPanel.vue'
+import ProviderEditor, { type ProviderFormData } from './components/ProviderEditor.vue'
 
 const store = useSettingAiStore()
+const authStore = useAuthStore()
+
+/** 已登录（登录守卫用） */
+const isSignedIn = computed(() => authStore.status === 'signed-in')
+const relayEnabled = computed(() => store.relayEnabled)
 
 // ---------- 左侧列表 ----------
 
 const selectedId = ref<string>('')
-
 const isCreating = ref(false)
 
 // ---------- 右侧表单 ----------
 
-let form = reactive({
+const form = reactive<ProviderFormData>({
   id: '',
   name: '',
   baseUrl: '',
   key: '',
-  format: 'chat' as AiProvideFormat,
-  models: [] as AiModel[]
+  format: 'chat',
+  models: []
 })
+
+/** 内置供应商项（恒存在） */
+const builtinItem = computed(() => store.items.find((i) => i.builtin))
+const isBuiltinSelected = computed(() => selectedId.value === BUILTIN_PROVIDER_ID)
+const builtinModels = computed(() => builtinItem.value?.models ?? [])
 
 // 选中提供方：填充表单
 function selectItem(id: string) {
   if (id === selectedId.value) {
+    // 取消选中：内置供应商不可取消，保持选中态
+    if (id === BUILTIN_PROVIDER_ID) return
     selectedId.value = ''
     isCreating.value = true
-    form.id = ''
-    form.name = ''
-    form.baseUrl = ''
-    form.key = ''
-    form.models = [] as AiModel[]
-    form.format = 'chat'
+    Object.assign(form, { id: '', name: '', baseUrl: '', key: '', models: [], format: 'chat' })
     return
   }
   selectedId.value = id
+  // 内置供应商：进入只读面板，不清表单
+  if (id === BUILTIN_PROVIDER_ID) {
+    isCreating.value = false
+    return
+  }
   const item = store.items.find((i) => i.id === id)
   if (item) {
     isCreating.value = false
-    form.id = item.id
-    form.name = item.name
-    form.baseUrl = item.baseUrl
-    form.key = item.key
-    form.models = item.models.map((m) => ({ ...m }))
-    form.format = item.format || 'chat'
+    Object.assign(form, {
+      id: item.id,
+      name: item.name,
+      baseUrl: item.baseUrl,
+      key: item.key,
+      models: item.models.map((m) => ({ ...m })),
+      format: (item.format || 'chat') as AiProvideFormat
+    })
   }
 }
 
-// 初始化：数据加载完成后选中第一个
+// 初始化：数据加载完成后选中第一个（内置恒首项）
 watch(
   () => store.items.length,
   (len) => {
@@ -220,6 +122,60 @@ watch(
   },
   { immediate: true }
 )
+
+// 免费档（thirdPartyRelay 关闭）：启用项自动切回内置，且强制选中内置
+watch(
+  () => relayEnabled.value,
+  (enabled) => {
+    if (!enabled && selectedId.value !== BUILTIN_PROVIDER_ID) {
+      selectItem(BUILTIN_PROVIDER_ID)
+    }
+  },
+  { immediate: true }
+)
+
+// ---------- 登录守卫（未登录点模型设置 / 意外进入本页） ----------
+
+const router = useRouter()
+
+async function guardLogin(): Promise<boolean> {
+  if (isSignedIn.value) return true
+  if (authStore.status === 'unknown') {
+    // 启动中 / 服务端不可达：先尝试刷新凭证，再按结果判定
+    await authStore.refresh()
+  }
+  if (isSignedIn.value) return true
+  MessageUtil.warning('请先登录后使用 AI 设置')
+  // 未登录返回首页登录：弹登录框；登录成功回本页（已在 /setting/ai），关闭则回首页
+  openLogin(
+    () => {
+      void store.refreshBuiltinModels().catch(() => undefined)
+    },
+    () => router.push('/new')
+  )
+  return false
+}
+
+onMounted(() => {
+  void guardLogin()
+})
+
+// ---------- 内置供应商操作 ----------
+
+async function handleRefreshBuiltin() {
+  if (!isSignedIn.value) {
+    MessageUtil.warning('请先登录后获取内置模型列表')
+    return
+  }
+  try {
+    await store.refreshBuiltinModels()
+    MessageUtil.success('模型列表已更新')
+  } catch (e) {
+    MessageUtil.error('获取内置模型失败: ' + (e as Error).message)
+  }
+}
+
+// ---------- 保存 ----------
 
 const saving = ref(false)
 
@@ -249,9 +205,7 @@ async function handleSave() {
         ? (store.items.find((item) => item.id === form.id)?.enable ?? true)
         : true
     })
-    // 新增完成后，选中刚刚保存的项，退出创建模式
     if (isCreating.value) {
-      // 新增完成后，选中刚刚保存的项
       const added = store.items.find(
         (item) => item.name === form.name && item.baseUrl === form.baseUrl
       )
@@ -266,53 +220,11 @@ async function handleSave() {
   }
 }
 
-// ---------- 提供方名称预设 ----------
-
-const providerPresets: Array<{ label: string; baseUrl: string }> = [
-  { label: 'V3 API', baseUrl: 'https://api.vveai.com/v1' },
-  { label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
-  { label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
-  { label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1' },
-  { label: 'Groq', baseUrl: 'https://api.groq.com/openai/v1' },
-  { label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
-  { label: 'Together AI', baseUrl: 'https://api.together.xyz/v1' },
-  { label: 'Mistral AI', baseUrl: 'https://api.mistral.ai/v1' },
-  { label: 'Perplexity', baseUrl: 'https://api.perplexity.ai' },
-  { label: '零一万物 (Yi)', baseUrl: 'https://api.lingyiwanwu.com/v1' },
-  { label: 'Moonshot (月之暗面)', baseUrl: 'https://api.moonshot.cn/v1' },
-  {
-    label: '阿里云 (通义千问)',
-    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-  },
-  { label: '百度千帆', baseUrl: 'https://qianfan.baobao.baidu.com/v2' },
-  { label: '硅基流动', baseUrl: 'https://api.siliconflow.cn/v1' },
-  { label: '小米', baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1' }
-]
-
-const namePresets = providerPresets.map((p) => ({
-  label: p.label,
-  value: p.label
-}))
-
-function onNameChange(value: string | number) {
-  if (typeof value === 'string' && value) {
-    const matched = providerPresets.find((p) => p.label === value)
-    if (matched) {
-      form.baseUrl = matched.baseUrl
-      return
-    }
-  }
-}
-
 // ---------- 新增提供方 ----------
 
 function handleAdd() {
   isCreating.value = true
-  form.id = ''
-  form.name = ''
-  form.baseUrl = ''
-  form.key = ''
-  form.models = []
+  Object.assign(form, { id: '', name: '', baseUrl: '', key: '', models: [], format: 'chat' })
   selectedId.value = ''
 }
 
@@ -320,7 +232,7 @@ function handleAdd() {
 
 async function handleProvideEnableChange(id: string, val: boolean) {
   const item = store.items.find((i) => i.id === id)
-  if (!item) return
+  if (!item || item.builtin) return
   await store.put({
     id: item.id,
     name: item.name,
@@ -331,8 +243,6 @@ async function handleProvideEnableChange(id: string, val: boolean) {
     enable: val
   })
 }
-
-// ---------- 删除提供方 ----------
 
 async function handleDelete(id: string) {
   await store.remove(id)
@@ -345,130 +255,12 @@ async function handleDelete(id: string) {
   }
 }
 
-// ---------- 模型分组 ----------
+// ---------- 模型管理（composable） ----------
 
-const modelKeyword = ref('')
-
-function getModelFamily(id: string): string {
-  return id.split(/[-_.\d]/).filter(Boolean)[0] || id
-}
-
-const modelGroups = computed(() => {
-  const kw = modelKeyword.value.trim().toLowerCase()
-  const list = kw
-    ? form.models.filter(
-        (m) => m.identifier.toLowerCase().includes(kw) || (m.model || '').toLowerCase().includes(kw)
-      )
-    : form.models
-  const map = new Map<string, AiModel[]>()
-  for (const m of list) {
-    const family = getModelFamily(m.identifier)
-    if (!map.has(family)) map.set(family, [])
-    map.get(family)!.push(m)
-  }
-  return Array.from(map.entries())
-    .map(([family, items]) => ({
-      family,
-      models: [...items].sort((a, b) => a.identifier.localeCompare(b.identifier))
-    }))
-    .sort((a, b) => a.family.localeCompare(b.family))
+const modelsApi = useProviderModels({
+  models: form.models,
+  onSaved: handleSave
 })
-
-// ---------- 手动添加模型 ----------
-
-function handleAddModel() {
-  openModelDialog(
-    form.models.map((m) => m.identifier),
-    async (result) => {
-      form.models.push({
-        identifier: result.identifier,
-        model: result.name,
-        type: result.type,
-        context: result.context,
-        output: result.output,
-        support: result.support,
-        enable: true
-      })
-      await handleSave()
-      MessageUtil.success('模型已添加')
-    }
-  )
-}
-
-function handleEditModel(model: AiModel) {
-  openModelDialog(
-    form.models.map((m) => m.identifier),
-    async (result) => {
-      const target = form.models.find((m) => m.identifier === model.identifier)
-      if (target) {
-        target.model = result.name
-        target.type = result.type
-        target.context = result.context
-        target.output = result.output
-        target.support = result.support
-      }
-      await handleSave()
-      MessageUtil.success('模型已更新')
-    },
-    model
-  )
-}
-
-// ---------- 删除模型 ----------
-
-async function handleDeleteModel(row: AiModel) {
-  const index = form.models.findIndex((m) => m.identifier === row.identifier)
-  if (index > -1) {
-    form.models.splice(index, 1)
-    await handleSave()
-  }
-}
-
-async function handleModelEnableChange(row: AiModel, val: boolean) {
-  const model = form.models.find((m) => m.identifier === row.identifier)
-  if (model) {
-    model.enable = val
-    await handleSave()
-  }
-}
-
-// ---------- 从接口获取模型 ----------
-
-const fetching = ref(false)
-
-async function handleFetchModels() {
-  if (!form.baseUrl || !form.key) {
-    MessageUtil.warning('请先填写接口地址和密钥')
-    return
-  }
-  fetching.value = true
-  try {
-    const fetched = (
-      await listAiModels({ baseURL: form.baseUrl, apiKey: form.key, format: form.format })
-    ).map((m) => ({
-      id: m.id,
-      name: m.id
-    }))
-    fetchModelsDrawer(fetched, form.models, async (selectedIds: string[]) => {
-      form.models = []
-      for (const m of fetched) {
-        form.models.push({
-          identifier: m.id,
-          model: m.name,
-          type: guessModelType(m.id),
-          ...guessModelParams(m.id),
-          enable: selectedIds.includes(m.id)
-        })
-      }
-      await handleSave()
-      MessageUtil.success('模型已更新')
-    })
-  } catch (e) {
-    MessageUtil.error('获取模型失败: ' + (e as Error).message)
-  } finally {
-    fetching.value = false
-  }
-}
 </script>
 
 <style scoped lang="less">
@@ -485,82 +277,5 @@ async function handleFetchModels() {
   padding-right: 24px;
   padding-bottom: 24px;
   z-index: 1;
-}
-
-.ai-setting-form {
-  max-width: 640px;
-}
-
-// 模型区域
-.model-section {
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  &__title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--td-text-color-primary);
-  }
-
-  &__search {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--td-bg-color-container);
-    padding: 12px 0 12px;
-  }
-}
-
-.model-group {
-  margin-top: 16px;
-
-  &__title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--td-text-color-primary);
-    margin-bottom: 8px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--td-bg-color-component);
-  }
-}
-
-.model-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: var(--td-radius-default);
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: var(--td-bg-color-secondaryhover);
-  }
-
-  &__info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__name {
-    font-size: 13px;
-    color: var(--td-text-color-secondary);
-  }
-
-  &__actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-}
-
-.text-muted {
-  color: var(--td-text-color-placeholder);
 }
 </style>

@@ -1,42 +1,71 @@
 <template>
   <div class="ai-setting-sidebar">
-    <div class="px-8px">
-      <t-button theme="primary" block @click="emit('add')">
-        <template #icon><AddIcon /></template>
-        新增
-      </t-button>
-    </div>
-    <t-divider size="8px" />
-    <div ref="listRef" class="ai-setting-sidebar__list">
-      <div
-        v-for="item in items"
-        :key="item.id"
-        :class="[
-          'ai-setting-sidebar__item',
-          { 'is-active': selectedId === item.id, 'is-disabled': !item.enable }
-        ]"
-      >
-        <span class="ai-setting-sidebar__drag" title="拖拽排序" @click.stop>
-          <DragMoveIcon />
-        </span>
-        <div class="ai-setting-sidebar__item-content" @click="emit('select', item.id)">
-          <span class="ai-setting-sidebar__item-name">{{ item.name || '未命名' }}</span>
+    <!-- 内置供应商（服务端中转站）：免费档也可用，恒启用，不可编辑/删除 -->
+    <template v-if="builtinItem">
+      <div class="ai-setting-sidebar__group-title">内置</div>
+      <div class="ai-setting-sidebar__list ai-setting-sidebar__list--auto">
+        <div
+          :class="[
+            'ai-setting-sidebar__item',
+            { 'is-active': selectedId === builtinItem.id }
+          ]"
+        >
+          <span class="ai-setting-sidebar__drag is-locked" title="内置供应商不可拖拽">
+            <DragMoveIcon />
+          </span>
+          <div class="ai-setting-sidebar__item-content" @click="emit('select', builtinItem.id)">
+            <span class="ai-setting-sidebar__item-name">{{ builtinItem.name }}</span>
+          </div>
+          <t-tag size="small" variant="light" theme="primary">内置</t-tag>
         </div>
-        <t-switch
-          size="small"
-          :value="item.enable"
-          :default-value="true"
-          @click.stop
-          @change="(val) => emit('enable', item.id, Boolean(val))"
-        />
-        <t-popconfirm content="确定删除此提供方？" @confirm="emit('delete', item.id)">
-          <t-button theme="danger" variant="text" size="small">
-            <template #icon><DeleteIcon /></template>
-          </t-button>
-        </t-popconfirm>
       </div>
-    </div>
-    <t-empty v-if="items.length === 0" description="暂无提供方，点击新增添加" />
+    </template>
+
+    <!-- 自定义供应商（thirdPartyRelay 门控：免费档整组隐藏） -->
+    <template v-if="relayEnabled && customItems.length > 0">
+      <t-divider size="8px" />
+      <div class="ai-setting-sidebar__group-title">自定义供应商</div>
+      <div ref="listRef" class="ai-setting-sidebar__list ai-setting-sidebar__list--scroll">
+        <div
+          v-for="item in customItems"
+          :key="item.id"
+          :class="[
+            'ai-setting-sidebar__item',
+            { 'is-active': selectedId === item.id, 'is-disabled': !item.enable }
+          ]"
+        >
+          <span class="ai-setting-sidebar__drag" title="拖拽排序" @click.stop>
+            <DragMoveIcon />
+          </span>
+          <div class="ai-setting-sidebar__item-content" @click="emit('select', item.id)">
+            <span class="ai-setting-sidebar__item-name">{{ item.name || '未命名' }}</span>
+          </div>
+          <t-switch
+            size="small"
+            :value="item.enable"
+            :default-value="true"
+            @click.stop
+            @change="(val) => emit('enable', item.id, Boolean(val))"
+          />
+          <t-popconfirm content="确定删除此提供方？" @confirm="emit('delete', item.id)">
+            <t-button theme="danger" variant="text" size="small">
+              <template #icon><DeleteIcon /></template>
+            </t-button>
+          </t-popconfirm>
+        </div>
+      </div>
+      <t-empty v-if="customItems.length === 0" description="暂无自定义供应商" />
+    </template>
+
+    <!-- 添加供应商：置于自定义供应商分组下方（免费档隐藏） -->
+    <template v-if="relayEnabled">
+      <div class="ai-setting-sidebar__add">
+        <t-button theme="primary" variant="outline" block @click="emit('add')">
+          <template #icon><AddIcon /></template>
+          添加供应商
+        </t-button>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -57,7 +86,11 @@ const emit = defineEmits<{
 }>()
 
 const store = useSettingAiStore()
-const items = computed(() => store.items)
+const relayEnabled = computed(() => store.relayEnabled)
+/** 内置供应商（恒存在，items 首项） */
+const builtinItem = computed(() => store.items.find((i) => i.builtin))
+/** 自定义供应商（付费档展示） */
+const customItems = computed(() => store.items.filter((i) => !i.builtin))
 const listRef = ref<HTMLElement>()
 let sortable: Sortable | undefined
 
@@ -84,7 +117,9 @@ onMounted(() => {
       const { oldIndex, newIndex } = evt
       if (oldIndex == null || newIndex == null || oldIndex === newIndex) return
       revertDom(evt)
-      void store.reorder(oldIndex, newIndex)
+      // 自定义组内索引 → 全局 items 索引（跳过内置首项）
+      const from = store.items.findIndex((i) => !i.builtin)
+      void store.reorder(from + oldIndex, from + newIndex)
     }
   })
 })
@@ -103,10 +138,26 @@ onBeforeUnmount(() => {
   flex-direction: column;
   border-right: 1px solid var(--td-border-level-1-color);
 
+  &__group-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--td-text-color-secondary);
+    padding: 0 8px 8px;
+  }
+
   &__list {
-    flex: 1;
     overflow-y: auto;
     padding: 0 8px;
+  }
+
+  // 内置列表只占内容高度；自定义列表撑满剩余空间并滚动
+  &__list--auto {
+    flex: none;
+  }
+
+  &__list--scroll {
+    flex: 1;
+    min-height: 0;
   }
 
   &__item {
@@ -153,6 +204,11 @@ onBeforeUnmount(() => {
     &:active {
       cursor: grabbing;
     }
+
+    &.is-locked {
+      cursor: not-allowed;
+      color: var(--td-text-color-disabled);
+    }
   }
 
   &__item-content {
@@ -172,6 +228,10 @@ onBeforeUnmount(() => {
 
   &__item.is-disabled &__item-name {
     color: var(--td-text-color-placeholder);
+  }
+
+  &__add {
+    padding: 8px;
   }
 }
 </style>
