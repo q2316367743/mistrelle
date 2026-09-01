@@ -14,6 +14,9 @@ export const useAuthStore = defineStore('auth', () => {
   /** 登录 / 注册请求进行中（弹窗按钮 loading，防重复提交） */
   const submitting = ref(false)
 
+  const lastRefreshedAt = ref(0)
+  const REFRESH_STALE_MS = 60_000
+
   /**
    * 档位功能门控（统一消费点）：未登录 / unknown 视为免费档（两项受控功能均禁用）；
    * 已登录取服务端 features。thirdPartyRelay 暂不消费。
@@ -28,9 +31,12 @@ export const useAuthStore = defineStore('auth', () => {
   )
 
   function apply(state: AuthState): void {
+    const wasSignedIn = status.value === 'signed-in'
     status.value = state.status
     user.value = state.user
     balance.value = state.balance
+    if (state.status === 'signed-in' && !wasSignedIn) lastRefreshedAt.value = Date.now()
+    if (state.status !== 'signed-in') lastRefreshedAt.value = 0
   }
 
   async function loadTiers(): Promise<void> {
@@ -96,6 +102,14 @@ export const useAuthStore = defineStore('auth', () => {
   /** 手动刷新资料与余额（账户页「刷新 / 重试」按钮） */
   async function refresh(): Promise<void> {
     apply(await window.preload.auth.refresh())
+    if (status.value !== 'guest') lastRefreshedAt.value = Date.now()
+  }
+
+  /** 距上次刷新超过 1 分钟才请求；游客跳过 */
+  async function refreshIfStale(): Promise<void> {
+    if (status.value === 'guest') return
+    if (Date.now() - lastRefreshedAt.value < REFRESH_STALE_MS) return
+    await refresh()
   }
 
   /** 验证激活码：结果由激活码弹窗内联展示（成功可激活内容 / 失败中文原因） */
@@ -123,6 +137,7 @@ export const useAuthStore = defineStore('auth', () => {
     changePassword,
     verifyCode,
     redeemCode,
-    refresh
+    refresh,
+    refreshIfStale
   }
 })

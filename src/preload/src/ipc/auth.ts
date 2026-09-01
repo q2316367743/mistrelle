@@ -12,7 +12,11 @@ import {
   type AuthCodeParams,
   type AuthCodeRedeemResult,
   type AuthCodeVerifyResult,
+  type AuthDataResult,
   type AuthNameParams,
+  type AuthPageParams,
+  type AuthPaged,
+  type AuthPointsTransaction,
   type AuthSignInParams,
   type AuthSignUpParams,
   type AuthState,
@@ -46,6 +50,11 @@ export const authApi = {
     ipcRenderer.invoke(AuthChannels.redeemCode, params),
   /** 手动刷新资料与余额（账户页「刷新」按钮） */
   refresh: (): Promise<AuthState> => ipcRenderer.invoke(AuthChannels.refresh),
+  /** 积分流水分页 */
+  listTransactions: (
+    params: AuthPageParams
+  ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>> =>
+    ipcRenderer.invoke(AuthChannels.listTransactions, params),
   /** 订阅主进程状态变更推送；返回取消订阅函数 */
   onChanged: (callback: (state: AuthState) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, state: AuthState): void => callback(state)

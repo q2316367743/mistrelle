@@ -23,10 +23,18 @@
           刷新
         </t-button>
       </div>
-      <div v-if="balance" class="identity__metrics">
+      <div
+        v-if="balance"
+        class="identity__metrics is-clickable"
+        role="button"
+        tabindex="0"
+        @click="openPointsLedger"
+        @keydown.enter.prevent="openPointsLedger"
+      >
         <div class="metric">
           <span class="metric__label">总积分</span>
           <span class="metric__value">{{ balance.total }}</span>
+          <span class="metric__hint">查看流水</span>
         </div>
         <div class="metric">
           <span class="metric__label">每日赠送</span>
@@ -84,6 +92,7 @@ import { useAuthStore } from '@/store'
 import { toDateString } from '@/utils/lang/FormatUtil'
 import { openLogin } from '@/components/modals/LoginDialog'
 import { openMemberTier } from '../modals/MemberTierDialog'
+import { openPointsLedger } from '../modals/PointsLedgerDrawer'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -187,6 +196,20 @@ async function handleRefresh(): Promise<void> {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid var(--td-component-stroke);
+  transition: background-color var(--fluent-transition-fast);
+
+  &.is-clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--fluent-item-hover);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: var(--fluent-focus-ring);
+    }
+  }
 }
 
 .metric {

@@ -22,6 +22,10 @@ import {
   type AuthCodeParams,
   type AuthCodeRedeemResult,
   type AuthCodeVerifyResult,
+  type AuthDataResult,
+  type AuthPageParams,
+  type AuthPaged,
+  type AuthPointsTransaction,
   type AuthState,
   type AuthTierInfo,
   type AuthSignInParams,
@@ -403,6 +407,25 @@ export async function redeemActivationCode(
       cred.apiKey
     )
     await refresh()
+    return { ok: true, data }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+/** 积分流水分页（未登录返回错误，不抛跨进程异常） */
+export async function listTransactions(
+  params: AuthPageParams
+): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>> {
+  const cred = loadCredential()
+  if (!cred) return { ok: false, msg: '未登录' }
+  try {
+    const page = Math.max(1, Math.trunc(params.page || 1))
+    const pageSize = Math.min(100, Math.max(1, Math.trunc(params.pageSize || 20)))
+    const data = await apiGet<AuthPaged<AuthPointsTransaction>>(
+      `/api/user/transactions?page=${page}&pageSize=${pageSize}`,
+      cred.apiKey
+    )
     return { ok: true, data }
   } catch (error) {
     return fail(error)

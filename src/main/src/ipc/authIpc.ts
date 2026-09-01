@@ -11,7 +11,11 @@ import {
   type AuthCodeParams,
   type AuthCodeRedeemResult,
   type AuthCodeVerifyResult,
+  type AuthDataResult,
   type AuthNameParams,
+  type AuthPageParams,
+  type AuthPaged,
+  type AuthPointsTransaction,
   type AuthSignInParams,
   type AuthSignUpParams,
   type AuthState,
@@ -20,6 +24,7 @@ import {
 import {
   changePassword,
   current,
+  listTransactions,
   refresh,
   redeemActivationCode,
   signIn,
@@ -61,5 +66,12 @@ export function registerAuthIpc(): void {
     AuthChannels.redeemCode,
     (_event, params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeRedeemResult>> =>
       redeemActivationCode(params)
+  )
+  ipcMain.handle(
+    AuthChannels.listTransactions,
+    (
+      _event,
+      params: AuthPageParams
+    ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>> => listTransactions(params)
   )
 }

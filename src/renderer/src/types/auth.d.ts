@@ -117,6 +117,42 @@ declare interface AuthCodeRedeemResult {
 /** 激活码操作结果：失败时 msg 为可直接展示的中文原因，成功携带业务数据 */
 declare type AuthCodeActionResult<T> = { ok: true; data: T } | { ok: false; msg: string }
 
+declare type AuthDataResult<T> = { ok: true; data: T } | { ok: false; msg: string }
+
+declare interface AuthPageParams {
+  page: number
+  pageSize: number
+}
+
+declare interface AuthPaged<T> {
+  total: number
+  page: number
+  pageSize: number
+  items: T[]
+}
+
+declare type AuthPointsTxType =
+  | 'consume'
+  | 'recharge'
+  | 'refund'
+  | 'admin_adjust'
+  | 'gift_reset'
+  | 'tier_grant'
+
+declare interface AuthPointsTransaction {
+  id: string
+  userId: string
+  type: AuthPointsTxType
+  amount: number
+  giftAfter: number
+  totalAfter: number
+  paidAfter: number
+  bizType: string | null
+  bizId: string | null
+  remark: string | null
+  createdAt: string
+}
+
 declare interface AuthApi {
   getState(): Promise<AuthState>
   /** 公开档位列表（无需登录） */
@@ -133,6 +169,8 @@ declare interface AuthApi {
   /** 激活激活码：成功后主进程刷新资料并广播（UI 自动同步档位与余额） */
   redeemCode(params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeRedeemResult>>
   refresh(): Promise<AuthState>
+  /** 积分流水分页 */
+  listTransactions(params: AuthPageParams): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>>
   /** 订阅主进程状态变更推送；返回取消订阅函数 */
   onChanged(callback: (state: AuthState) => void): () => void
 }

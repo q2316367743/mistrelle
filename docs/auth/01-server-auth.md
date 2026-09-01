@@ -49,6 +49,7 @@ better-auth 的 origin-check/formCsrf 中间件只对**携带 Cookie / Origin / 
 - `GET /api/tiers/`（**公开，无需登录**）→ 启用中的档位列表 `{ code, name, category, level, basePoints, dailyGiftPoints, price, thirdPartyRelay, customFonts, extendedDesignStyles, ... }`，通道 `auth:tiers` 供会员档位账单列表展示（按 `level` 升序全宽行：额度文案 + 已含权益勾选、未含能力不展示叉号、右侧价格元/月、当前档位标注）。
 - `GET /api/user/me` → `{ id, name, email, isAdmin, tier, membership, features: AuthFeatures, dailyGiftPoints }`（features 归一为三键布尔，见 [02-activation-and-features.md](./02-activation-and-features.md)）。
 - `GET /api/user/balance` → `{ pointsGift, pointsTotal, pointsPaid, giftQuota, giftResetDate, total }`。
+- `GET /api/user/transactions?page&pageSize`（Bearer）→ `{ total, page, pageSize, items }`；`pageSize` 默认 20、上限 100。流水项：`type`（consume / recharge / refund / admin_adjust / gift_reset / tier_grant）、`amount`（正入负出）、三池变动后快照、`remark`、`createdAt`（ISO）。
 - `POST /api/user/activation-codes/verify|redeem`（Bearer）：激活码验证 / 兑换，链路与门控见 [02-activation-and-features.md](./02-activation-and-features.md)。
 
 ## 状态机与广播
@@ -74,7 +75,7 @@ type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 | preload 桥 | `src/preload/src/ipc/auth.ts` | `window.preload.auth.*` 薄桥 + `onChanged` 订阅 |
 | 渲染 store | `src/renderer/src/store/AuthStore.ts` | 拉取快照 + 订阅推送，跨页共享 |
 | 登录弹窗 | `src/renderer/src/components/modals/LoginDialog.tsx` + `LoginContent.vue` | DialogPlugin 命令式弹窗（登录/注册页签），AGENTS.md 拆壳约定 |
-| 页面接入 | `AppSide.vue`、`pages/setting/account/`（见 [06-account-page.md](../setting/06-account-page.md)）、`pages/setting/account/modals/` | 用户菜单（登录入口/登出/服务端昵称，「未登录」态展示）；账户页为身份主视觉 + 账户与安全设置行 + 第三方密钥，弹窗仍为 EditName / ChangePassword / MemberTier / RedeemCode（命令式） |
+| 页面接入 | `AppSide.vue`、`pages/setting/account/`（见 [06-account-page.md](../setting/06-account-page.md)）、`pages/setting/account/modals/` | 用户菜单；账户页身份主视觉 + 账户与安全 + 第三方密钥；积分流水抽屉（`PointsLedgerDrawer`）；弹窗仍为 EditName / ChangePassword / MemberTier / RedeemCode |
 
 ## 未登录展示（参考 workbuddy）
 

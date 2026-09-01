@@ -20,6 +20,8 @@ export const AuthChannels = {
   /** 激活码验证（不执行激活） / 激活码兑换 */
   verifyCode: 'auth:verifyCode',
   redeemCode: 'auth:redeemCode',
+  /** 积分流水分页（GET /api/user/transactions） */
+  listTransactions: 'auth:listTransactions',
   /** 主进程 → 渲染层状态变更推送（登录/登出/刷新后广播） */
   changed: 'auth:changed'
 } as const
@@ -156,3 +158,42 @@ export interface AuthCodeRedeemResult {
 
 /** 激活码操作结果：失败时 msg 为可直接展示的中文原因，成功携带业务数据 */
 export type AuthCodeActionResult<T> = { ok: true; data: T } | { ok: false; msg: string }
+
+/** 带 data 的查询结果（流水等只读接口） */
+export type AuthDataResult<T> = { ok: true; data: T } | { ok: false; msg: string }
+
+export interface AuthPageParams {
+  page: number
+  pageSize: number
+}
+
+export interface AuthPaged<T> {
+  total: number
+  page: number
+  pageSize: number
+  items: T[]
+}
+
+/** 积分流水类型：consume 消耗 / recharge 充值 / refund 退款 / admin_adjust 调整 / gift_reset 每日赠送 / tier_grant 档位发放 */
+export type AuthPointsTxType =
+  | 'consume'
+  | 'recharge'
+  | 'refund'
+  | 'admin_adjust'
+  | 'gift_reset'
+  | 'tier_grant'
+
+/** 积分流水项（GET /api/user/transactions；amount 正为收入、负为支出；createdAt 为 ISO） */
+export interface AuthPointsTransaction {
+  id: string
+  userId: string
+  type: AuthPointsTxType
+  amount: number
+  giftAfter: number
+  totalAfter: number
+  paidAfter: number
+  bizType: string | null
+  bizId: string | null
+  remark: string | null
+  createdAt: string
+}

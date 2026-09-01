@@ -15,11 +15,11 @@
 ┌ 身份主视觉 ServerAccountCard ─────────────────┐
 │ [头像]  名称 + 档位 Tag          刷新 / 登录     │
 │         邮箱 / 会员到期                         │
-│ 总积分  |  每日赠送（额度）  |  充值积分          │
+│ 总积分（点此看流水） |  每日赠送  |  充值积分   │
 └─────────────────────────────────────────────────┘
 
 账户与安全  AccountActionList（仅 signed-in）
-  我的会员 / 激活码 / 修改用户名 / 修改密码 / 退出登录
+  我的会员 / 积分流水 / 激活码 / 修改用户名 / 修改密码 / 退出登录
 
 第三方账号  ThirdPartyAccountCard
   SkillHub API Key / 知乎 Access Secret（密码框 + 获取链接 + 已配置 Tag）
@@ -39,13 +39,15 @@
 
 | 文件 | 角色 |
 |------|------|
-| `pages/setting/account/SettingAccountPage.vue` | 页壳：导语 + 三块拼装 |
-| `pages/setting/account/components/ServerAccountCard.vue` | 身份主视觉（头像 / 积分 / 未登录与连接中） |
-| `pages/setting/account/components/AccountActionList.vue` | 「账户与安全」设置行，打开既有命令式弹窗 |
+| `pages/setting/account/SettingAccountPage.vue` | 页壳：导语 + 三块拼装；进入时 / 每分钟 `refreshIfStale`（距上次刷新 > 1 分钟才请求） |
+| `pages/setting/account/components/ServerAccountCard.vue` | 身份主视觉（头像 / 积分 / 未登录与连接中）；积分三栏点击打开流水抽屉 |
+| `pages/setting/account/components/AccountActionList.vue` | 「账户与安全」设置行，打开既有命令式弹窗 + 积分流水抽屉 |
 | `pages/setting/account/components/ThirdPartyAccountCard.vue` | 第三方密钥：`v-model` 到 `SettingAccountStore` |
 | `pages/setting/account/components/AccountSettingRow.vue` | 通用设置行（图标 + 标题/描述 + 操作 / 箭头） |
+| `pages/setting/account/modals/PointsLedgerDrawer.tsx` | 积分流水抽屉外壳（`DrawerPlugin`） |
+| `pages/setting/account/modals/PointsLedgerContent.vue` | 流水表格 + 分页，调用 `auth.listTransactions` |
 
-弹窗：`EditNameDialog` / `ChangePasswordDialog` / `RedeemCodeDialog` / `LoginDialog` 仍为原流程。`MemberTierDialog` 改为账单列表（全宽行：档位名 + 额度 + 已含权益 / 右侧价格与「当前」标注），不再用横向窄卡片。
+弹窗：`EditNameDialog` / `ChangePasswordDialog` / `RedeemCodeDialog` / `LoginDialog` 仍为原流程。`MemberTierDialog` 改为账单列表（全宽行：档位名 + 额度 + 已含权益 / 右侧价格与「当前」标注），不再用横向窄卡片。积分流水为命令式抽屉 `PointsLedgerDrawer`。
 
 ## 设计约定
 
@@ -58,4 +60,6 @@
 
 - 密钥仍是失焦即保存（store deep watch），页面不提供单独「保存」按钮
 - 未登录也可打开「会员档位」（公开 `auth:tiers`）；积分数字只在已登录且 `balance` 有值时展示
+- 进入账号页时调用 `AuthStore.refreshIfStale`：游客跳过；距上次成功刷新不足 1 分钟则跳过；停留本页时每分钟再检查一次。手动「刷新」不走节流。
+- 积分流水走 `GET /api/user/transactions`（主进程 IPC `auth:listTransactions`），不在渲染层直连服务端
 - `AccountSettingRow` 是账号页私有组件，不要挪到 `src/components`

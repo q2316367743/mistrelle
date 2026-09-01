@@ -15,6 +15,18 @@ import AccountActionList from './components/AccountActionList.vue'
 import ThirdPartyAccountCard from './components/ThirdPartyAccountCard.vue'
 
 const authStore = useAuthStore()
+let timer: ReturnType<typeof setInterval> | undefined
+
+onMounted(() => {
+  void authStore.refreshIfStale()
+  timer = setInterval(() => {
+    void authStore.refreshIfStale()
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (timer !== undefined) clearInterval(timer)
+})
 </script>
 <style scoped lang="less">
 .account-page {

@@ -11,6 +11,14 @@
         @click="handleMemberTier"
       />
       <account-setting-row
+        icon="wallet"
+        title="积分流水"
+        description="查看积分收支明细"
+        arrow
+        clickable
+        @click="openPointsLedger"
+      />
+      <account-setting-row
         icon="gift"
         title="激活码"
         description="兑换会员档位或积分包"
@@ -56,6 +64,7 @@ import { openEditName } from '../modals/EditNameDialog'
 import { openChangePassword } from '../modals/ChangePasswordDialog'
 import { openMemberTier } from '../modals/MemberTierDialog'
 import { openRedeemCode } from '../modals/RedeemCodeDialog'
+import { openPointsLedger } from '../modals/PointsLedgerDrawer'
 import AccountSettingRow from './AccountSettingRow.vue'
 
 const authStore = useAuthStore()
