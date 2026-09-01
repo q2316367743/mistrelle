@@ -20,7 +20,9 @@ import {
   type AuthSignInParams,
   type AuthSignUpParams,
   type AuthState,
-  type AuthTierInfo
+  type AuthTierInfo,
+  type AuthPackCatalog,
+  type AuthPackLots
 } from './authChannels'
 
 export const authApi = {
@@ -28,6 +30,8 @@ export const authApi = {
   getState: (): Promise<AuthState> => ipcRenderer.invoke(AuthChannels.getState),
   /** 公开档位列表（无需登录，账户卡片未登录态展示额度） */
   tiers: (): Promise<AuthTierInfo[]> => ipcRenderer.invoke(AuthChannels.tiers),
+  /** 公开增量包 SKU（无需登录） */
+  pointsPacks: (): Promise<AuthPackCatalog> => ipcRenderer.invoke(AuthChannels.pointsPacks),
   /** 邮箱密码登录；成功即签发长期 API Key 并双存凭证 */
   signIn: (params: AuthSignInParams): Promise<AuthActionResult> =>
     ipcRenderer.invoke(AuthChannels.signIn, params),
@@ -55,6 +59,9 @@ export const authApi = {
     params: AuthPageParams
   ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>> =>
     ipcRenderer.invoke(AuthChannels.listTransactions, params),
+  /** 未过期增量包 lot */
+  listPackLots: (): Promise<AuthDataResult<AuthPackLots>> =>
+    ipcRenderer.invoke(AuthChannels.listPackLots),
   /** 订阅主进程状态变更推送；返回取消订阅函数 */
   onChanged: (callback: (state: AuthState) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, state: AuthState): void => callback(state)

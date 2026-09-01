@@ -32,21 +32,16 @@
         @keydown.enter.prevent="openPointsLedger"
       >
         <div class="metric">
-          <span class="metric__label">总积分</span>
+          <span class="metric__label">可用积分</span>
           <span class="metric__value">{{ balance.total }}</span>
           <span class="metric__hint">查看流水</span>
         </div>
         <div class="metric">
           <span class="metric__label">每日赠送</span>
           <span class="metric__value">
-            <span>{{ balance.giftQuota }}</span>
-            <span> / </span>
-            <span v-if="balance.giftQuota" class="metric__hint"> {{ balance.pointsGift }}</span>
+            {{ balance.pointsGift }}
+            <span class="metric__hint"> / {{ balance.giftQuota }}</span>
           </span>
-        </div>
-        <div class="metric">
-          <span class="metric__label">充值积分</span>
-          <span class="metric__value">{{ balance.pointsPaid }}</span>
         </div>
       </div>
     </template>
@@ -194,7 +189,7 @@ async function handleRefresh(): Promise<void> {
 
 .identity__metrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   border-top: 1px solid var(--td-component-stroke);
   transition: background-color var(--fluent-transition-fast);
 

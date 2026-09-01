@@ -11,6 +11,8 @@ export const useAuthStore = defineStore('auth', () => {
   const balance = ref<AuthBalance | null>(null)
   /** 公开档位列表（未登录态额度展示，无需登录） */
   const tiers = ref<AuthTierInfo[]>([])
+  /** 公开增量包 SKU */
+  const packs = ref<AuthPackCatalog>({ items: [] })
   /** 登录 / 注册请求进行中（弹窗按钮 loading，防重复提交） */
   const submitting = ref(false)
 
@@ -48,11 +50,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function loadPacks(): Promise<void> {
+    try {
+      packs.value = await window.preload.auth.pointsPacks()
+    } catch (error) {
+      packs.value = { items: [] }
+      console.error('[auth] 获取增量包失败', error)
+    }
+  }
+
   // store 单例，以下仅初始化一次：
   // 启动拉快照（弥补推送前的时间窗）+ 订阅主进程变更推送（登录/登出/刷新后自动同步）+ 拉公开档位
   window.preload.auth.getState().then(apply)
   window.preload.auth.onChanged(apply)
   loadTiers()
+  loadPacks()
 
   /** 邮箱密码登录 */
   async function signIn(email: string, password: string): Promise<boolean> {
@@ -122,14 +134,20 @@ export const useAuthStore = defineStore('auth', () => {
     return window.preload.auth.redeemCode({ code })
   }
 
+  async function listPackLots(): Promise<AuthDataResult<AuthPackLots>> {
+    return window.preload.auth.listPackLots()
+  }
+
   return {
     status,
     user,
     balance,
     tiers,
+    packs,
     submitting,
     features,
     loadTiers,
+    loadPacks,
     signIn,
     signUp,
     signOut,
@@ -137,6 +155,7 @@ export const useAuthStore = defineStore('auth', () => {
     changePassword,
     verifyCode,
     redeemCode,
+    listPackLots,
     refresh,
     refreshIfStale
   }

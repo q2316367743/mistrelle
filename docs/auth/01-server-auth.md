@@ -46,11 +46,13 @@ better-auth 的 origin-check/formCsrf 中间件只对**携带 Cookie / Origin / 
 - `POST /auth/api/sign-in/email`、`/sign-up/email`（注册即登录）：响应 `{ redirect, token, user }`（sign-up 的 token 可能为 null）。
 - `POST /auth/api/update-user`（会话）：body `{ name? }`，改用户名后客户端 `refresh()` 广播。
 - `POST /auth/api/change-password`（会话）：body `{ currentPassword, newPassword }`（不传 `revokeOtherSessions`，当前会话保持有效、不轮换 token）。
-- `GET /api/tiers/`（**公开，无需登录**）→ 启用中的档位列表 `{ code, name, category, level, basePoints, dailyGiftPoints, price, thirdPartyRelay, customFonts, extendedDesignStyles, ... }`，通道 `auth:tiers` 供会员档位账单列表展示（按 `level` 升序全宽行：额度文案 + 已含权益勾选、未含能力不展示叉号、右侧价格元/月、当前档位标注）。
+- `GET /api/tiers/`（**公开，无需登录**）→ 启用中的档位列表，通道 `auth:tiers`。
+- `GET /api/points-packs/`（**公开，无需登录**）→ `{ items }`，通道 `auth:pointsPacks`。SKU 可无限次买，每笔 30 天到期清零，无结转。
 - `GET /api/user/me` → `{ id, name, email, isAdmin, tier, membership, features: AuthFeatures, dailyGiftPoints }`（features 归一为三键布尔，见 [02-activation-and-features.md](./02-activation-and-features.md)）。
-- `GET /api/user/balance` → `{ pointsGift, pointsTotal, pointsPaid, giftQuota, giftResetDate, total }`。
-- `GET /api/user/transactions?page&pageSize`（Bearer）→ `{ total, page, pageSize, items }`；`pageSize` 默认 20、上限 100。流水项：`type`（consume / recharge / refund / admin_adjust / gift_reset / tier_grant）、`amount`（正入负出）、三池变动后快照、`remark`、`createdAt`（ISO）。
-- `POST /api/user/activation-codes/verify|redeem`（Bearer）：激活码验证 / 兑换，链路与门控见 [02-activation-and-features.md](./02-activation-and-features.md)。
+- `GET /api/user/balance` → `{ pointsGift, pointsPaid, pointsPack, giftQuota, total }`（未过期账本剩余合计；登录时发放当日赠送）。
+- `GET /api/user/pack-lots` → `{ remaining, items }`，增量包各笔剩余与到期日。
+- `GET /api/user/transactions?page&pageSize`（Bearer）→ `{ total, page, pageSize, items }`；流水含 `gift_grant` / `pack_grant` / `expire`。
+- `POST /api/user/activation-codes/verify|redeem`（Bearer）：激活码验证 / 兑换（会员档位或积分增量包），链路与门控见 [02-activation-and-features.md](./02-activation-and-features.md)。
 
 ## 状态机与广播
 

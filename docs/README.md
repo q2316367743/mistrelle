@@ -15,8 +15,8 @@
 
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| [01-server-auth.md](./auth/01-server-auth.md)                 | 服务端账号接入（better-auth）：主进程 AuthService 单例共享状态 + 状态广播、API Key + 会话双存凭证（safeStorage 落盘）、Bearer 规避 CSRF、`/api/auth/*` 与 `/api/user/*` 契约、登录弹窗与用户菜单接入；账户页布局见 setting/06 |
-| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播）、AuthStore.features 门控统一消费点（未登录=免费档）、customFonts/extendedDesignStyles「UI 可见锁定 + AI 面过滤 + 渲染不拦」落点清单、thirdPartyRelay（自定义供应商）整组隐藏门控落点 |
+| [01-server-auth.md](./auth/01-server-auth.md)                 | 服务端账号接入（better-auth）：主进程 AuthService 单例共享状态 + 状态广播、API Key + 会话双存凭证（safeStorage 落盘）、Bearer 规避 CSRF、`/api/auth/*` 与 `/api/user/*` 契约、公开档位/增量包 SKU、登录弹窗与用户菜单接入；账户页布局见 setting/06 |
+| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播；会员只决定每日赠送，增量包 30 天账本可重复买）、档位页收敛入口选 SKU 结算（无支付，确认文案 30 天清零）、AuthStore.features 门控 |
 
 ### ai/ —— AI 请求
 
@@ -151,7 +151,7 @@
 | [03-window-glass-titlebar.md](./setting/03-window-glass-titlebar.md) | 窗口配置：三平台隐藏标题栏（macOS hiddenInset + trafficLightPosition 下移交通灯 / 其他 titleBarOverlay）+ 系统级毛玻璃（vibrancy / acrylic）；毛玻璃需透明背景才可见；useTitlePadding 跨平台标题边距（macOS 左避交通灯 / Windows 右避 overlay，l1/l2/l3/r1 数值推导与消费方） |
 | [04-account-store.md](./setting/04-account-store.md) | 账户配置存储：`~/.mistrelle/account.json`（`SettingAccountService` 读写 + safeStorage 整文件加密，含明文降级）；Store 契约 `state` + 三个鉴权配置不变 |
 | [05-ai-provider-builtin-relay.md](./setting/05-ai-provider-builtin-relay.md) | AI 设置内置供应商（服务端中转站）：主进程 relay IPC 代理 `/v1/models` + `/v1/chat/completions`；透传 `session_id`（渠道亲和）与 `request_id`（仅记录）；流式回调走 start/chunk/end 事件；`thirdPartyRelay` 门控 + 登录守卫 |
-| [06-account-page.md](./setting/06-account-page.md) | 账号设置页 Fluent 布局：身份主视觉 + 账户与安全设置行 + 第三方密钥；进入页 1 分钟节流刷新余额；积分流水分页抽屉（`GET /api/user/transactions`）；会员档位弹窗为账单列表 |
+| [06-account-page.md](./setting/06-account-page.md) | 账号设置页 Fluent 布局：身份主视觉（可用积分 / 每日赠送）+ 账户与安全（我的会员与我的积分分开，增量包挂在会员下）+ 第三方密钥；进入页 1 分钟节流刷新；积分流水抽屉；档位页收敛入口 + 增量包选择/结算（确认文案 30 天清零，无支付） |
 
 ### skill/ —— 本地 Skill
 

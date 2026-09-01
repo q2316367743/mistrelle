@@ -28,6 +28,8 @@ import {
   type AuthPointsTransaction,
   type AuthState,
   type AuthTierInfo,
+  type AuthPackCatalog,
+  type AuthPackLots,
   type AuthSignInParams,
   type AuthSignUpParams,
   type AuthUser
@@ -282,6 +284,19 @@ export async function tiers(): Promise<AuthTierInfo[]> {
   return Array.isArray(res.data) ? res.data : []
 }
 
+const EMPTY_PACK_CATALOG: AuthPackCatalog = { items: [] }
+
+/** 公开增量包 SKU（无需登录） */
+export async function pointsPacks(): Promise<AuthPackCatalog> {
+  const res = await request<{ success: boolean; code: number; msg: string; data: AuthPackCatalog }>(
+    'GET',
+    '/api/points-packs/'
+  )
+  if (!res.success) throw new AuthFailure(res.msg || '获取增量包失败', res.code)
+  if (!res.data || !Array.isArray(res.data.items)) return EMPTY_PACK_CATALOG
+  return res.data
+}
+
 /** 邮箱密码登录：登录取会话 → 创建长期 API Key → 双存凭证 → 刷新资料与余额 */
 export async function signIn(params: AuthSignInParams): Promise<AuthActionResult> {
   try {
@@ -426,6 +441,18 @@ export async function listTransactions(
       `/api/user/transactions?page=${page}&pageSize=${pageSize}`,
       cred.apiKey
     )
+    return { ok: true, data }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+/** 未过期增量包 lot（未登录返回错误，不抛跨进程异常） */
+export async function listPackLots(): Promise<AuthDataResult<AuthPackLots>> {
+  const cred = loadCredential()
+  if (!cred) return { ok: false, msg: '未登录' }
+  try {
+    const data = await apiGet<AuthPackLots>('/api/user/pack-lots', cred.apiKey)
     return { ok: true, data }
   } catch (error) {
     return fail(error)

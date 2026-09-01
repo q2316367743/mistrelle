@@ -18,7 +18,9 @@
       <template #amount="{ row }">
         <span :class="amountClass(row.amount)">{{ formatAmount(row.amount) }}</span>
       </template>
-      <template #balance="{ row }">{{ row.giftAfter + row.totalAfter + row.paidAfter }}</template>
+      <template #balance="{ row }">{{
+        row.giftAfter + row.paidAfter + (row.packAfter ?? 0)
+      }}</template>
       <template #remark="{ row }">{{ row.remark || '—' }}</template>
     </t-table>
     <t-pagination
@@ -53,7 +55,11 @@ const TYPE_LABEL: Record<AuthPointsTxType, string> = {
   refund: '退款',
   admin_adjust: '调整',
   gift_reset: '每日赠送',
-  tier_grant: '档位发放'
+  gift_grant: '每日赠送',
+  tier_grant: '档位发放',
+  pack_grant: '增量包发放',
+  pack_expire: '增量包过期',
+  expire: '过期清零'
 }
 
 const TYPE_THEME: Record<AuthPointsTxType, TagProps['theme']> = {
@@ -62,7 +68,11 @@ const TYPE_THEME: Record<AuthPointsTxType, TagProps['theme']> = {
   refund: 'warning',
   admin_adjust: 'primary',
   gift_reset: 'default',
-  tier_grant: 'primary'
+  gift_grant: 'default',
+  tier_grant: 'primary',
+  pack_grant: 'success',
+  pack_expire: 'warning',
+  expire: 'warning'
 }
 
 const columns: TableProps['columns'] = [

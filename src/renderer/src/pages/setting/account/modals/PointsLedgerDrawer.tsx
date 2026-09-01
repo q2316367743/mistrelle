@@ -7,7 +7,7 @@ import PointsLedgerContent from './PointsLedgerContent.vue'
  */
 export const openPointsLedger = (): void => {
   const dp = DrawerPlugin({
-    header: '积分流水',
+    header: '我的积分',
     size: '800px',
     footer: false,
     destroyOnClose: true,

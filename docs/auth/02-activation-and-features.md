@@ -13,8 +13,8 @@
 
 端点（Bearer apiKey，业务 Result 包装）：
 
-- `POST /api/user/activation-codes/verify` body `{ code }` → `{ type, tier: { code, name, level, months } | null, points: number | null, expiresAt: number | null }`。**展示按 tier / points 是否非空判别**会员码 / 积分包，不依赖 type 字符串值。
-- `POST /api/user/activation-codes/redeem` body `{ code }` → `{ type, tier, tierName, startedAt, expiresAt, grantedPoints, membership }`（时间戳毫秒）。服务端语义：升级档位立即生效并补差积分，同档/降级档位下一期生效。
+- `POST /api/user/activation-codes/verify` body `{ code }` → `{ type, tier: { code, name, level, months } | null, points: number | null, pack: { code, name } | null, expiresAt: number | null }`。**展示按 tier / points 是否非空判别**会员码 / 积分包，不依赖 type 字符串值。
+- `POST /api/user/activation-codes/redeem` body `{ code }` → `{ type, tier, tierName, startedAt, expiresAt, grantedPoints, points, membership }`（时间戳毫秒）。会员码：升级档位立即生效，同档/降级档位下一期生效；`grantedPoints` 为 0（会员不再发基础积分），`points` 为 null。增量包：`tier/startedAt/expiresAt` 为 null，`points` 写入 `points_account` 一笔 pack（发放+30 天）。
 
 | 层 | 文件 | 内容 |
 |---|---|---|
@@ -22,7 +22,7 @@
 | main 服务 | `src/main/src/auth/AuthService.ts` | `verifyActivationCode` / `redeemActivationCode`（经 `apiPost` 业务包装；无凭证返回 `{ok:false,msg:'未登录'}`） |
 | main IPC | `src/main/src/ipc/authIpc.ts` | 两通道纯透传 |
 | preload 桥 | `src/preload/src/ipc/auth.ts` | `verifyCode` / `redeemCode` |
-| 渲染 store + UI | `AuthStore.ts` `verifyCode/redeemCode`；`pages/setting/account/modals/RedeemCodeDialog.tsx` + `RedeemCodeContent.vue` | 输入 → 验证（内联 t-alert 错误）→ 结果卡 → 确认激活 → 成功态 |
+| 渲染 store + UI | `AuthStore.ts` `verifyCode/redeemCode`；`RedeemCodeDialog` + `MemberTierDialog`（底部「积分增量包」入口，不铺 SKU）+ `PackLotsDialog` / `PackSelectDialog` / `PackCheckoutDialog`（选 SKU → 结算确认须提示 30 天清零原文，无支付） |
 
 要点：
 
@@ -75,7 +75,7 @@
 | `pages/setting/ai/SettingAi.vue` | 免费档强制回选内置；内置面板只读展示 + 「刷新模型列表」；登录守卫：guest 提示登录 + `openLogin`，unknown 先 `authStore.refresh()` 再判 |
 | `components/chat/AiModelSelect.vue` | 「模型设置」入口：未登录提示登录（登录成功回 `/setting/ai`）；unknown 先 refresh 再判定 |
 
-**内置供应商 = 服务端中转站**（详见 `docs/setting/05-ai-provider-builtin-relay.md`）：模型列表来自 `GET {server}/v1/models`，对话走主进程 relay IPC 代理 `POST {server}/v1/chat/completions`（服务端 apiKey 由主进程注入，渲染层不接触凭证），免费档可用（消耗赠送/总积分）。
+**内置供应商 = 服务端中转站**（详见 `docs/setting/05-ai-provider-builtin-relay.md`）：模型列表来自 `GET {server}/v1/models`，对话走主进程 relay IPC 代理 `POST {server}/v1/chat/completions`（服务端 apiKey 由主进程注入，渲染层不接触凭证），免费档可用（消耗每日赠送 / 增量包 / 人工充值积分）。
 
 ## 注意事项
 

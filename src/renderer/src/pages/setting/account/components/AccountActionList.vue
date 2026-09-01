@@ -12,8 +12,8 @@
       />
       <account-setting-row
         icon="wallet"
-        title="积分流水"
-        description="查看积分收支明细"
+        title="我的积分"
+        description="每日赠送、人工充值余额及流水"
         arrow
         clickable
         @click="openPointsLedger"

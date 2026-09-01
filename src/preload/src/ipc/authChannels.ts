@@ -14,6 +14,8 @@ export const AuthChannels = {
   refresh: 'auth:refresh',
   /** 公开档位列表（无需登录） */
   tiers: 'auth:tiers',
+  /** 公开增量包 SKU（无需登录） */
+  pointsPacks: 'auth:pointsPacks',
   /** 修改用户名 / 修改密码（会话端点，走签名 Cookie） */
   updateUser: 'auth:updateUser',
   changePassword: 'auth:changePassword',
@@ -22,6 +24,8 @@ export const AuthChannels = {
   redeemCode: 'auth:redeemCode',
   /** 积分流水分页（GET /api/user/transactions） */
   listTransactions: 'auth:listTransactions',
+  /** 未过期增量包 lot（GET /api/user/pack-lots） */
+  listPackLots: 'auth:listPackLots',
   /** 主进程 → 渲染层状态变更推送（登录/登出/刷新后广播） */
   changed: 'auth:changed'
 } as const
@@ -69,16 +73,15 @@ export interface AuthUser {
 
 /** 积分余额（GET /api/user/balance 归一后的域模型） */
 export interface AuthBalance {
-  /** 每日赠送积分（当日有效，次日重置） */
+  /** 每日赠送剩余（当晚午夜清空） */
   pointsGift: number
-  /** 总积分（套餐月度发放，永久保留） */
-  pointsTotal: number
-  /** 充值积分 */
+  /** 管理端人工充值剩余（发放起 30 天有效） */
   pointsPaid: number
+  /** 增量包剩余（未过期账本行之和） */
+  pointsPack: number
   /** 当前档位每日赠送额度 */
   giftQuota: number
-  giftResetDate: string
-  /** 三池合计 */
+  /** 未过期剩余合计 */
   total: number
 }
 
@@ -108,7 +111,6 @@ export interface AuthTierInfo {
   name: string
   category: string
   level: number
-  basePoints: number
   dailyGiftPoints: number
   /** 价格（元/月）；免费档为 0 */
   price: number
@@ -118,6 +120,37 @@ export interface AuthTierInfo {
   customFonts: boolean
   /** 更多设计风格（默认仅自带） */
   extendedDesignStyles: boolean
+}
+
+/** 公开增量包 SKU（GET /api/points-packs/） */
+export interface AuthPackInfo {
+  code: string
+  name: string
+  points: number
+  price: number
+  sort: number
+}
+
+export interface AuthPackCatalog {
+  items: AuthPackInfo[]
+}
+
+export type AuthPackLotSource = 'activation' | 'admin' | 'legacy' | 'login'
+
+export interface AuthPackLot {
+  id: string
+  granted: number
+  remaining: number
+  grantedAt: number
+  expiresAt: number
+  source: AuthPackLotSource
+  packCode: string | null
+  remark: string | null
+}
+
+export interface AuthPackLots {
+  remaining: number
+  items: AuthPackLot[]
 }
 
 export interface AuthNameParams {
@@ -142,17 +175,22 @@ export interface AuthCodeVerifyResult {
   type: string
   tier: { code: string; name: string; level: number; months: number } | null
   points: number | null
+  pack: { code: string; name: string } | null
   expiresAt: number | null
 }
 
 /** 激活结果（POST /api/user/activation-codes/redeem；时间戳为毫秒） */
 export interface AuthCodeRedeemResult {
   type: string
-  tier: string
-  tierName: string
-  startedAt: number
-  expiresAt: number
+  /** 会员档位 code；增量包为 null */
+  tier: string | null
+  /** 会员档位显示名；增量包为 null */
+  tierName: string | null
+  startedAt: number | null
+  expiresAt: number | null
   grantedPoints: number
+  /** 增量包到账积分；会员码为 null */
+  points: number | null
   membership: { tier: string; expiresAt: number | null } | null
 }
 
@@ -174,14 +212,18 @@ export interface AuthPaged<T> {
   items: T[]
 }
 
-/** 积分流水类型：consume 消耗 / recharge 充值 / refund 退款 / admin_adjust 调整 / gift_reset 每日赠送 / tier_grant 档位发放 */
+/** 积分流水类型 */
 export type AuthPointsTxType =
   | 'consume'
   | 'recharge'
   | 'refund'
   | 'admin_adjust'
   | 'gift_reset'
+  | 'gift_grant'
   | 'tier_grant'
+  | 'pack_grant'
+  | 'pack_expire'
+  | 'expire'
 
 /** 积分流水项（GET /api/user/transactions；amount 正为收入、负为支出；createdAt 为 ISO） */
 export interface AuthPointsTransaction {
@@ -192,6 +234,7 @@ export interface AuthPointsTransaction {
   giftAfter: number
   totalAfter: number
   paidAfter: number
+  packAfter: number
   bizType: string | null
   bizId: string | null
   sessionId: string | null

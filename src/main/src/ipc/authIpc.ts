@@ -19,12 +19,16 @@ import {
   type AuthSignInParams,
   type AuthSignUpParams,
   type AuthState,
-  type AuthTierInfo
+  type AuthTierInfo,
+  type AuthPackCatalog,
+  type AuthPackLots
 } from '~/ipc/authChannels'
 import {
   changePassword,
   current,
   listTransactions,
+  listPackLots,
+  pointsPacks,
   refresh,
   redeemActivationCode,
   signIn,
@@ -38,6 +42,7 @@ import {
 export function registerAuthIpc(): void {
   ipcMain.handle(AuthChannels.getState, (): AuthState => current())
   ipcMain.handle(AuthChannels.tiers, (): Promise<AuthTierInfo[]> => tiers())
+  ipcMain.handle(AuthChannels.pointsPacks, (): Promise<AuthPackCatalog> => pointsPacks())
   ipcMain.handle(
     AuthChannels.signIn,
     (_event, params: AuthSignInParams): Promise<AuthActionResult> => signIn(params)
@@ -74,4 +79,5 @@ export function registerAuthIpc(): void {
       params: AuthPageParams
     ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>> => listTransactions(params)
   )
+  ipcMain.handle(AuthChannels.listPackLots, (): Promise<AuthDataResult<AuthPackLots>> => listPackLots())
 }

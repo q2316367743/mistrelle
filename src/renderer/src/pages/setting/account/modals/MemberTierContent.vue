@@ -1,6 +1,6 @@
 <template>
   <div class="member-tier">
-    <p class="member-tier__hint">档位按月计价，通过激活码开通与续期</p>
+    <p class="member-tier__hint">档位按月计价，通过激活码开通与续期。会员只决定每日登录赠送多少积分。</p>
     <t-empty v-if="rows.length === 0" description="暂无档位信息" />
     <div v-else class="member-tier__list">
       <div
@@ -11,7 +11,7 @@
         <div class="member-tier__info">
           <div class="member-tier__name">{{ tier.name }}</div>
           <div class="member-tier__quota">
-            每日赠送 {{ tier.dailyGiftPoints }} 积分 · 基础 {{ tier.basePoints }} 积分
+            每日赠送 {{ tier.dailyGiftPoints }} 积分
           </div>
           <div v-if="tier.perks.length" class="member-tier__perks">
             <span v-for="perk in tier.perks" :key="perk.key" class="member-tier__perk">
@@ -39,10 +39,16 @@
         </div>
       </div>
     </div>
+    <div class="member-tier__actions">
+      <t-button theme="primary" variant="outline" @click="handlePacks">积分增量包</t-button>
+    </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { CheckIcon } from 'tdesign-icons-vue-next'
+import { useAuthStore } from '@/store'
+import { openPackLots } from './PackLotsDialog'
+import { openPackSelect } from './PackSelectDialog'
 
 type FeatureKey = 'thirdPartyRelay' | 'extendedDesignStyles' | 'customFonts'
 
@@ -58,6 +64,7 @@ interface TierRow extends AuthTierInfo {
 
 const props = defineProps<{ tiers: AuthTierInfo[]; currentTier: string | null }>()
 defineEmits<{ close: [] }>()
+const authStore = useAuthStore()
 
 const rows = computed<TierRow[]>(() =>
   [...props.tiers]
@@ -67,6 +74,11 @@ const rows = computed<TierRow[]>(() =>
       perks: FEATURES.filter((item) => tier[item.key])
     }))
 )
+
+function handlePacks(): void {
+  if (authStore.status === 'signed-in') openPackLots()
+  else openPackSelect(authStore.packs)
+}
 </script>
 <style scoped lang="less">
 .member-tier {
@@ -166,5 +178,11 @@ const rows = computed<TierRow[]>(() =>
 .member-tier__price-unit {
   font: var(--td-font-body-small);
   color: var(--td-text-color-secondary);
+}
+
+.member-tier__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 </style>
