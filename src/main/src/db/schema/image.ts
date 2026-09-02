@@ -24,6 +24,18 @@ export const imageGenerations = sqliteTable(
     status: text('status').$type<ImageGenerateStatus>().notNull(),
     /** 失败原因（status=failed 时存在） */
     error: text('error'),
+    /**
+     * 异步任务型（中转站返回 task_id 需轮询）的远端任务标识；
+     * 同步模式 / 提交即失败为空。非空说明该失败可能可「续轮询」同一任务。
+     */
+    taskId: text('task_id'),
+    /** 远端任务查询绝对截止时间（首次轮询起点 + 5 分钟窗口），续轮询判定窗口用 */
+    pollMaxAt: integer('poll_max_at'),
+    /**
+     * 远端任务是否已确认终态（查询返回 failed / cancelled，或 completed 但缺图）；
+     * true 时任务不可能再出图，UI 不再显示「重试」。null=非异步任务型或尚未确认。
+     */
+    taskTerminal: integer('task_terminal', { mode: 'boolean' }),
     createdAt: integer('created_at').notNull()
   },
   (t) => [index('idx_image_generate_created').on(t.createdAt)]

@@ -13,6 +13,7 @@
         :has-more="hasMore"
         @open="handleOpen"
         @retry="handleRetry"
+        @delete="handleDelete"
         @load-more="loadMore"
       />
     </div>
@@ -36,7 +37,7 @@ const {
   loadMore,
   generate,
   remove,
-  retry,
+  resumeRetry,
   init
 } = useImageGenerations()
 
@@ -50,13 +51,16 @@ const handleSubmit = (prompt: string, size?: string, model?: string) =>
 // eslint-disable-next-line no-undef
 const handleOpen = (record: ImageRecordInput) => {
   openImageDetail(record, {
-    onRetry: (r) => retry(r),
+    onRetry: (r) => resumeRetry(r),
     onDeleted: (id) => remove(id)
   })
 }
 
 // eslint-disable-next-line no-undef
-const handleRetry = (record: ImageRecordInput) => retry(record)
+const handleRetry = (record: ImageRecordInput) => resumeRetry(record)
+
+// eslint-disable-next-line no-undef
+const handleDelete = (record: ImageRecordInput) => remove(record.id)
 </script>
 
 <style scoped lang="less">

@@ -6,13 +6,23 @@
 //  - 提交即插入 pending（列表头插，UI 立即出占位卡），生成结束 upsert 收尾
 //  - 删除 pending 中的记录后，完成时丢弃结果并清掉落盘文件（防 upsert 复活）
 //  - init 时把「不在运行中」的遗留 pending（上次会话中断）收尾为 failed
+//  - 失败记录按异步任务型（taskId）/ 终态（taskTerminal）/ 查询窗口（pollMaxAt）
+//    判定是否可「续轮询」：可续的失败点击重试=原地改回 pending，对同一远端
+//    task_id 继续轮询（不重新提交任务）；其余失败只可删除
 //  筛选 / 搜索 / 分页在 main 的 SQL 内完成，本侧不持有全量数组
 // ==========================================
 import { useSettingAiStore, useSettingDefaultStore } from '@/store'
-import { generateImage } from '@/modules/chat/service/ImageGenerate'
+import {
+  generateImage,
+  resumeTaskPoll,
+  type GenerateImageError,
+  type GenerateImageResult
+} from '@/modules/chat/service/ImageGenerate'
 import { getImageGenerateDir } from '@/global/Constant'
 import { useSnowflake } from '@/hooks'
+import { MessageUtil } from '@/utils/modal'
 import dayjs from 'dayjs'
+import { canResumePoll } from './image-page-utils'
 
 /** 每页条数 */
 const PAGE_SIZE = 24
@@ -91,7 +101,9 @@ const createImageGenerations = () => {
     const id = useSnowflake().nextId()
     const month = dayjs().format('YYYY-MM')
     const path = window.preload.path.join(getImageGenerateDir(month), `${id}.png`)
-    const record: ImageRecordInput = {
+    // let：onTaskCreated 确认异步任务型后原地补 taskId / pollMaxAt，
+    // 保证最终收尾（finishPending）展开的是已带远端标识的记录
+    let record: ImageRecordInput = {
       id,
       prompt,
       model: modelName,
@@ -101,6 +113,9 @@ const createImageGenerations = () => {
       height: null,
       status: 'pending',
       error: null,
+      taskId: null,
+      pollMaxAt: null,
+      taskTerminal: null,
       createdAt: Date.now()
     }
 
@@ -111,24 +126,94 @@ const createImageGenerations = () => {
       list.value.unshift(record)
       total.value += 1
 
-      const result = await generateImage({ prompt, path, size, model: modelKey || undefined })
+      const result = await generateImage({
+        prompt,
+        path,
+        size,
+        model: modelKey || undefined,
+        // 确认异步任务型（响应带 task_id）：轮询开始前就把远端标识落库，
+        // 生成中被中断 / 应用退出也能跨重启续轮询同一任务
+        onTaskCreated: (taskId, pollMaxAt) => {
+          record = { ...record, taskId, pollMaxAt }
+          upsertLocal(record)
+        }
+      })
       if (cancelledIds.has(id)) {
         cancelledIds.delete(id)
         await removeImageFile(path)
         return
       }
-      if ('error' in result) {
-        await upsertLocal({ ...record, status: 'failed', error: result.error })
-      } else {
-        await upsertLocal({
-          ...record,
-          status: 'success',
-          width: result.width ?? null,
-          height: result.height ?? null
-        })
-      }
+      await finishPending(record, result)
     } finally {
       runningIds.delete(id)
+      runningCount.value -= 1
+    }
+  }
+
+  /**
+   * 收尾一次生成 / 续轮询结果：成功补宽高；失败写 error，
+   * 并持久化 taskId / pollMaxAt（可续轮询的依据）与 taskTerminal（不可续标记）。
+   * 失败按 result 的 kind 判别是否可续：resumable（任务可能仍在跑）保留 task_id 可重试，
+   * terminal（已确认终态 / 无远端任务）标 task_terminal=true 只可删除。
+   */
+  const finishPending = async (
+    record: ImageRecordInput,
+    result: GenerateImageResult | GenerateImageError
+  ): Promise<void> => {
+    if ('error' in result) {
+      await upsertLocal({
+        ...record,
+        status: 'failed',
+        error: result.error,
+        taskId: result.taskId ?? record.taskId,
+        pollMaxAt: result.pollMaxAt ?? record.pollMaxAt,
+        taskTerminal: result.kind === 'terminal'
+      })
+    } else {
+      await upsertLocal({
+        ...record,
+        status: 'success',
+        width: result.width ?? null,
+        height: result.height ?? null
+      })
+    }
+  }
+
+  /**
+   * 续轮询一个异步任务型失败记录：记录原地改回 pending，对同一远端 task_id 继续轮询
+   * （剩余查询窗口 ≤5 分钟，不重新提交任务、不重复扣费）。
+   * 非可续失败（同步失败 / 已确认终态 / 已超窗口）直接提示不可重试。
+   */
+  const resumeRetry = async (record: ImageRecordInput): Promise<void> => {
+    if (record.status !== 'failed' || !record.taskId) return
+    if (!canResumePoll(record)) {
+      MessageUtil.warning('该任务已超过可查询窗口或已结束：无法续轮询，请重新生成')
+      return
+    }
+    const pending: ImageRecordInput = { ...record, status: 'pending', error: null }
+    runningIds.add(record.id)
+    runningCount.value += 1
+    try {
+      await window.preload.db.image.upsert(pending)
+      const idx = list.value.findIndex((it) => it.id === record.id)
+      if (idx >= 0) list.value[idx] = pending
+      const result = await resumeTaskPoll({
+        prompt: record.prompt,
+        path: record.path ?? '',
+        size: record.size ?? undefined,
+        model: findModelKeyByModelName(record.model),
+        taskId: record.taskId,
+        // 无窗口记录的旧数据：视为从当前起再给一个完整 5 分钟窗口
+        pollMaxAt: record.pollMaxAt ?? Date.now() + 5 * 60 * 1000
+      })
+      if (cancelledIds.has(record.id)) {
+        cancelledIds.delete(record.id)
+        if (record.path) await removeImageFile(record.path)
+        return
+      }
+      await finishPending(pending, result)
+    } finally {
+      runningIds.delete(record.id)
       runningCount.value -= 1
     }
   }
@@ -142,10 +227,6 @@ const createImageGenerations = () => {
     }
     return undefined
   }
-
-  /** 以原 prompt / size / 模型重新发起一次（新记录，保留失败历史） */
-  const retry = (record: ImageRecordInput): Promise<void> =>
-    generate(record.prompt, record.size ?? undefined, findModelKeyByModelName(record.model))
 
   /** 删除记录并联动删图片文件；pending 中的纳入取消集合 */
   const remove = async (id: string): Promise<void> => {
@@ -184,7 +265,7 @@ const createImageGenerations = () => {
     loadMore,
     generate,
     remove,
-    retry,
+    resumeRetry,
     init
   }
 }

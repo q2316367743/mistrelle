@@ -36,9 +36,13 @@
           <template #icon><Fullscreen1Icon /></template>
           全屏查看
         </t-button>
-        <t-button v-if="record.status === 'failed'" theme="primary" @click="emit('retry', record)">
+        <t-button
+          v-if="record.status === 'failed' && canResumePoll(record)"
+          theme="primary"
+          @click="emit('retry', record)"
+        >
           <template #icon><RefreshIcon /></template>
-          重新生成
+          重试
         </t-button>
       </div>
     </div>
@@ -102,7 +106,7 @@ import {
   Fullscreen1Icon,
   RefreshIcon
 } from 'tdesign-icons-vue-next'
-import { formatDateTime, pathToHref } from '../image-page-utils'
+import { formatDateTime, canResumePoll, pathToHref } from '../image-page-utils'
 
 const props = defineProps<{
   record: ImageRecordInput
@@ -147,7 +151,12 @@ const showInFolder = () => {
 
 const handleDelete = async () => {
   try {
-    await MessageBoxUtil.confirm('确认删除这张图片与生成记录？删除后不可恢复', '删除确认')
+    await MessageBoxUtil.confirm(
+      props.record.status === 'success'
+        ? '确认删除这张图片与生成记录？删除后不可恢复'
+        : '确认删除这条生成记录？删除后不可恢复',
+      '删除确认'
+    )
   } catch {
     return
   }

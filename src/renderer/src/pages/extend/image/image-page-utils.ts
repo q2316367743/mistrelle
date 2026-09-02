@@ -9,3 +9,15 @@ export const formatDateTime = (ts: number): string => {
 
 /** 本地绝对路径 → mistrelle:// URL（页面图片统一走本地协议显示） */
 export const pathToHref = (path: string): string => window.preload.net.pathToHref(path)
+
+/**
+ * 失败记录是否可「重试（续轮询同一个远端任务）」：
+ * 仅异步任务型（带 taskId）、远端未确认终态、且未超 5 分钟查询窗口时才可续；
+ * 同步失败 / 提交即失败（无远端任务）与已确认终态失败均只可删除。
+ */
+export const isRetryableFailed = (rec: ImageRecordInput): boolean =>
+  rec.status === 'failed' && !!rec.taskId && rec.taskTerminal !== true
+
+/** isRetryableFailed 且仍在查询窗口内（pollMaxAt 未过期；无 pollMaxAt 的旧数据默认窗口内） */
+export const canResumePoll = (rec: ImageRecordInput): boolean =>
+  isRetryableFailed(rec) && (rec.pollMaxAt == null || rec.pollMaxAt > Date.now())

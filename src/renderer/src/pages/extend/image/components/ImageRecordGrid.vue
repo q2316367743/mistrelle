@@ -48,7 +48,7 @@
             </p>
             <div class="card-actions">
               <t-button
-                v-if="item.status === 'failed'"
+                v-if="item.status === 'failed' && canResumePoll(item)"
                 size="small"
                 theme="primary"
                 variant="outline"
@@ -56,6 +56,18 @@
               >
                 <template #icon><RefreshIcon /></template>
                 重试
+              </t-button>
+              <t-button
+                v-if="item.status === 'failed'"
+                class="delete-btn"
+                size="small"
+                shape="square"
+                theme="danger"
+                variant="text"
+                title="删除记录"
+                @click.stop="handleDelete(item)"
+              >
+                <template #icon><DeleteIcon /></template>
               </t-button>
             </div>
           </div>
@@ -75,9 +87,10 @@
 </template>
 
 <script lang="ts" setup>
-import { ErrorCircleFilledIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-vue-next'
+import { DeleteIcon, ErrorCircleFilledIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import EmptyResult from '@/components/Result/EmptyResult.vue'
-import { formatDateTime, pathToHref } from '../image-page-utils'
+import { MessageBoxUtil } from '@/utils/modal'
+import { canResumePoll, formatDateTime, pathToHref } from '../image-page-utils'
 
 const props = defineProps<{
   // eslint-disable-next-line no-undef
@@ -95,6 +108,8 @@ const emit = defineEmits<{
   open: [record: ImageRecordInput]
   // eslint-disable-next-line no-undef
   retry: [record: ImageRecordInput]
+  // eslint-disable-next-line no-undef
+  delete: [record: ImageRecordInput]
   'load-more': []
 }>()
 
@@ -105,7 +120,18 @@ const keywordModel = computed({
 
 // eslint-disable-next-line no-undef
 const handleCardClick = (item: ImageRecordInput) => {
-  if (item.status === 'success') emit('open', item)
+  // 成功卡看大图，失败卡看错误详情与删除/重试；生成中不可点
+  if (item.status === 'success' || item.status === 'failed') emit('open', item)
+}
+
+// eslint-disable-next-line no-undef
+const handleDelete = async (item: ImageRecordInput) => {
+  try {
+    await MessageBoxUtil.confirm('确认删除这张生成记录？删除后不可恢复', '删除确认')
+  } catch {
+    return
+  }
+  emit('delete', item)
 }
 </script>
 
@@ -259,7 +285,9 @@ const handleCardClick = (item: ImageRecordInput) => {
 
 .card-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 4px;
 }
 
 .load-more {

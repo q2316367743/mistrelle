@@ -40,6 +40,9 @@ const upsertSet = {
   height: sql`excluded.height`,
   status: sql`excluded.status`,
   error: sql`excluded.error`,
+  taskId: sql`excluded.task_id`,
+  pollMaxAt: sql`excluded.poll_max_at`,
+  taskTerminal: sql`excluded.task_terminal`,
   createdAt: sql`excluded.created_at`
 }
 

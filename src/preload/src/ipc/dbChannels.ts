@@ -127,6 +127,12 @@ export interface ImageRecordInput {
   height: number | null
   status: ImageGenerateStatus
   error: string | null
+  /** 异步任务型（中转站返回 task_id 需轮询）的远端任务标识；同步模式 / 提交即失败为空 */
+  taskId: string | null
+  /** 远端任务查询绝对截止时间（首次轮询起点 + 5 分钟窗口），续轮询判定窗口用 */
+  pollMaxAt: number | null
+  /** 远端任务是否已确认终态（failed / cancelled / 完成但缺图）；true 时不可再续轮询 */
+  taskTerminal: boolean | null
   createdAt: number
 }
 

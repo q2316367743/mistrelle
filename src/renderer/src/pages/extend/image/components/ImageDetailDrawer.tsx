@@ -19,7 +19,11 @@ export const openImageDetail = (
     body: () =>
       h(ImageDetailDrawerContent, {
         record,
-        onRetry: (r: ImageRecordInput) => handlers.onRetry(r),
+        onRetry: (r: ImageRecordInput) => {
+          handlers.onRetry(r)
+          // 续轮询后记录将转为 pending，关闭抽屉回列表看占位卡反馈
+          dp?.destroy?.()
+        },
         onDeleted: (id: string) => {
           handlers.onDeleted(id)
           dp?.destroy?.()
