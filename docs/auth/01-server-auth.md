@@ -27,9 +27,19 @@ interface StoredCredential {
 better-auth 1.7.2 的 **会话类端点**（`api-key/create|delete`、`sign-out`、`get-session`）内部走 `getSessionFromCtx` → `get-session` 路由，该路由**只从签名 Cookie**（`ctx.getSignedCookie('better-auth.session_token')`）读取会话，`Authorization: Bearer <sessionToken>` 不生效（会 401 `Unauthorized or invalid session`）。
 
 因此客户端：
-1. 登录/注册成功后**捕获响应 `Set-Cookie` 中的 `better-auth.session_token=<signed>` 原样回放**（无需知道 secret，不自己签名）；
+1. 登录/注册成功后**捕获响应 `Set-Cookie` 中的签名会话 Cookie 原样回放**（无需知道 secret，不自己签名）；
+   **Cookie 名随环境前缀不同**：本地 http 为 `better-auth.session_token=`，生产 https 为 `__Secure-better-auth.session_token=`
+   （better-auth 1.7 在 https 下自动加 `__Secure-` 前缀并带 `Secure` 属性）。`extractSessionCookie()` 需按
+   `.session_token=` 后缀兼容两代名称，否则解析为 null → 回退 Bearer → 会话端点 401 `Unauthorized or invalid session`。
 2. 携带 Cookie 的请求必须同时带 `Origin: <baseUrl>`（触发 better-auth origin 校验时与 trustedOrigins/root origin 匹配）；
 3. Bearer 仅作 Cookie 缺失（旧凭证）时的回退。
+
+> **Origin 白名单依赖服务端配置（踩坑记录）**：better-auth 的 origin 校验要求回放的 `Origin` 落在服务端
+> `trustedOrigins` 内（`BETTER_AUTH_URL` 会被自动列入）。服务端必须把对外域名配成
+> `BETTER_AUTH_URL=https://mistrelle.esion.xyz`（无 path），否则桌面端无论回放 `http/https://mistrelle.esion.xyz`
+> 都会在 `POST /auth/api/api-key/create` 处 403 `Invalid origin`（现象：注册/登录已成功、卡在创建长期 API Key）。
+> 已服务端 `trustedOrigins: [env.betterAuthUrl]` 显式声明。客户端侧的 `Origin` 必须与服务端配置逐字符一致
+> （由 `baseUrl()` 保证，见下节地址还原）。
 
 > 历史教训（已修复）：服务端 `drizzleAdapter` 的 schema 键名必须与 better-auth 插件模型名**完全一致**——apiKey 插件按小写 `"apikey"` 查找表，键写成 `apiKey:` 会让 `api-key/create|list` 与 `verifyApiKey` 全部抛 BetterAuthError（HTTP 500 空体）。客户端报错若停在 `POST /auth/api/api-key/create` 的 500，先查服务端这一处。
 > 另一踩坑：apiKey 插件默认 `rateLimit` 10 次/天，桌面 agent 的业务请求每次都过 `verifyApiKey`，超限后返回无效 → 业务 401 → 客户端误判凭证失效清凭证登出（现象：刷新按钮点完直接登出）。已服务端 `apiKey({ rateLimit: { enabled: false } })` 关闭；客户端不可传 `rateLimitEnabled`（`SERVER_ONLY_PROPERTY` 会 400 拒绝）。
@@ -40,7 +50,7 @@ better-auth 的 origin-check/formCsrf 中间件只对**携带 Cookie / Origin / 
 
 ## 请求契约
 
-- 服务端地址：`http://127.0.0.1:3000`（dev）/ `https://mistrelle.esion.xyz`（prod，`app.isPackaged` 判定），可用环境变量 `MISTRELLE_SERVER_URL` 覆盖。
+- 服务端地址：`http://127.0.0.1:3000`（dev）/ `https://mistrelle.esion.xyz`（prod，`app.isPackaged` 判定），可用环境变量 `MISTRELLE_SERVER_URL` 覆盖。**调试勿将 PROD 改成裸 `http://`**——会明文传输 API Key，且调试残留曾致本地 dev 误连生产。
 - better-auth 端点直出 JSON；业务端点统一 `{ success, code, msg, data }`（code=0 成功；401 未登录、403 非管理员、429 积分不足）。
 - better-auth 错误体为**顶层** `{ message, code }`（如 401 `{ message: 'Invalid email or password', code: 'INVALID_EMAIL_OR_PASSWORD' }`），客户端按 code 映射中文文案（`INVALID_EMAIL_OR_PASSWORD`→「邮箱或密码错误」、`USER_ALREADY_EXISTS`→「该邮箱已注册」等）；兼容嵌套 `{ error: {...} }` 与业务 `{ success, code, msg }`。
 - `POST /auth/api/sign-in/email`、`/sign-up/email`（注册即登录）：响应 `{ redirect, token, user }`（sign-up 的 token 可能为 null）。

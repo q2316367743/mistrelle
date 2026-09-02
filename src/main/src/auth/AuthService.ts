@@ -481,8 +481,13 @@ async function exchangeSession(
 
 /** 从 Set-Cookie 中取出签名会话 Cookie（better-auth.session_token=<signed>），供原样回放 */
 function extractSessionCookie(setCookies: string[]): string | null {
+  // 兼容两代会话 Cookie 名：本地 http 为 better-auth.session_token；生产 https 下 better-auth 自动加
+  // __Secure- 前缀（__Secure-better-auth.session_token，带 Secure 属性）。取回 name=value 整段原样回放。
   for (const cookie of setCookies) {
-    if (cookie.startsWith('better-auth.session_token=')) return cookie.split(';')[0]
+    const name = cookie.split(';')[0].split('=')[0]
+    if (name === 'better-auth.session_token' || name === '__Secure-better-auth.session_token') {
+      return cookie.split(';')[0]
+    }
   }
   return null
 }
