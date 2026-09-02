@@ -11,6 +11,10 @@
 模型来源分两级：表单「生图模型」下拉（`SettingAiStore.imageOptions`，
 type=image 的模型分组，value=`${provideId}:${identifier}`）显式选择优先，
 缺省回退「设置 → 默认设置 → 默认生图模型」；`generateImage` 的 `params.model` 同样如此。
+表单挂载时自动选中默认生图模型（store 异步读盘后回填，手动改选不覆盖）。
+另可选**设计风格**（全局组件 `StyleSelect`，见 `docs/design/05-style-preview.md`）：
+选中后 `buildDesignStylePrompt` 把风格转成提示词段，仅拼接进实际生图请求
+（`${用户prompt}\n\n${风格提示词}`）；记录存用户原始 prompt，风格名快照存 `style_name` 列留档出处。
 记录存 SQLite（`image_generate` 表），图片文件存
 `~/.mistrelle/image/generate/{yyyy-MM}/{id}.png`（文件名 = 记录 id，id 即雪花 id），
 展示走 `mistrelle://` 本地协议（`window.preload.net.pathToHref`）。
@@ -45,7 +49,8 @@ type=image 的模型分组，value=`${provideId}:${identifier}`）显式选择�
 | renderer | `src/renderer/src/global/Constant.ts` | `getImageGenerateDir(month)` 路径工厂 |
 | renderer | `pages/attachment/image/AttachmentImagePage.vue` | 页面骨架（生成面板 + 记录网格） |
 | renderer | `pages/attachment/image/useImageGenerations.ts` | **模块级单例**数据源：分页/搜索/生成状态机/删除/续轮询重试（跨路由切换存活） |
-| renderer | `pages/attachment/image/components/ImageGenerateForm.vue` | 模型+尺寸+提示词 + 生成按钮（未配置模型时引导） |
+| renderer | `pages/attachment/image/components/ImageGenerateForm.vue` | 模型+风格+尺寸+提示词 + 生成按钮（默认模型自动选中；未配置模型时引导） |
+| renderer | `components/design/StyleSelect.vue` | 全局设计风格下拉（分组 + 悬浮预览 + 非会员锁定），与 PageNew 共用；`v-model` 风格 id |
 | renderer | `pages/attachment/image/components/ImageRecordGrid.vue` | 历史网格（占位卡/失败可续重试 + 删除/搜索/加载更多/空态） |
 | renderer | `pages/attachment/image/components/ImageDetailDrawer.tsx` + `ImageDetailDrawerContent.vue` | 图片详情命令式抽屉（大图 + t-image-viewer + 复制 prompt + 删除/重试） |
 | renderer | `pages/attachment/image/image-page-utils.ts` | `formatDateTime` / `pathToHref` / `canResumePoll` / `isRetryableFailed` 纯函数 |
@@ -53,7 +58,8 @@ type=image 的模型分组，value=`${provideId}:${identifier}`）显式选择�
 
 ## 数据结构 / IPC 契约
 
-表 `image_generate`：`id`(PK, 雪花) / `prompt` / `model`(模型名快照) / `size` /
+表 `image_generate`：`id`(PK, 雪花) / `prompt`(用户原文) / `model`(模型名快照) /
+`style_name`(设计风格名快照，未选风格为空) / `size` /
 `path`(图片绝对路径，pending 时即为预定路径) / `width` / `height` / `status` / `error` /
 `task_id`(异步任务型远端标识，同步为空) / `poll_max_at`(远端查询绝对截止) /
 `task_terminal`(远端是否已确认终态) / `created_at`。
@@ -86,6 +92,15 @@ IPC（`dbApi.image`）：`list({filter:{keyword,status}, limit, offset}) → {it
 
 ## 注意事项
 
+- **设计风格提示词**：`generate(prompt, size?, model?, styleId?)` 第 4 参为风格 id；
+  `DesignStyleStore.getDetail(styleId)` 拿完整 `AiDesignStyle` 后 `buildDesignStylePrompt(style)`
+  （withVisualPrompt 默认 true，含正/反向提示词段）拼成 `${用户prompt}\n\n${风格提示词}` 传给
+  `generateImage`。**记录 `prompt` 列保留用户原文**（历史卡片可读），风格名快照存 `style_name` 列
+  （同 `model` 快照语义，风格后期改名 / 删除不影响历史展示；记录卡 meta 行「模型 · 风格」合并显示、
+  详情抽屉单独一行）；风格已删或详情读取失败时按无风格生成（style_name 为空）不阻断；
+  续轮询 `resumeTaskPoll` 沿用远端 task_id，与风格无关。
+- **默认生图模型回显**：表单 `watch(defaultImageModel, immediate)`，模型下拉为空且有默认时自动选中
+  （store 异步读盘后也能回填）；用户手动改选后不被覆盖，清空仍走「跟随默认」回退语义。
 - 模型来源优先级：表单显式选择（`params.model`）> 默认生图模型；`defaultImageModel` 为空但页面显式选了模型时同样可生成。
   表单引导三态：无任何可用生图模型（imageOptions 空）→ 「去设置」；有模型但未选且未配默认 → 提示选择；否则正常生成。
 - 记录 `model` 列存的是生成时使用的 `option.model` 显示名快照；续轮询按该名称在 `optionMap` 反查 key
@@ -94,7 +109,8 @@ IPC（`dbApi.image`）：`list({filter:{keyword,status}, limit, offset}) → {it
   `ipc/dbIpc.ts`、`preload/dbChannels.ts`、`preload/db.ts`、渲染侧 `types/db.d.ts`；
   表结构变更后需 `npx drizzle-kit generate` 生成迁移（`resources/drizzle/`），运行时 `migrate()` 自动应用。
   `task_id` / `poll_max_at` / `task_terminal` 三列为 2026-09-02 增量（`resources/drizzle/0008_*.sql`，纯 ADD 列，
-  存量行三列为 NULL → 判定为不可续轮询、UI 隐藏「重试」，无数据迁移）。
+  存量行三列为 NULL → 判定为不可续轮询、UI 隐藏「重试」，无数据迁移）；
+  `style_name` 为 2026-09-02 增量（`0009_*.sql`，纯 ADD 列，存量行为 NULL → UI 显示「—」，无数据迁移）。
 - `status` 列用 `$type<ImageGenerateStatus>()` 声明字面量类型（drizzle text() 默认推断为 string，否则 select 返回无法赋值给 `ImageRecordInput`）；
   `task_terminal` 列用 `{ mode: 'boolean' }` 声明（渲染侧 `ImageRecordInput.taskTerminal: boolean | null`）。
 - 失败分类语义（`ImageGenerate.ts`）：`kind: 'terminal' | 'resumable'`——

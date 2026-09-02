@@ -6,6 +6,7 @@
  * - path 为图片文件绝对路径（按月分桶 ~/.mistrelle/image/generate/{yyyy-MM}/{id}.png），
  *   pending 时即为预定路径；删除记录时由渲染侧联动删文件。
  * - model 为生成时的模型名快照（设置中的默认生图模型后期变化不影响历史记录展示）。
+ * - style_name 为生成时的设计风格名快照（同 model，仅记录出处，风格后期改名 / 删除不影响历史）。
  */
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type { ImageGenerateStatus } from '~/ipc/dbChannels'
@@ -16,6 +17,8 @@ export const imageGenerations = sqliteTable(
     id: text('id').primaryKey(),
     prompt: text('prompt').notNull(),
     model: text('model'),
+    /** 生成时的设计风格名快照；未选风格为空 */
+    styleName: text('style_name'),
     size: text('size'),
     path: text('path'),
     width: integer('width'),

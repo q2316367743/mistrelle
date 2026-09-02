@@ -58,6 +58,8 @@ declare module 'vue' {
     ShellChatTool: typeof import('./src/components/chat/chat-assistant/tool/ShellChatTool.vue')['default']
     ShinyText: typeof import('./src/components/bits/ShinyText.vue')['default']
     SkillChatTool: typeof import('./src/components/chat/chat-assistant/tool/SkillChatTool.vue')['default']
+    StyleCardFace: typeof import('./src/components/design/StyleCardFace.vue')['default']
+    StyleSelect: typeof import('./src/components/design/StyleSelect.vue')['default']
     SubAgentChatTool: typeof import('./src/components/chat/chat-assistant/tool/SubAgentChatTool.vue')['default']
     SubAgentTabs: typeof import('./src/components/chat/SubAgentTabs.vue')['default']
     SubPageLayout: typeof import('./src/components/PageLayout/SubPageLayout.vue')['default']

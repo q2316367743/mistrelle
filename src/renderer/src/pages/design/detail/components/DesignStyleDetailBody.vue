@@ -107,7 +107,7 @@ import StylePaletteBlock from './StylePaletteBlock.vue'
 import StyleTypographyBlock from './StyleTypographyBlock.vue'
 import StyleTokenBlock from './StyleTokenBlock.vue'
 import StylePromptBlock from './StylePromptBlock.vue'
-import StyleCardFace from '@/pages/design/components/StyleCardFace.vue'
+import StyleCardFace from '@/components/design/StyleCardFace.vue'
 
 const props = defineProps<{ style: AiDesignStyle; online?: boolean }>()
 

@@ -15,51 +15,7 @@
           <div class="page-new__type-desc">{{ currentScene?.description }}</div>
         </template>
         <template v-if="type === 'design' || type === 'ppt'">
-          <t-select
-            v-model="designStyleId"
-            clearable
-            filterable
-            placeholder="选择设计风格（可选）"
-            class="page-new__style"
-            :popup-props="{ overlayClassName: 'page-new-style-overlay' }"
-          >
-            <t-option-group
-              v-for="group in designStyleGroups"
-              :key="group.category"
-              :label="group.label"
-            >
-              <t-option
-                v-for="s in group.items"
-                :key="s.id"
-                :value="s.id"
-                :label="s.name"
-                :disabled="!s.isSystem && stylesLocked"
-              >
-                <t-popup
-                  trigger="hover"
-                  placement="right-top"
-                  :show-arrow="false"
-                  :delay="[120, 100]"
-                  :overlay-inner-style="{ padding: '0' }"
-                >
-                  <div class="page-new__style-option">
-                    <span class="page-new__style-option-name">
-                      {{ s.name }}
-                      <t-tag v-if="s.isSystem" theme="primary" variant="light" size="small"
-                        >内置</t-tag
-                      >
-                    </span>
-                    <span class="page-new__style-option-desc">{{ s.description }}</span>
-                  </div>
-                  <template #content>
-                    <div class="page-new__style-preview">
-                      <style-card-face :style="s" variant="compact" :scale="0.5" />
-                    </div>
-                  </template>
-                </t-popup>
-              </t-option>
-            </t-option-group>
-          </t-select>
+          <style-select v-model="designStyleId" class="page-new__style" />
         </template>
       </div>
       <div class="page-new__sender">
@@ -69,13 +25,11 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { groupDesignStylesByCategory } from '@/entity'
-import { useAuthStore, useAiChatStore, useDesignStyleStore, useSettingDefaultStore } from '@/store'
+import { useAiChatStore, useSettingDefaultStore } from '@/store'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { CHAT_TYPE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { toggleCollapsed } from '@/global/BeanFactory'
-import StyleCardFace from '@/pages/design/components/StyleCardFace.vue'
 
 /** 显式组件名：App.vue 的 keep-alive 按此名对「新建聊天」页保活 */
 defineOptions({ name: 'PageNew' })
@@ -93,19 +47,6 @@ const sceneOptions = WRITING_SCENE_OPTIONS
 
 const currentOption = computed(() => typeOptions.find((option) => option.value === type.value))
 const currentScene = computed(() => sceneOptions.find((option) => option.value === scene.value))
-
-const designStyleStore = useDesignStyleStore()
-/** 自定义设计风格为会员功能：非会员在下拉中可见但锁定选择 */
-const stylesLocked = computed(() => !useAuthStore().features.extendedDesignStyles)
-/** 按分组聚合的设计风格选项（预设 + 用户自建） */
-const designStyleGroups = computed(() =>
-  groupDesignStylesByCategory(
-    designStyleStore.all.map((s) => ({
-      ...s,
-      isSystem: 'isSystem' in s && s.isSystem
-    }))
-  )
-)
 
 const handleSend = async (message: ChatRequestParams) => {
   if (!message.message.model) {
@@ -191,41 +132,7 @@ watch(
   width: 360px;
 }
 
-.page-new__style-option {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 2px 0;
-}
-
-.page-new__style-option-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--td-font-size-body-medium);
-  color: var(--td-text-color-primary);
-}
-
-.page-new__style-option-desc {
-  font-size: var(--td-font-size-body-small);
-  color: var(--td-text-color-secondary);
-}
-
-.page-new__style-preview {
-  width: 300px;
-  padding: 8px;
-}
-
 .page-new__sender {
   width: 100%;
-}
-</style>
-<style lang="less">
-/* 自定义 select 下拉选项面板（teleport 到 body，需全局样式；类名见 popup-props.overlayClassName） */
-.page-new-style-overlay {
-  .t-select-option {
-    height: 100%;
-    padding: 8px;
-  }
 }
 </style>

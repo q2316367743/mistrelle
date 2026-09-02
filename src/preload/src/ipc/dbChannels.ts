@@ -120,6 +120,8 @@ export interface ImageRecordInput {
   id: string
   prompt: string
   model: string | null
+  /** 生成时的设计风格名快照；未选风格为空 */
+  styleName: string | null
   size: string | null
   /** 图片文件绝对路径（pending 时即为预定路径） */
   path: string | null

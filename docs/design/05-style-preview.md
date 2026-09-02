@@ -10,10 +10,11 @@
 
 | 文件 | 角色 |
 |------|------|
-| `src/pages/design/components/StyleCardFace.vue` | 按风格规范渲染的「风格卡片面」，列表卡与详情大样张共用；`--sp-*` CSS 变量换算 |
+| `src/renderer/src/components/design/StyleCardFace.vue` | 按风格规范渲染的「风格卡片面」，列表卡与详情大样张共用；`--sp-*` CSS 变量换算（2026-09-02 自 `pages/design/components/` 迁入全局组件目录，被设计页 / PageNew / 文生图页三处域复用） |
+| `src/renderer/src/components/design/StyleSelect.vue` | 全局设计风格下拉（t-select 分组 + 选项悬浮预览 + 非会员锁定），PageNew 与文生图表单共用 |
 | `src/pages/design/list/components/DesignStyleCard.vue` | 列表卡壳层：点击进详情 + `t-dropdown` 菜单（经 `#actions` 插槽嵌入卡片面标题行） |
 | `src/pages/design/detail/components/StylePromptBlock.vue` | 明细页「视觉提示」区块（自 index.vue 抽出，控行数） |
-| `src/pages/new/PageNew.vue` | 新建聊天页：设计风格下拉面板底部实时预览（`panelBottomContent` 插槽 + 选项 `mouseenter`） |
+| `src/pages/new/PageNew.vue` | 新建聊天页：经全局 `<style-select>` 选择设计风格 |
 
 ## 数据契约变化
 
@@ -65,11 +66,15 @@ script 把规范数据换算为一组 `--sp-*` CSS 变量（尺寸 = 规范值 �
 - 字体直接内联 `font-family`：配置来源为 `font_list` 真实本机字体，未安装时浏览器自然回退。
 - `StyleCardFace.vue` 恰为 300 行红线，再扩功能需先拆分（如把 cssVars 换算抽到 ts）。
 
-## 新建聊天页下拉悬浮预览
+## 风格下拉组件 StyleSelect（全局）
 
-PageNew 选择设计风格时，每个选项内容由 `t-popup`（`trigger="hover"` + `placement="right-top"` + `delay [120, 100]`）包裹，悬停选项即在选项右侧悬浮渲染该风格的 `StyleCardFace` compact / scale 0.5：
+风格选择下拉已抽为全局组件 `src/renderer/src/components/design/StyleSelect.vue`（unplugin-vue-components 默认扫描 `src/components` 自动注册，模板直接写 `<style-select>`），PageNew 与文生图表单（`ImageGenerateForm`）共用：
 
+- API：`v-model`（风格 id，`''` = 未选）+ 可选 `placeholder`（默认「选择设计风格（可选）」）；宽度由使用方 class 控制。
+- 内部封装：`DesignStyleStore.all`（预设 + 自建）`isSystem` 归一后经 `groupDesignStylesByCategory` 分组渲染 `t-option-group`；每个选项内容由 `t-popup`（`trigger="hover"` + `placement="right-top"` + `delay [120, 100]`）包裹，悬停即在选项右侧悬浮渲染该风格的 `StyleCardFace` compact / scale 0.5。
+- 会员门控内聚在组件内：非会员（`AuthStore.features.extendedDesignStyles` 为假）自定义风格**可见但锁定**（disabled），内置预设不受限。
+- 下拉面板 teleport 到 body：组件自带全局样式类 `.style-select-overlay`（`popup-props.overlayClassName` 指定）撑高选项放预览卡，使用方零配置。
 - 预览直接用选项数据 `s` 渲染，无需悬停 id 跟踪 / 受控 visible / 回落已选等状态；下拉关闭随面板隐藏。
 - popup 的 hover 触发在鼠标进入选项内容根节点后生效，鼠标移入预览框可保持显示细看；快速划过时靠 delay 抑制闪烁。
-- 悬浮框内容经 `overlay-inner-style` 去默认内边距，由容器给 8px 呼吸边距；popup 与预览插槽均编译在 PageNew 渲染上下文，scoped 样式可用。
+- 悬浮框内容经 `overlay-inner-style` 去默认内边距，由容器给 8px 呼吸边距；popup 与预览插槽均编译在 StyleSelect 渲染上下文，scoped 样式可用。
 - 选项量 = 本地内置 8 预设 + 用户自建（在线库另计），每选项一个 popup 实例开销可接受；超 100 项会启用虚拟滚动（threshold），届时 popup 随选项 DOM 复用。

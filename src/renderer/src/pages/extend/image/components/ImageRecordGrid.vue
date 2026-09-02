@@ -41,7 +41,9 @@
             <p class="card-prompt">{{ item.prompt }}</p>
             <div class="card-meta">
               <span class="card-time">{{ formatDateTime(item.createdAt) }}</span>
-              <span v-if="item.model" class="card-model">{{ item.model }}</span>
+              <span v-if="item.model || item.styleName" class="card-model">
+                {{ [item.model, item.styleName].filter((v) => !!v).join(' · ') }}
+              </span>
             </div>
             <p v-if="item.status === 'failed' && item.error" class="card-error" :title="item.error">
               {{ item.error }}

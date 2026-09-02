@@ -16,9 +16,10 @@
           class="model-select"
           :options="imageOptions"
           clearable
-          placeholder="生图模型（默认）"
+          placeholder="生图模型"
         >
         </t-select>
+        <style-select v-model="styleId" class="style-select" />
         <t-select
           v-model="size"
           class="size-select"
@@ -63,24 +64,36 @@ const SIZE_OPTIONS = [
 ]
 
 const emit = defineEmits<{
-  submit: [prompt: string, size?: string, model?: string]
+  submit: [prompt: string, size?: string, model?: string, styleId?: string]
 }>()
 
 const router = useRouter()
 const aiStore = useSettingAiStore()
+const settingDefaultStore = useSettingDefaultStore()
 
 /** 可用的生图模型（type=image 分组下拉，value = `${provideId}:${identifier}`） */
 const imageOptions = computed<SelectOptionGroup[]>(() =>
   aiStore.ready ? aiStore.imageOptions : []
 )
 const hasAnyImageModel = computed(() => imageOptions.value.some((g) => g.children?.length))
-const hasDefaultImageModel = computed(() => !!useSettingDefaultStore().state.defaultImageModel)
+const hasDefaultImageModel = computed(() => !!settingDefaultStore.state.defaultImageModel)
 
 const prompt = ref('')
 /** 显式选择的模型 key；空 = 跟随默认生图模型 */
 const modelKey = ref('')
+/** 选中的设计风格 id；空 = 不注入风格提示词 */
+const styleId = ref('')
 const size = ref('1024x1024')
 const sizeError = ref('')
+
+// 有默认生图模型时自动选中（store 异步读盘后回填；用户手动改选后不覆盖）
+watch(
+  () => settingDefaultStore.state.defaultImageModel,
+  (val) => {
+    if (val && !modelKey.value) modelKey.value = val
+  },
+  { immediate: true }
+)
 
 const hasModelReady = computed(() => !!modelKey.value || hasDefaultImageModel.value)
 const canSubmit = computed(
@@ -107,7 +120,8 @@ const handleSubmit = () => {
     'submit',
     prompt.value.trim(),
     size.value?.trim() || undefined,
-    modelKey.value?.trim() || undefined
+    modelKey.value?.trim() || undefined,
+    styleId.value?.trim() || undefined
   )
   // 任务已提交（失败可从记录卡「重试」找回 prompt），清空输入框供连续生成
   prompt.value = ''
@@ -143,8 +157,12 @@ const goSetting = () => {
   width: 220px;
 }
 
-.size-select {
+.style-select {
   width: 200px;
+}
+
+.size-select {
+  width: 160px;
 }
 
 .model-tip {

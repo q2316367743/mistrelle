@@ -30,7 +30,7 @@
 import { computed } from 'vue'
 import { MoreIcon, EditIcon, DeleteIcon, ViewListIcon } from 'tdesign-icons-vue-next'
 import { AiDesignStyle, AiDesignStyleItem } from '@/entity'
-import StyleCardFace from '@/pages/design/components/StyleCardFace.vue'
+import StyleCardFace from '@/components/design/StyleCardFace.vue'
 
 const props = defineProps<{ style: AiDesignStyleItem | AiDesignStyle }>()
 const emit = defineEmits<{ open: []; edit: []; delete: [] }>()

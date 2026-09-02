@@ -11,7 +11,8 @@
 //    task_id 继续轮询（不重新提交任务）；其余失败只可删除
 //  筛选 / 搜索 / 分页在 main 的 SQL 内完成，本侧不持有全量数组
 // ==========================================
-import { useSettingAiStore, useSettingDefaultStore } from '@/store'
+import { useDesignStyleStore, useSettingAiStore, useSettingDefaultStore } from '@/store'
+import { buildDesignStylePrompt } from '@/modules/design'
 import {
   generateImage,
   resumeTaskPoll,
@@ -87,9 +88,16 @@ const createImageGenerations = () => {
   /**
    * 发起一次生成：插入 pending 记录 → generateImage 落盘 → 收尾 success / failed。
    * model 为显式选择的模型 key（${provideId}:${identifier}），缺省回退默认生图模型；
+   * styleId 为设计风格 id，选中时把风格名快照落库（styleName，同 model 快照语义），
+   * 并把风格提示词拼进实际请求（记录仍保留用户原始 prompt）；
    * 同一时刻可并行多个任务（每条记录独立 await，互不阻塞）。
    */
-  const generate = async (promptText: string, size?: string, model?: string): Promise<void> => {
+  const generate = async (
+    promptText: string,
+    size?: string,
+    model?: string,
+    styleId?: string
+  ): Promise<void> => {
     const prompt = promptText.trim()
     if (!prompt) return
 
@@ -97,6 +105,23 @@ const createImageGenerations = () => {
     const aiStore = useSettingAiStore()
     if (!aiStore.ready) await aiStore.initPromise
     const modelName = modelKey ? (aiStore.optionMap.get(modelKey)?.model ?? modelKey) : null
+
+    // 设计风格解析前置：name 快照随记录落库（记录出处），提示词只拼进实际请求
+    // （记录保留用户原始 prompt，历史卡片可读）
+    let requestPrompt = prompt
+    let styleName: string | null = null
+    const styleKey = styleId?.trim()
+    if (styleKey) {
+      try {
+        const style = await useDesignStyleStore().getDetail(styleKey)
+        if (style) {
+          styleName = style.name
+          requestPrompt = `${prompt}\n\n${buildDesignStylePrompt(style)}`
+        }
+      } catch {
+        // 风格详情读取失败按无风格生成，不阻断任务
+      }
+    }
 
     const id = useSnowflake().nextId()
     const month = dayjs().format('YYYY-MM')
@@ -107,6 +132,7 @@ const createImageGenerations = () => {
       id,
       prompt,
       model: modelName,
+      styleName,
       size: size ?? null,
       path,
       width: null,
@@ -127,7 +153,7 @@ const createImageGenerations = () => {
       total.value += 1
 
       const result = await generateImage({
-        prompt,
+        prompt: requestPrompt,
         path,
         size,
         model: modelKey || undefined,

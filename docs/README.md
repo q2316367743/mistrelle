@@ -70,7 +70,7 @@
 |---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
 | [01-aihot-page.md](./attachment/01-aihot-page.md)             | AIHOT 资讯页：t-tabs 四视图（精选/动态/热点/日报）；精选=本地缓存、动态=在线全量池（lazy 懒挂载）；时间轴；精选集 snapshot/changes 增量同步；日报不可变缓存、429 Retry-After 等接入文档约定落地；已读/未读标记（read 列持久化、点击打开即标记） |
 | [02-aihot-embedded-link-viewer.md](./attachment/02-aihot-embedded-link-viewer.md) | 内嵌网页浏览抽屉（公共组件 `LinkPreviewDrawer`，原 AihotLinkDrawer 提升）：链接出口统一走 `openLinkPreview` → DrawerPlugin + `<webview>`（webviewTag: true）；选型结论（vs WebContentsView）、UA 覆写防白屏、`persist:link-preview` 会话隔离、did-fail-load -3 忽略等注意事项 |
-| [03-image-generate-page.md](./attachment/03-image-generate-page.md) | 文生图页面（`/attachment/image`）：生成表单（模型选择：显式 imageOptions 优先、缺省默认；提交即清空、可并行连续生成）+ 历史网格；复用 `generateImage` 服务、`image_generate` 表 + `db:image:*` IPC、图片按月分桶 `~/.mistrelle/image/generate/{yyyy-MM}/{id}.png`；pending→success/failed 状态机（单例跨路由存活、settle 排除运行中、删除防 upsert 复活）、**失败可删除 + 异步任务续轮询重试**（`task_id`/`poll_max_at`/`task_terminal` 三列落库，`resumeTaskPoll` 按剩余窗口续查同一远端任务、不重复扣费；仅「可恢复」的异步任务型失败显示重试，同步失败/已确认终态只可删除；失败卡可进详情抽屉）、`${provideId}:${identifier}` 模型 key 约定、五处同步清单 |
+| [03-image-generate-page.md](./attachment/03-image-generate-page.md) | 文生图页面（`/attachment/image`）：生成表单（模型选择：显式 imageOptions 优先、缺省默认并自动选中回显；**设计风格选择**=全局 `StyleSelect`，`buildDesignStylePrompt` 仅拼进请求、记录保留原文、`style_name` 风格名快照落库（0009 迁移）；提交即清空、可并行连续生成）+ 历史网格；复用 `generateImage` 服务、`image_generate` 表 + `db:image:*` IPC、图片按月分桶 `~/.mistrelle/image/generate/{yyyy-MM}/{id}.png`；pending→success/failed 状态机（单例跨路由存活、settle 排除运行中、删除防 upsert 复活）、**失败可删除 + 异步任务续轮询重试**（`task_id`/`poll_max_at`/`task_terminal` 三列落库，`resumeTaskPoll` 按剩余窗口续查同一远端任务、不重复扣费；仅「可恢复」的异步任务型失败显示重试，同步失败/已确认终态只可删除；失败卡可进详情抽屉）、`${provideId}:${identifier}` 模型 key 约定、五处同步清单 |
 | [04-file-preview-dialog.md](./attachment/04-file-preview-dialog.md) | 文件预览弹窗（公共组件 `FilePreviewDialog`，原 chat-assistant/modals 提升并按约定拆外壳+内容）：`FilePreviewItem` 契约与分发（url→链接抽屉 / md / **html、htm→webview 渲染预览** / code / image / video / audio / showInFolder 兜底）；mistrelle:// 协议仅默认 session 注册故 html webview 不写 partition、主进程 MIME 补 text/html 等 |
 
 ### extend/ —— 闲庭漫步工具页
@@ -97,7 +97,7 @@
 | [02-design-style-chat.md](./design/02-design-style-chat.md)   | 设计风格接入 design 聊天：`designStyleId` 创建后锁定、风格转提示词注入稳定 system 前缀、聊天室工作空间/风格只读展示、列表缓存详情不缓存 |
 | [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写 |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
-| [05-style-preview.md](./design/05-style-preview.md)           | 风格预览所见即所得：`AiDesignStyleItem` 索引项扩展 typography/tokens/whitespaceRatio（旧数据读取兜底）、`StyleCardFace` 按规范整卡渲染（`--sp-*` 变量换算、留白密度、对比度文字色）、列表卡壳 + 面与详情大样张、新建聊天页下拉面板底部悬停实时预览 |
+| [05-style-preview.md](./design/05-style-preview.md)           | 风格预览所见即所得：`AiDesignStyleItem` 索引项扩展 typography/tokens/whitespaceRatio（旧数据读取兜底）、`StyleCardFace` 按规范整卡渲染（`--sp-*` 变量换算、留白密度、对比度文字色）、列表卡壳 + 面与详情大样张；**全局风格下拉组件 `StyleSelect`**（t-select 分组 + 选项悬浮 StyleCardFace 预览 + 非会员锁定，PageNew 与文生图表单共用，自带 overlay 全局样式） |
 
 ### ppt/ —— PPT 专家
 

@@ -64,6 +64,10 @@
         <span class="info-value">{{ record.model ?? '—' }}</span>
       </div>
       <div class="info-item">
+        <span class="info-label">设计风格</span>
+        <span class="info-value">{{ record.styleName ?? '—' }}</span>
+      </div>
+      <div class="info-item">
         <span class="info-label">时间</span>
         <span class="info-value">{{ formatDateTime(record.createdAt) }}</span>
       </div>

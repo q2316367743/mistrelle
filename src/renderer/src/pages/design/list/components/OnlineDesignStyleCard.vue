@@ -25,7 +25,7 @@
 <script lang="ts" setup>
 import { MoreIcon, ViewListIcon, DownloadIcon } from 'tdesign-icons-vue-next'
 import { AiDesignStyleItem } from '@/entity'
-import StyleCardFace from '@/pages/design/components/StyleCardFace.vue'
+import StyleCardFace from '@/components/design/StyleCardFace.vue'
 
 defineProps<{ style: AiDesignStyleItem; downloaded?: boolean }>()
 const emit = defineEmits<{ open: []; download: [] }>()

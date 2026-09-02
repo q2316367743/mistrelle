@@ -34,6 +34,7 @@ export function imageList(filter: ImageListFilter, limit: number, offset: number
 const upsertSet = {
   prompt: sql`excluded.prompt`,
   model: sql`excluded.model`,
+  styleName: sql`excluded.style_name`,
   size: sql`excluded.size`,
   path: sql`excluded.path`,
   width: sql`excluded.width`,

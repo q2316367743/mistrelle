@@ -45,8 +45,8 @@ onMounted(() => init())
 
 watchDebounced(keyword, () => refresh(), { debounce: 400 })
 
-const handleSubmit = (prompt: string, size?: string, model?: string) =>
-  generate(prompt, size, model)
+const handleSubmit = (prompt: string, size?: string, model?: string, styleId?: string) =>
+  generate(prompt, size, model, styleId)
 
 // eslint-disable-next-line no-undef
 const handleOpen = (record: ImageRecordInput) => {
