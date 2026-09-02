@@ -20,9 +20,19 @@
       >
         <t-tabs v-model="activeTab" class="style-tabs" @change="onTabChange">
           <t-tab-panel value="local" label="本地" />
-          <t-tab-panel value="online">
+          <t-tab-panel value="online" :disabled="stylesLocked">
             <template #label>
-              <t-badge :count="stylesLocked ? '会员' : 0" :offset="[8, -2]">在线</t-badge>
+              <t-badge :count="stylesLocked ? '会员' : 0" :offset="[0, -2]" size="small">
+                <span
+                  :style="{
+                    color: stylesLocked
+                      ? 'var(--td-text-color-disabled)'
+                      : 'var(--td-text-color-primary)'
+                  }"
+                >
+                  在线
+                </span>
+              </t-badge>
             </template>
           </t-tab-panel>
         </t-tabs>
