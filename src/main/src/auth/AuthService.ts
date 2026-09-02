@@ -99,7 +99,9 @@ function loadCredential(): StoredCredential | null {
   try {
     const text = readFileSync(file, 'utf-8')
     const plain =
-      (safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(text, 'base64')) : null) ?? text
+      (safeStorage.isEncryptionAvailable()
+        ? safeStorage.decryptString(Buffer.from(text, 'base64'))
+        : null) ?? text
     const parsed = JSON.parse(plain) as StoredCredential
     if (typeof parsed.apiKey !== 'string' || !parsed.apiKey) return null
     return {
@@ -240,9 +242,12 @@ export function getRelayContext(): { baseUrl: string; apiKey: string } | null {
 /** app ready 后调用一次：读取本地凭证并校验，非阻塞（失败不阻塞启动） */
 let initializing: Promise<void> | null = null
 export function init(): Promise<void> {
-  if (!initializing) initializing = refresh().then(() => undefined).catch((error) => {
-    console.error('[auth] init 失败', error)
-  })
+  if (!initializing)
+    initializing = refresh()
+      .then(() => undefined)
+      .catch((error) => {
+        console.error('[auth] init 失败', error)
+      })
   return initializing
 }
 
@@ -496,7 +501,10 @@ function extractSessionCookie(setCookies: string[]): string | null {
  * 会话端点（api-key/sign-out）鉴权头：better-auth 1.7.2 的会话校验只认签名 Cookie，
  * Bearer 仅作 Cookie 缺失（旧凭证）时的回退；带 Cookie 时必须同带 Origin 通过 origin 校验。
  */
-function sessionAuthHeaders(sessionToken: string, sessionCookie: string | null): Record<string, string> {
+function sessionAuthHeaders(
+  sessionToken: string,
+  sessionCookie: string | null
+): Record<string, string> {
   return sessionCookie
     ? { Cookie: sessionCookie, Origin: baseUrl() }
     : { Authorization: `Bearer ${sessionToken}` }
