@@ -90,6 +90,7 @@ const settingOptions = [
 
 const menuTree: SideMenuItem[] = [
   { label: Constant.name, icon: ChatIcon, to: '/new' },
+  { label: '生图', icon: AiImageIcon, to: '/attachment/image' },
   {
     label: '设计',
     icon: PenIcon,
@@ -104,7 +105,6 @@ const menuTree: SideMenuItem[] = [
     icon: LightbulbIcon,
     children: [
       { label: 'AI HOT', icon: ComponentRadioIcon, to: '/attachment/aihot' },
-      { label: '生图', icon: AiImageIcon, to: '/attachment/image' },
       { label: '可用性检测工具', icon: Calculation1Icon, to: '/attachment/test' },
       { label: '模型对比检测', icon: ArrowLeftRight1Icon, to: '/attachment/compare' }
     ]

@@ -9,12 +9,10 @@
         @delete="handleDelete"
       />
 
-      <!-- 右侧：编辑面板 -->
       <div class="ai-setting-main">
         <template v-if="!selectedId && !isCreating">
           <t-empty description="请选择一个提供方或新增" />
         </template>
-        <!-- 内置供应商（服务端中转站）：只读展示 + 刷新模型列表 -->
         <builtin-provider-panel
           v-else-if="isBuiltinSelected"
           :name="builtinItem?.name ?? ''"
@@ -23,20 +21,14 @@
           :signed-in="isSignedIn"
           @refresh="handleRefreshBuiltin"
         />
-        <!-- 自定义供应商：表单 + 模型管理 -->
         <provider-editor
           v-else
-          :form="form"
+          :key="selectedId || 'new'"
+          :source="editingSource"
           :saving="saving"
-          :fetching="modelsApi.fetching.value"
           :name-presets="PROVIDER_NAME_PRESETS"
           :provider-presets="PROVIDER_PRESETS"
-          @save="handleSave"
-          @fetch-models="modelsApi.fetchModels(form)"
-          @add-model="modelsApi.addModel"
-          @edit-model="modelsApi.editModel"
-          @delete-model="modelsApi.deleteModel"
-          @toggle-model="modelsApi.toggleModel"
+          :persist="handleSave"
         />
       </div>
     </div>
@@ -45,11 +37,10 @@
 
 <script lang="ts" setup>
 import { useSettingAiStore, useAuthStore, BUILTIN_PROVIDER_ID } from '@/store'
-import { AiProvideFormat } from '@/entity'
+import type { AiProvideFormat } from '@/entity'
 import { MessageUtil } from '@/utils/modal'
 import { openLogin } from '@/components/modals/LoginDialog'
 import { PROVIDER_NAME_PRESETS, PROVIDER_PRESETS } from './providerPresets'
-import { useProviderModels } from './useProviderModels'
 import SettingAiSidebar from './components/SettingAiSidebar.vue'
 import BuiltinProviderPanel from './components/BuiltinProviderPanel.vue'
 import ProviderEditor, { type ProviderFormData } from './components/ProviderEditor.vue'
@@ -61,58 +52,38 @@ const authStore = useAuthStore()
 const isSignedIn = computed(() => authStore.status === 'signed-in')
 const relayEnabled = computed(() => store.relayEnabled)
 
-// ---------- 左侧列表 ----------
-
 const selectedId = ref<string>('')
 const isCreating = ref(false)
+const saving = ref(false)
 
-// ---------- 右侧表单 ----------
-
-const form = reactive<ProviderFormData>({
-  id: '',
-  name: '',
-  baseUrl: '',
-  key: '',
-  format: 'chat',
-  models: []
-})
-
-/** 内置供应商项（恒存在） */
 const builtinItem = computed(() => store.items.find((i) => i.builtin))
 const isBuiltinSelected = computed(() => selectedId.value === BUILTIN_PROVIDER_ID)
 const builtinModels = computed(() => builtinItem.value?.models ?? [])
 
-// 选中提供方：填充表单
+/** 传给编辑器的只读快照；新建为 null */
+const editingSource = computed<ProviderFormData | null>(() => {
+  if (isCreating.value || !selectedId.value || selectedId.value === BUILTIN_PROVIDER_ID) {
+    return null
+  }
+  const item = store.items.find((i) => i.id === selectedId.value)
+  if (!item) return null
+  return {
+    id: item.id,
+    name: item.name,
+    baseUrl: item.baseUrl,
+    key: item.key,
+    models: item.models.map((m) => ({ ...m })),
+    format: (item.format || 'chat') as AiProvideFormat
+  }
+})
+
 function selectItem(id: string) {
-  if (id === selectedId.value) {
-    // 取消选中：内置供应商不可取消，保持选中态
-    if (id === BUILTIN_PROVIDER_ID) return
-    selectedId.value = ''
-    isCreating.value = true
-    Object.assign(form, { id: '', name: '', baseUrl: '', key: '', models: [], format: 'chat' })
-    return
-  }
+  // 点击已选中项：保持选中，不再切到「新建」（新建只走「添加供应商」）
+  if (id === selectedId.value) return
   selectedId.value = id
-  // 内置供应商：进入只读面板，不清表单
-  if (id === BUILTIN_PROVIDER_ID) {
-    isCreating.value = false
-    return
-  }
-  const item = store.items.find((i) => i.id === id)
-  if (item) {
-    isCreating.value = false
-    Object.assign(form, {
-      id: item.id,
-      name: item.name,
-      baseUrl: item.baseUrl,
-      key: item.key,
-      models: item.models.map((m) => ({ ...m })),
-      format: (item.format || 'chat') as AiProvideFormat
-    })
-  }
+  isCreating.value = false
 }
 
-// 初始化：数据加载完成后选中第一个（内置恒首项）
 watch(
   () => store.items.length,
   (len) => {
@@ -123,7 +94,6 @@ watch(
   { immediate: true }
 )
 
-// 免费档（thirdPartyRelay 关闭）：启用项自动切回内置，且强制选中内置
 watch(
   () => relayEnabled.value,
   (enabled) => {
@@ -134,19 +104,15 @@ watch(
   { immediate: true }
 )
 
-// ---------- 登录守卫（未登录点模型设置 / 意外进入本页） ----------
-
 const router = useRouter()
 
 async function guardLogin(): Promise<boolean> {
   if (isSignedIn.value) return true
   if (authStore.status === 'unknown') {
-    // 启动中 / 服务端不可达：先尝试刷新凭证，再按结果判定
     await authStore.refresh()
   }
   if (isSignedIn.value) return true
   MessageUtil.warning('请先登录后使用 AI 设置')
-  // 未登录返回首页登录：弹登录框；登录成功回本页（已在 /setting/ai），关闭则回首页
   openLogin(
     () => {
       void store.refreshBuiltinModels().catch(() => undefined)
@@ -159,8 +125,6 @@ async function guardLogin(): Promise<boolean> {
 onMounted(() => {
   void guardLogin()
 })
-
-// ---------- 内置供应商操作 ----------
 
 async function handleRefreshBuiltin() {
   if (!isSignedIn.value) {
@@ -175,42 +139,29 @@ async function handleRefreshBuiltin() {
   }
 }
 
-// ---------- 保存 ----------
-
-const saving = ref(false)
-
-async function handleSave() {
-  if (!form.name) {
-    MessageUtil.warning('请输入提供方名称')
-    return
-  }
-  if (!form.baseUrl) {
-    MessageUtil.warning('请输入接口地址')
-    return
-  }
-  if (!form.key) {
-    MessageUtil.warning('请输入密钥')
-    return
-  }
+async function handleSave(payload: ProviderFormData) {
   saving.value = true
   try {
+    const wasCreating = isCreating.value || !payload.id
     await store.put({
-      id: form.id || undefined,
-      name: form.name,
-      baseUrl: form.baseUrl,
-      key: form.key,
-      models: form.models,
-      format: form.format,
-      enable: form.id
-        ? (store.items.find((item) => item.id === form.id)?.enable ?? true)
+      id: payload.id || undefined,
+      name: payload.name,
+      baseUrl: payload.baseUrl,
+      key: payload.key,
+      models: payload.models,
+      format: payload.format,
+      enable: payload.id
+        ? (store.items.find((item) => item.id === payload.id)?.enable ?? true)
         : true
     })
-    if (isCreating.value) {
+    if (wasCreating) {
       const added = store.items.find(
-        (item) => item.name === form.name && item.baseUrl === form.baseUrl
+        (item) => !item.builtin && item.name === payload.name && item.baseUrl === payload.baseUrl
       )
-      if (added) selectItem(added.id)
-      isCreating.value = false
+      if (added) {
+        selectedId.value = added.id
+        isCreating.value = false
+      }
     }
     MessageUtil.success('保存成功')
   } catch (e) {
@@ -220,15 +171,10 @@ async function handleSave() {
   }
 }
 
-// ---------- 新增提供方 ----------
-
 function handleAdd() {
   isCreating.value = true
-  Object.assign(form, { id: '', name: '', baseUrl: '', key: '', models: [], format: 'chat' })
   selectedId.value = ''
 }
-
-// ---------- 启用 / 删除提供方 ----------
 
 async function handleProvideEnableChange(id: string, val: boolean) {
   const item = store.items.find((i) => i.id === id)
@@ -251,31 +197,24 @@ async function handleDelete(id: string) {
       selectItem(store.items[0].id)
     } else {
       selectedId.value = ''
+      isCreating.value = false
     }
   }
 }
-
-// ---------- 模型管理（composable） ----------
-
-const modelsApi = useProviderModels({
-  models: form.models,
-  onSaved: handleSave
-})
 </script>
 
 <style scoped lang="less">
 .ai-setting-layout {
   display: flex;
-  height: calc(100vh - 57px);
-  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .ai-setting-main {
   flex: 1;
   overflow-y: auto;
   min-width: 0;
-  padding-right: 24px;
-  padding-bottom: 24px;
+  padding: 0 24px 24px 16px;
   z-index: 1;
 }
 </style>

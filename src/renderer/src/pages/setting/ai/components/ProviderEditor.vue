@@ -1,144 +1,72 @@
 <template>
-  <div>
-    <!-- 基本信息 -->
-    <t-form :data="form" layout="vertical" class="ai-setting-form">
-      <t-form-item label="名称" name="name">
-        <t-auto-complete
-          v-model="form.name"
-          :options="namePresets"
-          placeholder="选择或输入，例如：OpenAI、DeepSeek"
-          @change="onNameChange"
-        />
-      </t-form-item>
-      <t-form-item label="Base URL" name="baseUrl">
-        <t-input v-model="form.baseUrl" placeholder="例如：https://api.openai.com/v1" />
-      </t-form-item>
-      <t-form-item label="API Key" name="key">
-        <t-input
-          v-model="form.key"
-          type="password"
-          placeholder="请输入 API Key"
-          allow-clear
-        />
-      </t-form-item>
-      <t-form-item label="API 格式" name="key">
-        <t-select v-model="form.format" default-value="chat">
-          <t-option value="anthropic" label="Anthropic Message (/v1/messages)" />
-          <t-option value="chat" label="Chat Completions (/chat/completions)" />
-          <t-option value="responses" label="Responses (/responses)" />
-        </t-select>
-      </t-form-item>
-      <t-form-item>
-        <t-space>
-          <t-button
-            theme="primary"
-            :loading="saving"
-            :disabled="!form.baseUrl.trim() || form.models.length === 0"
-            @click="emit('save')"
-          >
-            保存
-          </t-button>
-          <t-button
-            :disabled="!form.baseUrl.trim()"
-            :loading="fetching"
-            @click="emit('fetchModels')"
-          >
-            从接口获取模型
-          </t-button>
-        </t-space>
-      </t-form-item>
-    </t-form>
+  <div class="provider-editor">
+    <header class="provider-editor__header">
+      <h2 class="provider-editor__title">
+        {{ draft.name || (isNew ? '新建供应商' : '自定义供应商') }}
+      </h2>
+      <p class="provider-editor__lead">填写连接信息后保存，再管理可用模型列表</p>
+    </header>
 
-    <t-divider />
+    <section class="provider-surface">
+      <h3 class="provider-surface__title">连接</h3>
+      <t-form :data="draft" layout="vertical" class="provider-editor__form" @submit.prevent>
+        <t-form-item label="名称" name="name">
+          <t-auto-complete
+            v-model="draft.name"
+            :options="namePresets"
+            placeholder="选择或输入，例如：OpenAI、DeepSeek、Kimi"
+            @change="onNameChange"
+          />
+        </t-form-item>
+        <t-form-item label="Base URL" name="baseUrl">
+          <t-input
+            v-model="draft.baseUrl"
+            placeholder="例如：https://api.openai.com/v1"
+            clearable
+          />
+        </t-form-item>
+        <t-form-item label="API Key" name="key">
+          <t-input v-model="draft.key" type="password" placeholder="请输入 API Key" clearable />
+        </t-form-item>
+        <t-form-item label="API 格式" name="format">
+          <t-select v-model="draft.format">
+            <t-option value="anthropic" label="Anthropic Message (/v1/messages)" />
+            <t-option value="chat" label="Chat Completions (/chat/completions)" />
+            <t-option value="responses" label="Responses (/responses)" />
+          </t-select>
+        </t-form-item>
+      </t-form>
 
-    <!-- 模型管理 -->
-    <div class="model-section">
-      <div class="model-section__header">
-        <span class="model-section__title">模型列表</span>
-        <t-button size="small" @click="emit('addModel')">
-          <template #icon><AddIcon /></template>
-          添加模型
+      <div class="provider-editor__commands">
+        <t-button theme="primary" :loading="saving" :disabled="!canSave" @click="handleSave">
+          保存
+        </t-button>
+        <t-button :disabled="!draft.baseUrl.trim()" :loading="fetching" @click="handleFetchModels">
+          从接口获取模型
         </t-button>
       </div>
-      <t-input
-        v-model="modelKeyword"
-        clearable
-        placeholder="搜索模型 ID 或名称"
-        class="model-section__search"
-      >
-        <template #prefixIcon>
-          <SearchIcon />
-        </template>
-      </t-input>
+    </section>
 
-      <template v-if="form.models.length > 0">
-        <template v-for="group in modelGroups" :key="group.family">
-          <div class="model-group">
-            <div class="model-group__title">{{ group.family }}</div>
-            <div v-for="model in group.models" :key="model.identifier" class="model-item">
-              <div class="model-item__info">
-                <t-tag
-                  v-if="model.type !== 'chat'"
-                  size="small"
-                  variant="light"
-                  :theme="MODEL_TYPE_THEME[model.type]"
-                >
-                  {{ MODEL_TYPE_LABEL[model.type] }}
-                </t-tag>
-                <t-tooltip :content="model.identifier" placement="top">
-                  <span class="model-item__name">{{ model.model || model.identifier }}</span>
-                </t-tooltip>
-              </div>
-              <div class="model-item__actions">
-                <t-switch
-                  :value="model.enable"
-                  @change="(val: any) => emit('toggleModel', model, Boolean(val))"
-                />
-                <t-button
-                  theme="primary"
-                  variant="text"
-                  size="small"
-                  shape="square"
-                  @click="emit('editModel', model)"
-                >
-                  <template #icon><EditIcon /></template>
-                </t-button>
-                <t-button
-                  theme="danger"
-                  variant="text"
-                  size="small"
-                  shape="square"
-                  @click="emit('deleteModel', model)"
-                >
-                  <template #icon><DeleteIcon /></template>
-                </t-button>
-              </div>
-            </div>
-          </div>
-        </template>
-        <t-empty
-          v-if="modelGroups.length === 0"
-          description="未找到匹配的模型"
-          style="margin-top: 12px"
-        />
-      </template>
-      <t-empty
-        v-else
-        description="暂无模型，请从接口获取或手动添加"
-        style="margin-top: 12px"
+    <section class="provider-surface">
+      <provider-model-list
+        :models="draft.models"
+        @add="addModel"
+        @edit="editModel"
+        @delete="deleteModel"
+        @toggle="toggleModel"
       />
-    </div>
+    </section>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { AddIcon, DeleteIcon, EditIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import type { AiModel, AiProvideFormat } from '@/entity'
-import { MODEL_TYPE_LABEL, MODEL_TYPE_THEME } from '@/utils/aiModel'
+import { MessageUtil } from '@/utils/modal'
+import { useProviderModels } from '../useProviderModels'
+import ProviderModelList from './ProviderModelList.vue'
 
-/** 表单数据（受控：父组件持有 reactive form 并 v-model 各字段） */
+/** 表单数据（只读 source 的快照形状；草稿在组件内部） */
 export interface ProviderFormData {
-  /** 编辑既有提供方时的 id（新增为空） */
   id?: string
   name: string
   baseUrl: string
@@ -148,131 +76,163 @@ export interface ProviderFormData {
 }
 
 const props = defineProps<{
-  form: ProviderFormData
+  /** 编辑既有提供方时的只读快照；新建为 null */
+  source: ProviderFormData | null
   saving: boolean
-  fetching: boolean
   namePresets: Array<{ label: string; value: string }>
   providerPresets: Array<{ label: string; baseUrl: string }>
+  /** 落盘（父组件 store.put）；可 await，保证模型操作后再提示 */
+  persist: (payload: ProviderFormData) => Promise<void>
 }>()
 
-const emit = defineEmits<{
-  save: []
-  fetchModels: []
-  addModel: []
-  editModel: [model: AiModel]
-  deleteModel: [model: AiModel]
-  toggleModel: [model: AiModel, val: boolean]
-}>()
+function emptyDraft(): ProviderFormData {
+  return {
+    id: '',
+    name: '',
+    baseUrl: '',
+    key: '',
+    format: 'chat',
+    models: []
+  }
+}
 
-const modelKeyword = ref('')
+function cloneSource(source: ProviderFormData | null): ProviderFormData {
+  if (!source) return emptyDraft()
+  return {
+    id: source.id ?? '',
+    name: source.name,
+    baseUrl: source.baseUrl,
+    key: source.key,
+    format: source.format || 'chat',
+    models: source.models.map((m) => ({ ...m }))
+  }
+}
+
+const draft = ref<ProviderFormData>(cloneSource(props.source))
+const isNew = computed(() => !draft.value.id)
+
+const canSave = computed(
+  () =>
+    Boolean(draft.value.baseUrl.trim()) &&
+    draft.value.models.length > 0 &&
+    Boolean(draft.value.name.trim()) &&
+    Boolean(draft.value.key.trim())
+)
 
 function onNameChange(value: string | number) {
   if (typeof value === 'string' && value) {
     const matched = props.providerPresets.find((p) => p.label === value)
     if (matched) {
-      props.form.baseUrl = matched.baseUrl
-      return
+      draft.value.baseUrl = matched.baseUrl
     }
   }
 }
 
-function getModelFamily(id: string): string {
-  return id.split(/[-_.\d]/).filter(Boolean)[0] || id
+async function persistDraft(): Promise<void> {
+  await props.persist({
+    id: draft.value.id || undefined,
+    name: draft.value.name,
+    baseUrl: draft.value.baseUrl,
+    key: draft.value.key,
+    format: draft.value.format,
+    models: draft.value.models.map((m) => ({ ...m }))
+  })
 }
 
-const modelGroups = computed(() => {
-  const kw = modelKeyword.value.trim().toLowerCase()
-  const list = kw
-    ? props.form.models.filter(
-        (m) => m.identifier.toLowerCase().includes(kw) || (m.model || '').toLowerCase().includes(kw)
-      )
-    : props.form.models
-  const map = new Map<string, AiModel[]>()
-  for (const m of list) {
-    const family = getModelFamily(m.identifier)
-    if (!map.has(family)) map.set(family, [])
-    map.get(family)!.push(m)
+async function handleSave(): Promise<void> {
+  if (!draft.value.name.trim()) {
+    MessageUtil.warning('请输入提供方名称')
+    return
   }
-  return Array.from(map.entries())
-    .map(([family, items]) => ({
-      family,
-      models: [...items].sort((a, b) => a.identifier.localeCompare(b.identifier))
-    }))
-    .sort((a, b) => a.family.localeCompare(b.family))
+  if (!draft.value.baseUrl.trim()) {
+    MessageUtil.warning('请输入接口地址')
+    return
+  }
+  if (!draft.value.key.trim()) {
+    MessageUtil.warning('请输入密钥')
+    return
+  }
+  if (draft.value.models.length === 0) {
+    MessageUtil.warning('请至少添加一个模型')
+    return
+  }
+  await persistDraft()
+}
+
+function handleFetchModels(): void {
+  void fetchModels({
+    baseUrl: draft.value.baseUrl,
+    key: draft.value.key,
+    format: draft.value.format
+  })
+}
+
+const modelsRef = computed({
+  get: () => draft.value.models,
+  set: (val: AiModel[]) => {
+    draft.value.models = val
+  }
+})
+
+const { fetching, addModel, editModel, deleteModel, toggleModel, fetchModels } = useProviderModels({
+  models: modelsRef,
+  onSaved: persistDraft
 })
 </script>
 
 <style scoped lang="less">
-.ai-setting-form {
+.provider-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 720px;
+  padding: 8px 8px 32px;
+  box-sizing: border-box;
+}
+
+.provider-editor__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.provider-editor__title {
+  margin: 0;
+  font: var(--td-font-title-large);
+  font-weight: 600;
+  color: var(--td-text-color-primary);
+}
+
+.provider-editor__lead {
+  margin: 0;
+  font: var(--td-font-body-medium);
+  color: var(--td-text-color-secondary);
+}
+
+.provider-surface {
+  background: var(--fluent-card-bg);
+  border: 1px solid var(--fluent-card-border);
+  border-radius: var(--fluent-radius-card);
+  box-shadow: var(--fluent-elevation-1);
+  padding: 16px;
+}
+
+.provider-surface__title {
+  margin: 0 0 12px;
+  padding-left: 2px;
+  font: var(--td-font-title-small);
+  color: var(--td-text-color-secondary);
+}
+
+.provider-editor__form {
   max-width: 640px;
 }
 
-// 模型区域
-.model-section {
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  &__title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--td-text-color-primary);
-  }
-
-  &__search {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--td-bg-color-container);
-    padding: 12px 0 12px;
-  }
-}
-
-.model-group {
-  margin-top: 16px;
-
-  &__title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--td-text-color-primary);
-    margin-bottom: 8px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--td-bg-color-component);
-  }
-}
-
-.model-item {
+.provider-editor__commands {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: var(--td-radius-default);
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: var(--td-bg-color-secondaryhover);
-  }
-
-  &__info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__name {
-    font-size: 13px;
-    color: var(--td-text-color-secondary);
-  }
-
-  &__actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
+  gap: 8px;
+  margin-top: 16px;
+  margin-left: 16px;
 }
 </style>

@@ -152,6 +152,7 @@
 | [04-account-store.md](./setting/04-account-store.md) | 账户配置存储：`~/.mistrelle/account.json`（`SettingAccountService` 读写 + safeStorage 整文件加密，含明文降级）；Store 契约 `state` + 三个鉴权配置不变 |
 | [05-ai-provider-builtin-relay.md](./setting/05-ai-provider-builtin-relay.md) | AI 设置内置供应商（服务端中转站）：主进程 relay IPC 代理 `/v1/models` + `/v1/chat/completions`；透传 `session_id`（渠道亲和）与 `request_id`（仅记录）；流式回调走 start/chunk/end 事件；`thirdPartyRelay` 门控 + 登录守卫 |
 | [06-account-page.md](./setting/06-account-page.md) | 账号设置页 Fluent 布局：身份主视觉（可用积分 / 每日赠送）+ 账户与安全（我的会员与我的积分分开，增量包挂在会员下）+ 第三方密钥；进入页 1 分钟节流刷新；积分流水抽屉；档位页收敛入口 + 增量包选择/结算（确认文案 30 天清零，无支付） |
+| [07-ai-setting-page.md](./setting/07-ai-setting-page.md) | AI 设置页 Fluent 布局 + 单向数据流：编排层只传 source 快照；ProviderEditor 本地 draft；ProviderModelList 共用；侧栏 Accent 选中条；修复 form 整表替换后模型操作打到孤儿数组 |
 
 ### skill/ —— 本地 Skill
 

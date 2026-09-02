@@ -80,14 +80,4 @@ const handleDelete = (record: ImageRecordInput) => remove(record.id)
   border-radius: 12px;
   background: var(--td-bg-color-container);
 }
-
-:deep(.record-view) {
-  flex: 1;
-  min-height: 0;
-}
-
-:deep(.record-grid) {
-  max-height: none;
-  flex: 1;
-}
 </style>

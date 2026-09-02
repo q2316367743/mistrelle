@@ -34,8 +34,8 @@
 | `src/preload/src/ipc/relay.ts` | preload 桥 `window.preload.relay.{listModels, chatStream, streamAbort}`；invoke 只传可克隆参数，本地调 handlers |
 | `src/renderer/src/modules/ai/service.ts` | `listRelayModels()` + `createRelayChatStream()`（内置对话流，复用 `chatAdapter` + `SseParser`） |
 | `src/renderer/src/store/setting/SettingAiStore.ts` | 内置 provider 注入 / 门控过滤 / `refreshBuiltinModels` |
-| `src/renderer/src/pages/setting/ai/SettingAi.vue` | 内置只读面板 + 刷新按钮 + 登录守卫 |
-| `src/renderer/src/pages/setting/ai/components/SettingAiSidebar.vue` | 两组渲染 + 添加按钮移位 |
+| `src/renderer/src/pages/setting/ai/SettingAi.vue` | 编排层：登录守卫、选中/新增/删除/启用、内置刷新、接收编辑器 `@save` 落盘（布局与单向流见 [07-ai-setting-page.md](./07-ai-setting-page.md)） |
+| `src/renderer/src/pages/setting/ai/components/SettingAiSidebar.vue` | 两组渲染 + Accent 选中条 + 添加按钮 |
 
 ## Store 契约（SettingAiStore 变更）
 

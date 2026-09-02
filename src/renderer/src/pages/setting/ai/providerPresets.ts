@@ -11,6 +11,7 @@ export const PROVIDER_PRESETS: Array<{ label: string; baseUrl: string }> = [
   { label: 'Perplexity', baseUrl: 'https://api.perplexity.ai' },
   { label: '零一万物 (Yi)', baseUrl: 'https://api.lingyiwanwu.com/v1' },
   { label: 'Moonshot (月之暗面)', baseUrl: 'https://api.moonshot.cn/v1' },
+  { label: 'Kimi', baseUrl: 'https://api.moonshot.cn/v1' },
   {
     label: '阿里云 (通义千问)',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1'

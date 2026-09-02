@@ -3,6 +3,7 @@
  * 手动添加 / 编辑 / 删除 / 启用切换 / 从接口获取导入。
  * 操作经 onSaved 回调落盘（由调用方注入 handleSave）。
  */
+import type { Ref, WritableComputedRef } from 'vue'
 import type { AiModel, AiProvideFormat } from '@/entity'
 import { listAiModels } from '@/modules/ai'
 import { MessageUtil } from '@/utils/modal'
@@ -11,9 +12,9 @@ import { openModelDialog } from './modals/OpenModelDialog'
 import { fetchModelsDrawer } from './modals/FetchModelsDrawer'
 
 export interface UseProviderModelsOptions {
-  /** 当前表单 models（可变引用，操作直接修改） */
-  models: AiModel[]
-  /** 表单内联方法（保存后刷新选中态） */
+  /** 当前草稿 models（始终改当前数组，避免整表替换后打到孤儿数组） */
+  models: Ref<AiModel[]> | WritableComputedRef<AiModel[]>
+  /** 落盘回调（保存后刷新选中态） */
   onSaved: () => Promise<void>
 }
 
@@ -22,9 +23,9 @@ export function useProviderModels(options: UseProviderModelsOptions) {
 
   const addModel = (): void => {
     openModelDialog(
-      options.models.map((m) => m.identifier),
+      options.models.value.map((m) => m.identifier),
       async (result) => {
-        options.models.push({
+        options.models.value.push({
           identifier: result.identifier,
           model: result.name,
           type: result.type,
@@ -41,9 +42,9 @@ export function useProviderModels(options: UseProviderModelsOptions) {
 
   const editModel = (model: AiModel): void => {
     openModelDialog(
-      options.models.map((m) => m.identifier),
+      options.models.value.map((m) => m.identifier),
       async (result) => {
-        const target = options.models.find((m) => m.identifier === model.identifier)
+        const target = options.models.value.find((m) => m.identifier === model.identifier)
         if (target) {
           target.model = result.name
           target.type = result.type
@@ -59,15 +60,15 @@ export function useProviderModels(options: UseProviderModelsOptions) {
   }
 
   const deleteModel = async (row: AiModel): Promise<void> => {
-    const index = options.models.findIndex((m) => m.identifier === row.identifier)
+    const index = options.models.value.findIndex((m) => m.identifier === row.identifier)
     if (index > -1) {
-      options.models.splice(index, 1)
+      options.models.value.splice(index, 1)
       await options.onSaved()
     }
   }
 
   const toggleModel = async (row: AiModel, val: boolean): Promise<void> => {
-    const model = options.models.find((m) => m.identifier === row.identifier)
+    const model = options.models.value.find((m) => m.identifier === row.identifier)
     if (model) {
       model.enable = val
       await options.onSaved()
@@ -95,17 +96,14 @@ export function useProviderModels(options: UseProviderModelsOptions) {
         id: m.id,
         name: m.id
       }))
-      fetchModelsDrawer(fetched, options.models, async (selectedIds: string[]) => {
-        options.models.length = 0
-        for (const m of fetched) {
-          options.models.push({
-            identifier: m.id,
-            model: m.name,
-            type: guessModelType(m.id),
-            ...guessModelParams(m.id),
-            enable: selectedIds.includes(m.id)
-          })
-        }
+      fetchModelsDrawer(fetched, options.models.value, async (selectedIds: string[]) => {
+        options.models.value = fetched.map((m) => ({
+          identifier: m.id,
+          model: m.name,
+          type: guessModelType(m.id),
+          ...guessModelParams(m.id),
+          enable: selectedIds.includes(m.id)
+        }))
         await options.onSaved()
         MessageUtil.success('模型已更新')
       })
