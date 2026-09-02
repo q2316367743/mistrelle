@@ -39,6 +39,7 @@
   </t-select>
 </template>
 <script lang="ts" setup>
+import { computed, watch } from 'vue'
 import { groupDesignStylesByCategory } from '@/entity'
 import { useAuthStore, useDesignStyleStore } from '@/store'
 import StyleCardFace from './StyleCardFace.vue'
@@ -65,6 +66,23 @@ const groups = computed(() =>
       isSystem: 'isSystem' in s && s.isSystem
     }))
   )
+)
+
+/** 该 id 是否内置预设（isSystem）；自定义 / 在线下载风格均非会员不可用 */
+const isBuiltin = (id: string): boolean => {
+  const s = designStyleStore.getById(id)
+  return Boolean(s && 'isSystem' in s && s.isSystem)
+}
+
+// 非会员已选自定义风格时自动清空（下拉项本就 disabled，防 keep-alive 残留 / 会员到期后旧选中提交）
+watch(
+  [stylesLocked, modelValue],
+  () => {
+    if (!stylesLocked.value) return
+    const v = modelValue.value
+    if (v && !isBuiltin(v)) modelValue.value = ''
+  },
+  { immediate: true }
 )
 </script>
 <style scoped lang="less">

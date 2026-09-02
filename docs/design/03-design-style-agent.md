@@ -65,6 +65,15 @@
 4 个工具的工作流（查重 → get 现状 → 确认 → 落库）；`builtin: true`、时间戳 0。`AiAgentStore.all` 自动合并、
 `AgentChat.getFunctions` 按 `tools` 名自动解析，无需其他接线。
 
+## 会员门控（features.extendedDesignStyles）
+
+「设计风格创建助手」的核心能力是创建 / 修改**自定义**设计风格，而自定义设计风格为会员功能，故该内置 Agent 一并受会员门控：
+
+- **非会员隐藏**：`AiAgentStore.all` 过滤 `builtin:design-style`（`BUILTIN_AGENT_DESIGN_STYLE_ID`）→ 对话 Expert 面板、专家管理页、发送器专家下拉、`list_agents` 均不可见，无可选噪音。白名单式按 id 过滤，其余内置 Agent（agent-create / skill-create / ffmpeg）免费可用。
+- **getById 保留**：会员期内用该 agent 开过的历史聊天（`agentId` 持久化）免费档仍可继续——`getById` 直接查全量底层（`BUILTIN_AGENTS` + `state`），不随 `all` 过滤（同 `DesignStyleStore.getDetail` 保留渲染先例，防历史会话 brick）。
+- **写风格仍被拦**：即便历史会话继续，模型调 `create/update_design_style` 也会被 `stylesLocked` 挡回会员 error，无绕费路径。
+- `AiAgentStore` 引 `useAuthStore` 须**直连 `@/store/AuthStore` 文件**（经 `@/store` index 会成环，同 `DesignStyleStore` 先例）。
+
 ## 注意事项
 
 - 工具与 agent 的绑定方向是「agent 声明工具名 → `toolMap` 解析」，新增工具必须同步进 `toolMap` 否则 agent 调用会静默缺失

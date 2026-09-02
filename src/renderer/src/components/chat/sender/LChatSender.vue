@@ -222,8 +222,7 @@ const writingScene = ref<WritingScene>(props.initial.writingScene ?? 'article')
 const designStyleId = ref(props.initial.designStyleId ?? '')
 const workspaceRef = ref(props.initial.workspace || '')
 const files = computed(() => [...sandboxFiles.value])
-const agents = computed(() => useAiAgentStore().all)
-const selectedAgent = computed(() => agents.value.find((item) => item.id === agentId.value))
+const selectedAgent = computed(() => useAiAgentStore().getById(agentId.value))
 
 /** 设计风格名称：从缓存列表取（列表缓存、详情不缓存），风格被删除时回退空串 */
 const designStyleName = computed(

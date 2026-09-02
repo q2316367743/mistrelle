@@ -16,14 +16,14 @@
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [01-server-auth.md](./auth/01-server-auth.md)                 | 服务端账号接入（better-auth）：主进程 AuthService 单例共享状态 + 状态广播、API Key + 会话双存凭证（safeStorage 落盘）、Bearer 规避 CSRF、`/api/auth/*` 与 `/api/user/*` 契约、公开档位/增量包 SKU、登录弹窗与用户菜单接入；账户页布局见 setting/06 |
-| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播；会员只决定每日赠送，增量包 30 天账本可重复买）、档位页收敛入口选 SKU 结算（无支付，确认文案 30 天清零）、AuthStore.features 门控 |
+| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播；会员只决定每日赠送，增量包 30 天账本可重复买）、档位页收敛入口选 SKU 结算（无支付，确认文案 30 天清零）、AuthStore.features 门控（UI 可见锁定 + AI 面过滤 + 渲染不拦，内置风格免费 / 自定义不可用于新会话 / 内置「设计风格创建助手」隐藏） |
 
 ### ai/ —— AI 请求
 
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [01-ai-request-module.md](./ai/01-ai-request-module.md)       | AI 请求统一模块：替代 openai SDK（preload Node http 通道免疫 CORS）、三格式（chat/responses/anthropic）适配器、流式通道（preload 薄桥 + plugin/http.requestStream + 渲染层 SSE 分帧归一）、消费方改造 |
-| [02-ai-agent-store.md](./ai/02-ai-agent-store.md)             | AI Agent 配置存储：`~/.mistrelle/agent.json`（`AiAgentService` 读写 + `AiAgentStore` 契约、内置 Agent 只读不落盘）；从 lmdb DbStorage 迁移，旧数据不迁移 |
+| [02-ai-agent-store.md](./ai/02-ai-agent-store.md)             | AI Agent 配置存储：`~/.mistrelle/agent.json`（`AiAgentService` 读写 + `AiAgentStore` 契约、内置 Agent 只读不落盘、**内置 Agent 会员门控**：免费档过滤 `builtin:design-style` 但 `getById` 保留历史会话、AuthStore 直连防环）；从 lmdb DbStorage 迁移，旧数据不迁移 |
 
 ### note/ —— 笔记
 
@@ -95,7 +95,7 @@
 |---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
 | [01-design-style.md](./design/01-design-style.md)             | 设计风格模块：落盘契约、**8 套本地内置预设**（2 产品 UI + 各类各 1；更多走在线库）、配方字段（aliases / signature / whitespaceRatio / preferredFormats / suitableFor）、tokens + 提示词注入签名手法 |
 | [02-design-style-chat.md](./design/02-design-style-chat.md)   | 设计风格接入 design 聊天：`designStyleId` 创建后锁定、风格转提示词注入稳定 system 前缀、聊天室工作空间/风格只读展示、列表缓存详情不缓存 |
-| [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写 |
+| [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写；**会员门控**（免费档隐藏 agent、getById 保留历史会话） |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
 | [05-style-preview.md](./design/05-style-preview.md)           | 风格预览所见即所得：`AiDesignStyleItem` 索引项扩展 typography/tokens/whitespaceRatio（旧数据读取兜底）、`StyleCardFace` 按规范整卡渲染（`--sp-*` 变量换算、留白密度、对比度文字色）、列表卡壳 + 面与详情大样张；**全局风格下拉组件 `StyleSelect`**（t-select 分组 + 选项悬浮 StyleCardFace 预览 + 非会员锁定，PageNew 与文生图表单共用，自带 overlay 全局样式） |
 

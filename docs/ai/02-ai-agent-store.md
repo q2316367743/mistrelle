@@ -77,6 +77,15 @@ export const getAgentPath = () => window.preload.path.join(dataFolder, 'agent.js
 
 移除项：`rev` 冲突控制、`DbStorageUtil` / `LocalNameEnum.LIST_AI_AGENT` 依赖。
 
+## 内置 Agent 会员门控（features.extendedDesignStyles）
+
+`builtin:design-style`（设计风格创建助手）的核心能力是创建 / 修改自定义设计风格，而自定义设计风格为会员功能，故该内置 Agent 一并受门控（语义见 `docs/auth/02`）：
+
+- `all` / `options` 按会员档过滤：`features.extendedDesignStyles === false` 时剔除 `builtin:design-style`（常量 `BUILTIN_AGENT_DESIGN_STYLE_ID`）。消费 `all` 的入口（对话 Expert 面板、专家管理页、发送器专家下拉、`list_agents`）自动隐藏，无需逐个改。
+- **`getById` 不随 `all` 过滤**：直接在 `BUILTIN_AGENTS` + `state` 全量底层查找，会员期内用该 agent 开过的历史聊天免费档仍可继续（防 brick，同 `DesignStyleStore.getDetail` 先例）。仅「新建 / 切换」入口经 `all` 不可见，达成隐藏语义。
+- `put` / `remove` 对内置 id 只读保护不变（与会员无关）。
+- 引 `useAuthStore` 须**直连 `@/store/AuthStore` 文件**：本模块经 `@/store` index 再导出，经 index 引 `AuthStore` 会成环（`index → AiAgentStore → index`），与 `DesignStyleStore.ts` 同一先例。
+
 ## 注意事项
 
 - 文件读写是全量覆写（无差分合并），单实例运行下安全。

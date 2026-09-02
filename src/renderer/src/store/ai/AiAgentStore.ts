@@ -5,18 +5,32 @@ import { useSnowflake } from '@/hooks'
 import { CommonSelect } from '@/domain'
 import { BUILTIN_AGENTS } from '@/global/BuiltInAgent'
 import { agentList, agentSave } from '@/modules/agent/service/AiAgentService'
-
+// 直连文件而非 '@/store'（index 会再导出本模块，经 index 会成环，同 DesignStyleStore 先例）
+import { useAuthStore } from '@/store/AuthStore'
 
 /** 内置 Agent 的 id 集合，用于快速判定只读项 */
 const BUILTIN_IDS: ReadonlySet<string> = new Set(BUILTIN_AGENTS.map((e) => e.id))
+
+/**
+ * 绑定会员能力的内置 Agent id：设计风格创建助手会创建 / 修改自定义设计风格，
+ * 自定义设计风格为会员功能（features.extendedDesignStyles），故非会员隐藏该内置 Agent
+ * （不可选、不可见；会员期内用它开过的历史会话经 getById 仍可继续，见 getById 注释）。
+ */
+const BUILTIN_AGENT_DESIGN_STYLE_ID = 'builtin:design-style'
 
 export const useAiAgentStore = defineStore('ai-agent', () => {
   const logger = useLog({ name: 'store:ai-agent' })
 
   const state = ref(new Array<AiAgent>())
 
-  /** 内置 Agent + 用户自建 Agent，供列表与选择器统一消费 */
-  const all = computed<Array<AiAgent>>(() => [...BUILTIN_AGENTS, ...state.value])
+  /** 内置 Agent + 用户自建 Agent，供列表与选择器统一消费；非会员过滤会员专属内置 Agent */
+  const all = computed<Array<AiAgent>>(() => {
+    const unlocked = useAuthStore().features.extendedDesignStyles
+    const builtins = unlocked
+      ? BUILTIN_AGENTS
+      : BUILTIN_AGENTS.filter((a) => a.id !== BUILTIN_AGENT_DESIGN_STYLE_ID)
+    return [...builtins, ...state.value]
+  })
 
   const options = computed<Array<CommonSelect>>(() => {
     return all.value.map((e) => ({ label: e.name, value: e.id }))
@@ -72,7 +86,12 @@ export const useAiAgentStore = defineStore('ai-agent', () => {
 
   const getById = (id?: string): AiAgent | undefined => {
     if (!id) return undefined
-    return all.value.find((item) => item.id === id)
+    // 不在 all 中查找：all 会按会员档过滤「设计风格创建助手」，而会员期内用该 agent 开过的历史
+    // 聊天（agentId 持久化）免费档仍需可继续 → 直接在全量底层查找（同 DesignStyleStore.getDetail
+    // 保留渲染先例）。仅「新建 / 切换」入口经 all 不可见，达到隐藏语义。
+    return (
+      BUILTIN_AGENTS.find((item) => item.id === id) ?? state.value.find((item) => item.id === id)
+    )
   }
 
   return {
