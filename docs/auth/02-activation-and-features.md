@@ -55,14 +55,18 @@
 | `components/chat/chat-assistant/tool/FontPickChatTool.vue`（AI 选字面板） | 过滤 library（AI 面不可见） |
 | `modules/tool/components/design/fontTools.ts`（font_list） | 过滤 library + 结果 note「资源库自定义字体为会员功能」 |
 
-### extendedDesignStyles（自定义设计风格 = isSystem:false 自建风格）落点
+### extendedDesignStyles（更多设计风格 = 自建 + 在线库）落点
 
 | 落点 | 行为（非会员） |
 |---|---|
 | `store/design/DesignStyleStore.ts` | `put`/`remove` 兜底拒绝（返回 undefined / 直接 return）；`all` 不过滤（可见）；`getDetail` 不拦（防 brick） |
-| `pages/design/list/index.vue` | 「新建风格」disabled + 会员 tag；`handleEdit`/`handleDelete` 拦截提示（查看详情不拦） |
+| `pages/design/list/index.vue` | 「新建风格」disabled + 会员 tag；`handleEdit`/`handleDelete` 拦截提示（查看本地详情不拦）；**在线 Tab** 可见但锁定（会员 badge + 空态提示），不拉远端列表 |
+| `pages/design/detail`（`/design/online/:id`） | 在线详情与下载需能力；下载走 `store.put` |
 | `pages/new/PageNew.vue` 风格下拉 | 自建风格项 t-option disabled（内置预设可选） |
 | `modules/tool/components/design/designStyleTools.ts` | `list_design_styles` 只回内置预设；`create/update_design_style` 返回「会员功能」error；`get_design_style` 不拦 |
+| 服务端 `GET /api/user/design-styles` | 无能力返回 403（不把提示词裸奔给免费档） |
+
+远端通道：`auth:listDesignStyles` / `auth:getDesignStyle`（`DesignStyleRemote.ts` + AuthService.authedApiGet）。
 
 ### thirdPartyRelay（自定义供应商 = 第三方中转）落点
 

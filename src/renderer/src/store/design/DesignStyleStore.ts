@@ -55,6 +55,9 @@ export const useDesignStyleStore = defineStore('design:style', () => {
     return all.value.find((e) => e.id === id)
   }
 
+  /** 本地用户风格（index.json）是否已有该 id（在线下载保留原 id，用于判断是否已下载） */
+  const hasLocal = (id: string) => state.value.some((e) => e.id === id)
+
   /**
    * 读取完整风格：内置预设直接返回常量，用户风格读单条文件（列表缓存、详情不缓存，按需读盘）。
    * 旧数据缺 tokens / 配方字段时用默认值补齐，保证消费端字段完整。
@@ -90,7 +93,27 @@ export const useDesignStyleStore = defineStore('design:style', () => {
     const now = Date.now()
     if (id) {
       const idx = state.value.findIndex((e) => e.id === id)
-      if (idx < 0) return undefined
+      if (idx >= 0) {
+        const item: AiDesignStyleItem = {
+          id,
+          name: form.name,
+          description: form.description,
+          category: form.category,
+          tags: form.tags,
+          colorPalette: form.colorPalette,
+          typography: form.typography,
+          tokens: form.tokens,
+          whitespaceRatio: form.whitespaceRatio,
+          createdAt: state.value[idx].createdAt,
+          updatedAt: now
+        }
+        const full: AiDesignStyle = { ...item, ...form, isSystem: false }
+        state.value[idx] = item
+        await Promise.all([designStyleSave(full), designStyleListSave(state.value)])
+        return id
+      }
+      // 指定 id 新建（在线下载：保留服务端 id，便于去重）
+      if (DESIGN_STYLE_PRESETS.some((p) => p.id === id)) return undefined
       const item: AiDesignStyleItem = {
         id,
         name: form.name,
@@ -101,11 +124,11 @@ export const useDesignStyleStore = defineStore('design:style', () => {
         typography: form.typography,
         tokens: form.tokens,
         whitespaceRatio: form.whitespaceRatio,
-        createdAt: state.value[idx].createdAt,
+        createdAt: now,
         updatedAt: now
       }
       const full: AiDesignStyle = { ...item, ...form, isSystem: false }
-      state.value[idx] = item
+      state.value.push(item)
       await Promise.all([designStyleSave(full), designStyleListSave(state.value)])
       return id
     }
@@ -137,5 +160,5 @@ export const useDesignStyleStore = defineStore('design:style', () => {
     await designStyleRemove(id)
   }
 
-  return { state, all, init, isSystem, getById, getDetail, put, remove }
+  return { state, all, init, isSystem, hasLocal, getById, getDetail, put, remove }
 })

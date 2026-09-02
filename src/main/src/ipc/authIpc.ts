@@ -20,6 +20,8 @@ import {
   type AuthSignUpParams,
   type AuthState,
   type AuthTierInfo,
+  type AuthDesignStyleDetail,
+  type AuthDesignStyleItem,
   type AuthPackCatalog,
   type AuthPackLots
 } from '~/ipc/authChannels'
@@ -38,6 +40,7 @@ import {
   updateUser,
   verifyActivationCode
 } from '$/auth/AuthService'
+import { getDesignStyle, listDesignStyles } from '$/auth/DesignStyleRemote'
 
 export function registerAuthIpc(): void {
   ipcMain.handle(AuthChannels.getState, (): AuthState => current())
@@ -80,4 +83,12 @@ export function registerAuthIpc(): void {
     ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>> => listTransactions(params)
   )
   ipcMain.handle(AuthChannels.listPackLots, (): Promise<AuthDataResult<AuthPackLots>> => listPackLots())
+  ipcMain.handle(
+    AuthChannels.listDesignStyles,
+    (): Promise<AuthDataResult<AuthDesignStyleItem[]>> => listDesignStyles()
+  )
+  ipcMain.handle(
+    AuthChannels.getDesignStyle,
+    (_event, id: string): Promise<AuthDataResult<AuthDesignStyleDetail>> => getDesignStyle(id)
+  )
 }

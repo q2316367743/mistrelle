@@ -21,6 +21,8 @@ import {
   type AuthSignUpParams,
   type AuthState,
   type AuthTierInfo,
+  type AuthDesignStyleDetail,
+  type AuthDesignStyleItem,
   type AuthPackCatalog,
   type AuthPackLots
 } from './authChannels'
@@ -62,6 +64,12 @@ export const authApi = {
   /** 未过期增量包 lot */
   listPackLots: (): Promise<AuthDataResult<AuthPackLots>> =>
     ipcRenderer.invoke(AuthChannels.listPackLots),
+  /** 在线设计风格列表（需会员更多设计风格能力） */
+  listDesignStyles: (): Promise<AuthDataResult<AuthDesignStyleItem[]>> =>
+    ipcRenderer.invoke(AuthChannels.listDesignStyles),
+  /** 在线设计风格详情 */
+  getDesignStyle: (id: string): Promise<AuthDataResult<AuthDesignStyleDetail>> =>
+    ipcRenderer.invoke(AuthChannels.getDesignStyle, id),
   /** 订阅主进程状态变更推送；返回取消订阅函数 */
   onChanged: (callback: (state: AuthState) => void): (() => void) => {
     const listener = (_event: IpcRendererEvent, state: AuthState): void => callback(state)

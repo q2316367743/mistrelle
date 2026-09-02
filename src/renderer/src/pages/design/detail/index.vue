@@ -10,7 +10,17 @@
     </template>
     <template #extra>
       <t-button
-        v-if="style && !style.isSystem"
+        v-if="style && isOnline"
+        theme="primary"
+        :loading="downloading"
+        :disabled="downloaded"
+        @click="handleDownload"
+      >
+        <template #icon><DownloadIcon /></template>
+        {{ downloaded ? '已下载到本地' : '下载到本地' }}
+      </t-button>
+      <t-button
+        v-else-if="style && !style.isSystem"
         theme="default"
         variant="outline"
         @click="handleEdit"
@@ -24,100 +34,7 @@
       <t-loading size="large" />
     </div>
 
-    <div v-else-if="style" class="detail">
-      <section class="detail-block">
-        <div class="detail-block__title">效果预览</div>
-        <div class="detail-block__body">
-          <style-card-face :style="style" variant="full" />
-        </div>
-      </section>
-
-      <section class="detail-block">
-        <div class="detail-block__title">基础信息</div>
-        <div class="detail-block__body">
-          <div class="detail-basic">
-            <div class="detail-basic__name">
-              {{ style.name }}
-              <t-tag v-if="style.isSystem" theme="primary" variant="light" size="small"
-                >内置预设</t-tag
-              >
-            </div>
-            <p class="detail-basic__desc">{{ style.description || '暂无简介' }}</p>
-            <div class="detail-basic__meta">
-              <t-tag size="small" variant="outline">{{ categoryLabel }}</t-tag>
-              <t-tag v-for="t in style.tags" :key="t" size="small" variant="light">{{ t }}</t-tag>
-            </div>
-            <div v-if="style.aliases?.length" class="detail-basic__row">
-              <span class="detail-basic__label">别名</span>
-              <span>{{ style.aliases.join(' / ') }}</span>
-            </div>
-            <div v-if="style.signature" class="detail-basic__row">
-              <span class="detail-basic__label">签名手法</span>
-              <span>{{ style.signature }}</span>
-            </div>
-            <div class="detail-basic__row">
-              <span class="detail-basic__label">留白</span>
-              <span>约 {{ style.whitespaceRatio ?? 55 }}%</span>
-            </div>
-            <div v-if="style.preferredFormats?.length" class="detail-basic__row">
-              <span class="detail-basic__label">常用画幅</span>
-              <span>{{ style.preferredFormats.join(' / ') }}</span>
-            </div>
-            <div v-if="style.suitableFor" class="detail-basic__row">
-              <span class="detail-basic__label">适合</span>
-              <span>{{ style.suitableFor }}</span>
-            </div>
-            <div v-if="style.unsuitableFor" class="detail-basic__row">
-              <span class="detail-basic__label">不适合</span>
-              <span>{{ style.unsuitableFor }}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="detail-block">
-        <div class="detail-block__title">配色方案</div>
-        <div class="detail-block__body">
-          <style-palette-block :palette="style.colorPalette" />
-        </div>
-      </section>
-
-      <section class="detail-block">
-        <div class="detail-block__title">字体规范</div>
-        <div class="detail-block__body">
-          <style-typography-block :typography="style.typography" />
-        </div>
-      </section>
-
-      <section class="detail-block">
-        <div class="detail-block__title">细节规范</div>
-        <div class="detail-block__body">
-          <style-token-block :tokens="style.tokens" />
-        </div>
-      </section>
-
-      <section class="detail-block">
-        <div class="detail-block__title">视觉提示</div>
-        <div class="detail-block__body">
-          <style-prompt-block
-            :visual-prompt="style.visualPrompt"
-            :negative-prompt="style.negativePrompt"
-          />
-        </div>
-      </section>
-
-      <section class="detail-block">
-        <div class="detail-block__title">布局规则</div>
-        <div class="detail-block__body">
-          <ul v-if="style.layoutRules.length > 0" class="detail-rules">
-            <li v-for="(rule, idx) in style.layoutRules" :key="idx" class="detail-rules__item">
-              {{ rule }}
-            </li>
-          </ul>
-          <div v-else class="detail-rules__empty">未设置布局约束</div>
-        </div>
-      </section>
-    </div>
+    <design-style-detail-body v-else-if="style" :style="style" :online="isOnline" />
 
     <div v-else class="detail-empty">
       <t-empty title="设计风格不存在" description="该风格可能已被删除">
@@ -128,136 +45,91 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronLeftIcon, EditIcon } from 'tdesign-icons-vue-next'
-import { AiDesignStyle, getDesignStyleCategoryLabel, normalizeDesignStyleCategory } from '@/entity'
-import { useDesignStyleStore } from '@/store'
+import { ChevronLeftIcon, EditIcon, DownloadIcon } from 'tdesign-icons-vue-next'
+import {
+  AiDesignStyle,
+  toAiDesignStyleForm
+} from '@/entity'
+import { useAuthStore, useDesignStyleStore } from '@/store'
+import { MessageUtil } from '@/utils/modal'
 import { openDesignStylePut } from '@/pages/design/list/modals/DesignStylePutDialog'
-import StylePaletteBlock from './components/StylePaletteBlock.vue'
-import StyleTypographyBlock from './components/StyleTypographyBlock.vue'
-import StyleTokenBlock from './components/StyleTokenBlock.vue'
-import StylePromptBlock from './components/StylePromptBlock.vue'
-import StyleCardFace from '@/pages/design/components/StyleCardFace.vue'
+import DesignStyleDetailBody from './components/DesignStyleDetailBody.vue'
+import { mapRemoteToDesignStyle } from '@/pages/design/list/useOnlineDesignStyles'
 import { useTitlePadding } from '@/hooks'
 
 const route = useRoute()
 const router = useRouter()
 const store = useDesignStyleStore()
-
 const { l3 } = useTitlePadding()
 
 const id = computed(() => String(route.params.id))
+const isOnline = computed(() => route.meta.online === true)
+const stylesLocked = computed(() => !useAuthStore().features.extendedDesignStyles)
+const downloaded = computed(() => store.hasLocal(id.value))
+
 const loading = ref(true)
+const downloading = ref(false)
 const style = ref<AiDesignStyle>()
+
+const loadOnline = async () => {
+  if (stylesLocked.value) {
+    style.value = undefined
+    MessageUtil.warning('在线设计风格为会员功能，可在 设置 → 账户 开通')
+    return
+  }
+  const res = await window.preload.auth.getDesignStyle(id.value)
+  if (!res.ok) {
+    style.value = undefined
+    MessageUtil.error(res.msg)
+    return
+  }
+  style.value = mapRemoteToDesignStyle(res.data)
+}
 
 const load = async () => {
   loading.value = true
   try {
-    style.value = await store.getDetail(id.value)
+    if (isOnline.value) await loadOnline()
+    else style.value = await store.getDetail(id.value)
   } finally {
     loading.value = false
   }
 }
-load()
 
-const categoryLabel = computed(() =>
-  style.value
-    ? getDesignStyleCategoryLabel(normalizeDesignStyleCategory(style.value.category))
-    : ''
-)
+watch([id, isOnline], () => void load(), { immediate: true })
 
 const goList = () => router.push('/design/list')
 
 const handleEdit = async () => {
   await openDesignStylePut(id.value)
-  // 编辑保存后重新读取（store 详情缓存已更新）
   await load()
+}
+
+const handleDownload = async () => {
+  if (!style.value || downloaded.value) return
+  if (stylesLocked.value) {
+    MessageUtil.warning('在线设计风格为会员功能，可在 设置 → 账户 开通')
+    return
+  }
+  downloading.value = true
+  try {
+    const savedId = await store.put(toAiDesignStyleForm(style.value), style.value.id)
+    if (!savedId) {
+      MessageUtil.error('下载失败')
+      return
+    }
+    MessageUtil.success(`已添加「${style.value.name}」到本地`)
+  } catch (e) {
+    MessageUtil.error('下载失败', e)
+  } finally {
+    downloading.value = false
+  }
 }
 </script>
 
 <style scoped lang="less">
-.detail {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px 24px;
-  max-width: 960px;
-}
-
-.detail-block {
-  background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
-  border-radius: var(--td-radius-medium);
-
-  &__title {
-    padding: 12px 16px;
-    font: var(--td-font-title-small);
-    color: var(--td-text-color-primary);
-    border-bottom: 1px solid var(--td-component-stroke);
-  }
-
-  &__body {
-    padding: 16px;
-  }
-}
-
-.detail-basic {
-  &__name {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--td-text-color-primary);
-  }
-
-  &__desc {
-    margin: 8px 0 12px;
-    font: var(--td-font-body-medium);
-    color: var(--td-text-color-secondary);
-  }
-
-  &__meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__row {
-    display: flex;
-    gap: 12px;
-    margin-top: 10px;
-    font: var(--td-font-body-medium);
-    color: var(--td-text-color-primary);
-  }
-
-  &__label {
-    flex-shrink: 0;
-    width: 72px;
-    color: var(--td-text-color-placeholder);
-  }
-}
-
-.detail-rules {
-  margin: 0;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  &__item {
-    font: var(--td-font-body-medium);
-    color: var(--td-text-color-primary);
-  }
-
-  &__empty {
-    font: var(--td-font-body-medium);
-    color: var(--td-text-color-placeholder);
-  }
-}
-
 .detail-loading,
 .detail-empty {
   display: flex;

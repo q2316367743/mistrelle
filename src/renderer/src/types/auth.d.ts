@@ -152,6 +152,58 @@ declare type AuthCodeActionResult<T> = { ok: true; data: T } | { ok: false; msg:
 
 declare type AuthDataResult<T> = { ok: true; data: T } | { ok: false; msg: string }
 
+/** 在线设计风格列表项（卡片投影） */
+declare interface AuthDesignStyleItem {
+  id: string
+  name: string
+  description: string
+  category: string
+  tags: string[]
+  colorPalette: {
+    primary: string
+    secondary: string
+    background: string
+    surface: string
+    text_primary: string
+    text_secondary: string
+  }
+  typography: {
+    heading: { font: string; weight: number; size: number; lineHeight: number }
+    body: { font: string; weight: number; size: number; lineHeight: number }
+    caption: { font: string; weight: number; size: number; lineHeight: number }
+  }
+  tokens: {
+    spacing: { pageMargin: number; sectionGap: number; cardPadding: number; baseUnit: number }
+    radius: { small: number; medium: number; large: number; pill: boolean }
+    border: { width: number; style: string; color: string }
+    shadow: {
+      enabled: boolean
+      offsetX: number
+      offsetY: number
+      blur: number
+      color: string
+    }
+    motion: { duration: number; easing: string; scope: string }
+  }
+  whitespaceRatio: number
+  sort: number
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** 在线设计风格完整详情 */
+declare interface AuthDesignStyleDetail extends AuthDesignStyleItem {
+  visualPrompt: string
+  negativePrompt: string
+  layoutRules: string[]
+  aliases: string[]
+  signature: string
+  preferredFormats: string[]
+  suitableFor: string
+  unsuitableFor: string
+}
+
 declare interface AuthPageParams {
   page: number
   pageSize: number
@@ -215,6 +267,10 @@ declare interface AuthApi {
   listTransactions(params: AuthPageParams): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>>
   /** 未过期增量包 lot */
   listPackLots(): Promise<AuthDataResult<AuthPackLots>>
+  /** 在线设计风格列表 */
+  listDesignStyles(): Promise<AuthDataResult<AuthDesignStyleItem[]>>
+  /** 在线设计风格详情 */
+  getDesignStyle(id: string): Promise<AuthDataResult<AuthDesignStyleDetail>>
   /** 订阅主进程状态变更推送；返回取消订阅函数 */
   onChanged(callback: (state: AuthState) => void): () => void
 }

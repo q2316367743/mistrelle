@@ -2,7 +2,7 @@
 
 ## 功能概述
 
-「设计风格」模块（侧边栏 → 设计风格）管理统一的视觉语言定义：用户可新建 / 编辑 / 删除设计风格（配色、字体、提示词、布局约束、签名手法），内置 **6 套产品 UI + 32 套平面配方**系统预设（只读不可删）。风格数据保存在本地文件，供后续 AI 生图 / 设计生成消费。
+「设计风格」模块（侧边栏 → 设计风格）管理统一的视觉语言定义：用户可新建 / 编辑 / 删除设计风格（配色、字体、提示词、布局约束、签名手法），本地内置 **8** 套系统预设（只读不可删：2 产品 UI + 其余各类各 1）；更多风格由在线库提供。风格数据保存在本地文件，供后续 AI 生图 / 设计生成消费。
 
 ## 文件结构
 
@@ -10,21 +10,22 @@
 |--------------------------------------------------------------------|---------------------------------------------------------------|
 | `src/entity/ai/AiDesignStyle.ts`                                   | 实体类型 + 分类 / 留白选项 + 表单工厂（`buildAiDesignStyleForm` / `toAiDesignStyleForm` / `normalizeWhitespaceRatio`） |
 | `src/global/DesignStylePresets.ts`                                 | 内置预设聚合导出 `DESIGN_STYLE_PRESETS`（isSystem 只读，不落盘） |
-| `src/global/design-style-presets/*.ts`                             | 预设分组：`product`（6）/ `print` / `art` / `east` / `handmade` / `pop` / `commercial`（共 32 平面） |
+| `src/global/design-style-presets/*.ts`                             | 预设分组：`product`（2）/ `print` / `art` / `east` / `handmade` / `pop` / `commercial`（各 1，共 8） |
 | `src/modules/design/service/DesignStyleService.ts`                 | 文件持久化：`~/.mistrelle/design/` 下 index.json + 单条文件    |
 | `src/modules/design/service/DesignStylePrompt.ts`                  | 风格 → 提示词段落 `buildDesignStylePrompt`（design 聊天注入，见 `02-design-style-chat.md`） |
 | `src/store/design/DesignStyleStore.ts`                             | Pinia store：合并预设与用户数据、CRUD（列表缓存、详情不缓存）  |
-| `src/pages/design/list/index.vue`                                  | 列表页（hero + 搜索 + 分类筛选 + 卡片网格）                     |
-| `src/pages/design/list/components/DesignStyleCard.vue`             | 列表卡片（色板圆点 / 内置徽标 / 更多菜单）                      |
+| `src/pages/design/list/index.vue`                                  | 列表页（hero + 本地/在线 Tab + 搜索 + 分类筛选 + 卡片网格）       |
+| `src/pages/design/list/useOnlineDesignStyles.ts`                   | 在线列表加载与下载落盘 composable                               |
+| `src/pages/design/list/components/DesignStyleCard.vue`             | 本地列表卡片（内置徽标 / 编辑删除菜单）                          |
+| `src/pages/design/list/components/OnlineDesignStyleCard.vue`       | 在线列表卡片（查看 / 下载到本地）                                |
 | `src/pages/design/list/modals/DesignStylePutDialog.tsx`            | 新建 / 编辑抽屉外壳（命令式 `DrawerPlugin`）                    |
 | `src/pages/design/list/modals/DesignStylePutContent.vue`           | 抽屉内容（6 个 Tab 表单 + 保存按钮，`emit('close'/'success')`） |
 | `src/pages/design/list/modals/ColorPaletteFields.vue`              | 配色方案表单区段（6 个 `t-color-picker`）                       |
 | `src/pages/design/list/modals/TypographyFields.vue`                | 字体规范表单区段（字体下拉选自 `window.preload.font.listFonts()`，支持输入自定义；3 级 × 字体/字重/字号/行高） |
 | `src/pages/design/list/modals/TokenFields.vue`                     | 细节规范表单区段（spacing / radius / border / shadow / motion 五组 tokens） |
-| `src/pages/design/detail/index.vue`                                | 明细页（基础信息 / 配色 / 字体 / 细节规范 / 视觉提示 / 布局规则分块展示）   |
-| `src/pages/design/detail/components/StylePaletteBlock.vue`         | 明细页配色区块（色带 + 色块网格）                                |
-| `src/pages/design/detail/components/StyleTypographyBlock.vue`      | 明细页字体区块（层级表格）                                       |
-| `src/pages/design/detail/components/StyleTokenBlock.vue`           | 明细页细节规范区块（间距 / 圆角 / 边框 / 阴影 / 动效一行一表）   |
+| `src/pages/design/detail/index.vue`                                | 明细页（本地 `/design/detail/:id` 与在线 `/design/online/:id` 共用；在线可下载） |
+| `src/pages/design/detail/components/DesignStyleDetailBody.vue`     | 详情分块内容（预览 / 基础 / 配色 / 字体 / tokens / 提示词 / 布局） |
+| `src/main/src/auth/DesignStyleRemote.ts`                           | 在线风格 HTTP（list/get），经 `authedApiGet`                    |
 
 ## 数据结构与持久化契约
 
@@ -50,7 +51,7 @@
 |- design-{id}.json        # 单条完整 AiDesignStyle（id 为雪花 ID 或预设固定 ID）
 ```
 
-- **系统预设不落盘**：`DESIGN_STYLE_PRESETS` 为代码常量（`isSystem: true`、固定 id 如 `preset-apple` / `preset-swiss`），共 **38** 条（6 产品 UI + 32 平面配方），store 的 `all` computed 合并为 `[...预设, ...用户项]`
+- **系统预设不落盘**：`DESIGN_STYLE_PRESETS` 为代码常量（`isSystem: true`、固定 id 如 `preset-apple` / `preset-swiss`），本地共 **8** 条（Apple / Notion + 瑞士 / 包豪斯 / 侘寂 / 手绘 / 美漫 / xAI）；其余原本地预设迁至在线库，store 的 `all` computed 合并为 `[...预设, ...用户项]`
 - 画布未锁定风格时可通过 `canvas_guidelines("styles")` 读取由预设动态生成的精简目录（签名手法级）
 - **写入双写**：`put` 同时写 index.json（索引项）与 `design-{id}.json`（完整内容），`Promise.all` 并行
 - **删除双删**：`remove` 更新 index.json 并 `rm` 单条文件

@@ -93,7 +93,7 @@
 
 | 文档                                                          | 描述                                                                                                      |
 |---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| [01-design-style.md](./design/01-design-style.md)             | 设计风格模块：落盘契约、**38 套内置预设**（6 产品 UI + 32 平面配方，分组文件）、配方字段（aliases / signature / whitespaceRatio / preferredFormats / suitableFor）、tokens + 提示词注入签名手法 |
+| [01-design-style.md](./design/01-design-style.md)             | 设计风格模块：落盘契约、**8 套本地内置预设**（2 产品 UI + 各类各 1；更多走在线库）、配方字段（aliases / signature / whitespaceRatio / preferredFormats / suitableFor）、tokens + 提示词注入签名手法 |
 | [02-design-style-chat.md](./design/02-design-style-chat.md)   | 设计风格接入 design 聊天：`designStyleId` 创建后锁定、风格转提示词注入稳定 system 前缀、聊天室工作空间/风格只读展示、列表缓存详情不缓存 |
 | [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写 |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |

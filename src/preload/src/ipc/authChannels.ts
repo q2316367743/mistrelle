@@ -26,6 +26,10 @@ export const AuthChannels = {
   listTransactions: 'auth:listTransactions',
   /** 未过期增量包 lot（GET /api/user/pack-lots） */
   listPackLots: 'auth:listPackLots',
+  /** 在线设计风格列表（GET /api/user/design-styles） */
+  listDesignStyles: 'auth:listDesignStyles',
+  /** 在线设计风格详情（GET /api/user/design-styles/:id） */
+  getDesignStyle: 'auth:getDesignStyle',
   /** 主进程 → 渲染层状态变更推送（登录/登出/刷新后广播） */
   changed: 'auth:changed'
 } as const
@@ -224,6 +228,58 @@ export type AuthPointsTxType =
   | 'pack_grant'
   | 'pack_expire'
   | 'expire'
+
+/** 在线设计风格列表项（卡片投影） */
+export interface AuthDesignStyleItem {
+  id: string
+  name: string
+  description: string
+  category: string
+  tags: string[]
+  colorPalette: {
+    primary: string
+    secondary: string
+    background: string
+    surface: string
+    text_primary: string
+    text_secondary: string
+  }
+  typography: {
+    heading: { font: string; weight: number; size: number; lineHeight: number }
+    body: { font: string; weight: number; size: number; lineHeight: number }
+    caption: { font: string; weight: number; size: number; lineHeight: number }
+  }
+  tokens: {
+    spacing: { pageMargin: number; sectionGap: number; cardPadding: number; baseUnit: number }
+    radius: { small: number; medium: number; large: number; pill: boolean }
+    border: { width: number; style: string; color: string }
+    shadow: {
+      enabled: boolean
+      offsetX: number
+      offsetY: number
+      blur: number
+      color: string
+    }
+    motion: { duration: number; easing: string; scope: string }
+  }
+  whitespaceRatio: number
+  sort: number
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** 在线设计风格完整详情 */
+export interface AuthDesignStyleDetail extends AuthDesignStyleItem {
+  visualPrompt: string
+  negativePrompt: string
+  layoutRules: string[]
+  aliases: string[]
+  signature: string
+  preferredFormats: string[]
+  suitableFor: string
+  unsuitableFor: string
+}
 
 /** 积分流水项（GET /api/user/transactions；amount 正为收入、负为支出；createdAt 为 ISO） */
 export interface AuthPointsTransaction {

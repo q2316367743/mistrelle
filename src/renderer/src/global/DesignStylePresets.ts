@@ -9,8 +9,8 @@ import { COMMERCIAL_STYLE_PRESETS } from './design-style-presets/commercial'
 
 /**
  * 内置设计风格预设（系统预设，isSystem = true 不可编辑 / 删除）：
- * - 6 套产品 UI 语言（Apple / xAI / Notion / Meta / Material / Fluent）
- * - 32 套平面图形配方（瑞士 / 杂志 / 包豪斯 / 侘寂 / 终端…）
+ * - 8 套本地 builtin（2 产品 UI：Apple / Notion；其余各类各 1：瑞士 / 包豪斯 / 侘寂 / 手绘 / 美漫 / xAI）
+ * - 更多风格由在线库提供，不在此常量内
  * 字段完整（正向 / 反向提示词、配色、字体、布局约束、签名手法），
  * 供 AI 生图 / 设计生成直接消费。预设以代码常量维护、不落盘，
  * 由 DesignStyleStore 与用户自建风格合并展示。

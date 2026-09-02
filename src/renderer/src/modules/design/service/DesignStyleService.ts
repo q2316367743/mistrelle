@@ -11,7 +11,7 @@ export const buildDesignStylePath = (id: string) =>
 
 const ensureDesignDir = async () => {
   const folder = getAppData2Design()
-  if (!(window.preload.fs.existsSync(folder))) {
+  if (!window.preload.fs.existsSync(folder)) {
     await window.preload.fs.mkdir(folder)
   }
 }
@@ -21,7 +21,7 @@ const ensureDesignDir = async () => {
  */
 export const designStyleList = async (): Promise<Array<AiDesignStyleItem>> => {
   const indexPath = buildDesignStyleIndexPath()
-  if (!(window.preload.fs.existsSync(indexPath))) {
+  if (!window.preload.fs.existsSync(indexPath)) {
     await ensureDesignDir()
     await window.preload.fs.writeTextFile(indexPath, JSON.stringify([]))
     return []
@@ -39,7 +39,7 @@ export const designStyleListSave = async (list: Array<AiDesignStyleItem>) => {
  */
 export const designStyleGet = async (id: string): Promise<AiDesignStyle | undefined> => {
   const path = buildDesignStylePath(id)
-  if (!(window.preload.fs.existsSync(path))) return undefined
+  if (!window.preload.fs.existsSync(path)) return undefined
   return JSON.parse(await window.preload.fs.readTextFile(path))
 }
 

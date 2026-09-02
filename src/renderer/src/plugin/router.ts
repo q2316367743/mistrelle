@@ -48,6 +48,12 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/pages/design/detail/index.vue')
   },
   {
+    name: '设计/在线详情',
+    path: '/design/online/:id',
+    component: () => import('@/pages/design/detail/index.vue'),
+    meta: { online: true }
+  },
+  {
     name: '设置/字体管理',
     path: '/design/font',
     component: () => import('@/pages/design/font/DesignFontPage.vue')

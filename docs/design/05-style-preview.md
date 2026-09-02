@@ -72,4 +72,4 @@ PageNew 选择设计风格时，每个选项内容由 `t-popup`（`trigger="hove
 - 预览直接用选项数据 `s` 渲染，无需悬停 id 跟踪 / 受控 visible / 回落已选等状态；下拉关闭随面板隐藏。
 - popup 的 hover 触发在鼠标进入选项内容根节点后生效，鼠标移入预览框可保持显示细看；快速划过时靠 delay 抑制闪烁。
 - 悬浮框内容经 `overlay-inner-style` 去默认内边距，由容器给 8px 呼吸边距；popup 与预览插槽均编译在 PageNew 渲染上下文，scoped 样式可用。
-- 选项量 = 内置 38 预设 + 用户自建，每选项一个 popup 实例开销可接受；超 100 项会启用虚拟滚动（threshold），届时 popup 随选项 DOM 复用。
+- 选项量 = 本地内置 8 预设 + 用户自建（在线库另计），每选项一个 popup 实例开销可接受；超 100 项会启用虚拟滚动（threshold），届时 popup 随选项 DOM 复用。

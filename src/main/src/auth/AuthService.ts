@@ -560,3 +560,18 @@ function fail(error: unknown): { ok: false; msg: string } {
   console.error('[auth] 操作失败', msg)
   return { ok: false, msg }
 }
+
+/**
+ * 已登录业务 GET（供同域模块如 DesignStyleRemote 复用，避免再膨胀本文件业务逻辑）。
+ * 未登录返回 { ok:false }，不抛跨进程异常。
+ */
+export async function authedApiGet<T>(path: string): Promise<AuthDataResult<T>> {
+  const cred = loadCredential()
+  if (!cred) return { ok: false, msg: '未登录' }
+  try {
+    const data = await apiGet<T>(path, cred.apiKey)
+    return { ok: true, data }
+  } catch (error) {
+    return fail(error)
+  }
+}
