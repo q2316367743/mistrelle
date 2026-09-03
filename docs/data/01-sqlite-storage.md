@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS aihot_meta (key TEXT PRIMARY KEY, value TEXT);
 ## 9. 注意事项 / 陷阱
 
 - **channels.ts 已贴 500 行红线**：db 通道**不并入**，独立 `dbChannels.ts`，避免再改 492 行文件。
-- **四文件同步**（沿用 fs 桥约定）：新增 DB 通道能力须同步 `dbChannels.ts` / `ipc/dbIpc.ts` /
+- **四文件同步**（沿用 fs 桥约定）：新增 DB 通道能力须同步 `dbChannels.ts` / `db/dbIpc.ts` /
   `preload/db.ts` / 渲染层 `types/db.d.ts`（+ `vite-env.d.ts` 挂 `Window.preload.db`）。
 - **主进程时序**：`registerDbIpc()` 在 app ready 后调用（`registerIpc()`），`initDb()` 于此打开库并 `migrate()` 应用迁移。
 - **迁移流水线（drizzle-kit）**：表结构变更统一走 `schema/*.ts` → `npx drizzle-kit generate` 产出 `resources/drizzle/NNNN_*.sql` 并提交；运行时 `migrate()` 按 `__drizzle_migrations` 表增量应用。**drizzle 的 `run()` 底层是 better-sqlite3 `prepare()`（只支持单语句），多语句 DDL 会直接抛错**——这就是首版手写多语句 DDL 崩溃的根因，因此迁移一律交给 drizzle-kit 生成的单语句序列，不再手写。
@@ -143,5 +143,5 @@ CREATE TABLE IF NOT EXISTS aihot_meta (key TEXT PRIMARY KEY, value TEXT);
 
 1. `src/main/src/db/schema/<module>.ts` 定义表 + 索引，`schema/index.ts` 导出；执行 `npx drizzle-kit generate` 产出新迁移 SQL（提交 `resources/drizzle/`），运行时 `migrate()` 自动应用。
 2. `src/main/src/db/repo/<module>Repo.ts` 写 DAO（Drizzle 查询 / 事务 / ON CONFLICT）。
-3. `src/preload/src/dbChannels.ts` 增补通道 + 载荷类型；`ipc/dbIpc.ts` 注册 handler；`preload/db.ts` 增补方法。
+3. `src/preload/src/modules/db/dbChannels.ts` 增补通道 + 载荷类型；`db/dbIpc.ts` 注册 handler；`preload/db.ts` 增补方法。
 4. 渲染层 `types/db.d.ts` 增补对应类型与方法，业务代码经 `window.preload.db.<module>.*` 调用。

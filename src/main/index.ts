@@ -1,10 +1,10 @@
 import { app } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
-import { createAiWindow, markQuitting, showAiWindow } from '$/aiWindow/aiWindow'
-import { init as initAuth } from '$/auth/AuthService'
-import { registerIpc } from '$/ipc/registerIpc'
-import { registerLocalSchemes, registerLocalProtocol } from '$/protocol'
-import { registerAppTray } from '$/tray/appTray'
+import { createAiWindow, markQuitting, showAiWindow } from '$/app/aiWindow'
+import { init as initAuth } from '$/modules/auth/AuthService'
+import { registerIpc } from '$/registerIpc'
+import { registerLocalSchemes, registerLocalProtocol } from '$/app/protocol'
+import { registerAppTray } from '$/app/tray'
 
 // 在 app ready 之前注册 mistrelle:// 为特权 scheme（渲染层经自定义协议加载本地字体 / 图片，
 // 规避 dev 下 http 页面加载 file:// 被 Chromium 拦截）

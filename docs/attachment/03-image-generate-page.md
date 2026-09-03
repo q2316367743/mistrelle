@@ -67,14 +67,14 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
 
 | 层 | 文件 | 职责 |
 |---|---|---|
-| main | `src/main/src/image/ImageService.ts` | **生图编排与运行态单例**：startGeneration（建记录/工具直出两模式）+ 轮询 + 落盘 + finish 收尾 + 广播 + resume/remove/cleanupOrphans |
-| main | `src/main/src/auth/RelayService.ts` | `/v1/images/*` 三个 HTTP 函数（`imageModels/imageGenerate/imageTask`，Bearer 注入在 main） |
-| main | `src/main/src/ipc/imageIpc.ts` | `image:*` handler（注册时执行 cleanupOrphans；须在 registerDbIpc 之后） |
+| main | `src/main/src/modules/image/ImageService.ts` | **生图编排与运行态单例**：startGeneration（建记录/工具直出两模式）+ 轮询 + 落盘 + finish 收尾 + 广播 + resume/remove/cleanupOrphans |
+| main | `src/main/src/modules/relay/RelayService.ts` | `/v1/images/*` 三个 HTTP 函数（`imageModels/imageGenerate/imageTask`，Bearer 注入在 main） |
+| main | `src/main/src/modules/image/imageIpc.ts` | `image:*` handler（注册时执行 cleanupOrphans；须在 registerDbIpc 之后） |
 | main | `src/main/src/db/repo/imageRepo.ts` | `imageList/imageGet/imageUpsert/imageDelete`（行级 CRUD，无业务） |
 | main | `src/main/src/db/schema/image.ts` | `image_generate` 表定义 |
-| preload | `src/preload/src/ipc/imageChannels.ts` | `image:*` 通道常量与载荷类型（main/preload/渲染三端共用；记录行类型沿用 dbChannels） |
-| preload | `src/preload/src/ipc/image.ts` | `imageApi` 薄桥（含 `onRecordChanged` 订阅） |
-| preload | `src/preload/src/ipc/dbChannels.ts` | 保留 `ImageRecordInput` 等表形状类型；`db:image:*` 三通道已删（list 迁 `image:list`，upsert/delete 上移） |
+| preload | `src/preload/src/modules/image/imageChannels.ts` | `image:*` 通道常量与载荷类型（main/preload/渲染三端共用；记录行类型沿用 dbChannels） |
+| preload | `src/preload/src/modules/image/image.ts` | `imageApi` 薄桥（含 `onRecordChanged` 订阅） |
+| preload | `src/preload/src/modules/db/dbChannels.ts` | 保留 `ImageRecordInput` 等表形状类型；`db:image:*` 三通道已删（list 迁 `image:list`，upsert/delete 上移） |
 | renderer | `src/renderer/src/types/image.d.ts` | `window.preload.image` 契约（挂载于 `vite-env.d.ts`） |
 | renderer | `src/renderer/src/store/image/ImageModelStore.ts` | 服务端生图档位列表（登录态联动） |
 | renderer | `pages/extend/image/useImageGenerations.ts` | 薄数据源：分页/关键词视图态 + 广播订阅就地替换 + generate/resume/remove 代理 + 风格解析 |

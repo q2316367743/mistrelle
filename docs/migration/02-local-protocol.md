@@ -29,7 +29,7 @@ mistrelle://local/<encodeURIComponent(绝对路径)>
 
 | 文件                                            | 职责                                                              |
 |-------------------------------------------------|-------------------------------------------------------------------|
-| `src/main/src/protocol.ts`                      | `registerLocalSchemes()`（app ready 前注册特权 scheme）+ `registerLocalProtocol()`（app ready 后 `protocol.handle`） |
+| `src/main/src/app/protocol.ts`                      | `registerLocalSchemes()`（app ready 前注册特权 scheme）+ `registerLocalProtocol()`（app ready 后 `protocol.handle`） |
 | `src/main/index.ts`                             | 模块顶部调 `registerLocalSchemes()`；`whenReady` 回调内调 `registerLocalProtocol()` |
 | `src/preload/src/net.ts`                        | `pathToHref`：绝对路径 → `mistrelle://local/<enc>`                |
 | `src/renderer/src/utils/fontFaceRegistry.ts`    | `new FontFace(name, url(pathToHref(path)))` 用 URL 源异步加载字体 |

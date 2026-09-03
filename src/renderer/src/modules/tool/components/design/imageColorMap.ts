@@ -1,6 +1,6 @@
 /**
  * image_color_map 工具：分析一张图片的颜色分布，返回全局主色 palette 与「突兀区域」anomalies。
- * - 本地 Sharp（src/main/src/sharp/image.ts 的 sharpColorMap）处理，不消耗模型。
+ * - 本地 Sharp（src/main/src/modules/sharp/image.ts 的 sharpColorMap）处理，不消耗模型。
  * - 用途：AI 判断合成图 / 画布某区域颜色是否与周围差距过大，直接读 anomalies 的
  *   deviation（LAB ΔE，与 8 邻域最大色差）即可定位突兀区域，无需对比整张网格。
  * - 网格按宽高比缩放（长边 gridSize 格），每格即该区域平均色；透明格自动剔除。

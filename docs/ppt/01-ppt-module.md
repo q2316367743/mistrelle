@@ -291,8 +291,8 @@ Node 侧（主进程或 preload）: buildPptx(xml) → convertPptxToSvg(pptx字�
 | 项         | 说明                                                                                                                                                                                                                                                                                               |
 |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 依赖       | `@hirokisakabe/pom@10.3.0` + `pptx-glimpse@3.2.8`（均 `dependencies`，主进程 externalize 后打包进 asar）                                                                                                                                                                                           |
-| 主进程渲染 | `src/main/src/ppt/pptRenderer.ts`（PptJsonDoc → jsonToPomXml → buildPptx → SVG / PPTX 字节 / PNG）+ `src/main/src/ppt/jsonToPomXml.ts`（SlideNode JSON → POM XML 纯函数转换）+ `src/main/src/ipc/pptIpc.ts`                                                                                        |
-| IPC        | `PptChannels`：`ppt:renderPptxToSvgs`（PptJsonDoc→每页 SVG）/ `ppt:exportPptx`（PptJsonDoc→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（PptJsonDoc→指定页 PNG 并落盘，preload `window.preload.ppt`）；载荷类型 `SlideNode` / `PptJsonDoc` 定义在 `src/preload/src/channels.ts`（main/preload 共享） |
+| 主进程渲染 | `src/main/src/modules/ppt/pptRenderer.ts`（PptJsonDoc → jsonToPomXml → buildPptx → SVG / PPTX 字节 / PNG）+ `src/main/src/modules/ppt/jsonToPomXml.ts`（SlideNode JSON → POM XML 纯函数转换）+ `src/main/src/modules/ppt/pptIpc.ts`                                                                                        |
+| IPC        | `PptChannels`：`ppt:renderPptxToSvgs`（PptJsonDoc→每页 SVG）/ `ppt:exportPptx`（PptJsonDoc→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（PptJsonDoc→指定页 PNG 并落盘，preload `window.preload.ppt`）；载荷类型 `SlideNode` / `PptJsonDoc` 定义在 `src/preload/src/modules/<域>/*Channels.ts`（main/preload 共享） |
 | 渲染进程   | `src/renderer/src/modules/ppt/`：`PptStore.ts`（500ms 防抖自动渲染，JSON 存储零 pom）/ `pptTypes.ts`（SlideNode / PptJsonDoc）/ `pptRender.ts` / `pptPrompt.ts` / `pptGuidelines.ts`                                                                                                               |
 | 工具       | `src/renderer/src/modules/tool/components/ppt/pptTools.ts`（14 个 ppt_* 工具 + 策略：全 allow，导出工具走 `isPathUnder` 路径感知审批）                                                                                                                                                             |
 | UI         | `src/components/chat/aside/ppt/PptAside.vue` + `PptRenderer.vue` + `PptSlideViewer.vue` + `usePptPanZoom.ts`（SVG `<img>` 渲染、翻页 / 滚轮缩放（围绕指针）+ 拖拽平移 / 缩略图导航 / 自动滚动定位）                                                                                                |
@@ -394,7 +394,7 @@ canvas 的一组图片）。重构为：
    校验（tag 判别）→ 替换页面数组 → JSON 写回」；`PptCurrentDoc` 从 `{xml}` 改为 `{json: PptJsonDoc}`，watch 依赖
    `current.json`；attr 值入站统一 toString（AI 可输出数字/布尔，存储恒为字符串）。
 
-4. **json → xml 转换只在导出时（主进程）**：新增 `src/main/src/ppt/jsonToPomXml.ts`（纯函数，不依赖 pom）：递归
+4. **json → xml 转换只在导出时（主进程）**：新增 `src/main/src/modules/ppt/jsonToPomXml.ts`（纯函数，不依赖 pom）：递归
    nodeToXml（attr/文本 XML 转义、空 child 自闭合）+ `<Theme/>` + `<Slide>` 包裹 + `normalizeHStackText`（12.4-8 的 POM 布局
    bug 规避从渲染进程迁移至此，幂等）。`pptRenderer.ts` 三函数签名 `xml: string` → `json: PptJsonDoc`，内部先转换再
    `buildPptx`；IPC 载荷类型 `SlideNode`/`PptJsonDoc` 定义在 `channels.ts`（main/preload 共享），renderer 侧 `pptTypes.ts`
@@ -501,7 +501,7 @@ canvas_batch_edit 重构为 **元素级批量操作**：
 
 ### 13.2 修复：主进程后处理 `postprocessPptx.ts`
 
-- 位置：`src/main/src/ppt/postprocessPptx.ts`（纯函数，fflate 解压 → 改写 `ppt/slides/slideN.xml` → 重打包）。
+- 位置：`src/main/src/modules/ppt/postprocessPptx.ts`（纯函数，fflate 解压 → 改写 `ppt/slides/slideN.xml` → 重打包）。
 - 三路共用：`pptRenderer.ts` 抽 `buildPptxBytes`（`buildPptx → write → postprocessPptx`），预览 / PNG / PPTX 用同一份字节 →
   任何渲染器结构一致。
 - 改写规则：

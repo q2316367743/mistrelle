@@ -17,7 +17,7 @@ import type {
   AihotListFilter,
   AihotListResult,
   AihotMeta
-} from '~/ipc/dbChannels'
+} from '~/modules/db/dbChannels'
 
 /** 排序 / 时间下界用的基准列：timeline 用 discovered_at，published 用 coalesce(published_at, discovered_at) */
 const timeKey = (by: AihotListBy): SQL =>

@@ -1,7 +1,7 @@
 # 文件预览弹窗（公共组件 FilePreviewDialog）
 
 > 关键文件：`src/renderer/src/components/preview/FilePreviewDialog.tsx`（外壳 + 分发）+ `FilePreviewContent.vue`（内容）
-> 依赖：`LinkPreviewDrawer`（同目录，处理 http 链接预览）；主进程 `src/main/src/protocol.ts`（mistrelle:// MIME 表）
+> 依赖：`LinkPreviewDrawer`（同目录，处理 http 链接预览）；主进程 `src/main/src/app/protocol.ts`（mistrelle:// MIME 表）
 > 演进：原 `components/chat/chat-assistant/modals/FilePreviewDialog.tsx`（纯 tsx，违反弹窗拆分约定）提升为公共组件并拆分为外壳 + 内容
 
 ## 实现思路
@@ -37,7 +37,7 @@ export function openFilePreview(item: FilePreviewItem): void
 ## 本地 html 预览的关键事实
 
 1. **webview 不写 partition**：`protocol.handle('mistrelle', ...)` 只在**默认 session** 注册（`src/main/index.ts#registerLocalProtocol`），带 partition 的 webview 是独立 session，拿不到自定义协议。因此 html 预览 webview 走默认 session；`mistrelle://` 与 app origin 隔离，无 cookie / localStorage 串扰。
-2. **MIME 表已补**：`src/main/src/protocol.ts` 的 `MIME_BY_EXT` 原只覆盖字体 / 图片，`.html` 回退 `application/octet-stream` 无法渲染；现补充 `.html/.htm → text/html`、`.js/.mjs → text/javascript`、`.css → text/css`、`.json → application/json`，本地页面及其相对资源均可正常加载。
+2. **MIME 表已补**：`src/main/src/app/protocol.ts` 的 `MIME_BY_EXT` 原只覆盖字体 / 图片，`.html` 回退 `application/octet-stream` 无法渲染；现补充 `.html/.htm → text/html`、`.js/.mjs → text/javascript`、`.css → text/css`、`.json → application/json`，本地页面及其相对资源均可正常加载。
 3. **失败态**：webview `did-fail-load` 忽略 -3（导航中断）与非主框架错误，仅主框架失败显示重试面板；重试通过 v-if 重建 webview 实现（`src` 重新绑定即重新加载）。
 4. **源码切换会重建 webview**：「预览 ↔ 源码」来回切换时页面状态丢失（重新加载），本地静态页场景可接受。
 

@@ -45,15 +45,15 @@ duration_ms / created_at + idx_model_health_created
 ```
 
 `HealthItemResult = { key, name, dimension, status: pass|warn|fail|skip, latencyMs, detail }`；
-`HealthLogEntry = { time, level: info|warn|error, message }`。类型定义在 `src/preload/src/dbChannels.ts`（preload/main 不 import 渲染层 entity，`HealthApiFormat` 为独立命名 type），渲染侧 ambient 镜像在 `src/renderer/src/types/db.d.ts`。
+`HealthLogEntry = { time, level: info|warn|error, message }`。类型定义在 `src/preload/src/modules/db/dbChannels.ts`（preload/main 不 import 渲染层 entity，`HealthApiFormat` 为独立命名 type），渲染侧 ambient 镜像在 `src/renderer/src/types/db.d.ts`。
 
 **数据库只存关键数据**：审计报告（HTML）由记录标量 + items / logs 动态生成，仅导出时落盘。
 
 ## 审计报告（HTML 模板渲染）
 
 - **模板引擎 EJS**（主进程运行时依赖）：模板文件在 `resources/templates/model-health-report.ejs`（与 drizzle 迁移同目录模式：electron-vite main publicDir，dev 自 out/main 相对回源、打包随应用分发）。以后新增 HTML 模板放同目录即可复用整条链路。
-- **主进程统一渲染服务** `src/main/src/service/templateRender.ts`：读模板（内存缓存）+ `ejs.render`，模板名白名单校验（`^[a-z0-9][a-z0-9-]*$` 防路径穿越）。
-- **IPC 链路**：`src/preload/src/templateChannels.ts`（独立通道文件，`template:render`，不碰贴红线的 channels.ts）→ `src/main/src/ipc/templateIpc.ts`（registerIpc.ts 注册）→ `src/preload/src/template.ts`（`window.preload.template.render({ name, data })` 返回完整 HTML）→ `vite-env.d.ts` 挂类型。
+- **主进程统一渲染服务** `src/main/src/modules/template/templateRender.ts`：读模板（内存缓存）+ `ejs.render`，模板名白名单校验（`^[a-z0-9][a-z0-9-]*$` 防路径穿越）。
+- **IPC 链路**：`src/preload/src/templateChannels.ts`（独立通道文件，`template:render`，不碰贴红线的 channels.ts）→ `src/main/src/modules/template/templateIpc.ts`（registerIpc.ts 注册）→ `src/preload/src/template.ts`（`window.preload.template.render({ name, data })` 返回完整 HTML）→ `vite-env.d.ts` 挂类型。
 - **安全**：EJS 默认 `<%= %>` HTML 转义——detail 含模型自述 / 错误信息等不可信文本，模板侧禁止 `<%- %>`；预览用 `<iframe :srcdoc sandbox="">` 完全隔离（无脚本无同源）。
 - **产物**：自包含单文件 HTML（内联 CSS，Fluent 风格：结论渐变横幅 + 四统计卡 + 基本信息卡 + 维度明细表 + 日志时间线），`@media print` 优化——浏览器 Ctrl+P 可直接另存 PDF。
 - **导出**：历史详情抽屉「导出 HTML 报告」→ `useHealthChecks.exportReport(record)` 动态生成 → **`dialog.save` 让用户自选路径**（2026-08-26 与 compare 统一；原固定目录 `~/.mistrelle/health/report` 已弃用）→ 写文件 → `showItemInFolder` 定位 + 抽屉内路径 t-link（用户取消则无副作用）。

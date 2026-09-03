@@ -26,7 +26,7 @@
 ## lmdb 链路删除清单
 
 - 依赖：`package.json` 移除 `lmdb`（`yarn remove lmdb`）。
-- main：`src/main/src/db/utoolsDb.ts`（整目录）、`src/main/src/ipc/dbIpc.ts`、`registerIpc.ts` 中的 `registerDbIpc()`。
+- main：`src/main/src/db/utoolsDb.ts`（整目录）、`src/main/src/db/dbIpc.ts`、`registerIpc.ts` 中的 `registerDbIpc()`。
 - preload：`channels.ts` 的 `DbChannels` 与 `DbDoc/DbPutResult/DbRemoveResult`、`inject.ts` 的 `db` 段与导出。
 - renderer：`utils/native/DbStorageUtil.ts`（barrel 改为 `JsonFileUtil`）、`hooks/UtoolsDbAsync.ts`、`hooks/UtoolsDbStorage.ts`（localStorage 版死代码）、`types/inject.d.ts` 的 `InjectDb` 家族。
 - `LocalNameEnum` 仅保留仍在用的 `KEY_APP_COLLAPSED`、`KEY_AI_ASIDE_WIDTH`（走 `KeyValueUtil`/localStorage，与 lmdb 无关），其余 key（含 Discussion 模块删除遗留的 `LIST_AI_DISCUSSION`/`ITEM_*` 等无引用死 key）一并清理。

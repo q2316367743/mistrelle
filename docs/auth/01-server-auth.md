@@ -81,10 +81,10 @@ type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 
 | 层 | 文件 | 职责 |
 |---|---|---|
-| main 服务 | `src/main/src/auth/AuthService.ts` | 单例状态、HTTP 客户端（axios）、凭证持久化、signIn/signUp/signOut/refresh/init |
-| 通道契约 | `src/preload/src/ipc/authChannels.ts` | `auth:*` 通道 + 载荷/返回类型（main 与 preload 共用） |
-| main IPC | `src/main/src/ipc/authIpc.ts` | 通道透传（`registerIpc.ts` 注册 + `index.ts` 挂 init） |
-| preload 桥 | `src/preload/src/ipc/auth.ts` | `window.preload.auth.*` 薄桥 + `onChanged` 订阅 |
+| main 服务 | `src/main/src/modules/auth/AuthService.ts` | 单例状态、HTTP 客户端（axios）、凭证持久化、signIn/signUp/signOut/refresh/init |
+| 通道契约 | `src/preload/src/modules/auth/authChannels.ts` | `auth:*` 通道 + 载荷/返回类型（main 与 preload 共用） |
+| main IPC | `src/main/src/modules/auth/authIpc.ts` | 通道透传（`registerIpc.ts` 注册 + `index.ts` 挂 init） |
+| preload 桥 | `src/preload/src/modules/auth/auth.ts` | `window.preload.auth.*` 薄桥 + `onChanged` 订阅 |
 | 渲染 store | `src/renderer/src/store/AuthStore.ts` | 拉取快照 + 订阅推送，跨页共享 |
 | 登录弹窗 | `src/renderer/src/components/modals/LoginDialog.tsx` + `LoginContent.vue` | DialogPlugin 命令式弹窗（登录/注册页签），AGENTS.md 拆壳约定 |
 | 页面接入 | `AppSide.vue`、`pages/setting/account/`（见 [06-account-page.md](../setting/06-account-page.md)）、`pages/setting/account/modals/` | 用户菜单；账户页身份主视觉 + 账户与安全 + 第三方密钥；积分流水抽屉（`PointsLedgerDrawer`）；弹窗仍为 EditName / ChangePassword / MemberTier / RedeemCode |

@@ -27,11 +27,11 @@
 
 | 文件 | 角色 |
 |---|---|
-| `src/main/src/auth/AuthService.ts` | 新增导出 `getRelayContext()`：返回 `{ baseUrl, apiKey } | null`（无凭证 null；仅主进程内部使用） |
-| `src/main/src/auth/RelayService.ts` | `listModels()` / `chatStream()`（axios stream + AbortSignal 取消） |
-| `src/main/src/ipc/relayIpc.ts` | `relay:listModels` / `relay:chatStream` / `relay:abortStream`；流式 start/chunk/end 经 `webContents.send` 回推（handlers 不进 invoke） |
-| `src/preload/src/ipc/relayChannels.ts` | 通道常量 + `RelayChatParams` / `RelayStreamHandlers` / `RelayStreamEndPayload` |
-| `src/preload/src/ipc/relay.ts` | preload 桥 `window.preload.relay.{listModels, chatStream, streamAbort}`；invoke 只传可克隆参数，本地调 handlers |
+| `src/main/src/modules/auth/AuthService.ts` | 新增导出 `getRelayContext()`：返回 `{ baseUrl, apiKey } | null`（无凭证 null；仅主进程内部使用） |
+| `src/main/src/modules/relay/RelayService.ts` | `listModels()` / `chatStream()`（axios stream + AbortSignal 取消） |
+| `src/main/src/modules/relay/relayIpc.ts` | `relay:listModels` / `relay:chatStream` / `relay:abortStream`；流式 start/chunk/end 经 `webContents.send` 回推（handlers 不进 invoke） |
+| `src/preload/src/modules/relay/relayChannels.ts` | 通道常量 + `RelayChatParams` / `RelayStreamHandlers` / `RelayStreamEndPayload` |
+| `src/preload/src/modules/relay/relay.ts` | preload 桥 `window.preload.relay.{listModels, chatStream, streamAbort}`；invoke 只传可克隆参数，本地调 handlers |
 | `src/renderer/src/modules/ai/service.ts` | `listRelayModels()` + `createRelayChatStream()`（内置对话流，复用 `chatAdapter` + `SseParser`） |
 | `src/renderer/src/store/setting/SettingAiStore.ts` | 内置 provider 注入 / 门控过滤 / `refreshBuiltinModels` |
 | `src/renderer/src/pages/setting/ai/SettingAi.vue` | 编排层：登录守卫、选中/新增/删除/启用、内置刷新、接收编辑器 `@save` 落盘（布局与单向流见 [07-ai-setting-page.md](./07-ai-setting-page.md)） |

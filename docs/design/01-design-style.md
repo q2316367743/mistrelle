@@ -25,7 +25,7 @@
 | `src/pages/design/list/modals/TokenFields.vue`                     | 细节规范表单区段（spacing / radius / border / shadow / motion 五组 tokens） |
 | `src/pages/design/detail/index.vue`                                | 明细页（本地 `/design/detail/:id` 与在线 `/design/online/:id` 共用；在线可下载） |
 | `src/pages/design/detail/components/DesignStyleDetailBody.vue`     | 详情分块内容（预览 / 基础 / 配色 / 字体 / tokens / 提示词 / 布局） |
-| `src/main/src/auth/DesignStyleRemote.ts`                           | 在线风格 HTTP（list/get），经 `authedApiGet`                    |
+| `src/main/src/modules/design-style/DesignStyleRemote.ts`                           | 在线风格 HTTP（list/get），经 `authedApiGet`                    |
 
 ## 数据结构与持久化契约
 

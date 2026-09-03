@@ -15,7 +15,7 @@ ffmpeg 不再做首次使用时远程下载（GitHub 连通性差、下载易失
 | `scripts/fetch-ffmpeg.mjs` | 构建期拉取脚本：`node scripts/fetch-ffmpeg.mjs [--force]`；当前平台产物自动 `-version` 校验，异平台信任镜像完整性；`FFMPEG_MIRROR` 环境变量可覆盖下载源（默认 `https://registry.npmmirror.com/-/binary/ffmpeg-static`，官方同构路径可切回 GitHub） |
 | `resources/ffmpeg/{os}-{arch}/ffmpeg(.exe)` | 各平台二进制（gitignore），共 5 组：darwin-x64 / darwin-arm64 / win32-x64 / linux-x64 / linux-arm64；镜像资产名不带 `.exe` 后缀，win 落盘时重命名 |
 | `electron-builder.yml` | `extraResources: from 'resources/ffmpeg/${os}-${arch}' → to ffmpeg`；`files` 另有 `'!resources/ffmpeg/**'` 排除，防止二进制再进 asar 造成双份体积 |
-| `src/main/src/service/ffmpegBinary.ts` | 运行时路径解析：packaged → `process.resourcesPath/ffmpeg/`；dev → `__dirname/../../resources/ffmpeg/{os}-{arch}/`（与 `db/client.ts` 的 `../../resources` 模式一致，dev/prod 同一份相对布局） |
+| `src/main/src/modules/ffmpeg/ffmpegBinary.ts` | 运行时路径解析：packaged → `process.resourcesPath/ffmpeg/`；dev → `__dirname/../../resources/ffmpeg/{os}-{arch}/`（与 `db/client.ts` 的 `../../resources` 模式一致，dev/prod 同一份相对布局） |
 
 ## 注意事项
 

@@ -18,10 +18,10 @@
 
 | 层 | 文件 | 内容 |
 |---|---|---|
-| 通道契约 | `src/preload/src/ipc/authChannels.ts` | `auth:verifyCode` / `auth:redeemCode` + `AuthCodeParams` / `AuthCodeVerifyResult` / `AuthCodeRedeemResult` / `AuthCodeActionResult<T>` |
-| main 服务 | `src/main/src/auth/AuthService.ts` | `verifyActivationCode` / `redeemActivationCode`（经 `apiPost` 业务包装；无凭证返回 `{ok:false,msg:'未登录'}`） |
-| main IPC | `src/main/src/ipc/authIpc.ts` | 两通道纯透传 |
-| preload 桥 | `src/preload/src/ipc/auth.ts` | `verifyCode` / `redeemCode` |
+| 通道契约 | `src/preload/src/modules/auth/authChannels.ts` | `auth:verifyCode` / `auth:redeemCode` + `AuthCodeParams` / `AuthCodeVerifyResult` / `AuthCodeRedeemResult` / `AuthCodeActionResult<T>` |
+| main 服务 | `src/main/src/modules/auth/AuthService.ts` | `verifyActivationCode` / `redeemActivationCode`（经 `apiPost` 业务包装；无凭证返回 `{ok:false,msg:'未登录'}`） |
+| main IPC | `src/main/src/modules/auth/authIpc.ts` | 两通道纯透传 |
+| preload 桥 | `src/preload/src/modules/auth/auth.ts` | `verifyCode` / `redeemCode` |
 | 渲染 store + UI | `AuthStore.ts` `verifyCode/redeemCode`；`RedeemCodeDialog` + `MemberTierDialog`（底部「积分增量包」入口，不铺 SKU）+ `PackLotsDialog` / `PackSelectDialog` / `PackCheckoutDialog`（选 SKU → 结算确认须提示 30 天清零原文，无支付） |
 
 要点：

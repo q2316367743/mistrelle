@@ -36,7 +36,7 @@ sharp（metadata/crop/removeBackground）
 
 ## 三、IPC 通道表
 
-通道常量集中在 `src/preload/src/channels.ts`（main 与 preload 共用，含载荷类型）。按模块分组：
+通道常量集中在 `src/preload/src/modules/<域>/*Channels.ts`（main 与 preload 共用，含载荷类型）。按模块分组：
 
 | 模块 | 通道 | 形态 |
 |---|---|---|
@@ -54,7 +54,7 @@ sharp（metadata/crop/removeBackground）
 | db | `db:get/put/remove/bulkDocs/allDocs` | invoke |
 | ffmpeg | `ffmpeg:run`（invoke→`{id}`）+ `ffmpeg:progress`/`ffmpeg:done`（事件推送）+ `ffmpeg:kill/quit`（send） | 混合 |
 | sharp | `sharp:metadata/crop/removeBackground` | invoke |
-| ppt | `ppt:renderPptxToSvgs`（XML→每页 SVG）/ `ppt:exportPptx`（XML→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（XML→指定页 PNG 并落盘） | invoke（POM 渲染与导出落盘都在 main，`src/main/src/ppt/pptRenderer.ts`；渲染进程只传 xml + 目标路径，不经手字节） |
+| ppt | `ppt:renderPptxToSvgs`（XML→每页 SVG）/ `ppt:exportPptx`（XML→构建 PPTX 并落盘）/ `ppt:exportPptxToPngs`（XML→指定页 PNG 并落盘） | invoke（POM 渲染与导出落盘都在 main，`src/main/src/modules/ppt/pptRenderer.ts`；渲染进程只传 xml + 目标路径，不经手字节） |
 | browserTool | `browserTool:run`（`{kind:'fetch'}` 抓取网页内容 / `{kind:'actions'}` 自动化步骤 → main `BrowserToolRunner` 直接创建隐藏窗口执行，无 runner 子进程） | invoke（载荷 `BrowserToolPayload`，返回 `BrowserToolResult`，详见 `docs/browserTool/01-browser-tool.md`） |
 
 ## 四、数据层
@@ -76,7 +76,7 @@ sharp（metadata/crop/removeBackground）
 - utools `dbStorage` 的 Electron 替代：localStorage 天然同步 + 自动持久化（默认 session 落盘 `userData/Local Storage/`），**无需 IPC / partition 配置**
 - localStorage 仅存字符串 → `JSON.stringify/parse` 包装；同步形态不变（`UtoolsKvStorage`/`UtoolsDbStorage` 的 customRef 钩子零改动）
 
-## 五、ffmpeg（`src/main/src/service/ffmpegBinary.ts` + `ipc/ffmpegIpc.ts`）
+## 五、ffmpeg（`src/main/src/modules/ffmpeg/ffmpegBinary.ts` + `modules/ffmpeg/ffmpegIpc.ts`）
 
 - **二进制随安装包分发**（2026-08-30 起，方案与打包细节见 [build/03-ffmpeg-bundling.md](../build/03-ffmpeg-bundling.md)）：`scripts/fetch-ffmpeg.mjs` 从 npmmirror 镜像（ffmpeg-static 6.1.1）拉取到 `resources/ffmpeg/{os}-{arch}/`，electron-builder `extraResources` 按平台注入；早期「首次使用远程下载到 `~/.mistrelle/extends`」方案已整体移除
 - 运行前 `ensureFfmpegBinary()` 同步解析内置路径 + `-version` 校验，缺失时抛错提示跑 fetch 脚本
@@ -84,7 +84,7 @@ sharp（metadata/crop/removeBackground）
 - 取消：`kill()`=SIGKILL；`quit()`=向 stdin 写 `q`；exit 0 resolve / 非 0 reject（stderr 尾部）
 - preload 侧 `ffmpeg.run(args, onProgress)` 返回带 `kill()/quit()` 的 Promise（兼容 `InjectFfmpegPromise`，`canvasVideoExport.ts` 的取消逻辑不受影响）；run 未返回 id 时 kill/quit 先挂起、id 到达后补发（取消竞态安全）
 
-## 六、sharp（`src/main/src/sharp/image.ts` + `ipc/sharpIpc.ts`）
+## 六、sharp（`src/main/src/modules/sharp/image.ts` + `modules/sharp/sharpIpc.ts`）
 
 - 依赖 `sharp`（`dependencies`，与原 uTools 内置同为 libvips，API 1:1）
 - `metadata(input)` / `crop(input, region, output)` 直接映射；`removeBackground` 的 flood-fill 算法（`parseTargetColor` / `clampTolerance` / BFS + Uint8Array visited + Int32Array queue）从 `src-utools/src/inject.js` 完整 TS 移植

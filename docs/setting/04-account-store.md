@@ -14,8 +14,8 @@ renderer Service → `window.preload.safeStorage`（preload 薄桥）→ IPC →
 
 | 层          | 文件                                                         | 说明                                                          |
 |-------------|--------------------------------------------------------------|---------------------------------------------------------------|
-| channel     | `src/preload/src/channels.ts`（`SafeStorageChannels`）        | `safeStorage:encrypt` / `safeStorage:decrypt`                  |
-| main        | `src/main/src/ipc/safeStorageIpc.ts`（`registerIpc.ts` 注册） | `encryptString` → base64 / `decryptString`；不可用或失败返回 null |
+| channel     | `src/preload/src/modules/<域>/*Channels.ts`（`SafeStorageChannels`）        | `safeStorage:encrypt` / `safeStorage:decrypt`                  |
+| main        | `src/main/src/modules/platform/safeStorageIpc.ts`（`registerIpc.ts` 注册） | `encryptString` → base64 / `decryptString`；不可用或失败返回 null |
 | preload     | `src/preload/src/safeStorage.ts`（`preload/index.ts` 挂载）   | 两个 `ipcRenderer.invoke` 薄方法                               |
 | renderer 类型 | `src/renderer/src/types/safeStorage.d.ts` + `vite-env.d.ts` | `SafeStorageApi` 契约                                          |
 

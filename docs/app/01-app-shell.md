@@ -22,8 +22,8 @@ window-all-closed: 空实现           // 关闭=隐藏，几乎不触发；退�
 
 | 模块 | 职责 |
 |------|------|
-| `src/main/src/aiWindow/aiWindow.ts` | AI 主窗口：`createAiWindow()` 启动即建 + `showAiWindow()`（还原/聚焦，意外销毁则重建）；**`close` 拦截为只隐藏**（`isQuitting` 置位后放行真关闭）；`markQuitting()` 由 index.ts 在 `before-quit` 调用；will-navigate 守卫、webview 弹窗转发内聚在创建逻辑 |
-| `src/main/src/tray/appTray.ts` | 托盘：菜单**显示 AI 窗口 / 退出**；**单击不做动作**（macOS 挂菜单后单击即弹菜单，Windows/Linux 单击无动作） |
+| `src/main/src/app/aiWindow.ts` | AI 主窗口：`createAiWindow()` 启动即建 + `showAiWindow()`（还原/聚焦，意外销毁则重建）；**`close` 拦截为只隐藏**（`isQuitting` 置位后放行真关闭）；`markQuitting()` 由 index.ts 在 `before-quit` 调用；will-navigate 守卫、webview 弹窗转发内聚在创建逻辑 |
+| `src/main/src/app/tray.ts` | 托盘：菜单**显示 AI 窗口 / 退出**；**单击不做动作**（macOS 挂菜单后单击即弹菜单，Windows/Linux 单击无动作） |
 
 ## 闪退修复要点
 

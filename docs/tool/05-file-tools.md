@@ -88,9 +88,9 @@
 
 ## 关键文件
 
-- `src/preload/src/channels.ts` — `FsChannels.readFileLines` 通道；`FsChannels.glob / grep` 通道 + `FsGlobOptions` 等共享接口
+- `src/preload/src/modules/<域>/*Channels.ts` — `FsChannels.readFileLines` 通道；`FsChannels.glob / grep` 通道 + `FsGlobOptions` 等共享接口
   （`readFileLines` 的结果接口因 channels.ts 贴近 500 行红线，按消费方各自声明，不在此文件定义）
-- `src/main/src/ipc/fsIpc.ts` — `readFileLines` 流式 handler（窗口 / 预算 / EOF 语义）+ `globToRegex` / `walkFiles` / 其余 handler
+- `src/main/src/modules/platform/fsIpc.ts` — `readFileLines` 流式 handler（窗口 / 预算 / EOF 语义）+ `globToRegex` / `walkFiles` / 其余 handler
 - `src/preload/src/fs.ts` — preload 桥 `readFileLines` / `glob` / `grep` 透传方法（本地声明 `FsReadLinesResult`）
 - `src/renderer/src/types/fs.d.ts` — 渲染侧 `FsApi` 声明同步（含 `FsReadLinesResult` / `FsGlobResult` / `FsGrepResult`）
 - `src/renderer/src/modules/tool/components/native/file.ts` — `file_read` 分页组装（双形态返回）+ `file_stat` /

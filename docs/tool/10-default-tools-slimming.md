@@ -62,7 +62,7 @@
 - `src/renderer/src/modules/tool/toolPolicy.ts` — `SHELL_EXEC_TOOL_NAMES` / `isSkillScriptCall`
 - `src/renderer/src/entity/setting/SettingSecured.ts` / `store/setting/SettingSecureStore.ts` /
   `pages/setting/secure/SettingSecurePage.vue` — 运行时配置只剩 egoBrowser
-- `src/main/src/service/shellExec.ts` / `ipc/shellExecIpc.ts`、`src/preload/src/channels.ts` /
+- `src/main/src/modules/shell/shellExec.ts` / `ipc/shellExecIpc.ts`、`src/preload/src/modules/<域>/*Channels.ts` /
   `shellExec.ts` — jsRun 链路删除
 
 ## 注意事项

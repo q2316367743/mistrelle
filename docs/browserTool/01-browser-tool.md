@@ -17,9 +17,9 @@
 
 | 层 | 文件 | 职责 |
 |---|---|---|
-| main | `src/main/src/browserTool/runner.ts` | `BrowserToolRunner`：窗口生命周期 + fetch/actions 解释 + 浏览器操作实现 |
-| main | `src/main/src/ipc/browserToolIpc.ts` | `browserTool:run` handler（每次调用 new 一个 runner 实例） |
-| 契约 | `src/preload/src/channels.ts` | `BrowserToolChannels` + `BrowserToolFetchPayload` / `BrowserToolActionsPayload` / `BrowserToolResult` |
+| main | `src/main/src/modules/browser/runner.ts` | `BrowserToolRunner`：窗口生命周期 + fetch/actions 解释 + 浏览器操作实现 |
+| main | `src/main/src/modules/browser/browserToolIpc.ts` | `browserTool:run` handler（每次调用 new 一个 runner 实例） |
+| 契约 | `src/preload/src/modules/<域>/*Channels.ts` | `BrowserToolChannels` + `BrowserToolFetchPayload` / `BrowserToolActionsPayload` / `BrowserToolResult` |
 | preload | `src/preload/src/inject.ts` | `runBrowser(payload)` 桥：error 时 reject，resolve 最后一个数据项 |
 | renderer | `src/renderer/src/modules/tool/components/native/browserFetch.ts` | `browser_fetch` 工具（kind:'fetch'） |
 | renderer | `src/renderer/src/modules/tool/components/native/browserAutomation.ts` | `browser_actions` 工具（kind:'actions'） |

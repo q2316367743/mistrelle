@@ -12,7 +12,7 @@ import type {
   CompareListResult,
   CompareQuestionInput,
   CompareRecordInput
-} from '~/ipc/dbChannels'
+} from '~/modules/db/dbChannels'
 
 // ── 题库 ─────────────────
 

@@ -45,8 +45,8 @@ usage 计量：每请求 usage.prompt/completion_tokens 累计入 `result.usage`
 ```
 src/main/src/db/schema/compare.ts        # 两表 schema + schema/index.ts 导出
 src/main/src/db/repo/compareRepo.ts      # 题库 CRUD + 记录 list/upsert/delete（answerKeys JSON 序列化在 DAO）
-src/preload/src/dbChannels.ts            # compare 域 7 通道 + 载荷类型
-src/main/src/ipc/dbIpc.ts                # registerDbIpc 内 compare handler
+src/preload/src/modules/db/dbChannels.ts            # compare 域 7 通道 + 载荷类型
+src/main/src/db/dbIpc.ts                # registerDbIpc 内 compare handler
 src/preload/src/db.ts                    # dbApi.compare.{question,record}
 src/renderer/src/types/db.d.ts           # compare 全局 DB 载荷类型 + CompareDbApi
 

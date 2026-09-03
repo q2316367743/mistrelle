@@ -7,7 +7,7 @@
 import { db } from '../client'
 import { count, desc, eq, sql } from 'drizzle-orm'
 import { modelHealths } from '../schema/health'
-import type { HealthListResult, HealthRecordInput } from '~/ipc/dbChannels'
+import type { HealthListResult, HealthRecordInput } from '~/modules/db/dbChannels'
 
 export function healthList(limit: number, offset: number): HealthListResult {
   const items = db()

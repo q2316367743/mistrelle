@@ -44,8 +44,8 @@ LChatAttachment 开关（t-switch，模式面板；lockPrivacy 时禁用）
 - schema：`src/main/src/db/schema/chat.ts` `privacy` 列；
 - 五处同步（新列 + 新增 `getItem` 单行读通道）：
   - `src/main/src/db/repo/chatRepo.ts`：`itemSet` / `chatUpsertItem` 映射（boolean ↔ 0/1）、`chatGetItem(id)`；
-  - `src/preload/src/dbChannels.ts`：`chatGetItem` 通道、`ChatItemInput.privacy`；
-  - `src/main/src/ipc/dbIpc.ts`：注册 `db:chat:getItem`；
+  - `src/preload/src/modules/db/dbChannels.ts`：`chatGetItem` 通道、`ChatItemInput.privacy`；
+  - `src/main/src/db/dbIpc.ts`：注册 `db:chat:getItem`；
   - `src/preload/src/db.ts`：`ChatItemRow` privacy 数字列、`db.chat.getItem`；
   - `src/renderer/src/types/db.d.ts`：渲染侧镜像（`ChatItemInput` / `ChatItemRow` / `ChatDbApi`）。
 - `ChatService.toItem(row)` 统一行 → `AiChatItem` 映射（`privacy: row.privacy === 1`），`aiChatGetItem` / `chatIdFromKey` 为本次新增导出。

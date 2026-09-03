@@ -9,7 +9,7 @@
  * SlideNode：通用节点（tag 即 vueRender 组件类型），child 为字符串表示文本内容
  * （如 Text 节点）。id 为节点唯一标识（**顶层字段，与 tag 并列**，自动生成）：
  * 不进 attr、不参与布局，服务节点点选引用与 ppt_batch_edit 的精准编辑。
- * 注意：与 preload 的 src/preload/src/channels.ts 形状一致（IPC 契约），修改需同步。
+ * 注意：与 preload 的 src/preload/src/modules/ppt/pptChannels.ts 形状一致（IPC 契约），修改需同步。
  */
 export interface SlideNode {
   id?: string
@@ -56,7 +56,7 @@ export const PPT_SLIDE_SIZE = { w: 1280, h: 720 } as const
 export type PptTheme = Record<string, string>
 
 // ── 导出快照（预览 DOM 实测 → 主进程 PptxGenJS / PNG） ──────
-// 坐标均为画布像素（原点 = 页左上角）；与 preload 的 src/preload/src/channels.ts 同步。
+// 坐标均为画布像素（原点 = 页左上角）；与 preload 的 src/preload/src/modules/ppt/pptChannels.ts 同步。
 
 /** 快照项公共几何 */
 export interface PptItemBase {

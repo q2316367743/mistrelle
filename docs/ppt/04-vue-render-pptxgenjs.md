@@ -28,9 +28,9 @@ SlideNode JSON
 
 ### 主进程与桥
 
-- `src/main/src/ppt/pptxExport.ts`：PptxGenJS 坐标导出；原生图表 `addChart`；渐变/SVG 图片经 sharp 处理。
-- `src/main/src/ppt/pngWriter.ts`：接收 renderer canvas 的 PNG dataURL 并落盘。
-- `src/preload/src/channels.ts`：PptExportSnapshot IPC 契约。
+- `src/main/src/modules/ppt/pptxExport.ts`：PptxGenJS 坐标导出；原生图表 `addChart`；渐变/SVG 图片经 sharp 处理。
+- `src/main/src/modules/ppt/pngWriter.ts`：接收 renderer canvas 的 PNG dataURL 并落盘。
+- `src/preload/src/modules/<域>/*Channels.ts`：PptExportSnapshot IPC 契约。
 - `src/preload/src/ppt.ts`：`exportPptx` / `writePngFiles` 薄桥。
 - `src/renderer/src/modules/ppt/pptRender.ts`：离屏快照 + 导出调用封装。
 

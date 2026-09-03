@@ -9,7 +9,7 @@
  * - style_name 为生成时的设计风格名快照（同 model，仅记录出处，风格后期改名 / 删除不影响历史）。
  */
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import type { ImageGenerateStatus } from '~/ipc/dbChannels'
+import type { ImageGenerateStatus } from '~/modules/db/dbChannels'
 
 export const imageGenerations = sqliteTable(
   'image_generate',

@@ -12,7 +12,7 @@
 > - 去背景工具 `src/modules/tool/components/design/imageRemoveBackground.ts`
 > - 颜色分析工具 `src/modules/tool/components/design/imageColorMap.ts`
 > - 生图服务封装 `src/modules/chat/service/ImageGenerate.ts`（已实现，接口自适应）
-> - Sharp 封装 `src/main/src/sharp/image.ts`（sharpColorMap）+ IPC `src/main/src/ipc/sharpIpc.ts` + 类型 `src/types/inject.d.ts`
+> - Sharp 封装 `src/main/src/modules/sharp/image.ts`（sharpColorMap）+ IPC `src/main/src/modules/sharp/sharpIpc.ts` + 类型 `src/types/inject.d.ts`
 > - 省钱指南 `../../src/modules/canvas/guidelines/image-generation.md`
 > - 注入点 `src/global/ChatTypeConfig.ts`（design 配置）
 
@@ -108,8 +108,8 @@
     `x/y/width/height` 映射回**原始像素坐标**（末行 / 末列吸收余量）。
   - 透明格（alpha < 128）剔除，不参与统计。
 - **deviation 参考**：>30 明显突兀，15~30 轻微（note 内告知 AI）。
-- **实现**：`inject.sharp.colorMap(input, gridSize, top)`（`src/main/src/sharp/image.ts`，
-  纯 JS，一次 raw 读取）+ IPC `sharp:colorMap`（`src/main/src/ipc/sharpIpc.ts`）。
+- **实现**：`inject.sharp.colorMap(input, gridSize, top)`（`src/main/src/modules/sharp/image.ts`，
+  纯 JS，一次 raw 读取）+ IPC `sharp:colorMap`（`src/main/src/modules/sharp/sharpIpc.ts`）。
 
 ## 2. 与 canvas / 指南的关系
 

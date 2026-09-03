@@ -11,7 +11,7 @@
  * - API 密钥只用于当次检测请求，不落库（本域无 key 列）。
  */
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import type { CompareExecMode, CompareTaskStatus } from '~/ipc/dbChannels'
+import type { CompareExecMode, CompareTaskStatus } from '~/modules/db/dbChannels'
 
 export const compareQuestions = sqliteTable('compare_question', {
   key: text('key').primaryKey(),
