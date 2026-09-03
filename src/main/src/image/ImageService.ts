@@ -331,17 +331,17 @@ export function startGeneration(params: ImageGenerateParams): Promise<ImageGener
 }
 
 /**
- * 续轮询一个可恢复的失败记录：记录原地改回 pending，对同一远端 task_id 按剩余窗口继续查询
- * （不重新提交任务、不重复扣费）。后续状态经广播推进。
+ * 续轮询一个异步任务型失败记录：记录原地改回 pending，对同一远端 task_id 继续查询
+ * （不重新提交任务、不重复扣费），后续状态经广播推进。
+ * 查询窗口只是单次轮询会话的本地预算（自研服务端任务持续可查，超时失败正是最该续询的场景），
+ * 因此每次续轮询都给全新预算；已确认终态（task_terminal）的记录不可续。
  */
 export async function resumeGeneration(id: string): Promise<void> {
   if (running.has(id)) return
   const record = imageGet(id)
   if (!record || record.status !== 'failed' || !record.taskId) return
   if (record.taskTerminal === true) return
-  // 无窗口记录的旧数据：视为从当前起再给一个完整查询窗口
-  const pollMaxAt = record.pollMaxAt ?? Date.now() + POLL_MAX_TIMES * POLL_INTERVAL_MS
-  if (pollMaxAt - Date.now() <= 0) return
+  const pollMaxAt = Date.now() + POLL_MAX_TIMES * POLL_INTERVAL_MS
   const pending: ImageRecordInput = { ...record, status: 'pending', error: null, pollMaxAt }
   const task: RunningTask = {
     record: pending,
@@ -353,12 +353,8 @@ export async function resumeGeneration(id: string): Promise<void> {
   }
   running.set(id, task)
   persist(pending)
-  const remainTimes = Math.min(
-    POLL_MAX_TIMES,
-    Math.max(1, Math.ceil((pollMaxAt - Date.now()) / POLL_INTERVAL_MS))
-  )
   // 后续状态经广播推进，invoke 不必挂住整个轮询窗口
-  void pollTask(task, id, record.taskId, remainTimes)
+  void pollTask(task, id, record.taskId, POLL_MAX_TIMES)
 }
 
 /** 删除记录：联动取消 pending 任务（完成时丢弃结果）与删除落盘文件 */

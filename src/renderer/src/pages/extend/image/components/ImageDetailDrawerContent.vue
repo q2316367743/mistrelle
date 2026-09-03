@@ -37,7 +37,7 @@
           全屏查看
         </t-button>
         <t-button
-          v-if="record.status === 'failed' && canResumePoll(record)"
+          v-if="isRetryableFailed(record)"
           theme="primary"
           @click="emit('retry', record)"
         >
@@ -110,7 +110,7 @@ import {
   Fullscreen1Icon,
   RefreshIcon
 } from 'tdesign-icons-vue-next'
-import { formatDateTime, canResumePoll, pathToHref } from '../image-page-utils'
+import { formatDateTime, isRetryableFailed, pathToHref } from '../image-page-utils'
 
 const props = defineProps<{
   record: ImageRecordInput

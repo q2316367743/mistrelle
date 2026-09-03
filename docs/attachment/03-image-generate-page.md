@@ -46,17 +46,20 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
 
 ### 异步任务续轮询（重试）
 
-语义与重构前一致，只是驱动方从渲染层单例换成主进程 ImageService：
+驱动方为主进程 ImageService；语义按「远端 = 自研服务端」重新校准（2026-09-03 二次修正）：
 
 - **确认异步任务型即落库**：提交响应拿到 `task_id` 后，先写 `task_id` + `poll_max_at`
-  （确认时刻 + 5 分钟窗口）进 pending 记录并落库，再开始轮询——生成中任何中断（退出/刷新）
-  记录都已带 task_id，可跨重启续同一任务。
-- 轮询 3s × 100 次（≈5 分钟）；失败分类 `kind: 'terminal' | 'resumable'`：
+  进 pending 记录并落库，再开始轮询——生成中任何中断（退出/刷新）记录都已带 task_id，
+  可跨重启续同一任务。
+- 轮询 3s × 100 次（≈5 分钟预算）；失败分类 `kind: 'terminal' | 'resumable'`：
   远端 failed、completed 缺图、提交即失败 → terminal（`task_terminal=true`，只可删除）；
-  轮询窗口耗尽、查询连续失败 ≥5 次 → resumable（带 `taskId`/`pollMaxAt`，可续）。
-- 「重试」= `image:resume(id)`：主进程把记录原地改回 pending，对同一 `task_id` 按剩余窗口续查，
-  **不重新提交任务、不重复扣费**；无 `poll_max_at` 的旧数据视为再给一个完整窗口。
-- UI 判定沿用 `image-page-utils.ts` 的 `canResumePoll` / `isRetryableFailed`（纯读记录字段）。
+  轮询预算耗尽、查询连续失败 ≥5 次 → resumable（可续）。
+- **重试资格只看两点**：`status=failed` + `task_id` 非空 + `task_terminal≠true`
+  （`image-page-utils.isRetryableFailed`）。`poll_max_at` 只是单次轮询会话的本地预算，
+  **不作为重试资格**——第三方中转时代的「5 分钟保留窗口」对自研服务端不存在，超时失败
+  （预算耗尽）恰恰是最该续询的场景，必须显示重试按钮（曾因沿用旧门控导致超时后无重试入口）。
+- 「重试」= `image:resume(id)`：主进程把记录原地改回 pending，对同一 `task_id` 以**全新 5 分钟
+  预算**继续查询，**不重新提交任务、不重复扣费**；已确认终态的记录主进程同样拒绝续询（防御）。
 - 启动收尾：`registerImageIpc` 时执行 `cleanupOrphans()`，把不在运行中的遗留 pending
   （上次会话中断）标 failed（error：生成中断）；运行中的任务跨渲染层刷新存活。
 
@@ -111,7 +114,8 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
 - 落盘：url 下载与 b64 解码都在 main（axios arraybuffer / Buffer.from）；宽高 sharp 元信息优先、
   回退 size 解析（主进程 `sharpMetadata`）。服务端 `images[]` 的 `url` / `b64_json` 两种形态都支持。
 - 失败分类语义不变：`kind: 'terminal' | 'resumable'`（见上）；`task_id` 无论成败都在确认异步
-  任务型时落库，「是否可续」由 `status` + `task_terminal` + `poll_max_at` 三者判定；续轮询不重置窗口。
+  任务型时落库，「是否可续」由 `status` + `task_terminal` 两点判定（`poll_max_at` 只是单次
+  轮询会话预算）；每次续轮询都重置为全新 5 分钟预算。
 - 连续生成交互不变：提交后输入框清空、按钮不绑全局 loading、任务可任意并行（进度由 pending 占位卡
   + 广播反馈）；尺寸校验 `^\d{3,4}[xX]\d{3,4}$`。
 - 抽屉/网格/工具纯函数（`image-page-utils.ts`）未改；`mistrelle://` 协议展示、复制图片

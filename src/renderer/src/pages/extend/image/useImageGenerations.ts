@@ -8,7 +8,6 @@
 import { useDesignStyleStore, useSettingDefaultStore } from '@/store'
 import { buildDesignStylePrompt } from '@/modules/design'
 import { MessageUtil } from '@/utils/modal'
-import { canResumePoll } from './image-page-utils'
 
 /** 每页条数 */
 const PAGE_SIZE = 24
@@ -109,16 +108,12 @@ const createImageGenerations = () => {
   }
 
   /**
-   * 续轮询一个异步任务型失败记录：主进程对同一远端 task_id 按剩余窗口继续查询
-   * （不重新提交任务、不重复扣费），记录原地改回 pending，后续状态经广播推进。
-   * 非可续失败（已确认终态 / 已超窗口）直接提示不可重试。
+   * 续轮询一个异步任务型失败记录：主进程对同一远端 task_id 继续查询
+   * （不重新提交任务、不重复扣费，每次续询给全新轮询预算），记录原地改回 pending，
+   * 后续状态经广播推进。非异步任务型 / 已确认终态的失败按钮不展示，这里仅作防御。
    */
   const resumeRetry = async (record: ImageRecordInput): Promise<void> => {
     if (record.status !== 'failed' || !record.taskId) return
-    if (!canResumePoll(record)) {
-      MessageUtil.warning('该任务已超过可查询窗口或已结束：无法续轮询，请重新生成')
-      return
-    }
     await window.preload.image.resume(record.id)
   }
 

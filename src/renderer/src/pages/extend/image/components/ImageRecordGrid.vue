@@ -46,12 +46,16 @@
                   {{ [item.model, item.styleName].filter((v) => !!v).join(' · ') }}
                 </span>
               </div>
-              <p v-if="item.status === 'failed' && item.error" class="card-error" :title="item.error">
+              <p
+                v-if="item.status === 'failed' && item.error"
+                class="card-error"
+                :title="item.error"
+              >
                 {{ item.error }}
               </p>
               <div class="card-actions">
                 <t-button
-                  v-if="item.status === 'failed' && canResumePoll(item)"
+                  v-if="isRetryableFailed(item)"
                   size="small"
                   theme="primary"
                   variant="outline"
@@ -94,7 +98,7 @@
 import { DeleteIcon, ErrorCircleFilledIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import EmptyResult from '@/components/Result/EmptyResult.vue'
 import { MessageBoxUtil } from '@/utils/modal'
-import { canResumePoll, formatDateTime, pathToHref } from '../image-page-utils'
+import { formatDateTime, isRetryableFailed, pathToHref } from '../image-page-utils'
 
 const props = defineProps<{
   // eslint-disable-next-line no-undef
