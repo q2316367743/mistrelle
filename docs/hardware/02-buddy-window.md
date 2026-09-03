@@ -29,6 +29,7 @@
 
 - **独立窗口入口约定**：`src/renderer/src/windows/<name>/` 为独立窗口应用目录（main.ts + App.vue + router/ + pages/），与主窗口 `src/main.ts` 平行；新增独立窗口照此模式扩展 vite input（renderer 与 preload 各一套）
 - **外壳与主窗口同构**：App.vue = 侧栏功能菜单（`menus` 数组，collapsed 折叠为 0 宽）+ window-drag-region + common-operator（折叠按钮）+ main-container（`padding-top: 48px` 避开拖动条）；折叠状态是伙伴窗口本地 ref，不与主窗口共享 localStorage
+- **单按钮形态声明**：伙伴窗口 `common-operator` 仅「收起」一个按钮（主窗口另有「新建」按钮）。`App.vue` 入口 `useTitlePadding({ kind: 'buddy' })` 声明窗口形态（hook 内模块级单例），共享的 `PageLayout` 折叠态标题起点（`l2`）随之取 `l1 + 32 + 8` 单按钮宽；若伙伴窗口将来出现需要两个按钮的形态，需在对应页面显式传 `:pl` 覆盖。详见 `docs/setting/03-window-glass-titlebar.md`
 - **页面即纯内容**：菜单在 App.vue 壳上（对齐主窗口 AppSide 模式），路由页只渲染内容区；新增功能 = `menus` 加一项 + 路由表加一条 + pages 下建页面
 - **preload 按窗口裁剪**：伙伴窗口用独立 preload（`out/preload/buddy.js`，仅 inject/serial/trafficLight），主窗口仍用全量 `out/preload/index.js`；两窗口 `window.preload` 可用域不同，伙伴窗口勿使用未注入的域（`window.preload.trafficLight` 为伙伴窗口专属）
 - **will-navigate 守卫**：dev 放行 dev server 同源，prod 仅放行 `file://…/renderer/buddy.html`，其余导航一律吞掉（同主窗口防 file:// 劫持）

@@ -38,7 +38,8 @@ useColorMode()
 
 const route = useRoute()
 const router = useRouter()
-const { l1 } = useTitlePadding()
+// 声明伙伴窗口仅「收起」单按钮形态：窗口内共享组件（PageLayout 等）折叠态标题起点按此预留
+const { l1 } = useTitlePadding({ kind: 'buddy' })
 const operatorLeft = computed(() => `${l1}px`)
 
 /** 侧栏折叠（伙伴窗口本地状态，不与主窗口共享持久化） */

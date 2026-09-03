@@ -20,25 +20,27 @@
 
 ## 跨平台标题边距（useTitlePadding）
 
-`src/renderer/src/hooks/UseTitlePadding.ts`：按 `window.preload.inject.os.isMacOS()`（同步）返回四个数值，平台运行期不变故为普通数值、非响应式。`r1` 是**叠加在各 header 基础 padding 之上**的额外避让值，非绝对距离（macOS 视觉与既有一致）。
+`src/renderer/src/hooks/UseTitlePadding.ts`：按 `window.preload.inject.os.isMacOS()`（同步）与窗口形态返回四个数值。平台运行期不变故为普通数值、非响应式；窗口形态（`kind: 'main' | 'buddy'`）由各自入口 `App.vue` 声明一次（模块级单例），共享组件（`PageLayout` / `LChatEngine`）与路由页调用无需传参即可读到本窗口形态。`r1` 是**叠加在各 header 基础 padding 之上**的额外避让值，非绝对距离（macOS 视觉与既有一致）。
 
 | 值  | macOS | Windows/Linux | 含义（几何推导）                                                       |
 |-----|-------|---------------|------------------------------------------------------------------------|
 | l1  | 76    | 8             | `App.vue` 收起按钮 `left`；macOS = 交通灯区（8 + 约 62）+ 间隙          |
-| l2  | 156   | 88            | 侧栏收起时标题 `padding-left` = `l1 + (32 + 8) × 2`（收起 + 新建按钮） |
-| l3  | 116   | 48            | `/design/detail/` 专用 = `l1 + 32 + 8`（该页不展示新建按钮）           |
+| l2  | 156   | 88            | **main**：侧栏收起时标题 `padding-left` = `l1 + (32 + 8) × 2`（收起 + 新建按钮） |
+| l2  | 116   | 48            | **buddy**：伙伴窗口仅「收起」一个按钮，折叠标题起点 = `l1 + 32 + 8`     |
+| l3  | 116   | 48            | 主窗口 `kind:'main'` 下单按钮起点（`/design/detail/` 不展示新建按钮）= `l1 + 32 + 8` |
 | r1  | 0     | 146           | 右侧额外避让 = titleBarOverlay 宽约 138 + 8                            |
 
 消费方式：各组件 setup 中取值 → `computed` 拼 `px` 字符串 → `<style>` 内 `v-bind()` 注入。
 
 | 消费方                                | 用法                                                                       |
 |---------------------------------------|----------------------------------------------------------------------------|
-| `App.vue`                             | `.common-operator { left: v-bind(operatorLeft) }`（l1）                     |
-| `components/PageLayout/PageLayout.vue`| `pl` prop 无默认值，`props.pl ?? \`${l2}px\``；右 padding `24 + r1`         |
-| `components/chat/LChatEngine.vue`     | header `padding: 8px (8 + r1)`；collapsed `padding-left: l2`                |
-| `pages/design/detail/index.vue`       | `<page-layout :pl="\`${l3}px\`">`                                           |
+| `App.vue`（主）                       | `useTitlePadding({ kind: 'main' })` 声明形态 + `.common-operator { left: v-bind(operatorLeft) }`（l1） |
+| `windows/buddy/App.vue`               | `useTitlePadding({ kind: 'buddy' })` 声明伙伴窗口单按钮形态（窗口内其余消费点无需再传） |
+| `components/PageLayout/PageLayout.vue`| `pl` prop 无默认值，`props.pl ?? \`${l2}px\``；右 padding `24 + r1`（随窗口形态取 l2） |
+| `components/chat/LChatEngine.vue`     | header `padding: 8px (8 + r1)`；collapsed `padding-left: l2`（仅主窗口）    |
+| `pages/design/detail/index.vue`       | `<page-layout :pl="\`${l3}px\`">`（主窗口单按钮场景显式覆盖）               |
 
-注意：`defineProps` 默认值在编译后提升至模块作用域，不能引用 setup 变量，故 `PageLayout` 的 `pl` 改为无默认值 + computed 兜底。原常量 `ASIDE_PADDING_LEFT`（= macOS 的 l2）已删除。
+注意：`defineProps` 默认值在编译后提升至模块作用域，不能引用 setup 变量，故 `PageLayout` 的 `pl` 改为无默认值 + computed 兜底。原常量 `ASIDE_PADDING_LEFT`（= macOS 的 l2）已删除。`useTitlePadding` 内模块级 `windowKind` 存于各窗口独立的 renderer 进程，互不污染；主窗口为默认值故调用可不传 `kind`，但建议显式声明以与 buddy 对称。
 
 ## 关键文件
 

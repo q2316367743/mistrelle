@@ -43,7 +43,8 @@ import { ChatAddIcon } from 'tdesign-icons-vue-next'
 const route = useRoute()
 const router = useRouter()
 
-const { l1 } = useTitlePadding()
+// 主窗口含「收起 + 新建」两按钮，声明 main 形态供共享组件（PageLayout 等）预留折叠标题起点
+const { l1 } = useTitlePadding({ kind: 'main' })
 const operatorLeft = computed(() => `${l1}px`)
 
 const gotoNew = () => {

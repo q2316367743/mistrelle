@@ -150,7 +150,7 @@
 |--------------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | [01-ai-model-fetch.md](./setting/01-ai-model-fetch.md) | AI 设置「从接口获取模型」抽屉：`FetchModelsDrawer` 命令式外壳 + `FetchModelsContent` 内容组件；内置模型上下文表（`aiModelPresets.ts`）自动维护 `context` / `output` |
 | [02-ai-model-store.md](./setting/02-ai-model-store.md) | AI 模型配置存储：`~/.mistrelle/model.json`（`ModelService` 读写 + `SettingAiStore` 契约）；提供方 `enable` 与 sortablejs 拖拽排序 |
-| [03-window-glass-titlebar.md](./setting/03-window-glass-titlebar.md) | 窗口配置：三平台隐藏标题栏（macOS hiddenInset + trafficLightPosition 下移交通灯 / 其他 titleBarOverlay）+ 系统级毛玻璃（vibrancy / acrylic）；毛玻璃需透明背景才可见；useTitlePadding 跨平台标题边距（macOS 左避交通灯 / Windows 右避 overlay，l1/l2/l3/r1 数值推导与消费方） |
+| [03-window-glass-titlebar.md](./setting/03-window-glass-titlebar.md) | 窗口配置：三平台隐藏标题栏（macOS hiddenInset + trafficLightPosition 下移交通灯 / 其他 titleBarOverlay）+ 系统级毛玻璃（vibrancy / acrylic）；毛玻璃需透明背景才可见；useTitlePadding 跨平台标题边距（macOS 左避交通灯 / Windows 右避 overlay，**l2 按窗口形态取值**：main 收起+新建两按钮 / buddy 收起单按钮，l1/l3/r1 数值推导与消费方） |
 | [04-account-store.md](./setting/04-account-store.md) | 账户配置存储：`~/.mistrelle/account.json`（`SettingAccountService` 读写 + safeStorage 整文件加密，含明文降级）；Store 契约 `state` + 三个鉴权配置不变 |
 | [05-ai-provider-builtin-relay.md](./setting/05-ai-provider-builtin-relay.md) | AI 设置内置供应商（服务端中转站）：主进程 relay IPC 代理 `/v1/models` + `/v1/chat/completions`；透传 `session_id`（渠道亲和）与 `request_id`（仅记录）；流式回调走 start/chunk/end 事件；`thirdPartyRelay` 门控 + 登录守卫 |
 | [06-account-page.md](./setting/06-account-page.md) | 账号设置页 Fluent 布局：身份主视觉（可用积分 / 每日赠送）+ 账户与安全（我的会员与我的积分分开，增量包挂在会员下）+ 第三方密钥；进入页 1 分钟节流刷新；积分流水抽屉；档位页收敛入口 + 增量包选择/结算（确认文案 30 天清零，无支付） |
@@ -207,7 +207,7 @@
 | 文档                                            | 描述                                                                                                                        |
 |-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | [01-serial-traffic-light.md](./hardware/01-serial-traffic-light.md) | 串口通信域（serialport v13）与红绿灯页面：main SerialService 单例 + preload serial 域桥、Arduino 行协议（灯+模式/off、9600）、原生模块集成复用 postinstall 链路 |
-| [02-buddy-window.md](./hardware/02-buddy-window.md) | 伙伴窗口（独立入口）：`buddy.html` → `windows/buddy/` 独立应用（独立 main/router/preload/外壳）、默认隐藏 + 托盘「打开伙伴」唯一入口、关闭只隐藏、renderer 与 preload 双入口配置、独立窗口目录约定 |
+| [02-buddy-window.md](./hardware/02-buddy-window.md) | 伙伴窗口（独立入口）：`buddy.html` → `windows/buddy/` 独立应用（独立 main/router/preload/外壳）、默认隐藏 + 托盘「打开伙伴」唯一入口、关闭只隐藏、renderer 与 preload 双入口配置、独立窗口目录约定、**外壳单按钮形态声明**（`useTitlePadding({ kind: 'buddy' })`，共享 PageLayout 折叠标题随窗口自适应） |
 | [03-traffic-light-config.md](./hardware/03-traffic-light-config.md) | 红绿灯配置（软件状态驱动）：`~/.mistrelle/buddy/traffic-light.json` 结构、事件→灯态绑定（状态唯一/软件互斥两条规则）、mistrelle:// 协议事件投递链路、内置 opencode 插件模板与一键安装（checkPlatform/installPlatform 三态检查、adapter 注册表扩展点）、契约文件迁 `src/common`、伙伴窗口独立 preload 入口 |
 
 ### todo/ —— 规划与待办
