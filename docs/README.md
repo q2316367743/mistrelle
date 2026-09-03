@@ -202,6 +202,13 @@
 | [02-monaco-editor.md](./build/02-monaco-editor.md)     | Monaco worker 配置：`vite-plugin-monaco-editor` 已移除，改 `?worker` 原生导入 + `MonacoEnvironment` label 分发 |
 | [03-ffmpeg-bundling.md](./build/03-ffmpeg-bundling.md) | ffmpeg 二进制随包分发：`scripts/fetch-ffmpeg.mjs` 从 npmmirror 镜像拉取到 `resources/ffmpeg/{os}-{arch}/`（gitignore），electron-builder `extraResources` 按平台注入（asar 外可直接 spawn）、运行时同步解析无下载；打包前必须先跑 fetch 脚本 |
 
+### hardware/ —— 硬件控制
+
+| 文档                                            | 描述                                                                                                                        |
+|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| [01-serial-traffic-light.md](./hardware/01-serial-traffic-light.md) | 串口通信域（serialport v13）与红绿灯页面：main SerialService 单例 + preload serial 域桥、Arduino 行协议（灯+模式/off、9600）、原生模块集成复用 postinstall 链路 |
+| [02-buddy-window.md](./hardware/02-buddy-window.md) | 伙伴窗口（独立入口）：`buddy.html` → `nested/buddy/` 独立应用（独立 main/router/外壳）、默认隐藏 + 托盘「打开伙伴」唯一入口、关闭只隐藏、vite 双入口配置、nested 独立窗口目录约定 |
+
 ### todo/ —— 规划与待办
 
 | 文档                                                                       | 描述                                                                                             |

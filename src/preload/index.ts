@@ -19,6 +19,7 @@ import { imageApi } from '~/modules/image/image'
 import { templateApi } from '~/modules/template/template'
 import { authApi } from '~/modules/auth/auth'
 import { relayApi } from '~/modules/relay/relay'
+import { serialApi } from '~/modules/serial/serial'
 
 // 组装 window.preload（形状与原 src-utools/preload.js 一致：9 模块 + axios 实例）
 // axios 强制 Node http 适配器：绕开渲染进程 XHR 的 CORS 限制（原 utools 环境同样依赖此行为）
@@ -41,6 +42,7 @@ const preload = {
   template: templateApi,
   auth: authApi,
   relay: relayApi,
+  serial: serialApi,
   axios: axios.create({ adapter: axios.getAdapter('http') })
 }
 

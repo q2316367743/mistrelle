@@ -11,6 +11,7 @@ import icon from '@resources/icon.png?asset'
 const WINDOW_BACKGROUND = '#F4F4F4'
 
 function windowOptions(): BrowserWindowConstructorOptions {
+  // 导出给 buddyWindow 等二级窗口复用（尺寸/标题可覆盖）
   // 标题栏与背景同色 + 背景高斯模糊，按平台差异配置：
   // - darwin：hiddenInset 隐藏标题栏（保留交通灯）+ vibrancy 系统毛玻璃 + 透明背景
   // - win32 ：hidden + titleBarOverlay（原生控制按钮）+ acrylic 毛玻璃 + 透明背景让其生效
@@ -60,12 +61,19 @@ function windowOptions(): BrowserWindowConstructorOptions {
   }
 }
 
+export { windowOptions }
+
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 
 /** 退出流程置位（index.ts 在 before-quit 时调用）：此后关闭才放行真销毁 */
 export function markQuitting(): void {
   isQuitting = true
+}
+
+/** 二级窗口（buddyWindow）读取退出置位，决定 close 是否放行 */
+export function isAppQuitting(): boolean {
+  return isQuitting
 }
 
 /** 启动即创建（默认显示；已存在则忽略） */

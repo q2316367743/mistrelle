@@ -34,6 +34,14 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/renderer/index.html'),
+          buddy: resolve('src/renderer/buddy.html')
+        }
+      }
+    },
     plugins: [
       vue(),
       vueJsx(),

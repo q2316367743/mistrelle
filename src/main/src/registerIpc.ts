@@ -15,6 +15,7 @@ import { registerImageIpc } from './modules/image/imageIpc'
 import { registerTemplateIpc } from './modules/template/templateIpc'
 import { registerAuthIpc } from './modules/auth/authIpc'
 import { registerRelayIpc } from './modules/relay/relayIpc'
+import { registerSerialIpc } from './modules/serial/serialIpc'
 
 export function registerIpc(): void {
   registerShellIpc()
@@ -36,4 +37,5 @@ export function registerIpc(): void {
   registerTemplateIpc()
   registerAuthIpc()
   registerRelayIpc()
+  registerSerialIpc()
 }

@@ -1,5 +1,5 @@
-import { useBoolState, useColorMode } from '@/hooks'
-import { LocalNameEnum } from '@/global/LocalNameEnum'
+import { useColorMode } from '@/hooks'
+import { useBoolState } from '@/hooks/UseState'
 
 export const { isDark } = useColorMode()
-export const [collapsed, toggleCollapsed] = useBoolState(false, LocalNameEnum.KEY_APP_COLLAPSED)
+export const [collapsed, toggleCollapsed] = useBoolState(false)

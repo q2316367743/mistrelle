@@ -39,6 +39,7 @@ declare global {
       image: ImageApi
       auth: AuthApi
       relay: RelayApi
+      serial: SerialApi
       template: {
         /** 渲染 resources/templates/<name>.ejs 并返回完整 HTML 字符串（实现位于 main） */
         render(params: { name: string; data: Record<string, unknown> }): Promise<string>
