@@ -15,7 +15,8 @@ export default defineConfig({
       alias: {
         $: resolve('src/main/src'),
         '~': resolve('src/preload/src'),
-        '@resources': resolve('resources')
+        '@resources': resolve('resources'),
+        '@common': resolve('src/common')
       }
     }
   },
@@ -24,7 +25,8 @@ export default defineConfig({
     resolve: {
       alias: {
         '~': resolve('src/preload/src'),
-        $: resolve('src/main/src')
+        $: resolve('src/main/src'),
+        '@common': resolve('src/common')
       }
     },
     // 双入口：index=主窗口全量 API，buddy=伙伴窗口仅 inject/serial/trafficLight（产物 out/preload/buddy.js）
@@ -40,7 +42,8 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@': resolve('src/renderer/src')
+        '@': resolve('src/renderer/src'),
+        '@common': resolve('src/common')
       }
     },
     build: {

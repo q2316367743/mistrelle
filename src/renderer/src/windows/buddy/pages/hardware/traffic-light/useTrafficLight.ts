@@ -7,12 +7,30 @@ import { useSerialLink } from '../useSerialLink'
 
 const config = ref<TrafficLightConfig | null>(null)
 const saving = ref(false)
+/** 当前软件的事件接入配置状态（如 opencode 插件安装态） */
+const platformStatus = ref<PlatformStatus | null>(null)
 
 let initialized = false
 
 /** 以 main 为准回读整份配置 */
 async function reload(): Promise<void> {
   config.value = await window.preload.trafficLight.getConfig()
+}
+
+/** 查询指定软件的事件接入配置状态（与内置模板内容比对） */
+async function checkPlatform(name: SoftwareName): Promise<void> {
+  platformStatus.value = await window.preload.trafficLight.checkPlatform(name)
+}
+
+/** 安装/更新指定软件的事件接入配置，成功后刷新状态（opencode 需重启后加载插件） */
+async function installPlatform(name: SoftwareName): Promise<void> {
+  const result = await window.preload.trafficLight.installPlatform(name)
+  if (!result.ok) {
+    MessageUtil.error(result.msg || '安装失败')
+    return
+  }
+  MessageUtil.success('已安装，重启 opencode 后生效')
+  await checkPlatform(name)
 }
 
 /** 保存单个软件配置（无论成败都回读，UI 始终与 main 对齐） */
@@ -54,11 +72,12 @@ export function useTrafficLight() {
   if (!initialized) {
     initialized = true
     void reload()
+    void checkPlatform('opencode')
     // 串口连接成功后记忆端口（含手动重连），供下次启动自动连接
     const { connectedPath } = useSerialLink()
     watch(connectedPath, (path) => {
       if (path) void window.preload.trafficLight.setLastPort(path)
     })
   }
-  return { config, saving, bindEvent, setEnabled, reload }
+  return { config, saving, platformStatus, bindEvent, setEnabled, checkPlatform, installPlatform, reload }
 }

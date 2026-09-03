@@ -208,7 +208,7 @@
 |-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | [01-serial-traffic-light.md](./hardware/01-serial-traffic-light.md) | 串口通信域（serialport v13）与红绿灯页面：main SerialService 单例 + preload serial 域桥、Arduino 行协议（灯+模式/off、9600）、原生模块集成复用 postinstall 链路 |
 | [02-buddy-window.md](./hardware/02-buddy-window.md) | 伙伴窗口（独立入口）：`buddy.html` → `windows/buddy/` 独立应用（独立 main/router/preload/外壳）、默认隐藏 + 托盘「打开伙伴」唯一入口、关闭只隐藏、renderer 与 preload 双入口配置、独立窗口目录约定 |
-| [03-traffic-light-config.md](./hardware/03-traffic-light-config.md) | 红绿灯配置（软件状态驱动）：`~/.mistrelle/buddy/traffic-light.json` 结构、事件→灯态绑定（状态唯一/软件互斥两条规则）、mistrelle:// 协议事件投递链路（opencode 插件对接）、伙伴窗口独立 preload 入口 |
+| [03-traffic-light-config.md](./hardware/03-traffic-light-config.md) | 红绿灯配置（软件状态驱动）：`~/.mistrelle/buddy/traffic-light.json` 结构、事件→灯态绑定（状态唯一/软件互斥两条规则）、mistrelle:// 协议事件投递链路、内置 opencode 插件模板与一键安装（checkPlatform/installPlatform 三态检查、adapter 注册表扩展点）、契约文件迁 `src/common`、伙伴窗口独立 preload 入口 |
 
 ### todo/ —— 规划与待办
 

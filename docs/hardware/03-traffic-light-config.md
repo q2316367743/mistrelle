@@ -64,16 +64,28 @@ mistrelle://buddy/traffic-light?platform=<软件名>&event=<事件名>
 - 行为约定：软件未启用、事件未知、未绑定、串口未连接时静默忽略；与上次指令相同则去重不重发。每条 URL 在 `[mistrelle://] 收到外部唤起` 日志可见，配置在 main 启动即加载，接入方无需关心
 - 主进程内部接口（协议层即如此调用）：`import { applyEvent } from '$/buddy/traffic-light/TrafficLightService'`
 
+## 内置插件模板与安装（opencode 已接入）
+
+官方约定：插件是 js 文件放入 `~/.config/opencode/plugins/`（全局，启动自动加载，无需改 opencode.json——该字段只用于 npm 包）。本应用内置模板 `resources/plugins/opencode/mistrelle-traffic-light.js`，伙伴窗口可一键安装：
+
+- **模板内容**：导出 opencode 插件函数，event hook 只转发 6 个事件全集；每事件独立 trailing 节流 500ms（`message.part.updated` 流式高频，防深链进程风暴，尾部补发保证最终灯态不丢）；按平台 `spawn` 唤起深链（darwin=`open` / win32=`rundll32 url.dll,FileProtocolHandler` / linux=`xdg-open`），`detached` + `unref` 即发即忘、异常静默。用 `node:child_process`（opencode 运行于 Bun，兼容），不依赖插件 ctx
+- **安装**：`trafficLight:installPlatform(software)` → `platformConfig.ts` 按软件分发 adapter → `mkdirSync(recursive)` + `copyFileSync` 覆盖写入目标文件，异常转 `{ok:false, msg}` 不抛错；安装后需重启 opencode 生效（UI 已提示）
+- **检查**：`trafficLight:checkPlatform(software)` → 三态 `PlatformConfigStatus`：`missing`（目标文件不存在）/ `outdated`（存在但内容与内置模板不一致，可更新）/ `ready`（内容一致）。内容逐字比对让模板升级可感知
+- **模板文件可达性**：`resources/**` 整体在 `asarUnpack` 中，main 以 `join(__dirname, '../../resources/plugins/...')` 定位（与 drizzle/templates 同款范式），dev/打包均可达，未改 electron-builder.yml
+- **扩展点**：`platformConfig.ts` 内 `ADAPTERS: Record<SoftwareName, PlatformAdapter>` 注册表，新软件加一项 adapter（check/install）即可，IPC 与 UI 通用
+
 ## 关键文件
 
 | 层 | 文件 | 职责 |
 |----|------|------|
 | main | `src/main/src/buddy/traffic-light/trafficLightConfig.ts` | 配置读写（`~/.mistrelle/buddy/traffic-light.json`）、归一化、灯态唯一校验、软件互斥归一、默认绑定 |
 | main | `src/main/src/buddy/traffic-light/TrafficLightService.ts` | 单例：initTrafficLight（加载+自动连）、applyEvent（事件→灯态→串口）、saveSoftwareConfig、setLastPort |
-| main | `src/main/src/buddy/traffic-light/trafficLightIpc.ts` | IPC：getConfig / saveSoftwareConfig / setLastPort（applyEvent 不走 IPC） |
+| main | `src/main/src/buddy/traffic-light/trafficLightIpc.ts` | IPC：getConfig / saveSoftwareConfig / setLastPort / checkPlatform / installPlatform（applyEvent 不走 IPC） |
+| main | `src/main/src/buddy/traffic-light/platformConfig.ts` | 接入配置分发：adapter 注册表 + opencode 实现（插件模板 → `~/.config/opencode/plugins/` 的三态检查与覆盖安装） |
+| resources | `resources/plugins/opencode/mistrelle-traffic-light.js` | 内置 opencode 插件模板（事件过滤 + 每事件 trailing 节流 500ms + 跨平台 spawn 深链） |
 | main | `src/main/src/app/protocol.ts` | mistrelle:// 协议层：接收系统级唤起（open-url / second-instance / 冷启动 argv）→ `buddy/traffic-light` 路由 → applyEvent |
 | main | `src/main/src/registerIpc.ts` | 注册 trafficLightIpc 并触发 initTrafficLight |
-| preload | `src/preload/src/modules/traffic-light/trafficLightChannels.ts` | 通道常量 + 全部类型/全集常量（main/preload 契约唯一事实源） |
+| common | `src/common/buddy/traffic-light/trafficLightChannels.ts` | 通道常量 + 全部类型/全集常量（跨进程契约唯一事实源，`@common` 别名 main/preload/renderer 三端可达） |
 | preload | `src/preload/src/modules/traffic-light/trafficLight.ts` | trafficLightApi 桥 |
 | preload | `src/preload/buddy.ts` | **伙伴窗口独立 preload 入口**：仅注入 inject/serial/trafficLight |
 | renderer | `src/renderer/src/types/trafficLight.d.ts` | ambient 契约（与 preload 侧三份同步） |
@@ -83,7 +95,7 @@ mistrelle://buddy/traffic-light?platform=<软件名>&event=<事件名>
 
 - **软件页签 + 专属面板**：页面「软件接入」区按 `SOFTWARE_REGISTRY`（softwareRegistry.ts）渲染 t-tabs，每个软件一个页签；页签内容由 `SoftwareTabs.vue` 的 `PANELS: Record<SoftwareName, Component>` 映射到**该软件的专属面板组件**（`components/software/`，如 OpencodePanel.vue）——不同软件的功能按钮/事件 UI 可能完全不同，一律独立组件不做通用面板（Record 全量键保证加软件必须同时登记面板）
 - **调试模式**：串口连接面板的「调试模式」按钮切换 `useSerialLink` 的 `debugMode`，开启后门面才渲染「手动测试」面板（6 指令 + 全灭，供接线/Arduino 调试）
-- **新增软件步骤**：channels 类型全集（`SoftwareName` + 事件联合 + `*_NAMES` 常量）→ `SOFTWARE_REGISTRY` 登记页签 → `SoftwareTabs.vue` 的 `PANELS` 登记专属面板组件 → main `trafficLightConfig.ts` 默认配置；互斥/唯一校验自动生效
+- **新增软件步骤**：channels 类型全集（`SoftwareName` + 事件联合 + `*_NAMES` 常量）→ `SOFTWARE_REGISTRY` 登记页签 → `SoftwareTabs.vue` 的 `PANELS` 登记专属面板组件 → main `trafficLightConfig.ts` 默认配置 → main `platformConfig.ts` 补 adapter + `resources/plugins/<软件>/` 放内置插件模板；互斥/唯一校验自动生效
 - **独立 preload**：伙伴窗口不再与主窗口共用 `out/preload/index.js`——`electron.vite.config.ts` preload 段双入口（index + buddy），`buddyWindow.ts` 将 `webPreferences.preload` 覆写为 `buddy.js`；buddy 入口仅注入 `inject`/`serial`/`trafficLight` 三域（`inject` 供 App 外壳 `UseTitlePadding` 判平台），`window.preload.trafficLight` 仅伙伴窗口运行时存在（类型全局可见，主窗口勿用）
 - **software 互斥实现陷阱**：`SoftwareName` 目前是单成员联合，循环里 `name !== software` 的字面量互斥比较会把键收窄成 `never`（赋值目标报 never）——互斥归一已收口在 `applySoftwareExclusion`（用 `string` 比较），后续加软件不要把比较改回同类型字面量
 - **即改即存**：渲染层每次修改即调 saveSoftwareConfig，无论成败都回读 main 为准（失败自动回滚 UI 并 toast 原因）

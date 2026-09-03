@@ -8,6 +8,18 @@
         @change="(value) => setEnabled('opencode', value === true)"
       />
     </div>
+    <div class="install-row">
+      <span class="status" :data-status="installStatus">{{ installText }}</span>
+      <t-button
+        v-if="installStatus !== 'ready'"
+        size="small"
+        variant="outline"
+        :loading="installing"
+        @click="install"
+      >
+        {{ installStatus === 'outdated' ? '更新插件' : '安装插件' }}
+      </t-button>
+    </div>
     <div class="hint">一种灯态只能被一个事件绑定；未绑定的事件不点亮，修改即时生效。</div>
     <div v-for="item in EVENTS" :key="item.event" class="binding-row">
       <div class="event">
@@ -31,10 +43,31 @@ import { useTrafficLight } from '../../useTrafficLight'
 
 defineOptions({ name: 'OpencodePanel' })
 
-const { config, saving, bindEvent, setEnabled } = useTrafficLight()
+const { config, saving, platformStatus, bindEvent, setEnabled, installPlatform } = useTrafficLight()
 
 const softwareConfig = computed(() => config.value?.config.opencode)
 const enabled = computed(() => softwareConfig.value?.enabled ?? false)
+
+const installing = ref(false)
+const installStatus = computed<PlatformConfigStatus>(() => platformStatus.value?.status ?? 'missing')
+
+/** 各安装态的说明文案（missing/outdated 提供一键安装入口） */
+const INSTALL_TEXT: Record<PlatformConfigStatus, string> = {
+  missing: '事件接入插件未安装，安装后 opencode 事件才能点亮信号灯',
+  outdated: '事件接入插件有更新，建议更新以保持事件上报正常',
+  ready: '事件接入插件已安装，事件可点亮信号灯'
+}
+const installText = computed(() => INSTALL_TEXT[installStatus.value])
+
+/** 安装/更新内置插件到 opencode 插件目录（成功提示与状态刷新在 useTrafficLight 内） */
+async function install(): Promise<void> {
+  installing.value = true
+  try {
+    await installPlatform('opencode')
+  } finally {
+    installing.value = false
+  }
+}
 
 /** Opencode 事件目录（与 channels 的 OpencodeEventName 全集一致；本面板可按 Opencode 特性自由演化 UI） */
 const EVENTS: Array<{ event: OpencodeEventName; label: string }> = [
@@ -83,6 +116,30 @@ function toState(value: unknown): LightState | '' {
   .desc {
     font: var(--td-font-body-small);
     color: var(--td-text-color-secondary);
+  }
+}
+
+.install-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--td-bg-color-secondarycontainer);
+
+  .status {
+    font: var(--td-font-body-small);
+    color: var(--td-text-color-secondary);
+
+    &[data-status='ready'] {
+      color: var(--td-success-color-7);
+    }
+
+    &[data-status='outdated'] {
+      color: var(--td-warning-color-7);
+    }
   }
 }
 

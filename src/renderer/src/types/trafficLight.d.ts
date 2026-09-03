@@ -38,6 +38,27 @@ interface TrafficLightSaveResult {
   msg?: string
 }
 
+/**
+ * 软件事件接入配置状态（如 opencode 插件是否已装入其插件目录）：
+ * missing=未安装；outdated=已安装但内容与内置模板不一致（可更新）；ready=已就绪。
+ */
+type PlatformConfigStatus = 'missing' | 'outdated' | 'ready'
+
+/** 接入配置检查结果 */
+interface PlatformStatus {
+  status: PlatformConfigStatus
+  /** 接入配置的目标文件路径 */
+  path: string
+}
+
+/** 接入配置安装结果（失败时 msg 为中文原因，不抛错） */
+interface PlatformInstallResult {
+  ok: boolean
+  msg?: string
+  /** 接入配置的目标文件路径（无论成败都返回期望路径） */
+  path: string
+}
+
 declare interface TrafficLightApi {
   /** 读取整份配置（含 lastPort 与各软件绑定） */
   getConfig(): Promise<TrafficLightConfig>
@@ -45,4 +66,8 @@ declare interface TrafficLightApi {
   saveSoftwareConfig(software: SoftwareName, config: SoftwareLightConfig): Promise<TrafficLightSaveResult>
   /** 记住上次使用的串口（伙伴窗口连接成功后调用） */
   setLastPort(path: string): Promise<void>
+  /** 检查指定软件的事件接入配置状态（opencode = 插件文件与内置模板比对） */
+  checkPlatform(software: SoftwareName): Promise<PlatformStatus>
+  /** 安装/更新指定软件的事件接入配置（覆盖写入其插件目录） */
+  installPlatform(software: SoftwareName): Promise<PlatformInstallResult>
 }
