@@ -12,10 +12,12 @@
  * URL 约定（/{模块}/{功能}）：
  * - mistrelle://app/file/<encodeURIComponent(绝对路径)>  本地文件读盘（应用内资源面）
  * - mistrelle://app/<模块>/<功能>?…                       系统级外部命令面（路由桩，待后续接入）
+ * - mistrelle://buddy/traffic-light?platform=<软件>&event=<事件>  红绿灯事件投递（如 opencode 插件）
  */
 import { app, protocol } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
+import { applyEvent } from '$/buddy/traffic-light/TrafficLightService'
 
 const SCHEME = 'mistrelle'
 
@@ -66,7 +68,7 @@ export const registerLocalSchemes = (): void => {
 
 /**
  * 协议分发：仅处理 mistrelle://app/file/<enc 绝对路径> 读盘（应用内资源面）。
- * host 非 app 或模块非 file 一律 404；系统级外部命令面不在此分发（走 handleExternalUrl 路由桩）。
+ * host 非 app 或模块非 file 一律 404；系统级外部命令面不在此分发（走 handleExternalUrl → routeExternalCommand）。
  */
 const dispatchRequest = async (url: string): Promise<Response> => {
   const { hostname, pathname } = new URL(url)
@@ -105,12 +107,18 @@ export const handleExternalUrl = (url: string): void => {
 }
 
 /**
- * 外部命令路由桩：mistrelle://app/<模块>/<功能>?… 的命令分发表预留位。
- * 现仅做 host 合法性甄别，具体命令（打开页面 / 投递事件等）待接入方明确后扩展。
+ * 外部命令路由：mistrelle://<模块>/<功能>?…
+ * - buddy/traffic-light：红绿灯事件投递，按 platform/event 交给 applyEvent
+ *   （软件未启用/事件未知/未绑定/串口未连接在 applyEvent 内静默忽略）
+ * - app/…：预留命令面（待接入）
  */
 const routeExternalCommand = (url: string): void => {
   try {
-    const { hostname } = new URL(url)
+    const { hostname, pathname, searchParams } = new URL(url)
+    if (hostname === 'buddy' && pathname === '/traffic-light') {
+      void applyEvent(searchParams.get('platform') ?? '', searchParams.get('event') ?? '')
+      return
+    }
     if (hostname !== 'app') return
     // TODO: 命令分发表（mistrelle://app/<模块>/<action>?…）
   } catch {
@@ -119,7 +127,7 @@ const routeExternalCommand = (url: string): void => {
 }
 
 /** macOS open-url 可能在 app ready 前触发：暂存，ready 后经 registerDeepLink flush */
-let pendingUrls: string[] = []
+const pendingUrls: string[] = []
 
 /**
  * 在 app ready 之前调用：挂 macOS open-url 监听，接收系统级唤起 URL。
@@ -145,6 +153,11 @@ export const registerDeepLink = (): void => {
   if (!app.isDefaultProtocolClient(SCHEME)) {
     app.setAsDefaultProtocolClient(SCHEME)
   }
+
+  // Windows/Linux 冷启动：首实例启动参数里可能携带 mistrelle:// URL
+  //（second-instance 只覆盖二次唤起，冷启动无人消费会丢事件）
+  const launchUrl = process.argv.find((arg) => arg.startsWith(`${SCHEME}://`))
+  if (launchUrl) handleExternalUrl(launchUrl)
 
   // Windows / Linux 二次唤起：首实例经 second-instance 收到整条 argv，
   // 取首个 mistrelle:// 开头的参数交给 handleExternalUrl（不弹窗）

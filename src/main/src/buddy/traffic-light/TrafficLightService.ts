@@ -14,6 +14,7 @@ import {
 } from '~/modules/traffic-light/trafficLightChannels'
 import {
   applySoftwareExclusion,
+  defaultConfig,
   isSoftwareName,
   loadConfig,
   normalizeSoftware,
@@ -21,7 +22,8 @@ import {
   validateBindingUniqueness
 } from './trafficLightConfig'
 
-let config: TrafficLightConfig
+// 声明即给默认值：applyEvent 是导出 API（协议层调用），任何调用时序下都安全
+let config: TrafficLightConfig = defaultConfig()
 /** 指令去重：事件流里同一灯态连续触发（如流式回复）不重复写串口 */
 let lastCommand = ''
 

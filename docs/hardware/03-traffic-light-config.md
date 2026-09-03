@@ -53,16 +53,16 @@
 
 ## 事件接入方须知（opencode 自定义协议插件）
 
-opencode 侧插件把事件传给主进程的方式由插件方实现（不在本模块范围）；主进程侧的接缝是：
+opencode 插件把事件投递给主进程的方式：**执行系统命令唤起自定义协议 URL**（如 JS 里 `spawn('open', ['mistrelle://buddy/traffic-light?platform=opencode&event=session.idle'])`，Windows 用 `rundll32 url.dll,FileProtocolHandler` 或 `start`）：
 
-```ts
-import { applyEvent } from '$/buddy/traffic-light/TrafficLightService'
-
-// 收到事件后调用（software/event 均为运行时字符串，内部做合法性校验）
-await applyEvent('opencode', 'session.idle')
+```
+mistrelle://buddy/traffic-light?platform=<软件名>&event=<事件名>
 ```
 
-行为约定：软件未启用、事件未绑定、串口未连接时静默忽略；与上次指令相同则去重不重发。配置文件在 main 启动即加载，无需接入方关心。
+- `platform`：软件名（当前 `opencode`）；`event`：事件名（见上方事件目录）
+- 接收链路（`src/main/src/app/protocol.ts`）：macOS 经 `open-url`（冷启动暂存 ready 后补收）；Windows/Linux 二次唤起经 `second-instance`、冷启动经启动参数 argv 补收 → `handleExternalUrl` → `routeExternalCommand` 匹配 `buddy/traffic-light` → `applyEvent(platform, event)`
+- 行为约定：软件未启用、事件未知、未绑定、串口未连接时静默忽略；与上次指令相同则去重不重发。每条 URL 在 `[mistrelle://] 收到外部唤起` 日志可见，配置在 main 启动即加载，接入方无需关心
+- 主进程内部接口（协议层即如此调用）：`import { applyEvent } from '$/buddy/traffic-light/TrafficLightService'`
 
 ## 关键文件
 
@@ -71,6 +71,7 @@ await applyEvent('opencode', 'session.idle')
 | main | `src/main/src/buddy/traffic-light/trafficLightConfig.ts` | 配置读写（`~/.mistrelle/buddy/traffic-light.json`）、归一化、灯态唯一校验、软件互斥归一、默认绑定 |
 | main | `src/main/src/buddy/traffic-light/TrafficLightService.ts` | 单例：initTrafficLight（加载+自动连）、applyEvent（事件→灯态→串口）、saveSoftwareConfig、setLastPort |
 | main | `src/main/src/buddy/traffic-light/trafficLightIpc.ts` | IPC：getConfig / saveSoftwareConfig / setLastPort（applyEvent 不走 IPC） |
+| main | `src/main/src/app/protocol.ts` | mistrelle:// 协议层：接收系统级唤起（open-url / second-instance / 冷启动 argv）→ `buddy/traffic-light` 路由 → applyEvent |
 | main | `src/main/src/registerIpc.ts` | 注册 trafficLightIpc 并触发 initTrafficLight |
 | preload | `src/preload/src/modules/traffic-light/trafficLightChannels.ts` | 通道常量 + 全部类型/全集常量（main/preload 契约唯一事实源） |
 | preload | `src/preload/src/modules/traffic-light/trafficLight.ts` | trafficLightApi 桥 |
