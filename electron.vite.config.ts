@@ -26,6 +26,15 @@ export default defineConfig({
         '~': resolve('src/preload/src'),
         $: resolve('src/main/src')
       }
+    },
+    // 双入口：index=主窗口全量 API，buddy=伙伴窗口仅 inject/serial/trafficLight（产物 out/preload/buddy.js）
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/preload/index.ts'),
+          buddy: resolve('src/preload/buddy.ts')
+        }
+      }
     }
   },
   renderer: {

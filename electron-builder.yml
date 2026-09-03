@@ -33,6 +33,11 @@ win:
     - target: zip
       arch:
         - x64
+  # 注册 mistrelle:// 系统级链接（win）
+  protocols:
+    - name: mistrelle
+      schemes:
+        - mistrelle
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -50,6 +55,11 @@ mac:
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    # 注册 mistrelle:// 系统级链接（macOS，CFBundleURLTypes）
+    - CFBundleURLTypes:
+        - CFBundleURLName: mistrelle
+          CFBundleURLSchemes:
+            - mistrelle
   notarize: false
   target:
     - dmg
@@ -64,6 +74,11 @@ linux:
     - deb
   maintainer: xyz.esion
   category: Utility
+  # 注册 mistrelle:// 系统级链接（linux）
+  protocols:
+    - name: mistrelle
+      schemes:
+        - mistrelle
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false

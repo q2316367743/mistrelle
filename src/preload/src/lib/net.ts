@@ -37,6 +37,6 @@ export const netApi = {
   },
 
   /** 将绝对路径转换为 mistrelle:// URL（渲染层经自定义协议加载本地资源；dev 下 file:// 会被 Chromium 拦截） */
-  pathToHref: (path: string): string => `mistrelle://local/${encodeURIComponent(resolve(path))}`,
+  pathToHref: (path: string): string => `mistrelle://app/file/${encodeURIComponent(resolve(path))}`,
   pathToFileHref: (path: string): string => pathToFileURL(resolve(path)).href
 }

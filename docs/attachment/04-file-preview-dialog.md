@@ -27,7 +27,7 @@ export function openFilePreview(item: FilePreviewItem): void
 | `.md` | Dialog + 「预览/源码」切换 | 预览 = ChatContent 渲染，源码 = Monaco（markdown） |
 | `.html` / `.htm` | Dialog + 「预览/源码」切换 | 预览 = `<webview>` 加载 `pathToHref(fullPath)`，源码 = Monaco（懒读取文本） |
 | CODE_EXTS（含 .html） | Dialog + Monaco | 语言映射 `EXT_LANG`，缺省 plaintext |
-| IMAGE / VIDEO / AUDIO | Dialog + 原生标签 | src 均为 `mistrelle://local/<encoded>`（`net.pathToHref`） |
+| IMAGE / VIDEO / AUDIO | Dialog + 原生标签 | src 均为 `mistrelle://app/file/<encoded>`（`net.pathToHref`） |
 | 其余 | `showInFolder` | 无预览分支，兜底在文件管理器中定位 |
 
 - footer 统一：使用默认程序打开（`shell.openPath`）/ 在文件夹中显示（`shell.showItemInFolder`）。

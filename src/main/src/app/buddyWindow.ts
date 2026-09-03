@@ -22,14 +22,17 @@ export function showBuddyWindow(): void {
 }
 
 function createBuddyWindow(): void {
-  const win = new BrowserWindow({
+  const options = {
     ...windowOptions(),
     width: 960,
     height: 640,
     minWidth: 720,
     minHeight: 480,
     title: '伙伴'
-  })
+  }
+  // 独立 preload：仅注入 inject/serial/trafficLight 域（不与主窗口共用全量 out/preload/index.js）
+  options.webPreferences = { ...options.webPreferences, preload: join(__dirname, '../preload/buddy.js') }
+  const win = new BrowserWindow(options)
   buddyWindow = win
 
   win.on('ready-to-show', () => {

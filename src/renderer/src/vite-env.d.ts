@@ -40,6 +40,8 @@ declare global {
       auth: AuthApi
       relay: RelayApi
       serial: SerialApi
+      /** 红绿灯配置桥：仅伙伴窗口独立 preload（out/preload/buddy.js）注入，主窗口运行时不存在 */
+      trafficLight: TrafficLightApi
       template: {
         /** 渲染 resources/templates/<name>.ejs 并返回完整 HTML 字符串（实现位于 main） */
         render(params: { name: string; data: Record<string, unknown> }): Promise<string>

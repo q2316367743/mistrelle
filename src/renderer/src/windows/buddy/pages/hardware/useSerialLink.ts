@@ -9,6 +9,8 @@ const selectedPath = ref('')
 const connectedPath = ref('')
 const connecting = ref(false)
 const listing = ref(false)
+/** 硬件调试模式：开启后页面显示手动测试面板 */
+const debugMode = ref(false)
 
 let initialized = false
 
@@ -89,6 +91,7 @@ export function useSerialLink() {
     connectedPath,
     connecting,
     listing,
+    debugMode,
     refreshPorts,
     handleSelect,
     disconnect,

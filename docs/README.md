@@ -44,7 +44,7 @@
 | 文档                                                                           | 描述                                                                                                                                                     |
 |--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload，例外：net 下载因 onDownloadProgress 回调无法过 IPC 而保留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 二进制随包分发（见 build/03，旧远程下载方案已移除）、sharp 移植、renderer 异步化适配清单 |
-| [02-local-protocol.md](./migration/02-local-protocol.md)                       | `mistrelle://` 本地资源协议：渲染层 URL 加载本地字体/图片，规避 dev 下 http 页面加载 file:// 被 Chromium 拦截；`registerLocalSchemes` 须在 app ready 前注册、handler 读盘返回 |
+| [02-local-protocol.md](./migration/02-local-protocol.md)                       | `mistrelle://` 本地资源协议：渲染层 URL 加载本地字体/图片（`mistrelle://app/file/<编码绝对路径>`，规避 dev 下 http 页面加载 file:// 被拦截）；兼系统级链接（单实例 + open-url/second-instance 仅接收外部 `mistrelle://` 唤起，不弹窗/不聚焦）；`registerLocalSchemes` 须 app ready 前注册、handler 读盘返回 |
 | [03-lmdb-to-json.md](./migration/03-lmdb-to-json.md)                           | lmdb → 本地 JSON 收尾迁移：剩余消费点（network/global/secure/default setting、workspace 历史）映射与行为变化（rev 删除、不预写空文件、init 后注册 watch、孤儿 AiWorkspaceStore 直接删除）、lmdb 全链路删除清单、`~/.mistrelle/` JSON 存储全景 |
 
 ### data/ —— 数据存储
@@ -207,7 +207,8 @@
 | 文档                                            | 描述                                                                                                                        |
 |-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | [01-serial-traffic-light.md](./hardware/01-serial-traffic-light.md) | 串口通信域（serialport v13）与红绿灯页面：main SerialService 单例 + preload serial 域桥、Arduino 行协议（灯+模式/off、9600）、原生模块集成复用 postinstall 链路 |
-| [02-buddy-window.md](./hardware/02-buddy-window.md) | 伙伴窗口（独立入口）：`buddy.html` → `nested/buddy/` 独立应用（独立 main/router/外壳）、默认隐藏 + 托盘「打开伙伴」唯一入口、关闭只隐藏、vite 双入口配置、nested 独立窗口目录约定 |
+| [02-buddy-window.md](./hardware/02-buddy-window.md) | 伙伴窗口（独立入口）：`buddy.html` → `windows/buddy/` 独立应用（独立 main/router/preload/外壳）、默认隐藏 + 托盘「打开伙伴」唯一入口、关闭只隐藏、renderer 与 preload 双入口配置、独立窗口目录约定 |
+| [03-traffic-light-config.md](./hardware/03-traffic-light-config.md) | 红绿灯配置（软件状态驱动）：`~/.mistrelle/buddy/traffic-light.json` 结构、事件→灯态绑定（状态唯一/软件互斥两条规则）、main TrafficLightService 与 applyEvent 接缝、伙伴窗口独立 preload 入口 |
 
 ### todo/ —— 规划与待办
 
