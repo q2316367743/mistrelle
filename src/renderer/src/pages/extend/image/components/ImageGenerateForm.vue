@@ -14,7 +14,8 @@
         <t-select
           v-model="modelKey"
           class="model-select"
-          :options="imageOptions"
+          :options="imageModelStore.items"
+          :loading="imageModelStore.loading"
           clearable
           placeholder="生图模型"
         >
@@ -31,17 +32,18 @@
         </t-select>
         <span v-if="modelTip" class="model-tip">
           <span class="tip-text">{{ modelTip }}</span>
-          <t-button v-if="!hasAnyImageModel" variant="text" size="small" theme="primary" @click="goSetting">
-            去设置
+          <t-button
+            v-if="imageModelStore.needLogin"
+            variant="text"
+            size="small"
+            theme="primary"
+            @click="openLogin()"
+          >
+            登录
           </t-button>
         </span>
       </div>
-      <t-button
-        theme="primary"
-        size="large"
-        :disabled="!canSubmit"
-        @click="handleSubmit"
-      >
+      <t-button theme="primary" size="large" :disabled="!canSubmit" @click="handleSubmit">
         <template #icon><AiIcon /></template>
         生成图片
       </t-button>
@@ -51,12 +53,11 @@
 </template>
 
 <script lang="ts" setup>
-import { useRouter } from 'vue-router'
-import { useSettingAiStore, useSettingDefaultStore } from '@/store'
+import { useImageModelStore, useSettingDefaultStore } from '@/store'
+import { openLogin } from '@/components/modals/LoginDialog'
 import { AiIcon } from 'tdesign-icons-vue-next'
-import type { SelectOptionGroup } from 'tdesign-vue-next'
 
-/** 常用尺寸（部分中转站强制要求，全模型安全值默认 1024x1024） */
+/** 常用尺寸（服务端按需透传，全模型安全值默认 1024x1024） */
 const SIZE_OPTIONS = [
   { label: '方形 1024×1024', value: '1024x1024' },
   { label: '竖版 1024×1536', value: '1024x1536' },
@@ -67,48 +68,50 @@ const emit = defineEmits<{
   submit: [prompt: string, size?: string, model?: string, styleId?: string]
 }>()
 
-const router = useRouter()
-const aiStore = useSettingAiStore()
+const imageModelStore = useImageModelStore()
 const settingDefaultStore = useSettingDefaultStore()
 
-/** 可用的生图模型（type=image 分组下拉，value = `${provideId}:${identifier}`） */
-const imageOptions = computed<SelectOptionGroup[]>(() =>
-  aiStore.ready ? aiStore.imageOptions : []
-)
-const hasAnyImageModel = computed(() => imageOptions.value.some((g) => g.children?.length))
-const hasDefaultImageModel = computed(() => !!settingDefaultStore.state.defaultImageModel)
-
 const prompt = ref('')
-/** 显式选择的模型 key；空 = 跟随默认生图模型 */
+/** 选中的服务端生图档位 code（选项 value） */
 const modelKey = ref('')
 /** 选中的设计风格 id；空 = 不注入风格提示词 */
 const styleId = ref('')
 const size = ref('1024x1024')
 const sizeError = ref('')
 
-// 有默认生图模型时自动选中（store 异步读盘后回填；用户手动改选后不覆盖）
+// 默认选中：优先「默认生图模型」，否则列表首项（仅表单内选中，不写回设置）。
+// 只监听列表与默认值变化：用户手动改选 / 清空后不被自动覆盖
 watch(
-  () => settingDefaultStore.state.defaultImageModel,
-  (val) => {
-    if (val && !modelKey.value) modelKey.value = val
+  () => [imageModelStore.items, settingDefaultStore.state.defaultImageModel] as const,
+  () => {
+    if (modelKey.value) return
+    const items = imageModelStore.items
+    if (!items.length) return
+    const preferred = settingDefaultStore.state.defaultImageModel
+    modelKey.value = items.some((option) => option.value === preferred)
+      ? preferred
+      : (items[0]?.value ?? '')
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 )
 
-const hasModelReady = computed(() => !!modelKey.value || hasDefaultImageModel.value)
 const canSubmit = computed(
-  () => prompt.value.trim().length > 0 && !sizeError.value && hasModelReady.value
+  () => prompt.value.trim().length > 0 && !sizeError.value && !!modelKey.value
 )
-/** 模型引导提示：无可用模型 → 去设置；有模型但未选且无默认 → 提示选择 */
+/** 模型引导提示：未登录 → 登录引导；已登录无模型 / 未选中 → 对应提示 */
 const modelTip = computed(() => {
-  if (!hasAnyImageModel.value) return '未配置生图模型'
-  if (!hasModelReady.value) return '请选择生图模型'
+  if (imageModelStore.needLogin) return '登录后可使用生图'
+  if (!imageModelStore.items.length) {
+    return imageModelStore.loading ? '正在获取生图模型…' : '暂无可用生图模型'
+  }
+  if (!modelKey.value) return '请选择生图模型'
   return ''
 })
 
 const validateSize = () => {
   const value = size.value?.trim() ?? ''
-  sizeError.value = value && !/^\d{3,4}[xX]\d{3,4}$/.test(value) ? '尺寸格式应为 宽x高（如 1024x1024）' : ''
+  sizeError.value =
+    value && !/^\d{3,4}[xX]\d{3,4}$/.test(value) ? '尺寸格式应为 宽x高（如 1024x1024）' : ''
 }
 
 watch(size, validateSize)
@@ -125,10 +128,6 @@ const handleSubmit = () => {
   )
   // 任务已提交（失败可从记录卡「重试」找回 prompt），清空输入框供连续生成
   prompt.value = ''
-}
-
-const goSetting = () => {
-  router.push('/setting/default')
 }
 </script>
 
@@ -154,7 +153,7 @@ const goSetting = () => {
 }
 
 .model-select {
-  width: 220px;
+  width: 120px;
 }
 
 .style-select {

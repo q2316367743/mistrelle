@@ -1,14 +1,13 @@
 /**
  * image_generate 工具：根据文字描述生成插画 / 素材图片并保存到本地。
- * - 依赖「默认生图模型」（设置 → 默认设置）；未配置时工具不注入（见 design/index.ts），
- *   运行时模型被清空则返回错误提示，AI 回退 stock / placeholder 或让用户提供素材。
- * - 真实生图逻辑收口在 @/modules/chat/service/ImageGenerate.generateImage（当前为空实现，
- *   返回「尚未就绪」友好错误）；本工具只做参数校验、路径兜底与结果透传。
- * - 从具体文件路径导入 generateImage（叶子模块），不经过 chat 桶文件，避免循环依赖。
+ * - 依赖「默认生图模型」（设置 → 默认设置，取值为服务端生图档位 code）；未配置时工具不注入
+ *   （见 design/index.ts），运行时模型被清空则返回错误提示，AI 回退 stock / placeholder
+ *   或让用户提供素材。
+ * - 真实生图逻辑收口在 main 的 ImageService（经 window.preload.image.generate 工具直出模式：
+ *   不建页面记录，产物落盘 path 后返回终态）；本工具只做参数校验、路径兜底与结果透传。
  */
 import type { ToolFunction } from '@/domain'
 import { useSettingDefaultStore } from '@/store/setting/SettingDefaultStore'
-import { generateImage } from '@/modules/chat/service/ImageGenerate'
 import { registerToolPolicy, type ToolPolicyContext } from '@/modules/tool/toolPolicy'
 import { isPathUnder } from '@/utils/sandbox'
 import type { DesignToolContext } from './websiteLogo'
@@ -69,7 +68,16 @@ export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction =>
     }
     const target = path?.trim() || buildDefaultOutputPath(sandboxDir as string)
 
-    const result = await generateImage({ prompt: prompt.trim(), path: target, size })
+    // 工具直出模式：不建页面记录，主进程落盘后返回终态
+    const res = await window.preload.image.generate({
+      prompt: prompt.trim(),
+      model: useSettingDefaultStore().state.defaultImageModel,
+      size,
+      record: false,
+      path: target
+    })
+    if (res.phase !== 'finished') return { error: '生图服务返回异常：未收到生成结果' }
+    const result = res.result
     if ('error' in result) return { error: result.error }
 
     return {

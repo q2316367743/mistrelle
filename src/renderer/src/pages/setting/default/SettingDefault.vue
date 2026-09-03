@@ -65,13 +65,14 @@
         </template>
       </t-list-item>
       <t-list-item>
-        <t-list-item-meta title="默认生图模型" description="设计创意时，用于生成插画" />
+        <t-list-item-meta title="默认生图模型" description="生图时使用的模型（服务端生图档位）" />
         <template #action>
           <t-select
             v-model="state.defaultImageModel"
-            :options="imageOptions"
+            :options="imageModelStore.items"
+            :loading="imageModelStore.loading"
             class="w-360px"
-            placeholder="请选择默认生图模型"
+            :placeholder="imageModelStore.needLogin ? '登录后获取服务端模型' : '请选择默认生图模型'"
             clearable
           />
         </template>
@@ -94,10 +95,11 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { useSettingDefaultStore, useSettingAiStore } from '@/store'
+import { useSettingDefaultStore, useSettingAiStore, useImageModelStore } from '@/store'
 
 const { state } = toRefs(useSettingDefaultStore())
-const { options, vectorOptions, imageOptions } = toRefs(useSettingAiStore())
+const { options, vectorOptions } = toRefs(useSettingAiStore())
+const imageModelStore = useImageModelStore()
 </script>
 <style scoped lang="less">
 .setting-list {

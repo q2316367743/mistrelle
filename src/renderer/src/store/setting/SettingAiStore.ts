@@ -88,9 +88,6 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
   const vectorOptions = computed<Array<SelectOptionGroup>>(() => {
     return handleModelOption(visibleItems.value, 'vector')
   })
-  const imageOptions = computed<Array<SelectOptionGroup>>(() => {
-    return handleModelOption(visibleItems.value, 'image')
-  })
 
   const optionMap = computed<Map<string, AiProvideOption>>(() => {
     const map = new Map<string, AiProvideOption>()
@@ -207,7 +204,6 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
     visibleItems,
     options,
     vectorOptions,
-    imageOptions,
     optionMap,
     ready,
     initPromise,

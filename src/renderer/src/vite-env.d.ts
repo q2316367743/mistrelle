@@ -36,6 +36,7 @@ declare global {
       safeStorage: SafeStorageApi
       webUtils: WebUtilsApi
       db: DbApi
+      image: ImageApi
       auth: AuthApi
       relay: RelayApi
       template: {

@@ -146,11 +146,7 @@ declare interface ImageListResult {
   total: number
 }
 
-declare interface ImageDbApi {
-  list: (params: ImageListParams) => Promise<ImageListResult>
-  upsert: (record: ImageRecordInput) => Promise<void>
-  delete: (id: string) => Promise<void>
-}
+// 文生图域 IPC（window.preload.image）见 image.d.ts；此处保留表形状类型供 image 域共用。
 
 // ── 模型健康检测域（可用性检测工具） ─────────────────
 
@@ -295,7 +291,6 @@ declare interface CompareDbApi {
 declare interface DbApi {
   aihot: AihotDbApi
   chat: ChatDbApi
-  image: ImageDbApi
   health: HealthDbApi
   compare: CompareDbApi
 }

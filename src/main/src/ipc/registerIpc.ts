@@ -11,6 +11,7 @@ import { registerPptIpc } from './pptIpc'
 import { registerBrowserToolIpc } from './browserToolIpc'
 import { registerSafeStorageIpc } from './safeStorageIpc'
 import { registerDbIpc } from './dbIpc'
+import { registerImageIpc } from './imageIpc'
 import { registerTemplateIpc } from './templateIpc'
 import { registerAuthIpc } from './authIpc'
 import { registerRelayIpc } from './relayIpc'
@@ -31,6 +32,7 @@ export function registerIpc(): void {
   registerBrowserToolIpc()
   registerSafeStorageIpc()
   registerDbIpc()
+  registerImageIpc()
   registerTemplateIpc()
   registerAuthIpc()
   registerRelayIpc()

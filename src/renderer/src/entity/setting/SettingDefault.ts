@@ -25,18 +25,8 @@ export interface SettingDefault {
    */
   defaultVectorModel: string
   /**
-   * 默认视频模型
-   * > 视频服务使用的模型
-   */
-  defaultVideoModel: string
-  /**
-   * 默认音频模型
-   * > 音频服务使用的模型
-   */
-  defaultAudioModel: string
-  /**
    * 默认图像模型
-   * > 生图时使用的模型
+   * > 生图时使用的模型（服务端生图档位 code）
    */
   defaultImageModel: string
   /**
@@ -52,8 +42,6 @@ export function buildSettingDefault(): SettingDefault {
     defaultSummaryModel: '',
     defaultTranslateModel: '',
     defaultVectorModel: '',
-    defaultVideoModel: '',
-    defaultAudioModel: '',
     defaultImageModel: '',
     skillIgnoreDirs: ['.git', '.svn', 'node_modules', '.hg', '.idea', '.vscode', 'dist', '.next', 'build']
   }

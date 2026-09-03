@@ -5,4 +5,3 @@ export * from './agent'
 export * from './engine/UseChatName'
 
 export * from './service/ChatService'
-export * from './service/ImageGenerate'

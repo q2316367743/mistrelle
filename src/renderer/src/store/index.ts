@@ -12,3 +12,5 @@ export * from '@/store/ai/AiAgentStore'
 export * from './design/DesignStyleStore'
 
 export * from './AuthStore'
+
+export * from './image/ImageModelStore'

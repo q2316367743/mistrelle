@@ -1,9 +1,9 @@
 /**
  * 文生图领域仓储（main 进程）：Drizzle 查询层，封装 image_generate 表读写。
  *
- * - 状态机由渲染侧驱动：插入 pending → 生成结束 upsert success（补宽高）/ failed（补 error）。
+ * - 状态机由主进程 ImageService 驱动：插入 pending → 生成结束 upsert success（补宽高）/ failed（补 error）。
  * - list 的筛选 / 排序 / 分页全部在 SQL 内完成（prompt 子串、status 精确、created_at 倒序）。
- * - 删除只删记录行，图片文件由渲染侧联动删除（与 chat 沙盒目录删除同一约定）。
+ * - 删除只删记录行，图片文件由 ImageService 联动删除。
  */
 import { db } from '../client'
 import { and, count, desc, eq, like, sql } from 'drizzle-orm'
@@ -45,6 +45,11 @@ const upsertSet = {
   pollMaxAt: sql`excluded.poll_max_at`,
   taskTerminal: sql`excluded.task_terminal`,
   createdAt: sql`excluded.created_at`
+}
+
+export function imageGet(id: string): ImageRecordInput | null {
+  const row = db().select().from(imageGenerations).where(eq(imageGenerations.id, id)).get()
+  return row ?? null
 }
 
 export function imageUpsert(record: ImageRecordInput): void {

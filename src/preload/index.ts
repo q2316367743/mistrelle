@@ -15,6 +15,7 @@ import { aiStreamApi } from '~/ipc/aiStream'
 import { safeStorageApi } from '~/ipc/safeStorage'
 import { webUtilsApi } from '~/lib/webUtils'
 import { dbApi } from '~/ipc/db'
+import { imageApi } from '~/ipc/image'
 import { templateApi } from '~/ipc/template'
 import { authApi } from '~/ipc/auth'
 import { relayApi } from '~/ipc/relay'
@@ -36,6 +37,7 @@ const preload = {
   safeStorage: safeStorageApi,
   webUtils: webUtilsApi,
   db: dbApi,
+  image: imageApi,
   template: templateApi,
   auth: authApi,
   relay: relayApi,
