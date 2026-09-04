@@ -2,8 +2,8 @@
  * 生图领域服务（main 进程单例）：文生图任务编排与全局运行态的唯一归属。
  *
  * 职责（渲染层只剩视图与 IPC 薄代理，详见 docs/attachment/03）：
- * - startGeneration：建记录（pending）→ RelayService.imageGenerate 提交 /v1/images/generations →
- *   拿到 task_id 先落库（生成中中断也能跨重启续轮询）→ 轮询 /v1/images/tasks/{id} →
+ * - startGeneration：建记录（pending）→ RelayService.imageGenerate 提交 /api/images/generations →
+ *   拿到 taskId 先落库（生成中中断也能跨重启续轮询）→ 轮询 /api/images/tasks/{id} →
  *   下载 / b64 落盘 → 收尾 upsert → 广播 image:recordChanged。
  * - 工具直出模式（record=false）：不建记录不广播，产物落盘指定 path 并等待终态返回
  *   （image_generate 工具用，不在页面历史留记录）。
@@ -134,10 +134,10 @@ async function readSize(path: string, size?: string): Promise<{ width?: number; 
   return width > 0 && height > 0 ? { width, height } : {}
 }
 
-/** 从任务响应提取第一张图（url 或 b64_json） */
+/** 从任务响应提取第一张图（url 或 b64Json） */
 function extractImage(resp: RelayImageTask): { url?: string; b64?: string } {
   for (const image of resp.images ?? []) {
-    if (image.b64_json) return { b64: image.b64_json }
+    if (image.b64Json) return { b64: image.b64Json }
     if (image.url) return { url: image.url }
   }
   return {}
@@ -254,7 +254,7 @@ async function execute(
   }
   if (resp.error) return finish(task, key, { error: resp.error, kind: 'terminal' })
 
-  const taskId = typeof resp.task_id === 'string' ? resp.task_id : ''
+  const taskId = typeof resp.taskId === 'string' ? resp.taskId : ''
   if (!taskId) {
     return finish(task, key, { error: '生图接口返回异常：未返回任务标识', kind: 'terminal' })
   }

@@ -72,7 +72,7 @@
             :options="imageModelStore.items"
             :loading="imageModelStore.loading"
             class="w-360px"
-            :placeholder="imageModelStore.needLogin ? '登录后获取服务端模型' : '请选择默认生图模型'"
+            :placeholder="'请选择默认生图模型'"
             clearable
           />
         </template>

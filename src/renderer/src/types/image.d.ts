@@ -43,14 +43,16 @@ declare type ImageGenerateInvokeResult =
   | { phase: 'started'; record: ImageRecordInput }
   | { phase: 'finished'; result: ImageTaskOutcome }
 
-/** 生图模型档位选项（服务端 /v1/images/models 直出 label/value，t-select options 可直接绑定） */
+/** 生图模型档位选项（服务端档位；t-select options 可绑定；priced 含 pointsPerImage） */
 declare interface ImageModelOption {
   label: string
   value: string
+  /** 每张消耗积分（仅登录后 priced 列表有） */
+  pointsPerImage?: number
 }
 
 declare interface ImageApi {
-  /** 生图模型档位选项（服务端直出 label/value；未登录抛错） */
+  /** 生图模型档位选项（未登录公开列表，已登录含积分） */
   getModels(): Promise<ImageModelOption[]>
   generate(params: ImageGenerateParams): Promise<ImageGenerateInvokeResult>
   /** 续轮询一个可恢复的失败记录（同一远端任务，后续状态经广播推进） */

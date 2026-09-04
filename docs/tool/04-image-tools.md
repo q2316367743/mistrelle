@@ -11,7 +11,7 @@
 > - 裁剪工具 `src/modules/tool/components/design/imageCrop.ts`
 > - 去背景工具 `src/modules/tool/components/design/imageRemoveBackground.ts`
 > - 颜色分析工具 `src/modules/tool/components/design/imageColorMap.ts`
-> - 生图服务封装 `src/modules/chat/service/ImageGenerate.ts`（已实现，接口自适应）
+> - 生图服务：main `ImageService` + `RelayService`（`/api/images/*`）
 > - Sharp 封装 `src/main/src/modules/sharp/image.ts`（sharpColorMap）+ IPC `src/main/src/modules/sharp/sharpIpc.ts` + 类型 `src/types/inject.d.ts`
 > - 省钱指南 `../../src/modules/canvas/guidelines/image-generation.md`
 > - 注入点 `src/global/ChatTypeConfig.ts`（design 配置）
@@ -30,29 +30,25 @@
 | 风险     | sensitive，注册路径感知策略（沙盒 / 工作空间内放行）                                                                             |
 | 注入条件 | 仅当「默认生图模型」（设置 → 默认设置）已配置时注入                                                                              |
 
-- 真实生图逻辑收口在 `generateImage({ prompt, path, size? })`（`src/modules/chat/service/ImageGenerate.ts`）。
-  流程：`defaultImageModel` → `useSettingAiStore().optionMap` 解析 `baseUrl/key/model` →
-  `POST {baseUrl}/images/generations`（走 `@/plugin/http`，随全局代理/UA/超时设置）→ 落盘。
-- 工具从具体文件路径导入 `generateImage`（叶子模块），不经过 chat 桶文件，避免循环依赖。
+- 真实生图逻辑收口在 `window.preload.image.generate({ record: false, path, ... })`
+  （main `ImageService` 工具直出模式 → `RelayService` 调 `/api/images/generations` 与轮询）。
+  流程：`defaultImageModel`（服务端档位 code）→ 提交任务拿 `taskId` → 轮询至 completed → 落盘。
+- 工具从具体文件路径导入，不经过 chat 桶文件，避免循环依赖。
 
-### 生图接口自适应（不同中转站返回不同）
+### 生图服务端契约（mistrelle-server `/api/images`）
 
-`POST /v1/images/generations` 同一 endpoint 在中转站间返回形态不同，实现按响应内容自动适配：
+统一异步任务模型（Result + camelCase），由 main `RelayService` 解包：
 
-| 返回形态                                           | 代表中转站                        | 处理                                                                             |
-| -------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------- |
-| `{ created, data:[{ url }] }`                      | OpenAI 同步（dall-e 默认）        | 直接取 `data[0].url` 下载落盘                                                    |
-| `{ created, data:[{ b64_json }] }`                 | OpenAI 同步（gpt-image 系列默认） | 直接取 `data[0].b64_json`，strip data URI 前缀后 `atob` 写盘                     |
-| `{ code, data:[{ status:'submitted', task_id }] }` | apimart GPT-Image-2 等异步        | 轮询 `GET {baseUrl}/tasks/{task_id}`，`completed` 后取 `result.images[0].url[0]` |
+| 端点 | 说明 |
+| ---- | ---- |
+| `POST /api/images/generations` | 提交；`data` 为 `{ taskId, status, n, error, images? }` |
+| `GET /api/images/tasks/{taskId}` | 轮询；completed 时 `images` 为 `{ url }` 或 `{ b64Json }` |
 
-- **轮询参数**：每 3s 一次，最多 100 次（≈5 分钟）；请求异常与 `failed` / `cancelled` 状态
-  **连续 5 次确认失败**才返回其 `error.message`（容错中转站偶发抖动 / 状态闪烁），中途任何有效任务响应即清零连续失败计数。
-- **错误提取**：axios 抛错（`error.response.data.error.message` / `message` / HTTP 状态）与 2xx 但顶层
-  `error` / `code!==200` 均兜底为可读中文错误。
-- **size**：缺省补 `1024x1024`（部分中转站如 V-API gpt-image 系列强制要求 size，该值全模型通用）；
-  显式传入则原样透传（`1024x1024` 两套接口均兼容，apimart 也支持像素直传）。
-- **落盘**：先 `mkdir(dirname,true)`；URL 走 `requestDownload`（随代理），base64 走 `fs.writeBinaryFile`。
-- **宽高**：落盘后优先 `inject.sharp.metadata(path)` 读真实尺寸（uTools 环境），回退从 `size` 正则解析。
+- **轮询参数**：每 3s 一次，最多 100 次（≈5 分钟）；查询连续失败 ≥5 次才判 resumable 失败。
+- **错误提取**：优先 Result `msg`；HTTP 非 2xx 透出可读中文。
+- **size**：缺省补 `1024x1024`；显式传入则原样透传。
+- **落盘**：先 `mkdir(dirname,true)`；URL 下载 / base64 写盘均在 main。
+- **宽高**：落盘后优先 `sharpMetadata(path)`，回退从 `size` 正则解析。
 
 ### `image_crop`（本地裁剪，不耗模型）
 
@@ -124,7 +120,7 @@
 ## 3. 注意事项
 
 - 未配置默认生图模型或模型无效时工具返回明确 error，AI 应如实告知用户并回退 stock / placeholder / 用户素材。
-- 接口返回无法识别（无 url / b64_json / task_id）时同样返回明确 error，避免静默失败。
+- 接口返回无法识别（无 url / b64Json / taskId）时同样返回明确 error，避免静默失败。
 - image_generate 只在配置默认生图模型后注入；未配置时模型上下文里看不到该工具，不会误调用。
 - 裁剪 / 去背景输出固定 PNG；去背景输出按 `{basename}_no-bg.png` 命名（可用 output 覆盖）。
 - **路径包含判断统一用 `isPathUnder(target, parent)`**（`src/utils/sandbox.ts`，两端 `normalizePath` 归一化并去尾部 `/`）；

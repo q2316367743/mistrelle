@@ -87,6 +87,11 @@ function baseUrl(): string {
   return app.isPackaged ? PROD_SERVER_URL : DEV_SERVER_URL
 }
 
+/** 服务端根地址（公开接口与中转共用；不依赖登录态） */
+export function getServerBaseUrl(): string {
+  return baseUrl()
+}
+
 // ── 本地凭证持久化（整文件 safeStorage 加密；不可用时降级明文，与 account.json 先例一致） ──
 
 function authFilePath(): string {

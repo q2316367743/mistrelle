@@ -14,11 +14,23 @@
         <t-select
           v-model="modelKey"
           class="model-select"
-          :options="imageModelStore.items"
           :loading="imageModelStore.loading"
           clearable
           placeholder="生图模型"
         >
+          <t-option
+            v-for="item in imageModelStore.items"
+            :key="item.value"
+            :value="item.value"
+            :label="item.label"
+          >
+            <div class="model-option">
+              <span class="model-option-name">{{ modelName(item) }}</span>
+              <span v-if="item.pointsPerImage != null" class="model-option-points">
+                {{ item.pointsPerImage }} 积分/张
+              </span>
+            </div>
+          </t-option>
         </t-select>
         <style-select v-model="styleId" class="style-select" />
         <t-select
@@ -79,6 +91,13 @@ const styleId = ref('')
 const size = ref('1024x1024')
 const sizeError = ref('')
 
+/** 下拉展示用档位名（去掉 label 里的积分后缀） */
+function modelName(item: ImageModelOption): string {
+  if (item.pointsPerImage == null) return item.label
+  const suffix = `（${item.pointsPerImage}积分）`
+  return item.label.endsWith(suffix) ? item.label.slice(0, -suffix.length) : item.label
+}
+
 // 默认选中：优先「默认生图模型」，否则列表首项（仅表单内选中，不写回设置）。
 // 只监听列表与默认值变化：用户手动改选 / 清空后不被自动覆盖
 watch(
@@ -96,7 +115,11 @@ watch(
 )
 
 const canSubmit = computed(
-  () => prompt.value.trim().length > 0 && !sizeError.value && !!modelKey.value
+  () =>
+    prompt.value.trim().length > 0 &&
+    !sizeError.value &&
+    !!modelKey.value &&
+    !imageModelStore.needLogin
 )
 /** 模型引导提示：未登录 → 登录引导；已登录无模型 / 未选中 → 对应提示 */
 const modelTip = computed(() => {
@@ -153,7 +176,7 @@ const handleSubmit = () => {
 }
 
 .model-select {
-  width: 120px;
+  width: 160px;
 }
 
 .style-select {
@@ -162,6 +185,27 @@ const handleSubmit = () => {
 
 .size-select {
   width: 160px;
+}
+
+.model-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.model-option-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-option-points {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--td-text-color-placeholder);
 }
 
 .model-tip {

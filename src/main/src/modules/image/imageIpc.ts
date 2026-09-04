@@ -23,7 +23,7 @@ export function registerImageIpc(): void {
   // 遗留 pending 收尾（DB 已由 registerDbIpc 初始化，注册顺序保证 db 在前）
   cleanupOrphans()
 
-  // 档位选项（服务端直出 label/value，渲染层下拉直接绑定）
+  // 档位选项（公开 / priced；渲染层下拉直接绑定）
   ipcMain.handle(ImageChannels.getModels, (): Promise<ImageModelOption[]> => imageModels())
   ipcMain.handle(
     ImageChannels.generate,

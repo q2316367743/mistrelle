@@ -8,33 +8,31 @@
 
 ### 只调自有服务端接口
 
-生图全部走 mistrelle-server 的 OpenAI 兼容接口（`/v1/images/*`，OpenAI images 入参兼容，
-**统一异步任务模型**：提交得 `task_id`，轮询查结果）：
+生图全部走 mistrelle-server 自定义 API（`/api/images/*`，Result + camelCase，
+**统一异步任务模型**：提交得 `taskId`，轮询查结果）：
 
-- `GET /v1/images/models`：生图模型档位列表。**注意该端点是 `/api` 风格 Result 包装**
-  （`{ success, code, msg, data }`，与 `/v1/models` 的 OpenAI list 形状不同），且 `data[]`
-  直接为 `{ label, value }`（下拉选项，value = 档位 code）——`RelayService.imageModels`
-  解包 Result 并原样透出选项，渲染层 t-select 直接绑定。
-- `POST /v1/images/generations`：提交任务，顶层返回 `{ task_id, status, n, error, images }`。
-- `GET /v1/images/tasks/{taskId}`：任务状态查询（processing 会实时查上游并结算）。
+- `GET /api/images/models`：公开档位列表（无需登录），`data[]` 为 `{ code, name }`。
+- `GET /api/images/models/priced`：登录后档位列表，`data[]` 为 `{ code, name, pointsPerImage }`。
+- `POST /api/images/generations`：提交任务，Result `data` 为 `{ taskId, status, n, error, images? }`。
+- `GET /api/images/tasks/{taskId}`：任务状态查询（processing 会实时查上游并结算）。
 
-HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` 三个函数，
-`getRelayContext()` 注入 Bearer，凭证不下发渲染层）；旧「optionMap 解析第三方供应商直连」
-路径与渲染层 `modules/chat/service/ImageGenerate.ts` 已整体删除。
+HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask`）：
+未登录 `imageModels` 走公开端点（`getServerBaseUrl()`），已登录走 priced + Bearer；
+提交/轮询经 `getRelayContext()` 注入 Bearer，凭证不下发渲染层。
 `relay` IPC 通道不为生图扩展，image 域走自己的 `image:*` 通道。
 
 ### 模型来源：服务端档位
 
-- 渲染层 `store/image/ImageModelStore.ts`（pinia）：`items`（`ImageModelOption{label,value}`
-  选项数组，服务端直出、t-select options 直接绑定）、
-  `loading`、`needLogin`；启动拉取 + 订阅 `auth:changed` 登录态联动刷新/清空
+- 渲染层 `store/image/ImageModelStore.ts`（pinia）：`items`（`ImageModelOption{label,value,pointsPerImage?}`，
+  已登录 label 形如「经济（10积分）」）、
+  `loading`、`needLogin`（仅挡生成引导，不挡列表）；启动拉取 + 订阅 `auth:changed` 刷新
   （AuthStore 从文件直连 import 防桶文件成环）。
-- 表单「生图模型」下拉 = `imageModelStore.items` 直绑；默认选中：`defaultImageModel` 与某项
+- 表单「生图模型」下拉用 `t-option` 自定义：左侧档位名、右侧「N 积分/张」；默认选中：`defaultImageModel` 与某项
   `value` 相等则选中，否则自动选首项（仅表单内，不写回设置；手动改选/清空后不被自动覆盖——watch 只监听
-  列表与默认值变化）。未登录显示「登录后可使用生图」+ 登录按钮（`openLogin`）；已登录列表空
-  显示「暂无可用生图模型」。
-- `defaultImageModel`（设置 → 默认设置）保留，语义变为**服务端档位 code**；设置页下拉选项同样
-  来自 `ImageModelStore`。它仍是表单默认选中与 `image_generate` 工具的门控/缺省来源
+  列表与默认值变化）。未登录仍可看公开模型列表，生成需登录（「登录后可使用生图」+ 登录按钮）；
+  已登录列表空显示「暂无可用生图模型」。
+- `defaultImageModel`（设置 → 默认设置）保留，语义为**服务端档位 code**；设置页下拉选项同样
+  来自 `ImageModelStore`（登录后可见积分）。它仍是表单默认选中与 `image_generate` 工具的门控/缺省来源
   （`design/index.ts` 门控、`ChatTypeConfig.hasImageGenerate` 逻辑不变）。
 - `SettingAiStore.imageOptions`（type=image 的本地模型分组）已随孤儿化删除。
 
@@ -48,7 +46,7 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
 
 驱动方为主进程 ImageService；语义按「远端 = 自研服务端」重新校准（2026-09-03 二次修正）：
 
-- **确认异步任务型即落库**：提交响应拿到 `task_id` 后，先写 `task_id` + `poll_max_at`
+- **确认异步任务型即落库**：提交响应拿到 `taskId` 后，先写 `task_id` + `poll_max_at`
   进 pending 记录并落库，再开始轮询——生成中任何中断（退出/刷新）记录都已带 task_id，
   可跨重启续同一任务。
 - 轮询 3s × 100 次（≈5 分钟预算）；失败分类 `kind: 'terminal' | 'resumable'`：
@@ -68,7 +66,7 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
 | 层 | 文件 | 职责 |
 |---|---|---|
 | main | `src/main/src/modules/image/ImageService.ts` | **生图编排与运行态单例**：startGeneration（建记录/工具直出两模式）+ 轮询 + 落盘 + finish 收尾 + 广播 + resume/remove/cleanupOrphans |
-| main | `src/main/src/modules/relay/RelayService.ts` | `/v1/images/*` 三个 HTTP 函数（`imageModels/imageGenerate/imageTask`，Bearer 注入在 main） |
+| main | `src/main/src/modules/relay/RelayService.ts` | `/api/images/*` 三个 HTTP 函数（`imageModels/imageGenerate/imageTask`，Result 解包；公开 models 不依赖登录） |
 | main | `src/main/src/modules/image/imageIpc.ts` | `image:*` handler（注册时执行 cleanupOrphans；须在 registerDbIpc 之后） |
 | main | `src/main/src/db/repo/imageRepo.ts` | `imageList/imageGet/imageUpsert/imageDelete`（行级 CRUD，无业务） |
 | main | `src/main/src/db/schema/image.ts` | `image_generate` 表定义 |
@@ -78,7 +76,7 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
 | renderer | `src/renderer/src/types/image.d.ts` | `window.preload.image` 契约（挂载于 `vite-env.d.ts`） |
 | renderer | `src/renderer/src/store/image/ImageModelStore.ts` | 服务端生图档位列表（登录态联动） |
 | renderer | `pages/extend/image/useImageGenerations.ts` | 薄数据源：分页/关键词视图态 + 广播订阅就地替换 + generate/resume/remove 代理 + 风格解析 |
-| renderer | `pages/extend/image/components/ImageGenerateForm.vue` | 档位+风格+尺寸+提示词表单（默认档位自动选中、登录引导） |
+| renderer | `pages/extend/image/components/ImageGenerateForm.vue` | 档位（含积分展示）+风格+尺寸+提示词表单（默认档位自动选中、登录引导） |
 | renderer | `pages/extend/image/components/ImageRecordGrid.vue` / `ImageDetailDrawer.*` | 历史网格与详情抽屉（未改，纯读记录字段） |
 | renderer | `modules/tool/components/design/imageGenerate.ts` | `image_generate` 工具：改走 `image.generate({record:false})` 工具直出模式 |
 
@@ -90,7 +88,7 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
 
 `image:*` 通道（`ImageChannels`）：
 
-- `image:getModels` → `Array<{ id }>`（未登录抛错）。
+- `image:getModels` → `Array<{ label, value, pointsPerImage? }>`（未登录公开列表，已登录含积分）。
 - `image:generate(params: ImageGenerateParams)` → `ImageGenerateInvokeResult`：
   - 页面模式（`record` 缺省 true）：主进程建 pending 记录（id=uuid、路径 `{月桶}/{id}.png`）
     落库并广播，**立即返回** `{ phase: 'started', record }`；后续进展经广播推进。
@@ -112,7 +110,7 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
 - 记录 `model` 列存服务端档位 code；续轮询只需 `id`（主进程 `imageGet` 回读记录），不再需要
   旧的「显示名反查 optionMap key」逻辑。
 - 落盘：url 下载与 b64 解码都在 main（axios arraybuffer / Buffer.from）；宽高 sharp 元信息优先、
-  回退 size 解析（主进程 `sharpMetadata`）。服务端 `images[]` 的 `url` / `b64_json` 两种形态都支持。
+  回退 size 解析（主进程 `sharpMetadata`）。服务端 `images[]` 的 `url` / `b64Json` 两种形态都支持。
 - 失败分类语义不变：`kind: 'terminal' | 'resumable'`（见上）；`task_id` 无论成败都在确认异步
   任务型时落库，「是否可续」由 `status` + `task_terminal` 两点判定（`poll_max_at` 只是单次
   轮询会话预算）；每次续轮询都重置为全新 5 分钟预算。

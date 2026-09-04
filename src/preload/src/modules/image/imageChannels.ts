@@ -6,12 +6,12 @@
  *   渲染层只发指令（generate / resume / remove / list）并经 recordChanged 广播感知进展，
  *   因此任务状态跨窗口、跨页面刷新存活，未来新增生图页面直接复用同一服务。
  * - 记录行与列表查询类型沿用 dbChannels（image_generate 表形状单一来源）。
- * - 提交 / 轮询的 HTTP 细节在 main RelayService（/v1/images/*，注入 Bearer），凭证不下发。
+ * - 提交 / 轮询的 HTTP 细节在 main RelayService（/api/images/*，注入 Bearer），凭证不下发。
  */
 import type { ImageRecordInput } from '../db/dbChannels'
 
 export const ImageChannels = {
-  /** 生图模型列表（服务端档位 code；未登录抛错） */
+  /** 生图模型列表（服务端档位 code；未登录返回公开列表，已登录含积分） */
   getModels: 'image:getModels',
   /** 发起生成（默认立即返回 pending 记录；工具直出 / wait 模式返回终态） */
   generate: 'image:generate',
@@ -28,10 +28,12 @@ export const ImageChannels = {
 /** 轮询失败分类：terminal=远端已确认终态（只可删除）；resumable=任务可能仍在跑（可续轮询） */
 export type ImagePollFailureKind = 'terminal' | 'resumable'
 
-/** 生图模型档位选项（服务端 /v1/images/models 直出 label/value，t-select options 可直接绑定） */
+/** 生图模型档位选项（服务端档位；t-select options 可绑定；priced 含 pointsPerImage） */
 export interface ImageModelOption {
   label: string
   value: string
+  /** 每张消耗积分（仅登录后 priced 列表有） */
+  pointsPerImage?: number
 }
 
 /** 生图失败结果（记录落库 / 工具透传共用） */
