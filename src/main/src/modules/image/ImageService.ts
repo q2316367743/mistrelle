@@ -95,7 +95,12 @@ function finish(task: RunningTask, key: string, outcome: ImageTaskOutcome): Imag
             pollMaxAt: outcome.pollMaxAt ?? record.pollMaxAt,
             taskTerminal: outcome.kind === 'terminal'
           }
-        : { ...record, status: 'success', width: outcome.width ?? null, height: outcome.height ?? null }
+        : {
+            ...record,
+            status: 'success',
+            width: outcome.width ?? null,
+            height: outcome.height ?? null
+          }
     task.record = next
     persist(next)
   }
@@ -317,12 +322,11 @@ export function startGeneration(params: ImageGenerateParams): Promise<ImageGener
   running.set(key, task)
   if (record) persist(record)
   // execute 不抛异常；此处兜底防落库等意外异常变成 main 进程未处理 rejection
-  const execution = execute(task, key, params).catch(
-    (error: unknown): ImageTaskOutcome =>
-      finish(task, key, {
-        error: `生图流程异常：${errorMessage(error)}`,
-        kind: 'terminal'
-      })
+  const execution = execute(task, key, params).catch((error: unknown): ImageTaskOutcome =>
+    finish(task, key, {
+      error: `生图流程异常：${errorMessage(error)}`,
+      kind: 'terminal'
+    })
   )
   if (!record || params.wait) {
     return execution.then((result) => ({ phase: 'finished' as const, result }))
