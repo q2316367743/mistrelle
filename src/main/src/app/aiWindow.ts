@@ -1,5 +1,5 @@
 /**
- * AI 主窗口模块：启动即创建（index.ts 调 createAiWindow），默认显示；
+ * AI 主窗口模块：启动即创建（index.ts 调 createAiWindow），默认隐藏；
  * 关闭只隐藏（before-quit 置位放行真关闭），入口为托盘「显示 AI 窗口」/ Dock 点击。
  */
 import { BrowserWindow, shell } from 'electron'
@@ -7,6 +7,7 @@ import type { BrowserWindowConstructorOptions } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import icon from '@resources/icon.png?asset'
+import { ensureMacDockVisible, trackMacDockWindow } from './macDock'
 
 const WINDOW_BACKGROUND = '#F4F4F4'
 
@@ -81,6 +82,7 @@ export function createAiWindow(): void {
   if (mainWindow && !mainWindow.isDestroyed()) return
   const win = new BrowserWindow(windowOptions())
   mainWindow = win
+  trackMacDockWindow('ai', win)
 
   // 默认隐藏
   // win.on('ready-to-show', () => {
@@ -134,6 +136,8 @@ export function createAiWindow(): void {
 
 /** 显示 AI 主窗口（已创建则还原/聚焦；意外销毁则重建） */
 export function showAiWindow(): void {
+  // 先恢复 Dock 再 show：Dock 隐藏态（accessory）下直接 show 拿不到键盘焦点
+  ensureMacDockVisible()
   if (!mainWindow || mainWindow.isDestroyed()) createAiWindow()
   if (!mainWindow) return
   if (mainWindow.isMinimized()) mainWindow.restore()

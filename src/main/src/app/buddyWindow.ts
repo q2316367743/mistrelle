@@ -7,11 +7,14 @@ import { BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { isAppQuitting, windowOptions } from './aiWindow'
+import { ensureMacDockVisible, trackMacDockWindow } from './macDock'
 
 let buddyWindow: BrowserWindow | null = null
 
 /** 创建并显示伙伴窗口（已存在则还原/聚焦） */
 export function showBuddyWindow(): void {
+  // 先恢复 Dock 再 show（首行同时覆盖下方首次创建分支）：accessory 态下直接 show 拿不到键盘焦点
+  ensureMacDockVisible()
   if (!buddyWindow || buddyWindow.isDestroyed()) {
     createBuddyWindow()
     return
@@ -37,6 +40,7 @@ function createBuddyWindow(): void {
   }
   const win = new BrowserWindow(options)
   buddyWindow = win
+  trackMacDockWindow('buddy', win)
 
   win.on('ready-to-show', () => {
     win.show()

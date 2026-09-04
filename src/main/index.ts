@@ -1,6 +1,8 @@
 import { app } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createAiWindow, markQuitting, showAiWindow } from '$/app/aiWindow'
+import { showBuddyWindow } from '$/app/buddyWindow'
+import { isMacDockWindowVisible, syncMacDock } from '$/app/macDock'
 import { init as initAuth } from '$/modules/auth/AuthService'
 import { registerIpc } from '$/registerIpc'
 import { startEventServer } from '$/server'
@@ -37,11 +39,17 @@ if (hasSingleInstanceLock) {
     // 托盘常驻入口（macOS 菜单栏 / Windows 通知区）
     registerAppTray()
 
-    // 创建 AI 主窗口（默认显示）
+    // 创建 AI 主窗口（默认隐藏，防闪退；经托盘 / Dock 唤起）
     createAiWindow()
 
-    // macOS 点击 Dock 图标打开 AI 主窗口
-    app.on('activate', showAiWindow)
+    // macOS Dock 归位：AI 窗口默认隐藏、伙伴未创建 → 启动即隐藏 Dock（纯托盘形态）
+    syncMacDock()
+
+    // macOS 点击 Dock：仅伙伴窗口可见 → 唤起伙伴；其余（仅 AI / 双开 / 兜底）→ AI 窗口
+    app.on('activate', () => {
+      if (!isMacDockWindowVisible('ai') && isMacDockWindowVisible('buddy')) showBuddyWindow()
+      else showAiWindow()
+    })
   })
 
   // 退出流程放行窗口真关闭（AI 窗口的 close 拦截在置位后不再 preventDefault）
