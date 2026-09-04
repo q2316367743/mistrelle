@@ -43,4 +43,4 @@ aihot 模块所有外部链接出口（列表卡片 / 热点榜兜底 / 事件�
 4. **导航守卫与 _blank 链接**：主窗口 `will-navigate` 只作用于主 webContents，webview 不受影响。webview 内 `_blank` / `window.open` 走系统浏览器需两处配合：webview 带 `allowpopups` 属性（否则弹窗请求在任何 handler 前就被静默拦死）；Electron 22+ 已移除 `new-window` 事件且宿主 `setWindowOpenHandler` 不覆盖 guest，须在主进程 `did-attach-webview` 时给 guest 单独挂 handler → `shell.openExternal(url)` + deny。
 5. **did-fail-load code -3** 是导航中断（如加载中再次跳转），必须忽略不算失败。
 6. **销毁即回收**：`destroyOnClose` 卸载内容组件连带卸载 webview，guest 页面随之销毁，无泄漏残留。
-7. **本地 html / mistrelle:// 不适用本抽屉**：`protocol.handle` 仅在默认 session 注册，带 partition 的 webview 取不到自定义协议；本地 html 渲染预览走 FilePreviewDialog 的 html 分支（无 partition webview），见 `docs/attachment/04`。
+7. **本地 html / 本地资源文件不适用本抽屉**：本地 html 渲染预览走 FilePreviewDialog 的 html 分支（无 partition webview），见 `docs/attachment/04`；本地资源经本地事件服务 HTTP `/file` 面加载（见 `docs/server/01`）。

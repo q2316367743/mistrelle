@@ -118,8 +118,8 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask` �
   轮询会话预算）；每次续轮询都重置为全新 5 分钟预算。
 - 连续生成交互不变：提交后输入框清空、按钮不绑全局 loading、任务可任意并行（进度由 pending 占位卡
   + 广播反馈）；尺寸校验 `^\d{3,4}[xX]\d{3,4}$`。
-- 抽屉/网格/工具纯函数（`image-page-utils.ts`）未改；`mistrelle://` 协议展示、复制图片
-  （`copyImageByPath`）、showItemInFolder 等交互不受影响。
+- 抽屉/网格/工具纯函数（`image-page-utils.ts`）未改；本地资源 URL（pathToHref → 本地事件服务
+  `/file` 面）展示、复制图片（`copyImageByPath`）、showItemInFolder 等交互不受影响。
 - 历史兼容：`db:image:*` 通道删除后，旧渲染代码若引用 `window.preload.db.image` 会直接 typecheck
   报错（契约收口在 `image:*`）；`task_id`/`poll_max_at`/`task_terminal`/`style_name` 列迁移见
   git 历史（0008/0009），本次重构无新迁移。

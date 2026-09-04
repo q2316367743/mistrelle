@@ -32,7 +32,7 @@
 
 ## 附件标签（图片预览 + 在文件夹中显示）
 
-- `item.type === 'attachment'` 且 `fileType === 'image'`：标签外包 `t-popup`（`trigger="hover"`），浮层内 `t-image` 预览；`src` 由 `window.preload.net.pathToHref(file.url)` 转成 `mistrelle://`，避免 dev 下 http 页加载本地路径被拦截。
+- `item.type === 'attachment'` 且 `fileType === 'image'`：标签外包 `t-popup`（`trigger="hover"`），浮层内 `t-image` 预览；`src` 由 `window.preload.net.pathToHref(file.url)` 转成本地事件服务资源 URL（`/file/<编码绝对路径>`），避免 dev 下 http 页加载本地路径被拦截。
 - 点击任意附件标签：`window.preload.inject.shell.showItemInFolder(file.url)` 在系统文件管理器中定位该文件（hover 预览与 click 定位互不抢触发）。
 - 非图片附件仍为普通 `t-tag` + `FileIcon`；图片用 `FileImageIcon`。
 

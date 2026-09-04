@@ -5,15 +5,13 @@
 ## 启动编排（src/main/index.ts）
 
 ```
-requestSingleInstanceLock()         // app ready 前：单实例锁（失败 app.quit，二次唤起 URL 走 second-instance）
-registerLocalSchemes()              // app ready 前：mistrelle:// 特权 scheme
-captureOpenUrl()                    // app ready 前：挂 macOS open-url 监听（早到 URL 暂存）
+requestSingleInstanceLock()         // app ready 前：单实例锁（失败 app.quit，二次拉起直接退出）
 app.whenReady:
   setAppUserModelId
   optimizer.watchWindowShortcuts    // browser-window-created 钩子
   registerIpc()                     // 全部业务 IPC
-  registerLocalProtocol()           // mistrelle:// 读盘 handler
-  registerDeepLink()                // 系统级 mistrelle:// 客户端 + flush 暂存 URL；second-instance 接收（不弹窗）
+  initAuth()                        // 服务端账号（非阻塞）
+  startEventServer()                // 本地事件服务 127.0.0.1:47743（资源面 /file + 事件面，见 server/01）
   registerAppTray()                 // 托盘常驻入口
   createAiWindow()                  // AI 主窗口：创建即显示（ready-to-show 后 show）
   app.on('activate', showAiWindow)  // macOS Dock 点击打开 AI 主窗口
