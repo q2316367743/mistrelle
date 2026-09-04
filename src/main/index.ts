@@ -7,7 +7,8 @@ import {
   captureOpenUrl,
   registerDeepLink,
   registerLocalSchemes,
-  registerLocalProtocol
+  registerLocalProtocol,
+  startEventSocket
 } from '$/app/protocol'
 import { registerAppTray } from '$/app/tray'
 
@@ -49,6 +50,9 @@ if (hasSingleInstanceLock) {
 
     // 注册为系统级 mistrelle:// 协议客户端 + second-instance/open-url 接收（外部 open 不弹窗）
     registerDeepLink()
+
+    // 本地事件 socket 主通道（opencode 插件等直连投递，不经系统唤起、不抢焦点）
+    startEventSocket()
 
     // 托盘常驻入口（macOS 菜单栏 / Windows 通知区）
     registerAppTray()

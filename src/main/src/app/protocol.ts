@@ -4,6 +4,10 @@
  *    形式 mistrelle://app/file/<encodeURIComponent(绝对路径)>，由 preload 侧 net.pathToHref 生成。
  * 2. 系统级链接面：注册为 OS 默认协议客户端，外部应用 open mistrelle://… 可唤起本应用；
  *    URL 只被接收（second-instance / open-url → handleExternalUrl），不弹窗、不聚焦、不打扰 UI。
+ *    注意激活行为由调用方控制：macOS 裸 `open` 会把本应用激活到前台抢焦点，后台投递须 `open -g`。
+ * 3. 本地事件 socket 面：主投递通道（startEventSocket）。外部进程直连写入与深链完全相同的
+ *    mistrelle://… URL 字符串（\n 分帧），不经系统唤起、结构性不抢焦点；与深链共用同一入口
+ *    handleExternalUrl 解析，无第二套参数方案。
  *
  * 背景：dev 模式渲染页 origin 为 http://localhost:7743，Chromium 禁止 http 页面加载 file:// 子资源
  * （Not allowed to load local resource）。自定义协议经 protocol.handle 由 main 读盘返回，无跨源限制，
@@ -13,10 +17,13 @@
  * - mistrelle://app/file/<encodeURIComponent(绝对路径)>  本地文件读盘（应用内资源面）
  * - mistrelle://app/<模块>/<功能>?…                       系统级外部命令面（路由桩，待后续接入）
  * - mistrelle://buddy/traffic-light?platform=<软件>&event=<事件>  红绿灯事件投递（如 opencode 插件）
+ * - 事件 socket 每行 = 一条上述命令面 URL（深链与 socket 双通道同串同参）
  */
 import { app, protocol } from 'electron'
+import { createServer } from 'node:net'
 import { readFile } from 'node:fs/promises'
-import { extname } from 'node:path'
+import { rmSync } from 'node:fs'
+import { extname, join } from 'node:path'
 import { applyEvent } from '$/buddy/traffic-light/TrafficLightService'
 
 const SCHEME = 'mistrelle'
@@ -96,13 +103,16 @@ export const registerLocalProtocol = (): void => {
   })
 }
 
+/** 事件投递来源（仅用于日志区分；两条通道共用同一入口 / 路由 / 参数方案） */
+export type ExternalUrlSource = 'deep-link' | 'socket'
+
 /**
- * 外部 mistrelle:// URL 接收入口（系统级唤起 / 二次唤起共用）：
+ * 事件 URL 接收入口（系统级唤起 / 本地 socket 共用，唯一入口）：
  * 只消费 URL，不弹窗、不聚焦、不改 UI 状态；当前仅记录并进路由桩，
  * 后续命令/事件接入（如 opencode → traffic-light）在此挂分发表。
  */
-export const handleExternalUrl = (url: string): void => {
-  console.info(`[mistrelle://] 收到外部唤起：${url}`)
+export const handleExternalUrl = (url: string, source: ExternalUrlSource = 'deep-link'): void => {
+  console.info(`[mistrelle://] 收到事件（${source}）：${url}`)
   routeExternalCommand(url)
 }
 
@@ -164,5 +174,44 @@ export const registerDeepLink = (): void => {
   app.on('second-instance', (_event, argv) => {
     const url = argv.find((arg) => arg.startsWith(`${SCHEME}://`))
     if (url) handleExternalUrl(url)
+  })
+}
+
+/** 事件 socket 监听路径：darwin/linux 走 ~/.mistrelle/buddy/ 下的 sock 文件，win32 走 named pipe。
+ *  插件模板 resources/plugins/opencode/ 内的同名常量与本处保持一致（模板是独立文件，无法 import） */
+const eventSocketPath = (): string =>
+  process.platform === 'win32'
+    ? '\\\\.\\pipe\\mistrelle-traffic-light'
+    : join(app.getPath('home'), '.mistrelle', 'buddy', 'traffic-light.sock')
+
+/**
+ * 本地事件 socket（主投递通道，app ready 后调用）：外部进程（如 opencode 插件）直连后
+ * 每连接写入一条与深链相同的 mistrelle://… URL（\n 分帧，可多行），不经系统唤起、不激活本应用。
+ */
+export const startEventSocket = (): void => {
+  const socketPath = eventSocketPath()
+  // unix socket 残留文件会让 listen 报 EADDRINUSE，先清；win32 named pipe 无此问题
+  if (process.platform !== 'win32') rmSync(socketPath, { force: true })
+
+  const server = createServer((socket) => {
+    socket.setEncoding('utf-8')
+    let buffer = ''
+    socket.on('data', (chunk) => {
+      buffer += chunk.toString()
+      for (let idx = buffer.indexOf('\n'); idx >= 0; idx = buffer.indexOf('\n')) {
+        const line = buffer.slice(0, idx).trim()
+        buffer = buffer.slice(idx + 1)
+        if (line) handleExternalUrl(line, 'socket')
+      }
+    })
+  })
+  server.on('error', (error) => {
+    console.error(`[mistrelle://] 事件 socket 监听失败：${String(error)}`)
+  })
+  server.listen(socketPath)
+
+  app.once('will-quit', () => {
+    server.close()
+    if (process.platform !== 'win32') rmSync(socketPath, { force: true })
   })
 }

@@ -51,24 +51,27 @@
 
 官方事件全集远多于此（file/lsp/session/todo/tui/shell…），只保留对「一眼看状态」有意义的 6 个；新增事件改 `trafficLightChannels.ts` 的 `OpencodeEventName` + `OPENCODE_EVENT_NAMES` 与渲染层 `softwareRegistry.ts` 中该软件的事件目录即可。
 
-## 事件接入方须知（opencode 自定义协议插件）
+## 事件接入方须知（opencode 插件投递）
 
-opencode 插件把事件投递给主进程的方式：**执行系统命令唤起自定义协议 URL**（如 JS 里 `spawn('open', ['mistrelle://buddy/traffic-light?platform=opencode&event=session.idle'])`，Windows 用 `rundll32 url.dll,FileProtocolHandler` 或 `start`）：
+**统一契约**：无论走哪条通道，投递的都是同一条 URL 字符串，main 侧只有一份解析与处理（单一入口 → 单一路由 → 单一处理函数）：
 
 ```
 mistrelle://buddy/traffic-light?platform=<软件名>&event=<事件名>
 ```
 
 - `platform`：软件名（当前 `opencode`）；`event`：事件名（见上方事件目录）
-- 接收链路（`src/main/src/app/protocol.ts`）：macOS 经 `open-url`（冷启动暂存 ready 后补收）；Windows/Linux 二次唤起经 `second-instance`、冷启动经启动参数 argv 补收 → `handleExternalUrl` → `routeExternalCommand` 匹配 `buddy/traffic-light` → `applyEvent(platform, event)`
-- 行为约定：软件未启用、事件未知、未绑定、串口未连接时静默忽略；与上次指令相同则去重不重发。每条 URL 在 `[mistrelle://] 收到外部唤起` 日志可见，配置在 main 启动即加载，接入方无需关心
+- **主通道（本地事件 socket）**：main 在 `src/main/src/app/protocol.ts` 的 `startEventSocket()` 监听 `~/.mistrelle/buddy/traffic-light.sock`（win32 为 named pipe `\\.\pipe\mistrelle-traffic-light`），外部进程直连后写入一行上述 URL（`\n` 结尾）即断。不经过系统唤起，**结构性不抢焦点、零进程开销**；应用未运行时事件直接丢弃（灯灭语义正确，不会冷启动拉起应用）
+- **兜底通道（系统深链）**：仅 socket 不可达且 main 在跑（socket 文件存在）时使用——执行系统命令唤起同一 URL：macOS 用 `open -g`（⚠️ 裸 `open` 会把本应用激活到前台抢焦点，这是 LaunchServices 系统行为，调用方务必带 `-g`），Windows 用 `rundll32 url.dll,FileProtocolHandler`，Linux 用 `xdg-open`
+- 接收链路（`src/main/src/app/protocol.ts`）：双通道汇聚同一入口 `handleExternalUrl`（来源 deep-link / socket 仅日志区分）：macOS 深链经 `open-url`（冷启动暂存 ready 后补收）；Windows/Linux 深链二次唤起经 `second-instance`、冷启动经启动参数 argv 补收；socket 每行即一条 URL → `routeExternalCommand` 匹配 `buddy/traffic-light` → `applyEvent(platform, event)`
+- 行为约定：软件未启用、事件未知、未绑定、串口未连接时静默忽略；与上次指令相同则去重不重发。每条 URL 在 `[mistrelle://] 收到事件（来源）` 日志可见，配置在 main 启动即加载，接入方无需关心
+- 手动调试主通道：`nc -U ~/.mistrelle/buddy/traffic-light.sock` 后粘贴一行 URL 回车
 - 主进程内部接口（协议层即如此调用）：`import { applyEvent } from '$/buddy/traffic-light/TrafficLightService'`
 
 ## 内置插件模板与安装（opencode 已接入）
 
 官方约定：插件是 js 文件放入 `~/.config/opencode/plugins/`（全局，启动自动加载，无需改 opencode.json——该字段只用于 npm 包）。本应用内置模板 `resources/plugins/opencode/mistrelle-traffic-light.js`，伙伴窗口可一键安装：
 
-- **模板内容**：导出 opencode 插件函数，event hook 只转发 6 个事件全集；每事件独立 trailing 节流 500ms（`message.part.updated` 流式高频，防深链进程风暴，尾部补发保证最终灯态不丢）；按平台 `spawn` 唤起深链（darwin=`open` / win32=`rundll32 url.dll,FileProtocolHandler` / linux=`xdg-open`），`detached` + `unref` 即发即忘、异常静默。用 `node:child_process`（opencode 运行于 Bun，兼容），不依赖插件 ctx
+- **模板内容**：导出 opencode 插件函数，event hook 只转发 6 个事件全集；每事件独立 trailing 节流 500ms（防兜底深链的 spawn 进程风暴，尾部补发保证最终灯态不丢）；投递走「socket 主通道 → main 在跑才退深链」两级：`node:net` connect 直写一行 URL 即断（失败/超时 1s 静默），深链按平台 spawn（darwin=`open -g` 后台 / win32=`rundll32 url.dll,FileProtocolHandler` / linux=`xdg-open`），`detached` + `unref` 即发即忘、异常静默。全部用 Bun 兼容的 node 内置模块（`node:net`/`node:fs`/`node:os`/`node:child_process`），不依赖插件 ctx；socket 路径常量与 main 侧 `protocol.ts` 各存一份（独立文件无法 import），两处注释互指
 - **安装**：`trafficLight:installPlatform(software)` → `platformConfig.ts` 按软件分发 adapter → `mkdirSync(recursive)` + `copyFileSync` 覆盖写入目标文件，异常转 `{ok:false, msg}` 不抛错；安装后需重启 opencode 生效（UI 已提示）
 - **检查**：`trafficLight:checkPlatform(software)` → 三态 `PlatformConfigStatus`：`missing`（目标文件不存在）/ `outdated`（存在但内容与内置模板不一致，可更新）/ `ready`（内容一致）。内容逐字比对让模板升级可感知
 - **模板文件可达性**：`resources/**` 整体在 `asarUnpack` 中，main 以 `join(__dirname, '../../resources/plugins/...')` 定位（与 drizzle/templates 同款范式），dev/打包均可达，未改 electron-builder.yml
@@ -82,8 +85,8 @@ mistrelle://buddy/traffic-light?platform=<软件名>&event=<事件名>
 | main | `src/main/src/buddy/traffic-light/TrafficLightService.ts` | 单例：initTrafficLight（加载+自动连）、applyEvent（事件→灯态→串口）、saveSoftwareConfig、setLastPort |
 | main | `src/main/src/buddy/traffic-light/trafficLightIpc.ts` | IPC：getConfig / saveSoftwareConfig / setLastPort / checkPlatform / installPlatform（applyEvent 不走 IPC） |
 | main | `src/main/src/buddy/traffic-light/platformConfig.ts` | 接入配置分发：adapter 注册表 + opencode 实现（插件模板 → `~/.config/opencode/plugins/` 的三态检查与覆盖安装） |
-| resources | `resources/plugins/opencode/mistrelle-traffic-light.js` | 内置 opencode 插件模板（事件过滤 + 每事件 trailing 节流 500ms + 跨平台 spawn 深链） |
-| main | `src/main/src/app/protocol.ts` | mistrelle:// 协议层：接收系统级唤起（open-url / second-instance / 冷启动 argv）→ `buddy/traffic-light` 路由 → applyEvent |
+| resources | `resources/plugins/opencode/mistrelle-traffic-light.js` | 内置 opencode 插件模板（事件过滤 + 每事件 trailing 节流 500ms + socket 主通道 / 深链 -g 兜底投递） |
+| main | `src/main/src/app/protocol.ts` | 事件接入口（单处理函数双通道）：系统深链（open-url / second-instance / 冷启动 argv）+ 本地事件 socket（`startEventSocket`，每行一条 URL）→ `buddy/traffic-light` 路由 → applyEvent |
 | main | `src/main/src/registerIpc.ts` | 注册 trafficLightIpc 并触发 initTrafficLight |
 | common | `src/common/buddy/traffic-light/trafficLightChannels.ts` | 通道常量 + 全部类型/全集常量（跨进程契约唯一事实源，`@common` 别名 main/preload/renderer 三端可达） |
 | preload | `src/preload/src/modules/traffic-light/trafficLight.ts` | trafficLightApi 桥 |
