@@ -54,6 +54,10 @@ better-auth 的 origin-check/formCsrf 中间件只对**携带 Cookie / Origin / 
 - better-auth 端点直出 JSON；业务端点统一 `{ success, code, msg, data }`（code=0 成功；401 未登录、403 非管理员、429 积分不足）。
 - better-auth 错误体为**顶层** `{ message, code }`（如 401 `{ message: 'Invalid email or password', code: 'INVALID_EMAIL_OR_PASSWORD' }`），客户端按 code 映射中文文案（`INVALID_EMAIL_OR_PASSWORD`→「邮箱或密码错误」、`USER_ALREADY_EXISTS`→「该邮箱已注册」等）；兼容嵌套 `{ error: {...} }` 与业务 `{ success, code, msg }`。
 - `POST /auth/api/sign-in/email`、`/sign-up/email`（注册即登录）：响应 `{ redirect, token, user }`（sign-up 的 token 可能为 null）。
+- **强邮箱认证（关键）**：服务端 `emailAndPassword.requireEmailVerification: true` + `emailVerification`。未验证账号**一律无法建会话/登录**——sign-in 被拒 `403 EMAIL_NOT_VERIFIED`；sign-up 正常 2xx 但 `token: null`（不建会话），并自动发送验证邮件；业务 guard（`requireAuth`）二次兜底，未验证即使绕过也会 401。因此**客户端不存在「已登录但未验证」态**，`/me` 无需也不该返回 `emailVerified`（恒为 true）。
+  - 验证邮件 callbackURL 强制指向服务端落地页 `/auth/verify`（`GET`，无 error 参数=认证成功、带 `?error=<code>`=失败中文提示），登录/注册后可引导用户自查该页结果。
+  - `POST /auth/resend-verification`（**公开，无需登录**）body `{ email }` → 恒 `{ success: true, data: { sent: true } }`（防枚举，邮箱不存在/已认证也返回成功）；同邮箱 60s 冷却（进程内）。客户端通道 `auth:resendVerification`，主进程 `resendVerificationEmail(email)` 用登录框传入的邮箱调用（未验证用户无本地凭证，勿用 StoredCredential.email）。
+  - `signIn/signUp` 返回 `AuthSignResult = { ok:true } | { ok:false; msg; needEmailVerify? }`；渲染层 `LoginContent` 命中 `needEmailVerify` → 关闭登录框 + `openVerifyEmail(email)` 弹框（`components/modals/VerifyEmailDialog` + `VerifyEmailContent.vue`，见下「邮箱未验证引导」）。
 - `POST /auth/api/update-user`（会话）：body `{ name? }`，改用户名后客户端 `refresh()` 广播。
 - `POST /auth/api/change-password`（会话）：body `{ currentPassword, newPassword }`（不传 `revokeOtherSessions`，当前会话保持有效、不轮换 token）。
 - `GET /api/tiers/`（**公开，无需登录**）→ 启用中的档位列表，通道 `auth:tiers`。
@@ -75,18 +79,26 @@ type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 
 - `init()`（app ready 后调用，非阻塞）：读本地凭证 → Bearer 调 `/api/user/me` 校验 → 广播状态；401 → 清凭证置 guest；网络失败 → 保持 unknown。
 - 每次状态变更 `setAndBroadcast()` → `BrowserWindow.getAllWindows()` 逐窗 `webContents.send('auth:changed', state)`。
-- 变更类 IPC（signIn/signUp/signOut）返回 `AuthActionResult = { ok: true } | { ok: false; msg }`，**不抛跨进程包装异常**；失败 msg 由渲染层 MessageUtil 直接展示。
+- 变更类 IPC（signIn/signUp/signOut）返回 `AuthActionResult = { ok: true } | { ok: false; msg }`，**不抛跨进程包装异常**；失败 msg 由渲染层 MessageUtil 直接展示。signIn/signUp 特殊返回 `AuthSignResult`（带可选 `needEmailVerify`，见上契约节），不再吞错统一弹 toast，由 `LoginContent` 分支处理。
+
+## 邮箱未验证引导
+
+- 触发：仅登录/注册提交后（`LoginContent`）命中 `needEmailVerify`——覆盖「未验证登录被拒 403」与「注册/重复注册返回 token:null」两种路径。不做全局轮询（未验证账号建不了会话，登录成功即已验证，无「登录后仍需验证」场景）。
+- 弹框：`VerifyEmailDialog.tsx`（`DialogPlugin` 外壳）+ `VerifyEmailContent.vue`（内容）。文案提示验证邮件已发送至该邮箱；根据邮箱域名推断提供商（`utils/mailProvider.ts`：知名域名枚举 + 未知域兜底 `https://mail.<domain>`）展示「前往 XX 邮箱」按钮 → `shell.openExternal`；「重新发送验证邮件」按钮调 `auth:resendVerification`，成功后本地 60s 倒计时禁用（与服务端冷却一致）。
+- 邮箱域名映射是渲染层纯函数（`mailProviderOf(email) → { name, url } | null`），未知邮箱直接隐藏入口，不保证兜底地址真实存在（只是尽力引导）。
 
 ## 关键文件
 
 | 层 | 文件 | 职责 |
 |---|---|---|
-| main 服务 | `src/main/src/modules/auth/AuthService.ts` | 单例状态、HTTP 客户端（axios）、凭证持久化、signIn/signUp/signOut/refresh/init |
+| main 服务 | `src/main/src/modules/auth/AuthService.ts` | 单例状态、HTTP 客户端（axios）、凭证持久化、signIn/signUp（返回 `AuthSignResult` 判 needEmailVerify）/resendVerificationEmail/signOut/refresh/init |
 | 通道契约 | `src/preload/src/modules/auth/authChannels.ts` | `auth:*` 通道 + 载荷/返回类型（main 与 preload 共用） |
 | main IPC | `src/main/src/modules/auth/authIpc.ts` | 通道透传（`registerIpc.ts` 注册 + `index.ts` 挂 init） |
 | preload 桥 | `src/preload/src/modules/auth/auth.ts` | `window.preload.auth.*` 薄桥 + `onChanged` 订阅 |
-| 渲染 store | `src/renderer/src/store/AuthStore.ts` | 拉取快照 + 订阅推送，跨页共享 |
+| 渲染 store | `src/renderer/src/windows/main/store/AuthStore.ts` | 拉取快照 + 订阅推送，跨页共享（`types/auth.d.ts` 镜像契约需同步） |
 | 登录弹窗 | `src/renderer/src/components/modals/LoginDialog.tsx` + `LoginContent.vue` | DialogPlugin 命令式弹窗（登录/注册页签），AGENTS.md 拆壳约定 |
+| 邮箱验证引导 | `src/renderer/src/components/modals/VerifyEmailDialog.tsx` + `VerifyEmailContent.vue` | 邮箱未验证弹框：前往提供商邮箱（外链）+ 重发验证邮件（60s 倒计时） |
+| 邮箱域名推断 | `src/renderer/src/utils/mailProvider.ts` | `mailProviderOf(email)`：知名域枚举 + `mail.<domain>` 兜底 |
 | 页面接入 | `AppSide.vue`、`pages/setting/account/`（见 [06-account-page.md](../setting/06-account-page.md)）、`pages/setting/account/modals/` | 用户菜单；账户页身份主视觉 + 账户与安全 + 第三方密钥；积分流水抽屉（`PointsLedgerDrawer`）；弹窗仍为 EditName / ChangePassword / MemberTier / RedeemCode |
 
 ## 未登录展示（参考 workbuddy）

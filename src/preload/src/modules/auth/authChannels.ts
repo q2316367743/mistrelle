@@ -26,6 +26,8 @@ export const AuthChannels = {
   listTransactions: 'auth:listTransactions',
   /** 未过期增量包 lot（GET /api/user/pack-lots） */
   listPackLots: 'auth:listPackLots',
+  /** 重新发送邮箱验证邮件（POST /auth/resend-verification；恒返回成功，同邮箱 60s 冷却） */
+  resendVerification: 'auth:resendVerification',
   /** 在线设计风格列表（GET /api/user/design-styles） */
   listDesignStyles: 'auth:listDesignStyles',
   /** 在线设计风格详情（GET /api/user/design-styles/:id） */
@@ -108,6 +110,16 @@ export interface AuthSignUpParams {
 
 /** 变更类操作结果：失败时 msg 为可直接展示的中文原因 */
 export type AuthActionResult = { ok: true } | { ok: false; msg: string }
+
+/**
+ * 登录 / 注册结果。除成功 / 普通失败外，还有「需要先验证邮箱」态：
+ * - sign-in 被服务端拒 403 EMAIL_NOT_VERIFIED（未验证账号一律禁止登录建会话）；
+ * - sign-up 因 requireEmailVerification 不建会话（2xx 但 token 为 null，含重复注册已存在邮箱场景）。
+ * 渲染层命中该态后应关闭登录框并引导前往邮箱验证 / 重发验证邮件。
+ */
+export type AuthSignResult =
+  | { ok: true }
+  | { ok: false; msg: string; needEmailVerify?: boolean }
 
 /** 公开档位信息（GET /api/tiers/，无需登录；账户卡片未登录态展示额度） */
 export interface AuthTierInfo {

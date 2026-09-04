@@ -20,6 +20,7 @@ import {
   type AuthSignInParams,
   type AuthSignUpParams,
   type AuthState,
+  type AuthSignResult,
   type AuthTierInfo,
   type AuthDesignStyleDetail,
   type AuthDesignStyleItem,
@@ -35,10 +36,10 @@ export const authApi = {
   /** 公开增量包 SKU（无需登录） */
   pointsPacks: (): Promise<AuthPackCatalog> => ipcRenderer.invoke(AuthChannels.pointsPacks),
   /** 邮箱密码登录；成功即签发长期 API Key 并双存凭证 */
-  signIn: (params: AuthSignInParams): Promise<AuthActionResult> =>
+  signIn: (params: AuthSignInParams): Promise<AuthSignResult> =>
     ipcRenderer.invoke(AuthChannels.signIn, params),
-  /** 邮箱密码注册（注册即登录），链路同 signIn */
-  signUp: (params: AuthSignUpParams): Promise<AuthActionResult> =>
+  /** 邮箱密码注册（注册即登录），链路同 signIn；未验证账号不建会话（needEmailVerify） */
+  signUp: (params: AuthSignUpParams): Promise<AuthSignResult> =>
     ipcRenderer.invoke(AuthChannels.signUp, params),
   /** 登出：服务端注销会话/删 key（尽力而为）+ 本地凭证清除 */
   signOut: (): Promise<AuthActionResult> => ipcRenderer.invoke(AuthChannels.signOut),
@@ -54,6 +55,9 @@ export const authApi = {
   /** 激活激活码：成功后主进程刷新资料并广播（UI 自动同步档位与余额） */
   redeemCode: (params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeRedeemResult>> =>
     ipcRenderer.invoke(AuthChannels.redeemCode, params),
+  /** 重新发送邮箱验证邮件（POST /auth/resend-verification；恒成功，60s 冷却） */
+  resendVerification: (email: string): Promise<AuthActionResult> =>
+    ipcRenderer.invoke(AuthChannels.resendVerification, email),
   /** 手动刷新资料与余额（账户页「刷新」按钮） */
   refresh: (): Promise<AuthState> => ipcRenderer.invoke(AuthChannels.refresh),
   /** 积分流水分页 */

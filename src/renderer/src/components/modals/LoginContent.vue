@@ -48,6 +48,7 @@
 <script lang="ts" setup>
 import { useAuthStore } from '@/windows/main/store'
 import { MessageUtil } from '@/utils/modal'
+import { openVerifyEmail } from './VerifyEmailDialog'
 
 const emit = defineEmits<{ close: []; success: [] }>()
 
@@ -82,11 +83,22 @@ function validate(): boolean {
 
 async function handleSubmit(): Promise<void> {
   if (!validate()) return
-  const ok =
+  const email = form.email.trim()
+  const res =
     tab.value === 'login'
-      ? await authStore.signIn(form.email, form.password)
-      : await authStore.signUp(form.name, form.email, form.password)
-  if (ok) emit('success')
+      ? await authStore.signIn(email, form.password)
+      : await authStore.signUp(form.name.trim(), email, form.password)
+  if (res.ok) {
+    emit('success')
+    return
+  }
+  if (res.needEmailVerify) {
+    // 邮箱未验证：关闭登录框并打开验证引导弹框（前往邮箱 / 重发验证邮件）
+    emit('close')
+    openVerifyEmail(email)
+    return
+  }
+  MessageUtil.error(res.msg)
 }
 
 function handleCancel(): void {

@@ -18,6 +18,7 @@ import {
   type AuthPointsTransaction,
   type AuthSignInParams,
   type AuthSignUpParams,
+  type AuthSignResult,
   type AuthState,
   type AuthTierInfo,
   type AuthDesignStyleDetail,
@@ -33,6 +34,7 @@ import {
   pointsPacks,
   refresh,
   redeemActivationCode,
+  resendVerificationEmail,
   signIn,
   signOut,
   signUp,
@@ -48,11 +50,11 @@ export function registerAuthIpc(): void {
   ipcMain.handle(AuthChannels.pointsPacks, (): Promise<AuthPackCatalog> => pointsPacks())
   ipcMain.handle(
     AuthChannels.signIn,
-    (_event, params: AuthSignInParams): Promise<AuthActionResult> => signIn(params)
+    (_event, params: AuthSignInParams): Promise<AuthSignResult> => signIn(params)
   )
   ipcMain.handle(
     AuthChannels.signUp,
-    (_event, params: AuthSignUpParams): Promise<AuthActionResult> => signUp(params)
+    (_event, params: AuthSignUpParams): Promise<AuthSignResult> => signUp(params)
   )
   ipcMain.handle(AuthChannels.signOut, (): Promise<AuthActionResult> => signOut())
   ipcMain.handle(
@@ -74,6 +76,10 @@ export function registerAuthIpc(): void {
     AuthChannels.redeemCode,
     (_event, params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeRedeemResult>> =>
       redeemActivationCode(params)
+  )
+  ipcMain.handle(
+    AuthChannels.resendVerification,
+    (_event, email: string): Promise<AuthActionResult> => resendVerificationEmail(email)
   )
   ipcMain.handle(
     AuthChannels.listTransactions,

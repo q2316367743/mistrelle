@@ -60,6 +60,16 @@ declare interface AuthSignUpParams {
 /** 变更类操作结果：失败时 msg 为可直接展示的中文原因 */
 declare type AuthActionResult = { ok: true } | { ok: false; msg: string }
 
+/**
+ * 登录 / 注册结果。除成功 / 普通失败外，还有「需要先验证邮箱」态：
+ * - sign-in 被拒 403 EMAIL_NOT_VERIFIED（未验证账号禁止登录建会话）；
+ * - sign-up 因 requireEmailVerification 不建会话（2xx 但 token 为 null，含重复注册已存在邮箱）。
+ * 渲染层命中该态后应关闭登录框并引导前往邮箱验证 / 重发验证邮件。
+ */
+declare type AuthSignResult =
+  | { ok: true }
+  | { ok: false; msg: string; needEmailVerify?: boolean }
+
 /** 公开档位信息（无需登录；账户卡片未登录态展示额度） */
 declare interface AuthTierInfo {
   code: string
@@ -251,13 +261,15 @@ declare interface AuthApi {
   tiers(): Promise<AuthTierInfo[]>
   /** 公开增量包 SKU（无需登录） */
   pointsPacks(): Promise<AuthPackCatalog>
-  signIn(params: AuthSignInParams): Promise<AuthActionResult>
-  signUp(params: AuthSignUpParams): Promise<AuthActionResult>
+  signIn(params: AuthSignInParams): Promise<AuthSignResult>
+  signUp(params: AuthSignUpParams): Promise<AuthSignResult>
   signOut(): Promise<AuthActionResult>
   /** 修改用户名（成功后主进程刷新资料并广播） */
   updateUser(params: AuthNameParams): Promise<AuthActionResult>
   /** 修改密码（当前会话保持有效） */
   changePassword(params: AuthChangePasswordParams): Promise<AuthActionResult>
+  /** 重新发送邮箱验证邮件（POST /auth/resend-verification；恒成功，60s 冷却） */
+  resendVerification(email: string): Promise<AuthActionResult>
   /** 验证激活码：只返回可激活内容（会员档位或积分包），不执行激活 */
   verifyCode(params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeVerifyResult>>
   /** 激活激活码：成功后主进程刷新资料并广播（UI 自动同步档位与余额） */

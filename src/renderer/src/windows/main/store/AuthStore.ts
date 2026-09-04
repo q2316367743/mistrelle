@@ -66,28 +66,29 @@ export const useAuthStore = defineStore('auth', () => {
   loadTiers()
   loadPacks()
 
-  /** 邮箱密码登录 */
-  async function signIn(email: string, password: string): Promise<boolean> {
+  /** 邮箱密码登录；失败含 needEmailVerify 态（不在此弹 toast，由调用方按需分支引导） */
+  async function signIn(email: string, password: string): Promise<AuthSignResult> {
     submitting.value = true
     try {
-      const res = await window.preload.auth.signIn({ email, password })
-      if (!res.ok) MessageUtil.error(res.msg)
-      return res.ok
+      return await window.preload.auth.signIn({ email, password })
     } finally {
       submitting.value = false
     }
   }
 
-  /** 邮箱密码注册（注册即登录） */
-  async function signUp(name: string, email: string, password: string): Promise<boolean> {
+  /** 邮箱密码注册（注册即登录）；未验证账号返回 needEmailVerify 态 */
+  async function signUp(name: string, email: string, password: string): Promise<AuthSignResult> {
     submitting.value = true
     try {
-      const res = await window.preload.auth.signUp({ name, email, password })
-      if (!res.ok) MessageUtil.error(res.msg)
-      return res.ok
+      return await window.preload.auth.signUp({ name, email, password })
     } finally {
       submitting.value = false
     }
+  }
+
+  /** 重新发送邮箱验证邮件 */
+  async function resendVerificationEmail(email: string): Promise<AuthActionResult> {
+    return window.preload.auth.resendVerification(email)
   }
 
   /** 登出：服务端注销 + 本地凭证清除 */
@@ -150,6 +151,7 @@ export const useAuthStore = defineStore('auth', () => {
     loadPacks,
     signIn,
     signUp,
+    resendVerificationEmail,
     signOut,
     updateName,
     changePassword,

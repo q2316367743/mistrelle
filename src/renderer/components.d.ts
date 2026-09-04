@@ -121,6 +121,7 @@ declare module 'vue' {
     TTextarea: typeof import('tdesign-vue-next')['Textarea']
     TTooltip: typeof import('tdesign-vue-next')['Tooltip']
     TTree: typeof import('tdesign-vue-next')['Tree']
+    VerifyEmailContent: typeof import('./src/components/modals/VerifyEmailContent.vue')['default']
     WritingAside: typeof import('./src/components/chat/aside/writing/WritingAside.vue')['default']
   }
 }

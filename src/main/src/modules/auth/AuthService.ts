@@ -32,6 +32,7 @@ import {
   type AuthPackLots,
   type AuthSignInParams,
   type AuthSignUpParams,
+  type AuthSignResult,
   type AuthUser
 } from '~/modules/auth/authChannels'
 
@@ -308,33 +309,64 @@ export async function pointsPacks(): Promise<AuthPackCatalog> {
 }
 
 /** 邮箱密码登录：登录取会话 → 创建长期 API Key → 双存凭证 → 刷新资料与余额 */
-export async function signIn(params: AuthSignInParams): Promise<AuthActionResult> {
+export async function signIn(params: AuthSignInParams): Promise<AuthSignResult> {
   try {
     const email = params.email.trim()
-    const { token, sessionCookie } = await exchangeSession(`${AUTH_BASE}/sign-in/email`, {
-      email,
-      password: params.password,
-      rememberMe: true
+    const res = await rawRequest<AuthSessionResponse>('POST', `${AUTH_BASE}/sign-in/email`, {
+      body: { email, password: params.password, rememberMe: true }
     })
-    await provisionApiKey(token, sessionCookie, email)
-    await refresh()
-    return { ok: true }
+    // 未验证账号一律禁止登录建会话：403 EMAIL_NOT_VERIFIED → 引导验证邮箱
+    if (res.status === 403 && errorCodeOf(res.data) === 'EMAIL_NOT_VERIFIED') {
+      return { ok: false, msg: '邮箱尚未验证，请先完成邮箱认证', needEmailVerify: true }
+    }
+    const token = res.data?.token
+    if (res.status >= 200 && res.status < 300 && typeof token === 'string' && token) {
+      await provisionApiKey(token, extractSessionCookie(res.setCookies), email)
+      await refresh()
+      return { ok: true }
+    }
+    throw new AuthFailure(extractErrorMsg(res.status, res.data, 'POST', `${AUTH_BASE}/sign-in/email`), res.status)
   } catch (error) {
     return fail(error)
   }
 }
 
-/** 邮箱密码注册（注册即登录）：同 signIn 的凭证落地链路 */
-export async function signUp(params: AuthSignUpParams): Promise<AuthActionResult> {
+/** 邮箱密码注册：requireEmailVerification 下服务端不建会话（2xx 无 token）→ 引导验证邮箱 */
+export async function signUp(params: AuthSignUpParams): Promise<AuthSignResult> {
   try {
     const email = params.email.trim()
-    const { token, sessionCookie } = await exchangeSession(`${AUTH_BASE}/sign-up/email`, {
-      name: params.name.trim(),
-      email,
-      password: params.password
+    const res = await rawRequest<AuthSessionResponse>('POST', `${AUTH_BASE}/sign-up/email`, {
+      body: { name: params.name.trim(), email, password: params.password }
     })
-    await provisionApiKey(token, sessionCookie, email)
-    await refresh()
+    const token = res.data?.token
+    if (res.status >= 200 && res.status < 300 && typeof token === 'string' && token) {
+      await provisionApiKey(token, extractSessionCookie(res.setCookies), email)
+      await refresh()
+      return { ok: true }
+    }
+    if (res.status >= 200 && res.status < 300) {
+      // 未验证 / 重复注册：better-auth 恒返回合成用户且无会话令牌
+      return { ok: false, msg: '验证邮件已发送，请先完成邮箱认证后重新登录', needEmailVerify: true }
+    }
+    throw new AuthFailure(extractErrorMsg(res.status, res.data, 'POST', `${AUTH_BASE}/sign-up/email`), res.status)
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+/** 重新发送邮箱验证邮件（POST /auth/resend-verification；服务端防枚举恒成功，同邮箱 60s 冷却） */
+export async function resendVerificationEmail(email: string): Promise<AuthActionResult> {
+  const value = email?.trim()
+  if (!value) return { ok: false, msg: '请先输入邮箱' }
+  try {
+    const res = await request<{ success: boolean; code: number; msg: string; data: { sent: boolean } }>(
+      'POST',
+      '/auth/resend-verification',
+      { body: { email: value } }
+    )
+    if (typeof res.success === 'boolean' && !res.success) {
+      throw new AuthFailure(res.msg || '发送失败', res.code)
+    }
     return { ok: true }
   } catch (error) {
     return fail(error)
@@ -471,22 +503,23 @@ export async function listPackLots(): Promise<AuthDataResult<AuthPackLots>> {
 
 // ── 服务端调用细节 ──
 
-/** 登录/注册端点：成功返回会话 token + 签名会话 Cookie（后者供 api-key/sign-out 鉴权） */
+/** 登录/注册端点：成功返回会话 token；requireEmailVerification 下注册不建会话（token 为 null） */
 interface AuthSessionResponse {
   token?: string | null
 }
 
-async function exchangeSession(
-  path: string,
-  body: Record<string, unknown>
-): Promise<{ token: string; sessionCookie: string | null }> {
-  const res = await rawRequest<AuthSessionResponse>('POST', path, { body })
-  if (res.status >= 200 && res.status < 300) {
-    const token = res.data?.token
-    if (typeof token !== 'string' || !token) throw new AuthFailure('服务端未返回会话令牌')
-    return { token, sessionCookie: extractSessionCookie(res.setCookies) }
+/** 从错误体取 better-auth 错误码（顶层 code 或嵌套 error.code） */
+function errorCodeOf(body: unknown): string | null {
+  if (body && typeof body === 'object') {
+    const record = body as Record<string, unknown>
+    if (typeof record.code === 'string') return record.code
+    const err = record.error
+    if (err && typeof err === 'object') {
+      const e = err as Record<string, unknown>
+      if (typeof e.code === 'string') return e.code
+    }
   }
-  throw new AuthFailure(extractErrorMsg(res.status, res.data, 'POST', path), res.status)
+  return null
 }
 
 /** 从 Set-Cookie 中取出签名会话 Cookie（better-auth.session_token=<signed>），供原样回放 */

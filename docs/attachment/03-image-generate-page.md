@@ -13,8 +13,8 @@
 
 - `GET /api/images/models`：公开档位列表（无需登录），`data[]` 为 `{ code, name }`。
 - `GET /api/images/models/priced`：登录后档位列表，`data[]` 为 `{ code, name, pointsPerImage }`。
-- `POST /api/images/generations`：提交任务，Result `data` 为 `{ taskId, status, n, error, images? }`。
-- `GET /api/images/tasks/{taskId}`：任务状态查询（processing 会实时查上游并结算）。
+- `POST /api/images/generations`：提交任务，**立即**返回 Result `data` 为 `{ taskId, status:'processing', ... }`；上游在服务端后台执行。
+- `GET /api/images/tasks/{taskId}`：任务状态查询（processing 时异步渠道会实时查上游并结算；同步渠道完成后直接读本地图）。
 
 HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask`）：
 未登录 `imageModels` 走公开端点（`getServerBaseUrl()`），已登录走 priced + Bearer；

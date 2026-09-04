@@ -63,3 +63,4 @@
 - 进入账号页时调用 `AuthStore.refreshIfStale`：游客跳过；距上次成功刷新不足 1 分钟则跳过；停留本页时每分钟再检查一次。手动「刷新」不走节流。
 - 积分流水走 `GET /api/user/transactions`（主进程 IPC `auth:listTransactions`），不在渲染层直连服务端
 - `AccountSettingRow` 是账号页私有组件，不要挪到 `src/components`
+- 登录/注册（身份区与账户页共用 `LoginDialog`）在服务端强邮箱认证下：未验证账号无法建会话，`LoginContent` 命中 `needEmailVerify` 后引导 `VerifyEmailDialog`（去邮箱验证 / 重发），流程见 [auth/01-server-auth.md](../auth/01-server-auth.md)；邮箱未验证态不会出现在已登录界面
