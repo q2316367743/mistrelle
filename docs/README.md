@@ -10,9 +10,15 @@
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [AppSide.md](./app/AppSide.md)       | 主应用左侧导航栏：AppSide 外壳 + SideMenu/SideMenuNode 递归菜单组件（SideMenuItem 数据模型、active 推导、展开/收起高度动画）、menuTree 映射与导航约定 |
 | [01-app-shell.md](./app/01-app-shell.md) | 应用外壳生命周期：托盘常驻（显示 AI 窗口/退出）+ AI 主窗口启动即建（默认显示/关闭只隐藏）、Dock 点击打开主窗口、闪退修复（close 拦截只隐藏 + before-quit 放行真退出 + closed 置空引用）、AI 主窗口模块（createAiWindow/showAiWindow）、index.ts 仅生命周期编排 |
-| [02-main-directory.md](./app/02-main-directory.md) | 主进程目录结构（域优先）：`app/`（aiWindow/tray/protocol）+ `modules/` 十一业务域（service+ipc 同域同居，与渲染层 modules/ 对称）+ `db/` 基础设施 + 顶层 registerIpc 聚合；import 规则、新增域方法、外部同步点（$ 别名/drizzle/`__dirname` 均不受影响） |
+| [02-main-directory.md](./app/02-main-directory.md) | 主进程目录结构（域优先）：`app/`（aiWindow/tray）+ `server/`（本地事件服务）+ `modules/` 十一业务域（service+ipc 同域同居，与渲染层 modules/ 对称）+ `db/` 基础设施 + 顶层 registerIpc 聚合；import 规则、新增域方法、外部同步点（$ 别名/drizzle/`__dirname` 均不受影响） |
 | [03-preload-directory.md](./app/03-preload-directory.md) | preload 目录结构（域优先，与 main 同构）：`modules/` 十三域（契约 `*Channels.ts` + 桥同域同居，域划分与 main modules/ 一一对应）+ `lib/` 纯 Node 桥 + 顶层 inject.ts 组装点；channels.ts 大杂烩/inject.ts 四合一拆解记录、三份契约同步关系 |
 | [04-ffmpeg-ppt-removal.md](./app/04-ffmpeg-ppt-removal.md) | ffmpeg 与 PPT 专家功能移除记录（2026-09-04）：删除范围（基础设施/AI 工具/视频导出链/PPT 聊天类型）、保留项（画布动画字段、'ppt' 通用附件识别）、勿再引用符号清单 |
+
+### server/ —— 本地事件服务
+
+| 文档                                                          | 描述                                                                                                          |
+|---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| [01-event-server.md](./server/01-event-server.md)             | 本地事件服务（express，127.0.0.1:47743 只绑回环）：`/file/<编码绝对路径>` 资源面（渲染层加载本地字体/图片，替代已删的 `mistrelle://` 自定义协议）+ `/<模块>/<功能>?<query>` 事件面（外部进程投递，替代已删的系统深链）+ `/ping` 探活；Origin 守卫防浏览器 drive-by 读盘；端口事实源 `@common/server/eventServer.ts` |
 
 ### auth/ —— 服务端账号
 
@@ -45,7 +51,6 @@
 | 文档                                                                           | 描述                                                                                                                                                     |
 |--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload，例外：net 下载因 onDownloadProgress 回调无法过 IPC 而保留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 二进制随包分发（历史方案，2026-09 已随 ffmpeg 功能整体移除，见 app/04）、sharp 移植、renderer 异步化适配清单 |
-| [02-local-protocol.md](./migration/02-local-protocol.md)                       | `mistrelle://` 本地资源协议：渲染层 URL 加载本地字体/图片（`mistrelle://app/file/<编码绝对路径>`，规避 dev 下 http 页面加载 file:// 被拦截）；兼系统级链接（单实例 + open-url/second-instance 仅接收外部 `mistrelle://` 唤起，不弹窗/不聚焦）；`registerLocalSchemes` 须 app ready 前注册、handler 读盘返回 |
 | [03-lmdb-to-json.md](./migration/03-lmdb-to-json.md)                           | lmdb → 本地 JSON 收尾迁移：剩余消费点（network/global/secure/default setting、workspace 历史）映射与行为变化（rev 删除、不预写空文件、init 后注册 watch、孤儿 AiWorkspaceStore 直接删除）、lmdb 全链路删除清单、`~/.mistrelle/` JSON 存储全景 |
 
 ### data/ —— 数据存储
@@ -74,7 +79,7 @@
 | [01-aihot-page.md](./attachment/01-aihot-page.md)             | AIHOT 资讯页：t-tabs 四视图（精选/动态/热点/日报）；精选=本地缓存、动态=在线全量池（lazy 懒挂载）；时间轴；精选集 snapshot/changes 增量同步；日报不可变缓存、429 Retry-After 等接入文档约定落地；已读/未读标记（read 列持久化、点击打开即标记） |
 | [02-aihot-embedded-link-viewer.md](./attachment/02-aihot-embedded-link-viewer.md) | 内嵌网页浏览抽屉（公共组件 `LinkPreviewDrawer`，原 AihotLinkDrawer 提升）：链接出口统一走 `openLinkPreview` → DrawerPlugin + `<webview>`（webviewTag: true）；选型结论（vs WebContentsView）、UA 覆写防白屏、`persist:link-preview` 会话隔离、did-fail-load -3 忽略等注意事项 |
 | [03-image-generate-page.md](./attachment/03-image-generate-page.md) | 文生图页面（`/attachment/image`）+ **主进程 ImageService**：生图编排与运行态上移 main（单例 Map、提交/轮询/落盘/收尾/广播，跨窗口跨刷新存活、启动 cleanupOrphans 收尾），渲染层只剩视图与 `image:*` IPC 薄代理；**只调自有服务端** `/v1/images/*`（统一异步任务模型，HTTP 在 RelayService 注入 Bearer），模型列表=`ImageModelStore`（服务端档位 code，登录态联动），`defaultImageModel` 语义变为服务端档位、仍是工具门控与表单默认来源；`image_generate` 工具走 `record:false` 直出模式（不进页面历史）；`db:image:*` 通道删除、`db:image:list` 迁 `image:list`；`task_id`/`poll_max_at`/`task_terminal` 续轮询语义不变（确认即落库、按剩余窗口续查、不重复扣费）；设计风格仍在渲染层拼 prompt |
-| [04-file-preview-dialog.md](./attachment/04-file-preview-dialog.md) | 文件预览弹窗（公共组件 `FilePreviewDialog`，原 chat-assistant/modals 提升并按约定拆外壳+内容）：`FilePreviewItem` 契约与分发（url→链接抽屉 / md / **html、htm→webview 渲染预览** / code / image / video / audio / showInFolder 兜底）；mistrelle:// 协议仅默认 session 注册故 html webview 不写 partition、主进程 MIME 补 text/html 等 |
+| [04-file-preview-dialog.md](./attachment/04-file-preview-dialog.md) | 文件预览弹窗（公共组件 `FilePreviewDialog`，原 chat-assistant/modals 提升并按约定拆外壳+内容）：`FilePreviewItem` 契约与分发（url→链接抽屉 / md / **html、htm→webview 渲染预览** / code / image / video / audio / showInFolder 兜底）；本地资源经本地事件服务 HTTP `/file` 面加载（见 server/01），MIME 表含 text/html 等 |
 
 ### extend/ —— 闲庭漫步工具页
 
@@ -199,7 +204,7 @@
 |-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | [01-serial-traffic-light.md](./hardware/01-serial-traffic-light.md) | 串口通信域（serialport v13）与红绿灯页面：main SerialService 单例 + preload serial 域桥、Arduino 行协议（灯+模式/off、9600）、原生模块集成复用 postinstall 链路 |
 | [02-buddy-window.md](./hardware/02-buddy-window.md) | 伙伴窗口（独立入口）：`buddy.html` → `windows/buddy/` 独立应用（独立 main/router/preload/外壳）、默认隐藏 + 托盘「打开伙伴」唯一入口、关闭只隐藏、renderer 与 preload 双入口配置、独立窗口目录约定、**外壳单按钮形态声明**（`useTitlePadding({ kind: 'buddy' })`，共享 PageLayout 折叠标题随窗口自适应） |
-| [03-traffic-light-config.md](./hardware/03-traffic-light-config.md) | 红绿灯配置（软件状态驱动）：`~/.mistrelle/buddy/traffic-light.json` 结构、事件→灯态绑定（状态唯一/软件互斥两条规则）、mistrelle:// 协议事件投递链路、内置 opencode 插件模板与一键安装（checkPlatform/installPlatform 三态检查、adapter 注册表扩展点）、契约文件迁 `src/common`、伙伴窗口独立 preload 入口 |
+| [03-traffic-light-config.md](./hardware/03-traffic-light-config.md) | 红绿灯配置（软件状态驱动）：`~/.mistrelle/buddy/traffic-light.json` 结构、事件→灯态绑定（状态唯一/软件互斥两条规则）、本地事件服务 HTTP 事件投递链路（见 server/01）、内置 opencode 插件模板与一键安装（checkPlatform/installPlatform 三态检查、adapter 注册表扩展点）、契约文件迁 `src/common`、伙伴窗口独立 preload 入口 |
 
 ### todo/ —— 规划与待办
 

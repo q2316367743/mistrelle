@@ -1,0 +1,58 @@
+# 01 本地事件服务（HTTP）
+
+> main 进程内置 express 服务，监听 **127.0.0.1:47743**（只绑回环）。承载两个面：
+> **资源面** `/file/<编码绝对路径>`（渲染层加载本地字体 / 图片，替代原 `mistrelle://` 自定义协议）；
+> **事件面** `/<模块>/<功能>?<query>`（外部进程投递事件，替代原深链投递）。
+> 不经系统唤起、不激活应用；`mistrelle://` 协议（含系统级链接）已于 2026-09-04 整体删除。
+
+## 背景与动机
+
+- 资源面：dev 模式渲染页 origin 为 `http://localhost:7743`，Chromium 禁止 http 页面加载 `file://`
+  子资源。原方案为自定义协议（`protocol.handle` 读盘返回）；HTTP 服务同效且实现更直白，
+  `webview` 任意 session/partition 均可达（自定义协议只注册在默认 session）。
+- 事件面：opencode 插件经系统深链 `open mistrelle://…` 投递事件时，macOS LaunchServices 会把
+  本应用激活到前台抢焦点（接收侧无 API 可拒绝），深链冷启动还会把未运行的应用整个拉起（负优化）。
+  本地 HTTP 由进程直接回环连接，**结构性零焦点、零进程开销**；应用未运行时投递失败静默丢弃
+  （红绿灯「灯灭」语义正确）。
+
+## URL 契约
+
+| 面 | 形式 | 说明 |
+|----|------|------|
+| 探活 | `GET /ping` → 204 | 外部进程判断应用是否在跑 |
+| 资源 | `GET /file/<encodeURIComponent(绝对路径)>` | 读盘返回，`Content-Type` 按扩展名映射 + `Access-Control-Allow-Origin: *` |
+| 事件 | `GET\|POST /<模块>/<功能>?<query>` | 当前仅 `/buddy/traffic-light?platform=<软件>&event=<事件>` → `applyEvent`；未知路由 404 |
+
+- 地址事实源：`src/common/server/eventServer.ts` 的 `EVENT_SERVER_ORIGIN`（main 与 preload 共享；
+  插件模板为独立文件无法 import，端口常量注释互指）。
+- 资源 URL 由 preload 侧 `net.pathToHref(path)` 统一生成（`resolve` 归一化 + `encodeURIComponent`），
+  渲染层调用方 API 签名不变。
+
+## 关键文件
+
+| 文件 | 职责 |
+|------|------|
+| `src/main/src/server/index.ts` | `startEventServer()`：express 装配（/ping、/file 资源面、事件路由）、Origin 守卫、生命周期 |
+| `src/common/server/eventServer.ts` | `EVENT_SERVER_ORIGIN` 端口事实源（跨端共享） |
+| `src/main/index.ts` | `whenReady` 内调 `startEventServer()`，先于建窗（保证渲染层子资源可达） |
+| `src/preload/src/lib/net.ts` | `pathToHref`：绝对路径 → `{ORIGIN}/file/<enc>` |
+| `resources/plugins/opencode/mistrelle-traffic-light.js` | 事件投递方（纯 fetch，见 docs/hardware/03） |
+
+## 安全模型
+
+- 只绑 `127.0.0.1`：局域网不可达；本机其他进程可访问——与现状持平（渲染层本就经 fs IPC 具备
+  任意路径读权限，服务不扩大攻击面）。
+- **Origin 守卫**（资源面）：请求带 `Origin` 且非本应用来源（`http://localhost:7743` /
+  `http://127.0.0.1:7743` / `null`）→ 403。防公网网页经浏览器回环 drive-by 读盘（带 Origin 的
+  CORS 请求被拒；`<img>`/字体等子资源与插件、curl 均无 Origin，不受影响）。
+- 事件面只消费 query 参数，进 `applyEvent`（未启用/未知事件/未绑定静默忽略），无命令执行能力。
+- 无 Range 分片（字体 / 图片全量返回；后续视频预览需要时再加）。
+
+## 生命周期与验证
+
+- `startEventServer()` 在 `app.whenReady` 内先于建窗调用；端口占用只打日志不崩溃（渲染层资源
+  加载会 404，事件投递方静默丢弃）；`will-quit` 时 `server.close()`。
+- 手动验证：
+  - `curl 'http://127.0.0.1:47743/ping' -o /dev/null -w '%{http_code}'` → 204
+  - `curl 'http://127.0.0.1:47743/file/%2FUsers%2F%E2%80%A6%2Fx.png' -o /dev/null -w '%{http_code}'` → 200
+  - `curl 'http://127.0.0.1:47743/buddy/traffic-light?platform=opencode&event=session.idle'` → 204 且亮灯

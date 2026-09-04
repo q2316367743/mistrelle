@@ -218,8 +218,7 @@ export async function openFilePreview(item: FilePreviewItem) {
     return
   }
 
-  // 本地 html：渲染预览优先（webview 无 partition，走默认 session 才能命中 mistrelle:// 协议），
-  // 源码切换在内容组件内按需读取
+  // 本地 html：走链接抽屉渲染预览（file:// URL），源码切换在内容组件内按需读取
   if (ext === '.html' || ext === '.htm') {
     openLinkPreview(window.preload.net.pathToFileHref(fullPath))
     return

@@ -93,7 +93,7 @@ const props = withDefaults(
     fullPath: string
     /** markdown / code：外壳已读取的文本内容 */
     content?: string
-    /** image / video / audio / html：mistrelle:// 资源地址 */
+    /** image / video / audio / html：本地事件服务资源地址（pathToHref） */
     src?: string
     /** code：Monaco 语言 */
     language?: string

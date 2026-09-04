@@ -3,30 +3,15 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createAiWindow, markQuitting, showAiWindow } from '$/app/aiWindow'
 import { init as initAuth } from '$/modules/auth/AuthService'
 import { registerIpc } from '$/registerIpc'
-import {
-  captureOpenUrl,
-  registerDeepLink,
-  registerLocalSchemes,
-  registerLocalProtocol,
-  startEventSocket
-} from '$/app/protocol'
+import { startEventServer } from '$/server'
 import { registerAppTray } from '$/app/tray'
 
-// 单实例锁：外部 open mistrelle:// 二次唤起时把 argv 交给首实例 second-instance 处理，
-// 避免重复拉起新进程（URL 接收见 protocol.ts handleExternalUrl）
+// 单实例锁：二次拉起直接退出（事件/资源统一走本地事件服务，无需 second-instance 接收 argv）
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 if (!hasSingleInstanceLock) {
   app.quit()
-} else {
-  // 在 app ready 之前注册 mistrelle:// 为特权 scheme（渲染层经自定义协议加载本地字体 / 图片，
-  // 规避 dev 下 http 页面加载 file:// 被 Chromium 拦截）
-  registerLocalSchemes()
-
-  // 挂 macOS open-url 监听（ready 前可能触发，内部做暂存；随 ready 后 registerDeepLink 补收）
-  captureOpenUrl()
 }
 
-// AI 主窗口默认显示（关闭只隐藏，退出走托盘菜单）
 if (hasSingleInstanceLock) {
   app.whenReady().then(() => {
     // Set app user model id for windows
@@ -45,14 +30,9 @@ if (hasSingleInstanceLock) {
     // 服务端账号初始化（读本地凭证校验登录态，非阻塞，失败不阻塞启动）
     initAuth()
 
-    // 注册 mistrelle:// 协议处理（依赖 registerLocalSchemes 已就绪）
-    registerLocalProtocol()
-
-    // 注册为系统级 mistrelle:// 协议客户端 + second-instance/open-url 接收（外部 open 不弹窗）
-    registerDeepLink()
-
-    // 本地事件 socket 主通道（opencode 插件等直连投递，不经系统唤起、不抢焦点）
-    startEventSocket()
+    // 本地事件服务（127.0.0.1:47743：渲染层资源面 /file + 外部事件面 /<模块>/<功能>），
+    // 先于建窗启动，保证渲染层字体 / 图片等子资源可达
+    startEventServer()
 
     // 托盘常驻入口（macOS 菜单栏 / Windows 通知区）
     registerAppTray()

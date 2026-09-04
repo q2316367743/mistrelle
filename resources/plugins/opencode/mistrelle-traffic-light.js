@@ -1,17 +1,15 @@
 /**
  * Mistrelle 红绿灯接入插件（opencode）
- * 监听 opencode 事件，经 mistrelle://buddy/traffic-light 投递给 mistrelle 桌面端，
+ * 监听 opencode 事件，经本地事件服务 HTTP 接口投递给 mistrelle 桌面端，
  * 由其按用户配置映射为信号灯状态。
- * 投递双通道（同一条 URL 字符串，main 侧单一处理函数）：
- * 1. 主通道 = 本地 socket：直连写入一行 URL 即断，不经系统唤起、不抢焦点，应用未运行时事件丢弃（灯灭语义）；
- * 2. 兜底 = 系统深链：仅 socket 不可达且 main 在跑时使用，darwin 加 -g 后台投递避免抢焦点。
+ * 投递 = fetch POST/GET http://127.0.0.1:47743/buddy/traffic-light?platform=…&event=…，
+ * 不经系统唤起、不抢焦点、不拉起进程；应用未运行时投递失败静默丢弃（灯灭语义，绝不冷启动拉起应用）。
  * 安装位置：~/.config/opencode/plugins/（opencode 官方全局插件目录，启动自动加载，无需注册 opencode.json）。
  */
 
-import { connect } from 'node:net'
-import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { spawn } from 'node:child_process'
+/** 本地事件服务地址（与 mistrelle 端 src/common/server/eventServer.ts 的 EVENT_SERVER_ORIGIN 保持一致；
+ *  模板是独立文件无法 import，改动端口需两处同步） */
+const SERVER_ORIGIN = 'http://127.0.0.1:47743'
 
 /** 只转发对信号灯有意义的事件（与 mistrelle 端 OpencodeEventName 全集一致） */
 const EVENTS = new Set([
@@ -23,59 +21,17 @@ const EVENTS = new Set([
   'tool.execute.after'
 ])
 
-/** 同一事件的最小投递间隔（ms）：兜底深链路径要 spawn 进程，防止进程风暴 */
+/** 同一事件的最小投递间隔（ms）：message.part.updated 流式高频，防止请求风暴 */
 const THROTTLE_MS = 500
 
-// 与 main 侧 src/main/src/app/protocol.ts 的 eventSocketPath 保持一致（模板是独立文件，无法 import）
-const SOCKET_PATH =
-  process.platform === 'win32'
-    ? '\\\\.\\pipe\\mistrelle-traffic-light'
-    : `${homedir()}/.mistrelle/buddy/traffic-light.sock`
-
-/** 主通道：本地 socket 直连 main，写入与深链完全相同的 URL 字符串即断；失败不抛错，返回是否成功 */
-function sendViaSocket(url) {
-  return new Promise((resolve) => {
-    const client = connect(SOCKET_PATH, () => {
-      client.write(`${url}\n`)
-      client.end()
-      resolve(true)
-    })
-    client.on('error', () => resolve(false))
-    client.setTimeout(1000, () => {
-      client.destroy()
-      resolve(false)
-    })
-  })
-}
-
-/** 兜底通道：系统深链唤起（detached + unref 即发即忘，信号灯是旁路反馈，失败不影响 opencode） */
-function openDeepLink(url) {
-  let child
-  if (process.platform === 'darwin') {
-    // -g 后台投递：裸 open 会把 mistrelle 激活到前台抢焦点
-    child = spawn('open', ['-g', url], { detached: true, stdio: 'ignore' })
-  } else if (process.platform === 'win32') {
-    child = spawn('rundll32', ['url.dll,FileProtocolHandler', url], { detached: true, stdio: 'ignore' })
-  } else {
-    child = spawn('xdg-open', [url], { detached: true, stdio: 'ignore' })
-  }
-  child.unref()
-}
-
-/** socket 文件在 = main 在跑；不在 = 应用未起，事件丢弃（灯灭语义），避免深链把应用冷启动拉到前台 */
-function isMainAlive() {
+/** 投递一条事件（route 含 query，如 buddy/traffic-light?platform=…&event=…）；失败静默丢弃 */
+async function sendEvent(route) {
   try {
-    return existsSync(SOCKET_PATH)
+    const res = await fetch(`${SERVER_ORIGIN}/${route}`, { signal: AbortSignal.timeout(1000) })
+    if (res.ok) return
   } catch {
-    return false
+    // 应用未运行 / 服务不可达：信号灯是旁路反馈，直接丢弃，不影响 opencode 主流程
   }
-}
-
-/** 投递出口：主通道失败且 main 在跑时才退深链 */
-function sendEvent(url) {
-  sendViaSocket(url).then((sent) => {
-    if (!sent && isMainAlive()) openDeepLink(url)
-  })
 }
 
 export const MistrelleTrafficLight = async () => {
@@ -84,12 +40,12 @@ export const MistrelleTrafficLight = async () => {
   const trailing = new Map()
 
   function forward(type) {
-    const url = `mistrelle://buddy/traffic-light?platform=opencode&event=${encodeURIComponent(type)}`
+    const route = `buddy/traffic-light?platform=opencode&event=${encodeURIComponent(type)}`
     const now = Date.now()
     const last = lastSentAt.get(type) ?? 0
     if (now - last >= THROTTLE_MS) {
       lastSentAt.set(type, now)
-      sendEvent(url)
+      void sendEvent(route)
       return
     }
     // 节流窗口内的重复事件只排一次尾部补发，保证最终灯态不丢
@@ -97,7 +53,7 @@ export const MistrelleTrafficLight = async () => {
     const timer = setTimeout(() => {
       trailing.delete(type)
       lastSentAt.set(type, Date.now())
-      sendEvent(url)
+      void sendEvent(route)
     }, THROTTLE_MS - (now - last))
     trailing.set(type, timer)
   }

@@ -7,7 +7,7 @@ export const formatDateTime = (ts: number): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-/** 本地绝对路径 → mistrelle:// URL（页面图片统一走本地协议显示） */
+/** 本地绝对路径 → 本地事件服务资源 URL（页面图片统一走 /file 资源面显示） */
 export const pathToHref = (path: string): string => window.preload.net.pathToHref(path)
 
 /**

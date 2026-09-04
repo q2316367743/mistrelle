@@ -6,13 +6,14 @@
 
 ```
 src/main/
-├── index.ts                    # 入口（electron-vite 约定位置）：scheme 注册 → ready 后 registerIpc/initAuth/协议/托盘/窗口
+├── index.ts                    # 入口（electron-vite 约定位置）：单实例锁 → ready 后 registerIpc/initAuth/事件服务/托盘/窗口
 └── src/
     ├── registerIpc.ts          # IPC 注册聚合点：顺序调用各域 registerXxxIpc()（新增域在此登记一行）
     ├── app/                    # 应用外壳
     │   ├── aiWindow.ts         # AI 主窗口（启动即建、关闭只隐藏、托盘/Dock 唤起）
-    │   ├── tray.ts             # 托盘常驻（显示 AI 窗口 / 退出）
-    │   └── protocol.ts         # mistrelle:// 自定义协议（特权 scheme 注册 + protocol.handle 读盘）
+    │   └── tray.ts             # 托盘常驻（显示 AI 窗口 / 退出）
+    ├── server/                 # 本地事件服务（express 127.0.0.1:47743：/file 资源面 + 事件面，见 docs/server/01）
+    │   └── index.ts            # startEventServer()
     ├── modules/                # 业务域：service 与对应 ipc handler 同域同居
     │   ├── auth/               # AuthService.ts（账号单例）+ authIpc.ts
     │   ├── relay/              # RelayService.ts（服务端 /v1/* 中转客户端）+ relayIpc.ts
