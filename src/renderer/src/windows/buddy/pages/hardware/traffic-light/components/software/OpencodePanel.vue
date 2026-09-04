@@ -21,24 +21,31 @@
       </t-button>
     </div>
     <div class="hint">一种灯态只能被一个事件绑定；未绑定的事件不点亮，修改即时生效。</div>
-    <div v-for="item in EVENTS" :key="item.event" class="binding-row">
+    <div v-for="item in OpencodeEventNameOptions" :key="item.value" class="binding-row">
       <div class="event">
-        <span class="name">{{ item.event }}</span>
+        <span class="name">{{ item.value }}</span>
         <span class="label">{{ item.label }}</span>
       </div>
       <t-select
         class="state-select"
-        :value="currentValue(item.event)"
-        :options="stateOptions(item.event)"
+        :value="currentValue(item.value)"
+        :options="stateOptions(item.value)"
         :disabled="!enabled || saving"
-        @change="(value) => bindEvent('opencode', item.event, toState(value))"
+        @change="(value) => bindEvent('opencode', item.value, toState(value))"
       />
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { LIGHT_STATE_OPTIONS } from '../../softwareRegistry'
+import {
+  LightStateOptions,
+  type LightState,
+  type OpencodeEventName,
+  type PlatformConfigStatus,
+  OpencodeEventNameOptions
+} from '@common/types/trafficLight'
+import { CommonSelect } from '@/domain'
 import { useTrafficLight } from '../../useTrafficLight'
 
 defineOptions({ name: 'OpencodePanel' })
@@ -49,7 +56,9 @@ const softwareConfig = computed(() => config.value?.config.opencode)
 const enabled = computed(() => softwareConfig.value?.enabled ?? false)
 
 const installing = ref(false)
-const installStatus = computed<PlatformConfigStatus>(() => platformStatus.value?.status ?? 'missing')
+const installStatus = computed<PlatformConfigStatus>(
+  () => platformStatus.value?.status ?? 'missing'
+)
 
 /** 各安装态的说明文案（missing/outdated 提供一键安装入口） */
 const INSTALL_TEXT: Record<PlatformConfigStatus, string> = {
@@ -69,30 +78,24 @@ async function install(): Promise<void> {
   }
 }
 
-/** Opencode 事件目录（与 channels 的 OpencodeEventName 全集一致；本面板可按 Opencode 特性自由演化 UI） */
-const EVENTS: Array<{ event: OpencodeEventName; label: string }> = [
-  { event: 'message.part.updated', label: '正在回复（流式输出）' },
-  { event: 'tool.execute.before', label: '开始执行工具' },
-  { event: 'tool.execute.after', label: '工具执行结束' },
-  { event: 'session.idle', label: '回复完成 / 等待输入' },
-  { event: 'permission.asked', label: '等待授权确认' },
-  { event: 'session.error', label: '会话出错' }
-]
-
 function currentValue(event: OpencodeEventName): LightState | '' {
   return softwareConfig.value?.bindings[event] ?? ''
 }
 
-/** 已被其它事件占用的灯态置为 disabled（状态绑定唯一） */
-function stateOptions(event: OpencodeEventName) {
+/** 下拉选项（''=不响应 + 全部灯态）；已被其它事件占用的灯态置 disabled（状态绑定唯一） */
+function stateOptions(event: OpencodeEventName): Array<CommonSelect<LightState | ''>> {
   const bindings = softwareConfig.value?.bindings ?? {}
   const takenBy = new Set<LightState>()
   for (const [key, state] of Object.entries(bindings)) {
     if (state && key !== event) takenBy.add(state)
   }
-  return LIGHT_STATE_OPTIONS.map((opt) => ({
-    label: opt.label,
+  const options: Array<CommonSelect<LightState | ''>> = [
+    { value: '', label: '不响应' },
+    ...LightStateOptions
+  ]
+  return options.map((opt) => ({
     value: opt.value,
+    label: opt.label,
     disabled: opt.value !== '' && takenBy.has(opt.value)
   }))
 }
@@ -100,7 +103,7 @@ function stateOptions(event: OpencodeEventName) {
 /** 下拉值归一为灯态（未知/空 → 不响应） */
 function toState(value: unknown): LightState | '' {
   if (typeof value !== 'string' || !value) return ''
-  const hit = LIGHT_STATE_OPTIONS.find((opt) => opt.value === value)
+  const hit = LightStateOptions.find((opt) => opt.value === value)
   return hit ? hit.value : ''
 }
 </script>

@@ -35,13 +35,14 @@ const LIGHTS = [
   { key: 'y', label: '黄灯', color: 'var(--td-warning-color)' }
 ]
 
-/** 模式（协议 o=常亮 s=闪烁；Arduino 端另支持 h=呼吸，页面暂不提供） */
+/** 模式（协议 o=常亮 s=闪烁 h=呼吸） */
 const MODES = [
   { key: 'o', label: '常亮' },
-  { key: 's', label: '闪烁' }
+  { key: 's', label: '闪烁' },
+  { key: 'h', label: '呼吸' }
 ]
 
-/** 6 个指令按钮：灯 × 模式，协议形如 ro / gs */
+/** 9 个指令按钮：灯 × 模式，协议形如 ro / gs / yh */
 const commands = LIGHTS.flatMap((light) =>
   MODES.map((mode) => ({
     code: light.key + mode.key,

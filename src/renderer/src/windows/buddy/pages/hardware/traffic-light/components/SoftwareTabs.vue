@@ -19,6 +19,7 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import type { SoftwareName } from '@common/types/trafficLight'
 import { SOFTWARE_REGISTRY } from '../softwareRegistry'
 import OpencodePanel from './software/OpencodePanel.vue'
 

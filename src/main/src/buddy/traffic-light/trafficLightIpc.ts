@@ -3,15 +3,15 @@
  * 事件入口 applyEvent 不走 IPC（main 内部由事件接入方直接调用）。
  */
 import { ipcMain } from 'electron'
-import {
-  TrafficLightChannels,
-  type PlatformInstallResult,
-  type PlatformStatus,
-  type SoftwareLightConfig,
-  type SoftwareName,
-  type TrafficLightConfig,
-  type TrafficLightSaveResult
-} from '@common/buddy/traffic-light/trafficLightChannels'
+import { TrafficLightChannels } from '@common/buddy/traffic-light/trafficLightChannels'
+import type {
+  PlatformInstallResult,
+  PlatformStatus,
+  SoftwareLightConfig,
+  SoftwareName,
+  TrafficLightConfig,
+  TrafficLightSaveResult
+} from '@common/types/trafficLight'
 import { checkPlatform, installPlatform } from './platformConfig'
 import { getConfig, saveSoftwareConfig, setLastPort } from './TrafficLightService'
 

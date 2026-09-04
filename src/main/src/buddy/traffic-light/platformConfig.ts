@@ -7,11 +7,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { app } from 'electron'
-import type {
-  PlatformInstallResult,
-  PlatformStatus,
-  SoftwareName
-} from '@common/buddy/traffic-light/trafficLightChannels'
+import type { PlatformInstallResult, PlatformStatus, SoftwareName } from '@common/types/trafficLight'
 import { isSoftwareName } from './trafficLightConfig'
 
 /** 接入 adapter：check 判定三态，install 覆盖安装（均不抛错，结果对象返回） */

@@ -2,6 +2,7 @@
 import { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { AiStreamApi } from '@/types/aiStream'
 import { RelayApi } from '@/types/relay'
+import { TrafficLightApi } from '@common/types/trafficLight'
 
 declare global {
   interface Window {

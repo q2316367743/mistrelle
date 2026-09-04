@@ -3,15 +3,15 @@
  * 配置读写与事件映射都在 main（TrafficLightService 单例），渲染层只调用类型化方法。
  */
 import { ipcRenderer } from 'electron'
-import {
-  TrafficLightChannels,
-  type PlatformInstallResult,
-  type PlatformStatus,
-  type SoftwareLightConfig,
-  type SoftwareName,
-  type TrafficLightConfig,
-  type TrafficLightSaveResult
-} from '@common/buddy/traffic-light/trafficLightChannels'
+import { TrafficLightChannels } from '@common/buddy/traffic-light/trafficLightChannels'
+import type {
+  PlatformInstallResult,
+  PlatformStatus,
+  SoftwareLightConfig,
+  SoftwareName,
+  TrafficLightConfig,
+  TrafficLightSaveResult
+} from '@common/types/trafficLight'
 
 export const trafficLightApi = {
   /** 读取整份配置（含 lastPort 与各软件绑定） */
@@ -32,5 +32,3 @@ export const trafficLightApi = {
   installPlatform: (software: SoftwareName): Promise<PlatformInstallResult> =>
     ipcRenderer.invoke(TrafficLightChannels.installPlatform, software)
 }
-
-export type TrafficLightApi = typeof trafficLightApi

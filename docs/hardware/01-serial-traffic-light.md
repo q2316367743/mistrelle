@@ -20,10 +20,10 @@
 | preload | `src/preload/src/modules/serial/serial.ts` | `serialApi` 桥（含 `onData`/`onClosed` 订阅，auth 先例）+ 挂载进 `src/preload/index.ts` |
 | renderer | `src/renderer/src/types/serial.d.ts` | ambient 镜像契约（`SerialApi` 等，修改需与 preload 侧同步） |
 | renderer | `src/renderer/src/vite-env.d.ts` | `Window.preload.serial: SerialApi` |
-| renderer | `src/renderer/src/nested/buddy/App.vue` | 伙伴窗口外壳：左侧功能菜单（`menus` 数组驱动，与主窗口 AppSide 同构）+ common-operator 折叠按钮 + router-view |
-| renderer | `src/renderer/src/nested/buddy/pages/hardware/traffic-light/TrafficLight.vue` | 红绿灯面板（纯内容页）：串口选择 + 连接状态 + 指令按钮 |
-| renderer | `src/renderer/src/nested/buddy/pages/hardware/useSerialLink.ts` | 连接状态模块级单例 composable |
-| renderer | `src/renderer/src/nested/buddy/router/index.ts` | 伙伴窗口独立路由表：`/` → `/hardware/traffic-light` |
+| renderer | `src/renderer/src/windows/buddy/App.vue` | 伙伴窗口外壳：左侧功能菜单（`menus` 数组驱动，与主窗口 AppSide 同构）+ common-operator 折叠按钮 + router-view |
+| renderer | `src/renderer/src/windows/buddy/pages/hardware/traffic-light/TrafficLight.vue` | 红绿灯面板（纯内容页）：串口选择 + 连接状态 + 指令按钮 |
+| renderer | `src/renderer/src/windows/buddy/pages/hardware/useSerialLink.ts` | 连接状态模块级单例 composable |
+| renderer | `src/renderer/src/windows/buddy/router/index.ts` | 伙伴窗口独立路由表：`/` → `/hardware/traffic-light` |
 
 ## 数据结构 / API 契约
 
@@ -42,11 +42,12 @@ IPC 通道（`SerialChannels`）：`serial:list` / `serial:open` / `serial:write
 | 指令 | 含义 | | 指令 | 含义 |
 |------|------|--|------|------|
 | `ro` | 红灯常亮 | | `gs` | 绿灯闪烁 |
-| `rs` | 红灯闪烁 | | `yo` | 黄灯常亮 |
+| `rs` | 红灯闪烁 | | `gh` | 绿灯呼吸 |
+| `rh` | 红灯呼吸 | | `yo` | 黄灯常亮 |
 | `go` | 绿灯常亮 | | `ys` | 黄灯闪烁 |
-| `off` | 全灭 | | | |
+| `yh` | 黄灯呼吸 | | `off` | 全灭 |
 
-灯：r=红(~9) g=绿(~10) y=黄(~11)；模式：o=常亮 h=呼吸 s=闪烁。**页面首期只提供 o/s 两模式 6 个按钮 + 全灭**，h（呼吸）协议已支持、页面暂不提供，后续拓展在 `TrafficLight.vue` 的 `MODES` 数组加一项即可。
+灯：r=红(~9) g=绿(~10) y=黄(~11)；模式：o=常亮 h=呼吸 s=闪烁。页面提供三模式 × 三灯共 9 个指令按钮 + 全灭（手动测试面板 `ManualLightPanel.vue` 的 `LIGHTS × MODES` 自动生成）。
 
 ## 注意事项
 

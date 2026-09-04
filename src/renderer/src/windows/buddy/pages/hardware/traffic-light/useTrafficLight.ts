@@ -2,6 +2,14 @@
  * 红绿灯配置状态（模块级单例）：配置经 IPC 读写（main 持有文件并校验）。
  * 即改即存，保存后以 main 回读为准（失败自动回滚 UI）；串口连接成功后自动记忆 lastPort。
  */
+import type {
+  LightState,
+  OpencodeEventName,
+  PlatformStatus,
+  SoftwareLightConfig,
+  SoftwareName,
+  TrafficLightConfig
+} from '@common/types/trafficLight'
 import { MessageUtil } from '@/utils/modal'
 import { useSerialLink } from '../useSerialLink'
 

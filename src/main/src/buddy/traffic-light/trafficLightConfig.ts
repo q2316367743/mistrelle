@@ -14,7 +14,7 @@ import {
   type SoftwareLightConfig,
   type SoftwareName,
   type TrafficLightConfig
-} from '@common/buddy/traffic-light/trafficLightChannels'
+} from '@common/types/trafficLight'
 
 /** 首次使用时的默认绑定（语义见 docs/hardware/03；tool.execute.after 默认不绑） */
 const DEFAULT_OPENCODE_BINDINGS: Partial<Record<OpencodeEventName, LightState>> = {

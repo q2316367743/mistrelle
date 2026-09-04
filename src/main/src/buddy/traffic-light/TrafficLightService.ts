@@ -11,7 +11,7 @@ import {
   type SoftwareName,
   type TrafficLightConfig,
   type TrafficLightSaveResult
-} from '@common/buddy/traffic-light/trafficLightChannels'
+} from '@common/types/trafficLight'
 import {
   applySoftwareExclusion,
   defaultConfig,

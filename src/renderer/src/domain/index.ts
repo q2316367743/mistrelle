@@ -5,5 +5,5 @@ export * from './HttpProgressEvent'
 export * from './ChatTool'
 export * from './ChatMessage'
 
-export * from './CommonSelect'
+export * from '@common/types/CommonSelect'
 export * from './YesOrNo'
