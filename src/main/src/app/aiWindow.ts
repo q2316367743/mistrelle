@@ -82,9 +82,10 @@ export function createAiWindow(): void {
   const win = new BrowserWindow(windowOptions())
   mainWindow = win
 
-  win.on('ready-to-show', () => {
-    win.show()
-  })
+  // 默认隐藏
+  // win.on('ready-to-show', () => {
+  //   win.show()
+  // })
 
   // 关闭只隐藏：窗口与 webContents 常驻，避免销毁后 IPC / 流式回调打到空引用（闪退根因之一）
   win.on('close', (event) => {

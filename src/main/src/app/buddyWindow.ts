@@ -24,10 +24,10 @@ export function showBuddyWindow(): void {
 function createBuddyWindow(): void {
   const options = {
     ...windowOptions(),
-    width: 960,
-    height: 640,
-    minWidth: 720,
-    minHeight: 480,
+    width: 1200,
+    height: 800,
+    minWidth: 960,
+    minHeight: 600,
     title: '伙伴'
   }
   // 独立 preload：仅注入 inject/serial/trafficLight 域（不与主窗口共用全量 out/preload/index.js）
