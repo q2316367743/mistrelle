@@ -8,7 +8,7 @@
 
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| [AppSide.md](./app/AppSide.md)       | 主应用左侧导航栏：AppSide 外壳 + SideMenu/SideMenuNode 递归菜单组件（SideMenuItem 数据模型、active 推导、展开/收起高度动画）、menuTree 映射与导航约定 |
+| [AppSide.md](./app/AppSide.md)       | 侧边栏菜单（全局组件 `@/components/menu/`）：AppSide 外壳 + SideMenu/SideMenuNode 递归菜单组件，主窗口与伙伴窗口（buddy）共用（SideMenuItem 数据模型、active 推导、展开/收起高度动画、宽度自适应）、menuTree 映射与导航约定 |
 | [01-app-shell.md](./app/01-app-shell.md) | 应用外壳生命周期：托盘常驻（显示 AI 窗口/退出）+ AI 主窗口启动即建（默认显示/关闭只隐藏）、Dock 点击打开主窗口、闪退修复（close 拦截只隐藏 + before-quit 放行真退出 + closed 置空引用）、AI 主窗口模块（createAiWindow/showAiWindow）、index.ts 仅生命周期编排 |
 | [02-main-directory.md](./app/02-main-directory.md) | 主进程目录结构（域优先）：`app/`（aiWindow/tray）+ `server/`（本地事件服务）+ `modules/` 十一业务域（service+ipc 同域同居，与渲染层 modules/ 对称）+ `db/` 基础设施 + 顶层 registerIpc 聚合；import 规则、新增域方法、外部同步点（$ 别名/drizzle/`__dirname` 均不受影响） |
 | [03-preload-directory.md](./app/03-preload-directory.md) | preload 目录结构（域优先，与 main 同构）：`modules/` 十三域（契约 `*Channels.ts` + 桥同域同居，域划分与 main modules/ 一一对应）+ `lib/` 纯 Node 桥 + 顶层 inject.ts 组装点；channels.ts 大杂烩/inject.ts 四合一拆解记录、三份契约同步关系 |

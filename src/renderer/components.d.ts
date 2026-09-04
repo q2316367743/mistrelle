@@ -54,6 +54,8 @@ declare module 'vue' {
     SegmentedControl: typeof import('./src/components/ui/SegmentedControl.vue')['default']
     ShellChatTool: typeof import('./src/components/chat/chat-assistant/tool/ShellChatTool.vue')['default']
     ShinyText: typeof import('./src/components/bits/ShinyText.vue')['default']
+    SideMenu: typeof import('./src/components/menu/SideMenu.vue')['default']
+    SideMenuNode: typeof import('./src/components/menu/SideMenuNode.vue')['default']
     SkillChatTool: typeof import('./src/components/chat/chat-assistant/tool/SkillChatTool.vue')['default']
     StyleCardFace: typeof import('./src/components/design/StyleCardFace.vue')['default']
     StyleSelect: typeof import('./src/components/design/StyleSelect.vue')['default']

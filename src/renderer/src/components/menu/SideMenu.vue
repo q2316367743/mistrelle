@@ -32,7 +32,7 @@ defineProps<{ items: SideMenuItem[] }>()
   flex-direction: column;
   gap: var(--td-comp-margin-xs);
   min-height: 0;
-  width: 204px;
+  width: 100%;
   height: fit-content;
   overflow: hidden;
 }

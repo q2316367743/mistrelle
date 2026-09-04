@@ -71,7 +71,7 @@ import { useAuthStore } from '@/windows/main/store'
 import { MessageUtil } from '@/utils/modal'
 import { openLogin } from '@/components/modals/LoginDialog'
 import ChatList from './components/ChatList.vue'
-import SideMenu, { type SideMenuItem } from './components/SideMenu.vue'
+import SideMenu, { type SideMenuItem } from '@/components/menu/SideMenu.vue'
 import { Constant } from '@/global/Constant'
 
 const router = useRouter()

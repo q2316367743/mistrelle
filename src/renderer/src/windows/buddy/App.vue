@@ -3,16 +3,7 @@
     <div class="window-drag-region"></div>
     <t-aside :width="collapsed ? '0px' : '232px'" class="app-aside">
       <div class="side-container">
-        <button
-          v-for="item in menus"
-          :key="item.to"
-          type="button"
-          :class="['menu-item', { 'is-active': route.path.startsWith(item.to) }]"
-          @click="router.push(item.to)"
-        >
-          <component :is="item.icon" />
-          <span>{{ item.label }}</span>
-        </button>
+        <SideMenu :items="menus" />
       </div>
     </t-aside>
     <t-content class="main-container">
@@ -30,14 +21,13 @@
 <script lang="ts" setup>
 import { TrafficIcon } from 'tdesign-icons-vue-next'
 import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
+import SideMenu, { type SideMenuItem } from '@/components/menu/SideMenu.vue'
 import { useColorMode, useTitlePadding } from '@/hooks'
 import { collapsed, toggleCollapsed } from '@/global/BeanFactory'
 
 // 伙伴窗口独立主题跟随（document theme-mode 初始化在 useColorMode 内）
 useColorMode()
 
-const route = useRoute()
-const router = useRouter()
 // 声明伙伴窗口仅「收起」单按钮形态：窗口内共享组件（PageLayout 等）折叠态标题起点按此预留
 const { l1 } = useTitlePadding({ kind: 'buddy' })
 const operatorLeft = computed(() => `${l1}px`)
@@ -45,7 +35,9 @@ const operatorLeft = computed(() => `${l1}px`)
 /** 侧栏折叠（伙伴窗口本地状态，不与主窗口共享持久化） */
 
 /** 硬件功能菜单（后续拓展往这里加） */
-const menus = [{ label: '红绿灯', icon: TrafficIcon, to: '/hardware/traffic-light' }]
+const menus: SideMenuItem[] = [
+  { label: '红绿灯', icon: TrafficIcon, to: '/hardware/traffic-light', match: 'prefix' }
+]
 </script>
 <style scoped lang="less">
 .main {
@@ -87,56 +79,7 @@ const menus = [{ label: '红绿灯', icon: TrafficIcon, to: '/hardware/traffic-l
 
 .side-container {
   width: 216px;
-  padding: 40px 8px 8px;
-}
-
-.menu-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--td-comp-margin-s);
-  width: 100%;
-  min-height: var(--td-comp-size-m);
-  margin-bottom: 4px;
-  padding: 0 var(--td-comp-paddingLR-s);
-  color: var(--td-text-color-primary);
-  font: var(--td-font-body-medium);
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--td-radius-small);
-  outline: none;
-  cursor: pointer;
-  transition:
-    background var(--fluent-transition-fast),
-    box-shadow var(--fluent-transition-fast);
-
-  &:hover {
-    background: var(--fluent-item-hover);
-  }
-
-  &:focus-visible {
-    box-shadow: var(--fluent-focus-ring);
-  }
-
-  &.is-active {
-    background: var(--fluent-item-selected);
-  }
-
-  &::before {
-    position: absolute;
-    left: 0;
-    width: 3px;
-    height: 18px;
-    content: '';
-    background: transparent;
-    border-radius: var(--td-radius-round);
-    transition: background var(--fluent-transition-fast);
-  }
-
-  &.is-active::before {
-    background: var(--fluent-item-selected-border);
-  }
+  padding: 48px 8px 8px;
 }
 
 .common-operator {

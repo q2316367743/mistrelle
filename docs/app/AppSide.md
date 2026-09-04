@@ -1,14 +1,15 @@
 # AppSide 侧边栏菜单
 
-> 主应用外壳左侧导航栏。原为 `AppSide.vue` 内逐行手写的 `<button>` + `v-if` 子菜单（无展开动画），已重构为**数据驱动、可递归复用**的菜单组件。
+> 主应用外壳左侧导航栏。原为 `AppSide.vue` 内逐行手写的 `<button>` + `v-if` 子菜单（无展开动画），已重构为**数据驱动、可递归复用**的菜单组件；2026-09-04 起组件上移为全局组件（`@/components/menu/`），主窗口 `AppSide` 与伙伴窗口 `buddy/App.vue` 共用同一套侧边栏菜单。
 
 ## 组件职责
 
 | 文件 | 职责 |
 |------|------|
-| `src/pages/app/AppSide.vue` | 外壳：`t-aside`、定位（`.side-container` / `.user-menu`）、定义 `menuTree` 数据、底部用户 `t-dropdown`（`settingOptions`）、`<ChatList />` |
-| `src/pages/app/components/SideMenu.vue` | 递归入口 / 列表外壳：`<nav class="menu-list">` 遍历 `items` 渲染 `SideMenuNode`；**导出 `SideMenuItem` 类型** |
-| `src/pages/app/components/SideMenuNode.vue` | 递归节点：渲染单行 + 子菜单展开/收起动画；承载 `.menu-item` / `.menu-icon` / `.active` / `::before` 左侧 accent 条等样式 |
+| `src/renderer/src/windows/main/pages/app/AppSide.vue` | 主窗口外壳：`t-aside`、定位（`.side-container` / `.user-menu`）、定义 `menuTree` 数据、底部用户 `t-dropdown`（`settingOptions`）、`<ChatList />` |
+| `src/renderer/src/windows/buddy/App.vue` | 伙伴窗口外壳：`t-aside` + `<SideMenu :items="menus" />`（硬件功能菜单，当前仅红绿灯一项） |
+| `src/renderer/src/components/menu/SideMenu.vue` | 递归入口 / 列表外壳：`<nav class="menu-list">` 遍历 `items` 渲染 `SideMenuNode`；**导出 `SideMenuItem` 类型** |
+| `src/renderer/src/components/menu/SideMenuNode.vue` | 递归节点：渲染单行 + 子菜单展开/收起动画；承载 `.menu-item` / `.menu-icon` / `.active` / `::before` 左侧 accent 条等样式 |
 
 ## 数据结构
 
@@ -27,11 +28,17 @@ interface SideMenuItem {
 
 `menuTree` 定义在 `AppSide.vue`，当前映射（见源码）：
 
-- 新建 → `/new`
-- 项目 → `to:'/project/list'`，`activePaths:['/project/']`（保留 `startsWith('/project/')` 高亮语义）
+- 新建（`Constant.name`）→ `/new`
+- 生图 → `/attachment/image`
 - 设计（父，`activePaths:['/design/detail/']`）→ 设计风格 `/design/list`、字体 `/design/font`
+- 闲庭漫步（父）→ AI HOT `/attachment/aihot`、可用性检测工具 `/attachment/test`、模型对比检测 `/attachment/compare`
 - 更多拓展（父）→ Agent `/agent`、技能 `/skill`、工具 `/tool`
-- 闲庭漫步（父）→ AI HOT `/attachment/aihot`
+
+`menus` 定义在 `buddy/App.vue`：红绿灯 → `/hardware/traffic-light`，`match:'prefix'` 覆盖子路径。
+
+## 宽度自适应
+
+组件不锁定宽度：`.menu-list` 为 `width: 100%`、节点按钮 `width: 100%`，由外层容器决定实际宽度。主窗口 `.side-container` 内宽 204px、伙伴窗口 200px，各自撑满。新增使用方只需控制好容器宽度。
 
 ## active 判定（SideMenuNode 内，复用 `route.path` 范式）
 
@@ -72,11 +79,14 @@ function isSelfActive(item: SideMenuItem): boolean {
 
 ## 样式约定
 
-- `.menu-item` 样式为 scoped，按既有代码库惯例每个组件自带一份（`ChatList.vue`、`SideMenuNode.vue`、`AppSide.vue` 的用户按钮各持一份，未抽全局），均复用 Fluent token（`--fluent-item-hover` / `--fluent-item-selected` / `--fluent-item-selected-border` / `--fluent-focus-ring` / `--fluent-transition-fast`）与 tdesign token，未使用裸色值。
+- `.menu-item` 样式为 scoped，按既有代码库惯例每个组件自带一份（`ChatList.vue`、`SideMenuNode.vue`、`AppSide.vue` 的用户按钮各持一份，未抽全局 CSS），均复用 Fluent token（`--fluent-item-hover` / `--fluent-item-selected` / `--fluent-item-selected-border` / `--fluent-focus-ring` / `--fluent-transition-fast`）与 tdesign token，未使用裸色值。
 - 子菜单缩进：`pl-16px`（逐级嵌套自然累加）。
 
 ## 注意事项
 
+- 组件已上移到 `@/components/menu/`（2026-09-04），跨窗口共用；旧位置 `windows/main/pages/app/components/` 勿再引用。
 - `AppSide.vue` 仍 prop-less / emit-less，状态来自全局 `collapsed`（`@/global/BeanFactory`）与 router，`App.vue` 无需改动。
+- 伙伴窗口接入时同步删除了其手写的 `.menu-item` 样式副本；`buddy/App.vue` 不再自带菜单样式，样式以 `SideMenuNode.vue` 为唯一事实源（`ChatList` 与用户按钮的副本按惯例仍各自持有）。
+- `SideMenuNode` 内部使用 auto-import 的 `useRouter`/`useRoute`，两个窗口入口均已启用 auto-import，跨窗口使用无额外配置。
 - 已删除死代码：原 `active = ref('agent')`（恒为 `'agent'`，仅用于恒真的 `v-if` 守卫，已直接渲染 `<ChatList />`）、`note`/`more` 的 `useBoolState` 及其 `noteIconStyle`/`moreIconStyle`/`toggle*`。
-- 新增菜单项只需在 `AppSide.vue` 的 `menuTree` 追加数据，无需改模板。
+- 新增菜单项：主窗口在 `AppSide.vue` 的 `menuTree` 追加数据、伙伴窗口在 `buddy/App.vue` 的 `menus` 追加数据，均无需改模板。
