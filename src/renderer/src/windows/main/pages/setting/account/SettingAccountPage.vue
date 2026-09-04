@@ -1,7 +1,6 @@
 <template>
   <page-layout title="账号设置">
     <div class="account-page">
-      <p class="account-page__lead">管理服务端身份、会员权益与第三方密钥</p>
       <server-account-card />
       <account-action-list v-if="authStore.status === 'signed-in'" />
       <third-party-account-card />
