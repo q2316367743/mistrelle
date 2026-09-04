@@ -23,13 +23,6 @@
     :fullscreen="fullscreen"
     :status="status"
   />
-  <ppt-aside
-    v-else-if="type === 'ppt'"
-    :sandbox="sandbox"
-    :workspace="workspace"
-    :fullscreen="fullscreen"
-    :status="status"
-  />
 </template>
 <script lang="ts" setup>
 import type { ChatMessage, TodoItem } from '@/domain'
@@ -38,7 +31,6 @@ import type { AgentHistoryItem } from '@/components/chat/AgentHistoryList.vue'
 import OfficeAside from './OfficeAside.vue'
 import WritingAside from './writing/WritingAside.vue'
 import DesignAside from './design/DesignAside.vue'
-import PptAside from './ppt/PptAside.vue'
 
 withDefaults(
   defineProps<{

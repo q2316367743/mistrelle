@@ -11,7 +11,6 @@
           @click="goTo(`/chat/${item.id}`)"
         >
           <PaletteIcon v-if="item.type === 'design'" class="menu-icon" />
-          <SlideshowIcon v-else-if="item.type === 'ppt'" class="menu-icon" />
           <EditIcon v-else-if="item.type === 'writing'" class="menu-icon" />
           <WorkIcon v-else class="menu-icon" />
           <t-tag v-if="item.privacy" theme="danger" variant="light" size="small" class="shrink-0">
@@ -27,7 +26,7 @@
 
 <script lang="ts" setup>
 import { VList } from 'virtua/vue'
-import { EditIcon, WorkIcon, PaletteIcon, SlideshowIcon } from 'tdesign-icons-vue-next'
+import { EditIcon, WorkIcon, PaletteIcon } from 'tdesign-icons-vue-next'
 import type { AiChatItem } from '@/entity/ai'
 import { useAiChatStore } from '@/store'
 import { buildChatMainKey, getChatSessionStatus } from '@/modules/chat'

@@ -34,7 +34,7 @@ export interface PersonalizeFileConfig {
   file: string
   title: string
   description: string
-  /** 生效范围：所有主 Agent 对话 / 仅 design + ppt / 仅 writing */
+  /** 生效范围：所有主 Agent 对话 / 仅 design / 仅 writing */
   scope: PersonalizeScope
   /** 编辑器占位示例 */
   placeholder: string
@@ -53,7 +53,7 @@ export const PERSONALIZE_FILE_CONFIG: Array<PersonalizeFileConfig> = [
     field: 'design',
     file: 'DESIGN.md',
     title: '设计偏好',
-    description: '「设计创意 / PPT」类型的对话才会加载',
+    description: '「设计创意」类型的对话才会加载',
     scope: 'design',
     placeholder: '例如：偏好极简风格，主色低饱和，留白充足，少用渐变'
   },

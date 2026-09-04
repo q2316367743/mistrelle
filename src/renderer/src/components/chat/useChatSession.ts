@@ -11,8 +11,6 @@ import {
 } from '@/modules/chat/agent/agentMessages'
 import type { AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
 import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
-import { PPT_NODE_PICK_KEY } from '@/components/chat/ppt/pptNodeBridge'
-import type { PptNodeRef } from '@/components/chat/ppt/pptNodeBridge'
 import { DEFAULT_CONTEXT_WINDOW } from '@/global/Constant'
 import { useSettingAiStore } from '@/store'
 
@@ -62,11 +60,8 @@ export const useChatSession = (options: UseChatSessionOptions) => {
   // 画布侧边栏双击节点 → 注入聊天输入框（CanvasRenderer inject，经本组件转发到 LChatSender.addCanvasNode）
   const senderRef = ref<{
     addCanvasNode: (ref: CanvasNodeRef) => void
-    addPptNode: (ref: PptNodeRef) => void
   }>()
   provide(CANVAS_NODE_PICK_KEY, (ref) => senderRef.value?.addCanvasNode(ref))
-  // PPT 侧边栏选中节点 → 注入聊天输入框（PptSlideViewer inject → LChatSender.addPptNode）
-  provide(PPT_NODE_PICK_KEY, (ref) => senderRef.value?.addPptNode(ref))
 
   watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 

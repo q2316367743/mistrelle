@@ -10,7 +10,6 @@ import { cryptoApi } from '~/lib/crypto'
 import { zipApi } from '~/lib/zip'
 import { shellExecApi } from '~/modules/shell/shellExec'
 import { fontApi } from '~/modules/font/font'
-import { pptApi } from '~/modules/ppt/ppt'
 import { aiStreamApi } from '~/modules/ai-stream/aiStream'
 import { safeStorageApi } from '~/modules/platform/safeStorage'
 import { webUtilsApi } from '~/lib/webUtils'
@@ -33,7 +32,6 @@ const preload = {
   zip: zipApi,
   shellExec: shellExecApi,
   font: fontApi,
-  ppt: pptApi,
   aiStream: aiStreamApi,
   safeStorage: safeStorageApi,
   webUtils: webUtilsApi,

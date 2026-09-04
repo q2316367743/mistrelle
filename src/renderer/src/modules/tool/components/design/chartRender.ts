@@ -1,6 +1,6 @@
 /**
  * ECharts SSR 图表渲染助手（纯转换，与画布 / 工具解耦，可复用）：
- * 把 echarts option 渲染为 SVG 字符串，供 leafer 画布 / PPT / 其他场景以图片形式使用。
+ * 把 echarts option 渲染为 SVG 字符串，供 leafer 画布等场景以图片形式使用。
  * - 采用 echarts SVG 渲染器 + SSR 模式（无 DOM 依赖），支持 echarts 全部内置图表类型
  *   （line/bar/pie/scatter/effectScatter/radar/funnel/gauge/heatmap/tree/treemap/sankey/
  *   graph/map/boxplot/candlestick/parallel/lines/sunburst/themeRiver/pictorialBar/custom 等）

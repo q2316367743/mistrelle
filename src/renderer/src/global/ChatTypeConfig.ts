@@ -17,8 +17,6 @@ import { createNovelTools } from '@/modules/tool/components/novel/novelTools'
 import { buildDesignCanvasPrompt } from '@/modules/canvas'
 import { createCanvasTools } from '@/modules/tool/components/canvas/canvasTools'
 import { createDesignTools } from '@/modules/tool/components/design'
-import { createPptTools } from '@/modules/tool/components/ppt/pptTools'
-import { buildPptPrompt } from '@/modules/ppt'
 import { useSettingDefaultStore } from '@/store/setting/SettingDefaultStore'
 
 export interface ChatTypeConfig {
@@ -93,10 +91,5 @@ export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
         hasImageGenerate: !!useSettingDefaultStore().state.defaultImageModel
       }),
     tools: (ctx) => [...createCanvasTools(ctx), ...createDesignTools(ctx)]
-  },
-  ppt: {
-    label: 'PPT 专家',
-    prompt: () => buildPptPrompt(),
-    tools: (ctx) => createPptTools(ctx)
   }
 }

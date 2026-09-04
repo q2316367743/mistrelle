@@ -1,5 +1,5 @@
 /**
- * TypeBox 工具（canvas / ppt 模块共用）：
+ * TypeBox 工具（canvas 模块）：
  * - toToolProperty：TypeBox schema → 喂给模型的 ToolProperty 参数描述（单一数据源）
  * - collectErrors：Value.Errors → 中文错误信息数组（运行时校验，非法即报错反馈模型自纠）
  */

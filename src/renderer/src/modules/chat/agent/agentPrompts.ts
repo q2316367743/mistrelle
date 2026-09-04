@@ -28,7 +28,7 @@ export interface PromptContext {
   mode: AiChatMode
   chatType: ChatType
   writingScene: WritingScene
-  /** 设计风格提示词（design / ppt 创建后锁定，会话水合时注入；缺省空串不注入） */
+  /** 设计风格提示词（design 创建后锁定，会话水合时注入；缺省空串不注入） */
   designStylePrompt: string
   /** 锚点修改模式的锚点节点 id 集合（空 = 非锚点模式） */
   anchorNodeIds: string[]
@@ -150,8 +150,8 @@ const buildSubAgentGuidancePrompt = (): string =>
  */
 const buildTypePromptBody = (ctx: PromptContext): string => {
   const base = CHAT_TYPE_CONFIG[ctx.chatType].prompt(ctx.typeTools)
-  // 设计风格（design / ppt 创建后锁定）：附加在类型提示词之后
-  if ((ctx.chatType === 'design' || ctx.chatType === 'ppt') && ctx.designStylePrompt) {
+  // 设计风格（design 创建后锁定）：附加在类型提示词之后
+  if (ctx.chatType === 'design' && ctx.designStylePrompt) {
     return [base, ctx.designStylePrompt].filter(Boolean).join('\n\n')
   }
   if (ctx.chatType !== 'writing') return base

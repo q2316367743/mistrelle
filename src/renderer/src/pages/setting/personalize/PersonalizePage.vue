@@ -57,7 +57,7 @@ const drafts = reactive<Record<string, string>>({})
 const originals = reactive<Record<string, string>>({})
 
 const scopeLabel = (scope: PersonalizeScope): string => {
-  if (scope === 'design') return '仅设计创意 / PPT 对话生效'
+  if (scope === 'design') return '仅设计创意对话生效'
   if (scope === 'writing') return '仅写作对话生效'
   return '所有对话生效'
 }

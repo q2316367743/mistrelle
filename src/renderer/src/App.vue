@@ -27,7 +27,6 @@
         </template>
       </t-button>
     </div>
-    <VideoExportOverlay />
   </t-layout>
 </template>
 <script lang="ts" setup>
@@ -37,7 +36,6 @@ import { useTitlePadding } from '@/hooks'
 import { initMemorySystem } from '@/modules/memory'
 import AppSide from '@/pages/app/AppSide.vue'
 import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
-import VideoExportOverlay from '@/components/canvas/VideoExportOverlay.vue'
 import { ChatAddIcon } from 'tdesign-icons-vue-next'
 
 const route = useRoute()

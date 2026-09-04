@@ -1,4 +1,4 @@
-import { WorkIcon, EditIcon, PaletteIcon, SlideshowIcon } from 'tdesign-icons-vue-next'
+import { WorkIcon, EditIcon, PaletteIcon } from 'tdesign-icons-vue-next'
 import type { WritingScene } from '@/modules/chat/writingScene'
 import type { Component } from 'vue'
 /**
@@ -20,9 +20,8 @@ export interface ChatTypeToolContext {
  * - office：日常办公（默认，侧边栏：概览 / 工作空间 / 沙盒 / Agent 面板）
  * - writing：写作（文章创作侧边栏：文章列表 / 编辑器 / md 预览）
  * - design：设计创意（画布侧边栏：t-select 选择 .canvas + leafer 画布渲染）
- * - ppt：PPT 专家（POM XML 侧边栏：t-select 选择版本文件 + SVG 预览渲染）
  */
-export type ChatType = 'office' | 'writing' | 'design' | 'ppt'
+export type ChatType = 'office' | 'writing' | 'design'
 
 /** 聊天类型选项（供新建对话页等 UI 消费，单一数据源） */
 export interface ChatTypeOption {
@@ -44,12 +43,6 @@ export const CHAT_TYPE_OPTIONS: ChatTypeOption[] = [
     label: '设计创意',
     description: 'Leafer 画布，AI 直接绘制设计稿',
     icon: PaletteIcon
-  },
-  {
-    value: 'ppt',
-    label: 'PPT 专家',
-    description: '声明式 XML 生成可编辑 PPTX，实时预览',
-    icon: SlideshowIcon
   },
   { value: 'writing', label: '写作', description: '文档创作，侧边栏实时编辑与预览', icon: EditIcon }
 ]

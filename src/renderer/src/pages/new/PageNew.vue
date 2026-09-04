@@ -14,7 +14,7 @@
           <segmented-control v-model="scene" :options="sceneOptions" class="page-new__scene" />
           <div class="page-new__type-desc">{{ currentScene?.description }}</div>
         </template>
-        <template v-if="type === 'design' || type === 'ppt'">
+        <template v-if="type === 'design'">
           <style-select v-model="designStyleId" class="page-new__style" />
         </template>
       </div>
@@ -78,7 +78,7 @@ const resetPageData = () => {
 }
 
 watch(type, (val) => {
-  if (val !== 'design' && val !== 'ppt') designStyleId.value = ''
+  if (val !== 'design') designStyleId.value = ''
 })
 
 watch(

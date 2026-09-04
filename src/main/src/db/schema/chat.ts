@@ -22,7 +22,7 @@ export const chat = sqliteTable(
     workspace: text('workspace').notNull(),
     projectId: text('project_id'),
     taskId: text('task_id'),
-    /** 聊天类型（office/writing/design/ppt，创建后锁定） */
+    /** 聊天类型（office/writing/design，创建后锁定） */
     type: text('type'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull()

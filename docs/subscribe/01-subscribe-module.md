@@ -1,6 +1,6 @@
 # 订阅模块（subscribe）
 
-> 项目内按「博主 → 视频订阅 → 详情」三级管理的订阅功能：策略解析链接、视频下载、ffmpeg 转音频、FunASR 转写、AI 总结。
+> 项目内按「博主 → 视频订阅 → 详情」三级管理的订阅功能：策略解析链接、视频下载、FunASR 转写、AI 总结。
 
 ## 目录结构
 
@@ -85,7 +85,6 @@ interface SubscribeStrategy {
 流水线（幂等、可独立触发、失败置 `error`）：
 
 - `subscribeDownload`：`resolveResource` 取直链 → 下载 video.mp4；仅音频源直接存 audio.mp3；视频源无音频直链时下载后立即提取音频。
-- `subscribeExtractAudio`：`inject.ffmpeg.run([... -vn -acodec libmp3lame ...])`。
 - `subscribeTranscribe`：FunASR，透传博主识别参数。
 - `subscribeSummarize`：AI 总结。
 - `subscribeProcessItem`：一键串起以上四步。

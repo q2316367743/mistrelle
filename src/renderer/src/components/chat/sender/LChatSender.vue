@@ -164,7 +164,6 @@ import {
 import { serializeEditorContent } from './chatSenderContent'
 import type { ChatSenderInitial } from './chatSenderInitial'
 import type { CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
-import type { PptNodeRef } from '@/components/chat/ppt/pptNodeBridge'
 import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
 import { AiChatMode } from '@/entity'
 import {
@@ -235,13 +234,11 @@ const mentionState = ref<{
   files: ChatFileRef[]
   tools: ToolItem[]
   canvas: CanvasNodeRef[]
-  ppt: PptNodeRef[]
 }>({
   skills: [],
   files: [],
   tools: [],
-  canvas: [],
-  ppt: []
+  canvas: []
 })
 
 type MentionState = {
@@ -249,7 +246,6 @@ type MentionState = {
   files: ChatFileRef[]
   tools: ToolItem[]
   canvas: CanvasNodeRef[]
-  ppt: PptNodeRef[]
 }
 
 const selectAgent = (res: string) => {
@@ -261,7 +257,6 @@ const extractMentions = (editor: Editor): MentionState => {
   const resultFiles: ChatFileRef[] = []
   const resultTools: ToolItem[] = []
   const resultCanvas: CanvasNodeRef[] = []
-  const resultPpt: PptNodeRef[] = []
   editor.state.doc.descendants((node: PMNode) => {
     if (node.type.name === 'skillMention') {
       resultSkills.push({ path: node.attrs.id, name: node.attrs.label })
@@ -280,21 +275,13 @@ const extractMentions = (editor: Editor): MentionState => {
         nodeId: String(node.attrs.nodeId ?? ''),
         label: String(node.attrs.label ?? '') || undefined
       })
-    } else if (node.type.name === 'pptMention') {
-      resultPpt.push({
-        pptId: String(node.attrs.pptId ?? ''),
-        slide: Number(node.attrs.slide ?? 0),
-        nodeId: String(node.attrs.nodeId ?? ''),
-        label: String(node.attrs.label ?? '') || undefined
-      })
     }
   })
   return {
     skills: resultSkills,
     files: resultFiles,
     tools: resultTools,
-    canvas: resultCanvas,
-    ppt: resultPpt
+    canvas: resultCanvas
   }
 }
 
@@ -391,31 +378,6 @@ const CanvasMention = TiptapNode.create({
   ]
 })
 
-/** PPT 节点引用标签：侧边栏选中节点 + 「引用此节点」按钮程序化插入（无触发字符，不挂 suggestion 插件） */
-const PptMention = TiptapNode.create({
-  name: 'pptMention',
-  group: 'inline',
-  inline: true,
-  atom: true,
-  selectable: false,
-  addAttributes: () => ({
-    pptId: { default: '' },
-    slide: { default: 1 },
-    nodeId: { default: '' },
-    label: { default: '' }
-  }),
-  parseHTML: () => [{ tag: 'span[data-type="ppt"]' }],
-  renderHTML: ({ node }) => [
-    'span',
-    mergeAttributes({
-      class: 'l-chat-sender__inline-tag t-tag t-tag--warning t-tag--light t-tag--medium',
-      'data-type': 'ppt',
-      contenteditable: 'false'
-    }),
-    `PPT(${node.attrs.pptId})节点(${node.attrs.label || node.attrs.nodeId})`
-  ]
-})
-
 // 直接读取 suggestion 插件内部的 active 状态，作为回车是否让位给选中的权威判断，
 // 避免依赖易失同步的外部标志（曾导致弹层可见时回车误触发发送）。
 const isSuggestionActive = (ed?: Editor | null): boolean => {
@@ -438,8 +400,7 @@ const editor = useEditor({
     SkillMention,
     FileMention,
     ToolMention,
-    CanvasMention,
-    PptMention
+    CanvasMention
   ],
   content: props.initial.input || '',
   editable: !props.loading,
@@ -623,7 +584,7 @@ const handleClearMode = () => {
 const clear = () => {
   editor.value?.commands.clearContent(true)
   inputValue.value = ''
-  mentionState.value = { skills: [], files: [], tools: [], canvas: [], ppt: [] }
+  mentionState.value = { skills: [], files: [], tools: [], canvas: [] }
 }
 
 /** 画布侧边栏双击节点后注入：在输入框插入 canvasMention 标签（LChatEngine 经 DI 桥接调用） */
@@ -635,21 +596,6 @@ const addCanvasNode = (ref: CanvasNodeRef) => {
       {
         type: 'canvasMention',
         attrs: { version: ref.version, nodeId: ref.nodeId, label: ref.label ?? '' }
-      },
-      { type: 'text', text: ' ' }
-    ])
-    .run()
-}
-
-/** PPT 侧边栏选中节点 + 「引用此节点」后注入：插入 pptMention 标签（LChatEngine 经 DI 桥接调用） */
-const addPptNode = (ref: PptNodeRef) => {
-  editor.value
-    ?.chain()
-    .focus()
-    .insertContent([
-      {
-        type: 'pptMention',
-        attrs: { pptId: ref.pptId, slide: ref.slide, nodeId: ref.nodeId, label: ref.label ?? '' }
       },
       { type: 'text', text: ' ' }
     ])
@@ -727,7 +673,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => editor.value?.destroy())
 
-defineExpose({ addCanvasNode, addPptNode })
+defineExpose({ addCanvasNode })
 </script>
 <style scoped lang="less">
 @import 'LChatSender.less';

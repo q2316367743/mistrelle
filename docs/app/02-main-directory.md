@@ -21,9 +21,7 @@ src/main/
     │   ├── browser/            # runner.ts + pageScripts.ts + keyCodes.ts + browserToolIpc.ts（browser_fetch/browser_actions）
     │   ├── font/               # index.ts（字体枚举/资源库）+ parser.ts（字体名表解析）+ fontIpc.ts
     │   ├── sharp/              # image.ts（metadata/crop/去底/主色）+ sharpIpc.ts
-    │   ├── ppt/                # pptxExport.ts（DOM 快照 → PPTX）+ pngWriter.ts + pptIpc.ts
     │   ├── shell/              # shellExec.ts（cliRun 子进程）+ shellExecIpc.ts
-    │   ├── ffmpeg/             # ffmpegBinary.ts（随包路径解析）+ ffmpegIpc.ts
     │   ├── template/           # templateRender.ts（EJS 渲染服务）+ templateIpc.ts
     │   └── platform/           # Electron/OS 基础能力：electronIpc.ts（shell/dialog/clipboard/os/display/notification）+ fsIpc.ts + safeStorageIpc.ts
     └── db/                     # 数据基础设施（结构未动）

@@ -80,6 +80,5 @@
 - 分类 slug 与中文展示统一走 `DESIGN_STYLE_CATEGORY_OPTIONS`；旧数据 `poster` / `移动端` / `网页端` 经 `normalizeDesignStyleCategory` 映射到新分组
 - 列表卡片预览色板依赖索引项 `colorPalette` 字段 —— 新增展示字段时需同步保证 `put` 双写两处一致
 - **tokens 不在索引项中**（卡片无需预览细节），只写在单条文件与预设常量；旧数据缺 tokens 时 `store.getDetail` 用 `buildAiDesignStyleTokens` 默认值兜底补齐，agent 工具 create/update 部分传入 tokens 时同样走该函数合并
-- 提示词注入（`DesignStylePrompt.ts`）固定输出「细节规范」段落，**不随 `withVisualPrompt` 跳过**——PPT 不接生图也能拿到间距 / 圆角 / 边框 / 阴影 / 动效细节
 - 编辑系统预设的 UI 入口已隐藏，store 层也有 isSystem 拒绝兜底，改保护逻辑时两层需同步
 - 目录结构与 `src/entity/index.ts` 头部注释保持一致；`LocalNameEnum` 无设计风格键（本模块走 fs 文件模式，非 DB 文档模式）

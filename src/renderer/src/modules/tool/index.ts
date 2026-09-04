@@ -2,8 +2,7 @@ import { CommonSelect, ToolFunction, ToolRiskLevel } from '@/domain'
 import { dateTools } from '@/modules/tool/components/date'
 import {
   injectClipboardTools,
-  injectBrowserTools,
-  injectFfmpegTools
+  injectBrowserTools
 } from '@/modules/tool/components/inject'
 import { shellTools } from './components/native/shell'
 import { fileTools } from './components/native/file'
@@ -62,12 +61,6 @@ export const toolGroups: Array<ToolGroup> = [
     group: '剪贴板',
     description: '读取或写入系统剪贴板内容',
     tools: injectClipboardTools
-  },
-  {
-    id: 'media',
-    group: '媒体工具',
-    description: '通过 ffmpeg 处理音视频文件：格式转换、剪辑拼接、提取音频、抽帧等',
-    tools: [...injectFfmpegTools]
   },
   {
     id: 'browser',
@@ -132,7 +125,6 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(dateTools, 'name'),
   ...objectify(injectClipboardTools, 'name'),
   ...objectify(injectBrowserTools, 'name'),
-  ...objectify(injectFfmpegTools, 'name'),
   ...objectify(nativeBrowserAutomationTools, 'name'),
   ...objectify(egoBrowserTools, 'name'),
   ...objectify([fileWriteXlsxTool], 'name'),

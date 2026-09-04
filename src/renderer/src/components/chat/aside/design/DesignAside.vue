@@ -46,16 +46,6 @@
             </template>
             下载图片
           </t-dropdown-item>
-          <t-dropdown-item
-            v-if="hasAnimation"
-            value="video"
-            :disabled="!store.current.value || busy"
-          >
-            <template #prefix-icon>
-              <video-icon />
-            </template>
-            导出为视频
-          </t-dropdown-item>
         </t-dropdown-menu>
       </t-dropdown>
     </div>
@@ -85,22 +75,19 @@ import {
   DownloadIcon,
   FolderOpenIcon,
   MoreIcon,
-  RefreshIcon,
-  VideoIcon
+  RefreshIcon
 } from 'tdesign-icons-vue-next'
 import type { DropdownProps } from 'tdesign-vue-next'
 import {
   buildCanvasFileName,
   buildCanvasOutputsDir,
   exportCanvasPng,
-  getCanvasStore,
-  maxAnimationTime
+  getCanvasStore
 } from '@/modules/canvas'
 import type { ChatStatus } from '@/modules/chat'
 import CanvasRenderer from './CanvasRenderer.vue'
 import CanvasElementTree from './CanvasElementTree.vue'
 import ElementPropertyPanel from './ElementPropertyPanel.vue'
-import { openVideoExportDialog } from './VideoExportDialog'
 
 const props = withDefaults(
   defineProps<{
@@ -140,12 +127,6 @@ const canvasOptions = computed(() =>
     value: file.version
   }))
 )
-
-/** 当前画布是否存在动画（决定是否显示「导出为视频」入口） */
-const hasAnimation = computed(() => {
-  const doc = store.value.current.value
-  return doc ? maxAnimationTime(doc) > 0 : false
-})
 
 const emptyText = '请先让 AI 创建画布'
 
@@ -236,7 +217,6 @@ const handleDownload = async () => {
 const handleAction: DropdownProps['onClick'] = (data) => {
   if (data.value === 'copy') void handleCopy()
   else if (data.value === 'download') void handleDownload()
-  else if (data.value === 'video') openVideoExportDialog({ sandbox: props.sandbox ?? '' })
   else if (data.value === 'folder') {
     if (selected.value) {
       window.preload.inject.shell.showItemInFolder(

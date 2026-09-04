@@ -4,7 +4,6 @@ import type {
   AIMessageContent,
   CanvasContent,
   ChatMessage,
-  PptContent,
   SkillContent,
   TextContent,
   ToolCallContent,
@@ -124,9 +123,7 @@ const buildPinnedContext = (msg: ChatMessage): string => {
   const skills = msg.content.filter((c): c is SkillContent => c.type === 'skill')
   const tools = msg.content.filter((c): c is ToolContent => c.type === 'tool')
   const canvases = msg.content.filter((c): c is CanvasContent => c.type === 'canvas')
-  const ppts = msg.content.filter((c): c is PptContent => c.type === 'ppt')
-  if (skills.length === 0 && tools.length === 0 && canvases.length === 0 && ppts.length === 0)
-    return ''
+  if (skills.length === 0 && tools.length === 0 && canvases.length === 0) return ''
 
   const parts: string[] = []
   if (skills.length > 0) {
@@ -154,15 +151,6 @@ const buildPinnedContext = (msg: ChatMessage): string => {
       )
       .join('\n')
     parts.push(`用户在本条消息中指定了以下画布节点，请先打开画布定位节点，再按需修改：\n${list}`)
-  }
-  if (ppts.length > 0) {
-    const list = ppts
-      .map(
-        (p) =>
-          `- PPT 节点：PPT「${p.data.pptId}」第 ${p.data.slide} 页中的节点 ${p.data.nodeId}（文本 ${p.data.label ?? '(非文本节点)'}）：请先用 ppt_get_nodes("${p.data.pptId}", ${p.data.slide}) 读取该页元素树，再用 ppt_batch_edit 的 update 操作精准编辑该节点（slideId=${p.data.slide}，id=${p.data.nodeId}），只改该节点、不要整页重建`
-      )
-      .join('\n')
-    parts.push(`用户在本条消息中指定了以下 PPT 节点，请定位后只修改该节点、不要整页重建：\n${list}`)
   }
   return parts.join('\n\n')
 }

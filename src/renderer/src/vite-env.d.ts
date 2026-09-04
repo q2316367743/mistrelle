@@ -31,7 +31,6 @@ declare global {
       path: PathApi
       zip: ZipApi
       font: FontApi
-      ppt: PptApi
       aiStream: AiStreamApi
       safeStorage: SafeStorageApi
       webUtils: WebUtilsApi

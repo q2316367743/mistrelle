@@ -5,9 +5,7 @@ import { registerShellIpc, registerDialogIpc, registerClipboardIpc, registerOsIp
 import { registerFsIpc } from './modules/platform/fsIpc'
 import { registerShellExecIpc } from './modules/shell/shellExecIpc'
 import { registerFontIpc } from './modules/font/fontIpc'
-import { registerFfmpegIpc } from './modules/ffmpeg/ffmpegIpc'
 import { registerSharpIpc } from './modules/sharp/sharpIpc'
-import { registerPptIpc } from './modules/ppt/pptIpc'
 import { registerBrowserToolIpc } from './modules/browser/browserToolIpc'
 import { registerSafeStorageIpc } from './modules/platform/safeStorageIpc'
 import { registerDbIpc } from './db/dbIpc'
@@ -29,9 +27,7 @@ export function registerIpc(): void {
   registerFsIpc()
   registerShellExecIpc()
   registerFontIpc()
-  registerFfmpegIpc()
   registerSharpIpc()
-  registerPptIpc()
   registerBrowserToolIpc()
   registerSafeStorageIpc()
   registerDbIpc()

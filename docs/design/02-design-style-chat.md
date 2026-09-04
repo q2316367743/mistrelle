@@ -20,7 +20,7 @@ design 类型聊天在「新增页」可选绑定一个设计风格（可选，�
 
 ## 提示词格式（`buildDesignStylePrompt`）
 
-位于 `src/modules/design/service/DesignStylePrompt.ts`，按以下结构输出，空字段跳过。`withVisualPrompt: false`（PPT）时跳过「正向提示词 / 反向排除词」两段；**「细节规范」段始终输出**（PPT 不接生图也能拿到间距 / 圆角 / 边框 / 阴影 / 动效细节）：
+位于 `src/modules/design/service/DesignStylePrompt.ts`，按以下结构输出，空字段跳过：
 
 ```text
 ## 设计风格

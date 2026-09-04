@@ -3,7 +3,6 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import type {
   AttachmentContent,
   CanvasContent,
-  PptContent,
   SkillContent,
   ToolContent,
   UserMessageContent
@@ -88,22 +87,6 @@ export const serializeEditorContent = (editor: Editor): UserMessageContent[] => 
     trimNextLeadingSpace = true
   }
 
-  const pushPpt = (node: PMNode) => {
-    flushText()
-    content.push({
-      type: 'ppt',
-      data: {
-        pptId: String(node.attrs.pptId ?? ''),
-        slide: Number(node.attrs.slide ?? 1),
-        nodeId: String(node.attrs.nodeId ?? ''),
-        label: String(node.attrs.label ?? '') || undefined
-      },
-      status: 'complete',
-      time: Date.now()
-    } satisfies PptContent)
-    trimNextLeadingSpace = true
-  }
-
   const serializeNode = (node: PMNode) => {
     if (node.type.name === 'text') {
       appendText(node.text ?? '')
@@ -127,10 +110,6 @@ export const serializeEditorContent = (editor: Editor): UserMessageContent[] => 
     }
     if (node.type.name === 'canvasMention') {
       pushCanvas(node)
-      return
-    }
-    if (node.type.name === 'pptMention') {
-      pushPpt(node)
       return
     }
     node.forEach(serializeNode)

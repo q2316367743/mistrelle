@@ -16,7 +16,7 @@ const DESIGN_CANVAS_BEFORE_VISUAL = [
   '4. 构建后不要自动导出；仅当用户要求导出查看效果时，才用 canvas_export 导出 PNG（返回的 path 可被支持读图的模型引用查看）；导出后缩到约 15% 看主标题是否可读',
   '5. 发现问题合并进一次 batch_edit 修正，每区块最多修正 2 轮，需要核对效果时按用户要求导出复核后收敛',
   '6. 设计完成用 canvas_save 兜底（每次变更已自动落盘）',
-  '7. 需要动效时给节点加 animation 字段（渐入 / 呼吸 / 打字机，预览自动播放）；视频导出由用户在画布面板操作，不要主动导出',
+  '7. 需要动效时给节点加 animation 字段（渐入 / 呼吸 / 打字机，预览自动播放）',
   '',
   '### 图层模型速查',
   '- 节点类型：group（容器，可设背景/圆角/阴影，可选 layout 自动布局）、rect、ellipse、line、polygon、star、path、text、image、svg',

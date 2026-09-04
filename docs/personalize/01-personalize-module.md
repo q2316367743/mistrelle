@@ -7,7 +7,7 @@
 | 文件 | 标题 | 生效范围（scope） |
 |------|------|-------------------|
 | `soul/IDENTITY.md` | 身份与风格 | 所有主 Agent 对话 |
-| `soul/DESIGN.md` | 设计偏好 | 仅 design / ppt 类型 |
+| `soul/DESIGN.md` | 设计偏好 | 仅 design 类型 |
 | `soul/WRITE.md` | 写作偏好 | 仅 writing 类型 |
 | `soul/AGENT.md` | 行为准则 | 所有主 Agent 对话 |
 | `soul/USER.md` | 用户画像 | 所有主 Agent 对话 |
@@ -17,7 +17,7 @@
 ## 实现要点
 
 - **存储**：真实 `.md` 文件（与 MEMORY.md 一致），用户可在应用外直接编辑；设置页只是其中一个编辑入口，清空内容写入空文件（对应段落自动跳过注入）。
-- **注入**：`AgentChat.buildRequestMessages` 稳定前缀，位于 agent 人设之后——用户手编内容极少变化，不破坏前缀缓存；按聊天类型过滤 scope（`ChatType = 'office' | 'writing' | 'design' | 'ppt'`）。子 Agent 不注入（与记忆一致，任务作用域隔离）。
+- **注入**：`AgentChat.buildRequestMessages` 稳定前缀，位于 agent 人设之后——用户手编内容极少变化，不破坏前缀缓存；按聊天类型过滤 scope（`ChatType = 'office' | 'writing' | 'design'`）。子 Agent 不注入（与记忆一致，任务作用域隔离）。
 - **缓存**：`buildPersonalizePrompt` 以五个文件的 mtime 签名缓存已解析段落，agent loop 每轮调用无额外读盘；写入操作自动失效缓存。
 - 空文件 / 文件不存在 → 跳过该段；五段全空 → 不产生任何提示词。
 

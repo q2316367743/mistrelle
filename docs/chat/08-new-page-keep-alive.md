@@ -34,7 +34,7 @@
 |------|--------|------|
 | `type` | `'office'` | 聊天类型 |
 | `scene` | `'article'` | 写作场景 |
-| `designStyleId` | `''` | 设计风格 id（`watch(type)` 亦会在非 design/ppt 时自动清空） |
+| `designStyleId` | `''` | 设计风格 id（`watch(type)` 亦会在非 design 时自动清空） |
 | `model` | `defaultAssistantModel` | 默认模型（取 `useSettingDefaultStore().state.defaultAssistantModel`） |
 
 - 输入框内容：`LChatSender` 发送成功后内部自行 `clear()`（清空编辑器与 mention 状态），无需页面侧处理。

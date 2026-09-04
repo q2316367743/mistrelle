@@ -11,7 +11,7 @@ export * from './ai'
 |- soul                      # 记忆系统（@see modules/memory）+ 个性化设定（@see modules/personalize）
   |- MEMORY.md               # 长期记忆：LLM 每日合并短期记忆生成，≤ 4000 字
   |- IDENTITY.md             # 个性化：身份与风格（所有对话）
-  |- DESIGN.md               # 个性化：设计偏好（design / ppt 对话）
+  |- DESIGN.md               # 个性化：设计偏好（design 对话）
   |- WRITE.md                # 个性化：写作偏好（writing 对话）
   |- AGENT.md                # 个性化：行为准则（所有对话）
   |- USER.md                 # 个性化：用户画像（所有对话）

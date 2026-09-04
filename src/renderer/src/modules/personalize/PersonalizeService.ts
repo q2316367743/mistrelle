@@ -40,13 +40,13 @@ let sectionsCache: { signature: string; sections: PersonalizeSection[] } | undef
 
 const matchScope = (scope: PersonalizeScope, chatType: ChatType): boolean => {
   if (scope === 'all') return true
-  if (scope === 'design') return chatType === 'design' || chatType === 'ppt'
+  if (scope === 'design') return chatType === 'design'
   return chatType === 'writing'
 }
 
 /**
  * 组装注入主 Agent 稳定 system 前缀的个性化设定段：
- * 五个 soul/*.md 按各自 scope 过滤（IDENTITY/AGENT/USER 全类型，DESIGN 仅 design/ppt，WRITE 仅 writing）。
+ * 五个 soul/*.md 按各自 scope 过滤（IDENTITY/AGENT/USER 全类型，DESIGN 仅 design，WRITE 仅 writing）。
  * 按全部文件 mtime 签名缓存（用户手编内容极少变化，不破坏前缀缓存）；全部为空时返回空串。
  */
 export const buildPersonalizePrompt = async (chatType: ChatType): Promise<string> => {

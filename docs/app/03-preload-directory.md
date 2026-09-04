@@ -18,8 +18,6 @@ src/preload/
     │   ├── ai-stream/       # aiStream.ts（axios 直连 AI 流式，无 IPC 无契约，SSE 分帧归一在渲染层 modules/ai）
     │   ├── font/            # fontChannels.ts + font.ts（getAssetsDir/getFontCachePath 纯路径常量留 preload）
     │   ├── sharp/           # sharpChannels.ts + sharp.ts
-    │   ├── ffmpeg/          # ffmpegChannels.ts + ffmpeg.ts（kill/quit 竞态安全逻辑在此）
-    │   ├── ppt/             # pptChannels.ts（SlideNode/PptJsonDoc/导出快照类型）+ ppt.ts
     │   ├── browser/         # browserChannels.ts + browser.ts（runBrowser）
     │   ├── shell/           # shellExecChannels.ts + shellExec.ts
     │   └── platform/        # Electron/OS 能力域（与 main platform 域对称）：

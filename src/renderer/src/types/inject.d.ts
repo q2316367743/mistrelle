@@ -203,30 +203,6 @@ interface InjectNotification {
   show(body: string, featureName?: string): void
 }
 
-// ── ffmpeg ─────────────────────────────────────────────────
-
-interface InjectFfmpegProgress {
-  bitrate?: string
-  fps?: number
-  frame?: number
-  percent?: number
-  q?: number | string
-  size?: string
-  speed?: string
-  time?: string
-}
-
-interface InjectFfmpegPromise extends Promise<void> {
-  /** 强制终止进程 */
-  kill(): void
-  /** 优雅退出（向 stdin 发送 q） */
-  quit(): void
-}
-
-interface InjectFfmpeg {
-  run(args: string[], onProgress?: (progress: InjectFfmpegProgress) => void): InjectFfmpegPromise
-}
-
 // ── sharp ──────────────────────────────────────────────────
 
 interface InjectSharpRegion {
@@ -358,6 +334,5 @@ interface InjectApi {
    */
   runBrowser(payload: InjectRunBrowserPayload): Promise<unknown>
 
-  ffmpeg: InjectFfmpeg
   sharp: InjectSharp
 }

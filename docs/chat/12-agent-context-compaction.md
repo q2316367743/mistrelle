@@ -56,7 +56,6 @@ export interface ContextWalkState { canvasVersion?: number }
 | `file_write` / `file_write_xlsx` | writeResource `file:${path}` |
 | `canvas_open` / `canvas_read` | `canvas:${version}`；open 另经 track 更新 `state.canvasVersion` |
 | `canvas_get_nodes` / `canvas_batch_edit` | `canvas:${state.canvasVersion ?? '?'}`（无 version 参数，靠 open 的 track 定位） |
-| `ppt_get_nodes` / `ppt_batch_edit` | `ppt:${pptId}:${slideId}` |
 | `article_read` | `article:${id}` |
 | `novel_read` / `novel_read_setting` | `novel:${id}` / `novel-setting:${id}` |
 | `novel_character_upsert` | writeResource `novel-setting:${id}` |

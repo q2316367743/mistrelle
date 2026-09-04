@@ -39,7 +39,7 @@ if (hasSingleInstanceLock) {
       optimizer.watchWindowShortcuts(window)
     })
 
-    // 注册全部业务 IPC（shell/dialog/clipboard/os/display/notification/fs/net/shellExec/font/db/ffmpeg/sharp）
+    // 注册全部业务 IPC（shell/dialog/clipboard/os/display/notification/fs/net/shellExec/font/db/sharp）
     registerIpc()
 
     // 服务端账号初始化（读本地凭证校验登录态，非阻塞，失败不阻塞启动）

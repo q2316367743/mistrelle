@@ -45,9 +45,6 @@ declare module 'vue' {
     NovelSettingTree: typeof import('./src/components/chat/aside/writing/novelShort/components/NovelSettingTree.vue')['default']
     OfficeAside: typeof import('./src/components/chat/aside/OfficeAside.vue')['default']
     PageLayout: typeof import('./src/components/PageLayout/PageLayout.vue')['default']
-    PptAside: typeof import('./src/components/chat/aside/ppt/PptAside.vue')['default']
-    PptRenderer: typeof import('./src/components/chat/aside/ppt/PptRenderer.vue')['default']
-    PptSlideViewer: typeof import('./src/components/chat/aside/ppt/PptSlideViewer.vue')['default']
     RChatActionbar: typeof import('./src/components/chat/RChatActionbar.vue')['default']
     RChatList: typeof import('./src/components/chat/RChatList.vue')['default']
     RChatThink: typeof import('./src/components/chat/chat-assistant/RChatThink.vue')['default']
@@ -122,8 +119,6 @@ declare module 'vue' {
     TTextarea: typeof import('tdesign-vue-next')['Textarea']
     TTooltip: typeof import('tdesign-vue-next')['Tooltip']
     TTree: typeof import('tdesign-vue-next')['Tree']
-    VideoExportContent: typeof import('./src/components/chat/aside/design/VideoExportContent.vue')['default']
-    VideoExportOverlay: typeof import('./src/components/canvas/VideoExportOverlay.vue')['default']
     WritingAside: typeof import('./src/components/chat/aside/writing/WritingAside.vue')['default']
   }
 }

@@ -12,17 +12,9 @@ files:
   - '!{.claude/**,.githooks/**,.github/**}'
   - '!docs/**'
   - '!{.claude/**,.githooks/**,.github/**,.zcode/**}'
-  - '!docs/**'
-  # ffmpeg 二进制经下方 extraResources 按平台注入（asar 之外），勿再进 asar 双份
-  - '!resources/ffmpeg/**'
 asarUnpack:
   - resources/**
   - '**/node_modules/sharp/**/*'
-# 每个平台的安装包只带自己的 ffmpeg，落在 process.resourcesPath/ffmpeg/（可直接 spawn）
-# 打包前须先跑 node scripts/fetch-ffmpeg.mjs，否则源目录缺失构建报错
-extraResources:
-  - from: 'resources/ffmpeg/${os}-${arch}'
-    to: ffmpeg
 win:
   executableName: mistrelle
   artifactName: ${name}-${version}-${os}-${arch}.${ext}

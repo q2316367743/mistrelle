@@ -7,7 +7,7 @@
 - `registerToolPolicy(policy)`：按 `policy.name`（工具全名）注册策略
 - `resolveToolPolicy(tool, args, ctx)`：裁决本次工具调用权限（allow / ask / deny）
 
-多类工具在各自模块**顶层**调用 `registerToolPolicy` 完成策略注册（article / novel / ppt /
+多类工具在各自模块**顶层**调用 `registerToolPolicy` 完成策略注册（article / novel /
 canvas / design 系工具）。这要求 `toolPolicy.ts` 的模块级 `toolPolicies` 常量在任何注册
 调用发生前必须已完成初始化。
 
@@ -22,7 +22,7 @@ canvas / design 系工具）。这要求 `toolPolicy.ts` 的模块级 `toolPolic
 原循环链（两条均把 chat / store 全量图拉进 `toolPolicy` 的 import 闭包）：
 
 ```
-toolPolicy ─► SettingSecureStore ─► @/entity ─► AiChat ─► chat ─► AgentChat ─► ChatTypeConfig ─► articleTools / novelTools / pptTools / canvasTools / design ─► toolPolicy(未初始化)
+toolPolicy ─► SettingSecureStore ─► @/entity ─► AiChat ─► chat ─► AgentChat ─► ChatTypeConfig ─► articleTools / novelTools / canvasTools / design ─► toolPolicy(未初始化)
 toolPolicy ─► httpDownloadPolicy ─► @/modules/tool/index ─► components/agent ─► @/store ─► ... 同上
 ```
 

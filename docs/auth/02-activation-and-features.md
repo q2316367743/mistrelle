@@ -41,7 +41,7 @@
 ### 语义（用户拍板）
 
 - **可见但锁定**（UI 面）：资源库字体、自建风格照常显示，操作入口 disabled + 「会员」tag 标注，操作被拦时提示「自定义 xx 为会员功能，可在 设置 → 账户 开通」。与 skill 启用/禁用「入口保留 + 状态标注」先例一致。
-- **自定义风格「不可用于新发起的使用」，内置预设免费可用**：内置预设（`DESIGN_STYLE_PRESETS`，isSystem）免费档照常可用于新建 design/ppt 会话与文生图；自建 / 在线下载风格（isSystem=false）不可新增、不可编辑、不可在新会话下拉中选择（t-option disabled + 选中即清空），旧作品只读展示。
+- **自定义风格「不可用于新发起的使用」，内置预设免费可用**：内置预设（`DESIGN_STYLE_PRESETS`，isSystem）免费档照常可用于新建 design 会话与文生图；自建 / 在线下载风格（isSystem=false）不可新增、不可编辑、不可在新会话下拉中选择（t-option disabled + 选中即清空），旧作品只读展示。
 - **AI 面直接过滤/拒绝**：模型不可发现不可用不可写（`font_list` 过滤 library、`list_design_styles` 过滤为非内置预设、create/update 返回明确 error、内置 Agent「设计风格创建助手」整组隐藏）。
 - **渲染不拦**：已有画布/文档中已用到的资源库字体（fontRegistry.ensureFontsForDoc）、已有会话引用的自建风格（get_design_style、ChatSessionManager.getDetail）与会员期内用「设计风格创建助手」开过的聊天（getById 保留解析）**继续可读可渲染**，防旧作品损坏与进行中会话 brick；数据保留磁盘，升级后自动恢复全部能力。
 - `put`/`remove`（DesignStyleStore）非会员兜底拒绝（UI 入口已拦，防 AI 工具旁路），本地磁盘数据永不删除。
@@ -63,7 +63,7 @@
 | `store/design/DesignStyleStore.ts` | `put`/`remove` 兜底拒绝（返回 undefined / 直接 return）；`all` 不过滤（可见）；`getDetail` 不拦（防 brick） |
 | `pages/design/list/index.vue` | 「新建风格」disabled + 会员 tag；`handleEdit`/`handleDelete` 拦截提示（查看本地详情不拦）；**在线 Tab** 可见但锁定（会员 badge + 空态提示），不拉远端列表 |
 | `pages/design/detail`（`/design/online/:id`） | 在线详情与下载需能力；下载走 `store.put` |
-| `pages/new/PageNew.vue` 风格下拉 + 文生图表单（全局 `StyleSelect`） | 自建/下载风格项 disabled 且**已选自定义 id 自动清空**（watch 兜底 keep-alive 残留 / 会员到期旧选中），内置预设可选可提交；`design/ppt` 会话与生图仅能带内置风格或不带 |
+| `pages/new/PageNew.vue` 风格下拉 + 文生图表单（全局 `StyleSelect`） | 自建/下载风格项 disabled 且**已选自定义 id 自动清空**（watch 兜底 keep-alive 残留 / 会员到期旧选中），内置预设可选可提交；`design` 会话与生图仅能带内置风格或不带 |
 | `store/ai/AiAgentStore.ts` | `builtin:design-style`（设计风格创建助手）从 `all`/`options` 过滤隐藏（Expert 面板 / 专家管理页不可见）；`getById` 保留 → 会员期内用它开过的历史聊天可继续 |
 | `modules/tool/components/design/designStyleTools.ts` | `list_design_styles` 只回内置预设；`create/update_design_style` 返回「会员功能」error；`get_design_style` 不拦 |
 | 服务端 `GET /api/user/design-styles` | 无能力返回 403（不把提示词裸奔给免费档） |

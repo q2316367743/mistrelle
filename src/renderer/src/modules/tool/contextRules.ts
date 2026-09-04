@@ -37,8 +37,6 @@ const canvasArgKey = (version: unknown): string | undefined =>
 const canvasStateKey = (state: ContextWalkState): string =>
   `canvas:${state.canvasVersion ?? '?'}`
 
-const pptKey = (pptId: unknown, slideId: unknown): string | undefined =>
-  typeof pptId === 'string' && pptId ? `ppt:${pptId}:${typeof slideId === 'number' ? slideId : '?'}` : undefined
 
 const idKey = (prefix: string, id: unknown): string | undefined =>
   typeof id === 'string' && id ? `${prefix}:${id}` : undefined
@@ -67,12 +65,6 @@ export const toolContextRules: Record<string, ToolContextRule> = {
   canvas_get_nodes: { resource: (_args, state) => canvasStateKey(state) },
   canvas_batch_edit: {
     writeResource: (_args, state) => canvasStateKey(state)
-  },
-
-  // —— PPT 族：节点树按「文档 + 页」为资源粒度 ——
-  ppt_get_nodes: { resource: (args) => pptKey(args.pptId, args.slideId) },
-  ppt_batch_edit: {
-    writeResource: (args) => pptKey(args.pptId, args.slideId)
   },
 
   // —— 写作族：正文读取与角色卡写入 ——

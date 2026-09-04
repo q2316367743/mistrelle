@@ -10,8 +10,9 @@
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [AppSide.md](./app/AppSide.md)       | 主应用左侧导航栏：AppSide 外壳 + SideMenu/SideMenuNode 递归菜单组件（SideMenuItem 数据模型、active 推导、展开/收起高度动画）、menuTree 映射与导航约定 |
 | [01-app-shell.md](./app/01-app-shell.md) | 应用外壳生命周期：托盘常驻（显示 AI 窗口/退出）+ AI 主窗口启动即建（默认显示/关闭只隐藏）、Dock 点击打开主窗口、闪退修复（close 拦截只隐藏 + before-quit 放行真退出 + closed 置空引用）、AI 主窗口模块（createAiWindow/showAiWindow）、index.ts 仅生命周期编排 |
-| [02-main-directory.md](./app/02-main-directory.md) | 主进程目录结构（域优先）：`app/`（aiWindow/tray/protocol）+ `modules/` 十二业务域（service+ipc 同域同居，与渲染层 modules/ 对称）+ `db/` 基础设施 + 顶层 registerIpc 聚合；import 规则、新增域方法、外部同步点（$ 别名/drizzle/`__dirname` 均不受影响） |
+| [02-main-directory.md](./app/02-main-directory.md) | 主进程目录结构（域优先）：`app/`（aiWindow/tray/protocol）+ `modules/` 十一业务域（service+ipc 同域同居，与渲染层 modules/ 对称）+ `db/` 基础设施 + 顶层 registerIpc 聚合；import 规则、新增域方法、外部同步点（$ 别名/drizzle/`__dirname` 均不受影响） |
 | [03-preload-directory.md](./app/03-preload-directory.md) | preload 目录结构（域优先，与 main 同构）：`modules/` 十三域（契约 `*Channels.ts` + 桥同域同居，域划分与 main modules/ 一一对应）+ `lib/` 纯 Node 桥 + 顶层 inject.ts 组装点；channels.ts 大杂烩/inject.ts 四合一拆解记录、三份契约同步关系 |
+| [04-ffmpeg-ppt-removal.md](./app/04-ffmpeg-ppt-removal.md) | ffmpeg 与 PPT 专家功能移除记录（2026-09-04）：删除范围（基础设施/AI 工具/视频导出链/PPT 聊天类型）、保留项（画布动画字段、'ppt' 通用附件识别）、勿再引用符号清单 |
 
 ### auth/ —— 服务端账号
 
@@ -43,7 +44,7 @@
 
 | 文档                                                                           | 描述                                                                                                                                                     |
 |--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload，例外：net 下载因 onDownloadProgress 回调无法过 IPC 而保留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 二进制随包分发（见 build/03，旧远程下载方案已移除）、sharp 移植、renderer 异步化适配清单 |
+| [01-electron-preload-migration.md](./migration/01-electron-preload-migration.md) | uTools → Electron 迁移：进程职责划分（特权操作进 main / 纯函数留 preload，例外：net 下载因 onDownloadProgress 回调无法过 IPC 而保留 preload）、IPC 通道表、lmdb 数据层（无 rev/附件）、ffmpeg 二进制随包分发（历史方案，2026-09 已随 ffmpeg 功能整体移除，见 app/04）、sharp 移植、renderer 异步化适配清单 |
 | [02-local-protocol.md](./migration/02-local-protocol.md)                       | `mistrelle://` 本地资源协议：渲染层 URL 加载本地字体/图片（`mistrelle://app/file/<编码绝对路径>`，规避 dev 下 http 页面加载 file:// 被拦截）；兼系统级链接（单实例 + open-url/second-instance 仅接收外部 `mistrelle://` 唤起，不弹窗/不聚焦）；`registerLocalSchemes` 须 app ready 前注册、handler 读盘返回 |
 | [03-lmdb-to-json.md](./migration/03-lmdb-to-json.md)                           | lmdb → 本地 JSON 收尾迁移：剩余消费点（network/global/secure/default setting、workspace 历史）映射与行为变化（rev 删除、不预写空文件、init 后注册 watch、孤儿 AiWorkspaceStore 直接删除）、lmdb 全链路删除清单、`~/.mistrelle/` JSON 存储全景 |
 
@@ -64,7 +65,7 @@
 
 | 文档                                                                  | 描述                                                                                                        |
 |-----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
-| [01-subscribe-module.md](./subscribe/01-subscribe-module.md)           | 订阅模块：博主→视频订阅→详情三级、策略接口（自实现）、ffmpeg 转音频、FunASR 转写（识别参数）、AI 总结流水线 |
+| [01-subscribe-module.md](./subscribe/01-subscribe-module.md)           | 订阅模块：博主→视频订阅→详情三级、策略接口（自实现）、FunASR 转写（识别参数）、AI 总结流水线 |
 
 ### attachment/ —— 附件与资讯页
 
@@ -87,7 +88,7 @@
 | 文档                                                                    | 描述                                                                                               |
 |-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
 | [02-canvas-node-model.md](./canvas/02-canvas-node-model.md)             | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill；`canvas_guidelines("styles")` 动态风格目录；场景指南结构含文案容量/安全区/翻车点 |
-| [03-canvas-animation-export.md](./canvas/03-canvas-animation-export.md) | 画布动画与视频导出（v3）：声明式动画、逐帧渲染 + ffmpeg 导出、剪映式全屏进度遮罩；离屏 Leafer 挂临时容器避免污染 body 的 `user-select` |
+| [03-canvas-animation.md](./canvas/03-canvas-animation.md) | 画布动画（v3）：`CanvasAnimation` 声明式动画字段、`@leafer-in/animate` 透传与预览自动播放、PNG 导出 settle；原随附视频导出已随 ffmpeg 移除（见 app/04） |
 | [04-canvas-element-tree.md](./canvas/04-canvas-element-tree.md)         | 画布元素树：设计侧边栏全屏左栏，`selectedId` 驱动元素树 ↔ 画布双向选中联动                      |
 | [05-canvas-property-panel.md](./canvas/05-canvas-property-panel.md)     | 画布元素属性面板：全屏三栏第三栏，本地草稿 +「保存」按钮显式写回（batchEdit update，与 AI 同链路）；x/y 禁改、渐变/$token/布局关键字降级策略、按类型字段矩阵 |
 
@@ -100,15 +101,6 @@
 | [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写；**会员门控**（免费档隐藏 agent、getById 保留历史会话） |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
 | [05-style-preview.md](./design/05-style-preview.md)           | 风格预览所见即所得：`AiDesignStyleItem` 索引项扩展 typography/tokens/whitespaceRatio（旧数据读取兜底）、`StyleCardFace` 按规范整卡渲染（`--sp-*` 变量换算、留白密度、对比度文字色）、列表卡壳 + 面与详情大样张；**全局风格下拉组件 `StyleSelect`**（t-select 分组 + 选项悬浮 StyleCardFace 预览 + 非会员锁定，PageNew 与文生图表单共用，自带 overlay 全局样式） |
-
-### ppt/ —— PPT 专家
-
-| 文档                                                            | 描述                                                                                                                               |
-|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| [01-ppt-module.md](./ppt/01-ppt-module.md)                     | PPT 专家聊天类型（已实现，第四版契约：元素级批量操作）：POM 库调研、主进程渲染 + IPC（渲染进程零 pom）、单一文件持续编辑（{name}.ppt.json）+ 元素 TypeBox 校验、ppt_* 工具契约（ppt_batch_edit 仿 canvas 的 insert/copy/update/move/delete，≤15 个/批）/ 侧边栏 UI（视口聚焦后 ↑/↓ 方向键翻页）/ 注册链路、实现记录与实测差异；§8 节点引用与精准编辑（顶层 id + SVG 映射 + batch update）；§13 三端展示一致修复（WPS/快速预览字体替换错乱 → 后处理 wrap=none+normAutofit + 提示词文字宽度经验） |
-| [02-pom-xml-guide.md](./ppt/02-pom-xml-guide.md)                | SlideNode JSON 结构与导出速查（`ppt_guidelines` 数据源，topic: json）：存储结构 / SlideNode 通用结构（含顶层 id 节点标识）/ 元素与 XML 对应 / Theme 色板 / 设计铁律 / 编辑规范与 update 精准编辑（批量操作见 `ppt_guidelines("operations")`） |
-| [03-ppt-experience-guides.md](./ppt/03-ppt-experience-guides.md) | PPT 经验指南（官方三文档转写，`ppt_guidelines` 数据源）：layout 布局系统与页面模式 / nodes 20 种节点速查 / styling 配色字体样式最佳实践（SlideNode JSON 写法） |
-| [04-vue-render-pptxgenjs.md](./ppt/04-vue-render-pptxgenjs.md) | PPT 渲染架构：Vue/CSS 唯一布局真相、DOM 快照二维契约、data-node-id 精确点选与双击引用、PptxGenJS PPTX 导出与 canvas PNG 导出边界 |
 
 ### chat/ —— 对话
 
@@ -142,7 +134,7 @@
 
 | 文档                                                                  | 描述                                                                                                                             |
 |-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| [01-personalize-module.md](./personalize/01-personalize-module.md)     | 个性化系统（`soul/*.md` 五文件）：IDENTITY / DESIGN / WRITE / AGENT / USER 按 scope 注入主 Agent 稳定前缀（design+ppt / writing 类型过滤）、`PERSONALIZE_FILE_CONFIG` 单一数据源、mtime 缓存、设置页 t-tabs 编辑器 |
+| [01-personalize-module.md](./personalize/01-personalize-module.md)     | 个性化系统（`soul/*.md` 五文件）：IDENTITY / DESIGN / WRITE / AGENT / USER 按 scope 注入主 Agent 稳定前缀（design / writing 类型过滤）、`PERSONALIZE_FILE_CONFIG` 单一数据源、mtime 缓存、设置页 t-tabs 编辑器 |
 
 ### setting/ —— 设置
 
@@ -200,7 +192,6 @@
 |--------------------------------------------------------|------------------------------------------------------------------------------------------|
 | [01-app-icon.md](./build/01-app-icon.md)               | 应用图标生成机制：electron-builder 自动从 `build/icon.png` 转换 icns/ico，禁止手动预生成  |
 | [02-monaco-editor.md](./build/02-monaco-editor.md)     | Monaco worker 配置：`vite-plugin-monaco-editor` 已移除，改 `?worker` 原生导入 + `MonacoEnvironment` label 分发 |
-| [03-ffmpeg-bundling.md](./build/03-ffmpeg-bundling.md) | ffmpeg 二进制随包分发：`scripts/fetch-ffmpeg.mjs` 从 npmmirror 镜像拉取到 `resources/ffmpeg/{os}-{arch}/`（gitignore），electron-builder `extraResources` 按平台注入（asar 外可直接 spawn）、运行时同步解析无下载；打包前必须先跑 fetch 脚本 |
 
 ### hardware/ —— 硬件控制
 

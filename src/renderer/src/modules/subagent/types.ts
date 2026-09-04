@@ -16,8 +16,6 @@ export type SubAgentType = 'research' | 'design'
 export const SUB_AGENT_ALLOW: Record<ChatType, ReadonlyArray<SubAgentType>> = {
   office: ['research'],
   design: ['research'],
-  // PPT 专家：主 Agent 直用 ppt_* 工具，不派发子 Agent（见 docs/ppt/01-ppt-module.md §8）
-  ppt: [],
   writing: ['research', 'design']
 }
 
