@@ -1,6 +1,6 @@
 import type { ThinkingEffort } from '@/domain'
 import { AiChatMode } from '@/entity'
-import type { ChatType, WritingScene } from '@/modules/chat'
+import type { ChatType, WritingScene } from '@/windows/main/modules/chat'
 
 /**
  * LChatSender 初始化参数：由父组件在挂载时一次性提供，

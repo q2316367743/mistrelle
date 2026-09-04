@@ -21,7 +21,7 @@
 <script lang="ts" setup>
 import type { ToolCallContent, ToolPhase } from '@/domain'
 import { ChevronRightIcon, UserIcon } from 'tdesign-icons-vue-next'
-import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
+import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
 
 const props = defineProps<{
   content: ToolCallContent

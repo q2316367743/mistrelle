@@ -31,7 +31,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import type { PropType } from 'vue'
-import type { AskOption } from '@/modules/tool/components/ask'
+import type { AskOption } from '@/windows/main/modules/tool/components/ask'
 
 // 自定义答案在单选组中的伪选项 key，保证与普通选项互斥
 const CUSTOM_KEY = '__custom__'

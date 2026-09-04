@@ -1,18 +1,18 @@
-import type { ChatRequestParams, ChatType } from '@/modules/chat'
-import { getChatSession, getSandboxDir, releaseChatSession } from '@/modules/chat'
+import type { ChatRequestParams, ChatType } from '@/windows/main/modules/chat'
+import { getChatSession, getSandboxDir, releaseChatSession } from '@/windows/main/modules/chat'
 import type { ChatMessage, ThinkingEffort, TokenBreakdown, UserMessage } from '@/domain'
 import type { ChatSenderInitial } from '@/components/chat/sender/chatSenderInitial'
-import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
-import { readSubAgentContent, getRunningSubAgentMessages } from '@/modules/subagent'
+import { INTERACTIVE_KEY } from '@/windows/main/modules/chat/agent/interactive'
+import { readSubAgentContent, getRunningSubAgentMessages } from '@/windows/main/modules/subagent'
 import {
   collectSubAgents,
   lastAssistantIdOf,
   lastAssistantIndexOf
-} from '@/modules/chat/agent/agentMessages'
+} from '@/windows/main/modules/chat/agent/agentMessages'
 import type { AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
 import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
 import { DEFAULT_CONTEXT_WINDOW } from '@/global/Constant'
-import { useSettingAiStore } from '@/store'
+import { useSettingAiStore } from '@/windows/main/store'
 
 export interface UseChatSessionOptions {
   chatId: string

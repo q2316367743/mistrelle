@@ -9,7 +9,7 @@
 </template>
 <script lang="ts" setup>
 import { ChatContent } from '@tdesign-vue-next/chat'
-import type { NovelFileKey } from '@/modules/tool/components/novel/novelTypes'
+import type { NovelFileKey } from '@/windows/main/modules/tool/components/novel/novelTypes'
 
 defineProps<{
   activeFile: NovelFileKey

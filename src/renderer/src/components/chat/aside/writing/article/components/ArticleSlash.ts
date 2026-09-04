@@ -2,7 +2,7 @@ import { Extension, type Editor } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
 import Suggestion from '@tiptap/suggestion'
 import { makeSuggestionRenderer } from '@/utils/suggestionRenderer'
-import { resolveAssetRel } from '@/modules/tool/components/article/imageRef'
+import { resolveAssetRel } from '@/windows/main/modules/tool/components/article/imageRef'
 
 export interface ArticleSlashOptions {
   /** md 所在目录（图片相对路径解析基准） */

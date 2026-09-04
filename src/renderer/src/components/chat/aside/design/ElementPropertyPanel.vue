@@ -104,8 +104,8 @@
 </template>
 <script lang="ts" setup>
 import { computed, toRef } from 'vue'
-import { getCanvasStore } from '@/modules/canvas'
-import type { CanvasLayoutSize, CanvasNode } from '@/modules/canvas'
+import { getCanvasStore } from '@/windows/main/modules/canvas'
+import type { CanvasLayoutSize, CanvasNode } from '@/windows/main/modules/canvas'
 import { isGradientPaint, usePropertyDraft } from './usePropertyDraft'
 import TextPropertyFields from './TextPropertyFields.vue'
 

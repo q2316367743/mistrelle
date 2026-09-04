@@ -1,6 +1,6 @@
 import { BaseEntity } from '@/entity'
 import { ChatMessage, TodoItem } from '@/domain'
-import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
+import type { ChatRequestParams, ChatType, WritingScene } from '@/windows/main/modules/chat'
 
 /**
  * 聊天索引中的轻量元信息（index.json）

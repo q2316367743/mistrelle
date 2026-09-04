@@ -7,7 +7,7 @@ import type {
   ToolContent,
   UserMessageContent
 } from '@/domain'
-import { buildTextContent, toAttachmentItem } from '@/modules/chat/engine/userContent'
+import { buildTextContent, toAttachmentItem } from '@/windows/main/modules/chat/engine/userContent'
 
 export const serializeEditorContent = (editor: Editor): UserMessageContent[] => {
   const content: UserMessageContent[] = []

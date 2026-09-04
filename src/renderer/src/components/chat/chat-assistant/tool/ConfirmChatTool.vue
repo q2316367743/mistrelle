@@ -30,9 +30,9 @@ import { computed, inject, ref } from 'vue'
 import type { PropType } from 'vue'
 import type { ToolCallContent } from '@/domain'
 import { ShieldErrorIcon } from 'tdesign-icons-vue-next'
-import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
-import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
-import { toolMap } from '@/modules/tool'
+import { INTERACTIVE_KEY } from '@/windows/main/modules/chat/agent/interactive'
+import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
+import { toolMap } from '@/windows/main/modules/tool'
 
 const props = defineProps({
   content: {

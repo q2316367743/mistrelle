@@ -1,5 +1,5 @@
-import type { AiMessageParam, AiTool } from '@/modules/ai'
-import { contentText } from '@/modules/ai/formats/util'
+import type { AiMessageParam, AiTool } from '@/windows/main/modules/ai'
+import { contentText } from '@/windows/main/modules/ai/formats/util'
 import type { TokenBreakdown } from '@/domain'
 
 /** 技能工具：其工具结果计入「技能」分类（load_skill / read_skill_file），其余工具结果计入「工具及子智能体」 */

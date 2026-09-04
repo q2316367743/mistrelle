@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { LocalSkill } from '@/modules/skill'
+import type { LocalSkill } from '@/windows/main/modules/skill'
 import type { ChatFileRef } from '@/utils/chatSender'
 
 interface RoleMention {

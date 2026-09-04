@@ -41,13 +41,13 @@ import { computed, inject, ref } from 'vue'
 import type { PropType } from 'vue'
 import type { ToolCallContent } from '@/domain'
 import { CheckCircleIcon, HelpCircleIcon } from 'tdesign-icons-vue-next'
-import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
-import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
+import { INTERACTIVE_KEY } from '@/windows/main/modules/chat/agent/interactive'
+import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
 import {
   normalizeAskArgs,
   type AskAnswerItem,
   type AskOption
-} from '@/modules/tool/components/ask'
+} from '@/windows/main/modules/tool/components/ask'
 import AskChatQuestion from '@/components/chat/chat-assistant/tool/AskChatQuestion.vue'
 
 const props = defineProps({

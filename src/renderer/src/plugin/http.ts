@@ -1,6 +1,6 @@
 import { HttpRequest, HttpResponse } from '@/domain'
 import { AxiosRequestConfig, AxiosResponse } from 'axios'
-import { useSettingNetworkStore } from '@/store'
+import { useSettingNetworkStore } from '@/windows/main/store'
 import { useLog } from '@/hooks/UseLog'
 import { nonNullObj } from '@/utils/lang'
 

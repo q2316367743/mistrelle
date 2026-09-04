@@ -41,7 +41,7 @@
 <script lang="ts" setup>
 import { computed, watch } from 'vue'
 import { groupDesignStylesByCategory } from '@/entity'
-import { useAuthStore, useDesignStyleStore } from '@/store'
+import { useAuthStore, useDesignStyleStore } from '@/windows/main/store'
 import StyleCardFace from './StyleCardFace.vue'
 
 withDefaults(

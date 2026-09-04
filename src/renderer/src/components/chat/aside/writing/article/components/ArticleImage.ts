@@ -1,6 +1,6 @@
 import { mergeAttributes } from '@tiptap/core'
 import Image, { type ImageOptions } from '@tiptap/extension-image'
-import { resolveArticleImage } from '@/modules/tool/components/article/imageRef'
+import { resolveArticleImage } from '@/windows/main/modules/tool/components/article/imageRef'
 
 export interface ArticleImageOptions extends ImageOptions {
   /** md 所在目录（相对路径图片解析基准，随文章切换重挂载注入） */

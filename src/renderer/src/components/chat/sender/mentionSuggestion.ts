@@ -4,9 +4,9 @@ import type { Ref } from 'vue'
 import type { ChatFileRef, WorkspaceEntryRef } from '@/utils/chatSender'
 import { listWorkspaceEntries } from '@/utils/chatSender'
 import { makeSuggestionRenderer, type SuggestionRendererOptions } from '@/utils/suggestionRenderer'
-import type { LocalSkill } from '@/modules/skill'
-import { useSettingSkillStore } from '@/store'
-import { toolOptions } from '@/modules/tool'
+import type { LocalSkill } from '@/windows/main/modules/skill'
+import { useSettingSkillStore } from '@/windows/main/store'
+import { toolOptions } from '@/windows/main/modules/tool'
 
 // 导出的稳定 PluginKey，供 LChatSender 在 keydown 时直接读取 suggestion 内部 active 状态，
 // 避免使用易失同步的外部标志（suggestionOpen）导致回车误触发发送。

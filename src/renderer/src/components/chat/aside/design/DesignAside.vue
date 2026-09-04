@@ -83,8 +83,8 @@ import {
   buildCanvasOutputsDir,
   exportCanvasPng,
   getCanvasStore
-} from '@/modules/canvas'
-import type { ChatStatus } from '@/modules/chat'
+} from '@/windows/main/modules/canvas'
+import type { ChatStatus } from '@/windows/main/modules/chat'
 import CanvasRenderer from './CanvasRenderer.vue'
 import CanvasElementTree from './CanvasElementTree.vue'
 import ElementPropertyPanel from './ElementPropertyPanel.vue'

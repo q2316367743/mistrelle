@@ -1,4 +1,4 @@
-import type { LocalSkill } from '@/modules/skill'
+import type { LocalSkill } from '@/windows/main/modules/skill'
 
 export interface ChatFileRef {
   name: string

@@ -63,13 +63,13 @@
 <script lang="ts" setup>
 import { debounce } from 'es-toolkit'
 import { FolderOpenIcon, RefreshIcon } from 'tdesign-icons-vue-next'
-import { NOVEL_FILES, type NovelFileKey } from '@/modules/tool/components/novel/novelTypes'
-import type { NovelStatus } from '@/modules/tool/components/novel/novelTypes'
+import { NOVEL_FILES, type NovelFileKey } from '@/windows/main/modules/tool/components/novel/novelTypes'
+import type { NovelStatus } from '@/windows/main/modules/tool/components/novel/novelTypes'
 import {
   buildNovelRoot,
   destroyNovelStore,
   getNovelStore
-} from '@/modules/tool/components/novel/novelStore'
+} from '@/windows/main/modules/tool/components/novel/novelStore'
 import NovelEditor from './components/NovelEditor.vue'
 import NovelSettingTabs from './components/NovelSettingTabs.vue'
 import NovelSettingTree from './components/NovelSettingTree.vue'

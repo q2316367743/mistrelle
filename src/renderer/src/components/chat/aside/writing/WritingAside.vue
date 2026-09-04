@@ -13,7 +13,7 @@
   />
 </template>
 <script lang="ts" setup>
-import type { WritingScene } from '@/modules/chat'
+import type { WritingScene } from '@/windows/main/modules/chat'
 import ArticleAside from './article/ArticleAside.vue'
 import NovelAside from './novelShort/NovelAside.vue'
 

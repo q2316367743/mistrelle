@@ -137,13 +137,13 @@ import Mention from '@tiptap/extension-mention'
 import { mergeAttributes, Node as TiptapNode } from '@tiptap/core'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { localSkillList, type LocalSkill } from '@/modules/skill'
+import { localSkillList, type LocalSkill } from '@/windows/main/modules/skill'
 import {
   useSettingAiStore,
   useSettingDefaultStore,
   useDesignStyleStore,
   useAiAgentStore
-} from '@/store'
+} from '@/windows/main/store'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
 import type {
   SkillItem,
@@ -164,7 +164,7 @@ import {
 import { serializeEditorContent } from './chatSenderContent'
 import type { ChatSenderInitial } from './chatSenderInitial'
 import type { CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
-import type { ChatRequestParams, ChatType, WritingScene } from '@/modules/chat'
+import type { ChatRequestParams, ChatType, WritingScene } from '@/windows/main/modules/chat'
 import { AiChatMode } from '@/entity'
 import {
   AiEducationIcon,

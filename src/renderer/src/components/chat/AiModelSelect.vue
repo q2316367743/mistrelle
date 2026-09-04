@@ -43,7 +43,7 @@
   </t-popup>
 </template>
 <script lang="ts" setup>
-import { useSettingAiStore, useAuthStore } from '@/store'
+import { useSettingAiStore, useAuthStore } from '@/windows/main/store'
 import type { ThinkingEffort } from '@/domain'
 import { ChevronDownIcon, ChevronRightIcon, Setting1Icon } from 'tdesign-icons-vue-next'
 import { MessageUtil } from '@/utils/modal'

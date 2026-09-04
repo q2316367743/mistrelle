@@ -62,7 +62,7 @@ import {
   SettingIcon,
   UserCircleIcon
 } from 'tdesign-icons-vue-next'
-import type { NovelFileKey } from '@/modules/tool/components/novel/novelTypes'
+import type { NovelFileKey } from '@/windows/main/modules/tool/components/novel/novelTypes'
 
 const props = defineProps<{
   title: string

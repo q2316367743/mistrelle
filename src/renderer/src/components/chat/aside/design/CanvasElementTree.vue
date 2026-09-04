@@ -28,7 +28,7 @@
 import { computed, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { CaretRightSmallIcon, ImageIcon, LayersIcon, RectangleIcon, TextIcon } from 'tdesign-icons-vue-next'
-import type { CanvasNode } from '@/modules/canvas'
+import type { CanvasNode } from '@/windows/main/modules/canvas'
 
 interface FlatNode {
   id: string

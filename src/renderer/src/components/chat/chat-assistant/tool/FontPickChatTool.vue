@@ -104,12 +104,12 @@ import { computed, inject, onMounted, ref, watchEffect } from 'vue'
 import type { PropType } from 'vue'
 import type { ToolCallContent } from '@/domain'
 import { CheckCircleIcon } from 'tdesign-icons-vue-next'
-import { INTERACTIVE_KEY } from '@/modules/chat/agent/interactive'
-import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
-import { normalizeFontPickArgs } from '@/modules/tool/components/design/fontTools'
+import { INTERACTIVE_KEY } from '@/windows/main/modules/chat/agent/interactive'
+import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
+import { normalizeFontPickArgs } from '@/windows/main/modules/tool/components/design/fontTools'
 import FontPreviewText from '@/components/FontPreviewText.vue'
 import { FontItem } from '@/domain/FontItem'
-import { useAuthStore } from '@/store'
+import { useAuthStore } from '@/windows/main/store'
 
 const props = defineProps({
   content: {

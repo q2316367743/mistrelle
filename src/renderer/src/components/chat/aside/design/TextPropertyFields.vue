@@ -67,7 +67,7 @@
 import { computed, onMounted, ref } from 'vue'
 import FontPreviewText from '@/components/FontPreviewText.vue'
 import type { FontItem } from '@/domain/FontItem'
-import { useAuthStore } from '@/store'
+import { useAuthStore } from '@/windows/main/store'
 import type { PropertyDraft } from './usePropertyDraft'
 
 const props = defineProps<{

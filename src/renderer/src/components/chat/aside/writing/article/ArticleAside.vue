@@ -76,9 +76,9 @@ import {
   buildArticleRoot,
   destroyArticleStore,
   getArticleStore
-} from '@/modules/tool/components/article/articleStore'
-import { exportArticleZip } from '@/modules/tool/components/article/imageRef'
-import type { ArticlePlatform, ArticleStatus } from '@/modules/tool/components/article/articleTypes'
+} from '@/windows/main/modules/tool/components/article/articleStore'
+import { exportArticleZip } from '@/windows/main/modules/tool/components/article/imageRef'
+import type { ArticlePlatform, ArticleStatus } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { MessageUtil } from '@/utils/modal'
 import ArticleEditor from './components/ArticleEditor.vue'
 

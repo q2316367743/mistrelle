@@ -12,7 +12,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { TableKit } from '@tiptap/extension-table'
-import { resolveAssetRel } from '@/modules/tool/components/article/imageRef'
+import { resolveAssetRel } from '@/windows/main/modules/tool/components/article/imageRef'
 import { ArticleImage } from './ArticleImage'
 import { ArticleSlash } from './ArticleSlash'
 

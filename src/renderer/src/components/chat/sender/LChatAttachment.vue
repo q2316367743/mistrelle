@@ -285,9 +285,9 @@ import {
   ToolsIcon,
   AddIcon
 } from 'tdesign-icons-vue-next'
-import { localSkillList, type LocalSkill } from '@/modules/skill'
-import { toolOptions } from '@/modules/tool'
-import { useAiAgentStore } from '@/store'
+import { localSkillList, type LocalSkill } from '@/windows/main/modules/skill'
+import { toolOptions } from '@/windows/main/modules/tool'
+import { useAiAgentStore } from '@/windows/main/store'
 import { AI_AGENT_CATEGORIES, AiChatMode } from '@/entity/ai'
 import type { ToolSuggestionItem } from './mentionSuggestion'
 import { CommonSelect } from '@/domain'

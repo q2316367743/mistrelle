@@ -1,5 +1,5 @@
 import { BaseEntity } from '@/entity'
-import { toolMap } from '@/modules/tool'
+import { toolMap } from '@/windows/main/modules/tool'
 import type { CommonSelect } from '@/domain'
 
 export const AI_AGENT_CATEGORIES = [

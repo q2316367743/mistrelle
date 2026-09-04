@@ -46,7 +46,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useAuthStore } from '@/store'
+import { useAuthStore } from '@/windows/main/store'
 import { MessageUtil } from '@/utils/modal'
 
 const emit = defineEmits<{ close: []; success: [] }>()

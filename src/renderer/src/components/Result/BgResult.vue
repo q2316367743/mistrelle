@@ -13,7 +13,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { useSettingGlobalStore } from '@/store'
+import { useSettingGlobalStore } from '@/windows/main/store'
 import { isDark } from '@/global/BeanFactory'
 
 const props = defineProps({

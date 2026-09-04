@@ -26,7 +26,7 @@
 </template>
 <script lang="ts" setup>
 import type { ChatMessage, TodoItem } from '@/domain'
-import type { ChatStatus, ChatType, WritingScene } from '@/modules/chat'
+import type { ChatStatus, ChatType, WritingScene } from '@/windows/main/modules/chat'
 import type { AgentHistoryItem } from '@/components/chat/AgentHistoryList.vue'
 import OfficeAside from './OfficeAside.vue'
 import WritingAside from './writing/WritingAside.vue'

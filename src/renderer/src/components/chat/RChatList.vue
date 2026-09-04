@@ -83,7 +83,7 @@ import {
   ChatStatus,
   UserMessage
 } from '@/domain'
-import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
+import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
 import type { PropType } from 'vue'
 
 const props = defineProps({

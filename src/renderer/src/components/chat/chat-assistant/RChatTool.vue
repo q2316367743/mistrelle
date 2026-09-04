@@ -17,7 +17,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
 import type { ToolCallContent } from '@/domain'
-import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
+import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
 import AskChatTool from '@/components/chat/chat-assistant/tool/AskChatTool.vue'
 import FontPickChatTool from '@/components/chat/chat-assistant/tool/FontPickChatTool.vue'
 import ConfirmChatTool from '@/components/chat/chat-assistant/tool/ConfirmChatTool.vue'

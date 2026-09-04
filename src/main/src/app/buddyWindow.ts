@@ -31,7 +31,10 @@ function createBuddyWindow(): void {
     title: '伙伴'
   }
   // 独立 preload：仅注入 inject/serial/trafficLight 域（不与主窗口共用全量 out/preload/index.js）
-  options.webPreferences = { ...options.webPreferences, preload: join(__dirname, '../preload/buddy.js') }
+  options.webPreferences = {
+    ...options.webPreferences,
+    preload: join(__dirname, '../preload/buddy.js')
+  }
   const win = new BrowserWindow(options)
   buddyWindow = win
 

@@ -9,7 +9,7 @@ import type {
   CanvasStore,
   CanvasTextAlign,
   CanvasTextCase
-} from '@/modules/canvas'
+} from '@/windows/main/modules/canvas'
 
 /** 属性面板可编辑字段的本地草稿（对齐 nodePatchSchemaT 白名单；x/y 不提供编辑） */
 export interface PropertyDraft {

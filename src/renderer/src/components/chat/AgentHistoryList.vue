@@ -44,7 +44,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import type { SubAgentInfo } from '@/modules/chat/agent/agentMessages'
+import type { SubAgentInfo } from '@/windows/main/modules/chat/agent/agentMessages'
 import { CheckCircleIcon, ErrorCircleIcon, UserIcon } from 'tdesign-icons-vue-next'
 
 /** 侧边栏「Agent 面板」条目：子 Agent 汇总 + 是否当前轮 */

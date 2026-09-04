@@ -40,7 +40,7 @@ import { computed, ref } from 'vue'
 import type { PropType } from 'vue'
 import type { ToolCallContent } from '@/domain'
 import type { ToolPhase } from '@/domain'
-import { toolPhaseOf } from '@/modules/chat/agent/agentMessages'
+import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
 import { ChevronRightIcon, TerminalIcon } from 'tdesign-icons-vue-next'
 
 const props = defineProps({

@@ -8,16 +8,16 @@
  * 注意：类型 / 场景在创建后锁定，提示词可安全进入稳定 system 前缀，不影响 prompt 缓存。
  */
 import type { ToolFunction } from '@/domain'
-import type { ChatType, ChatTypeToolContext } from '@/modules/chat/chatType'
-import type { WritingScene } from '@/modules/chat/writingScene'
-import { ARTICLE_SCENE_PROMPT } from '@/modules/tool/components/article/articlePrompt'
-import { createArticleTools } from '@/modules/tool/components/article/articleTools'
-import { NOVEL_SCENE_PROMPT } from '@/modules/tool/components/novel/novelPrompt'
-import { createNovelTools } from '@/modules/tool/components/novel/novelTools'
-import { buildDesignCanvasPrompt } from '@/modules/canvas'
-import { createCanvasTools } from '@/modules/tool/components/canvas/canvasTools'
-import { createDesignTools } from '@/modules/tool/components/design'
-import { useSettingDefaultStore } from '@/store/setting/SettingDefaultStore'
+import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
+import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
+import { ARTICLE_SCENE_PROMPT } from '@/windows/main/modules/tool/components/article/articlePrompt'
+import { createArticleTools } from '@/windows/main/modules/tool/components/article/articleTools'
+import { NOVEL_SCENE_PROMPT } from '@/windows/main/modules/tool/components/novel/novelPrompt'
+import { createNovelTools } from '@/windows/main/modules/tool/components/novel/novelTools'
+import { buildDesignCanvasPrompt } from '@/windows/main/modules/canvas'
+import { createCanvasTools } from '@/windows/main/modules/tool/components/canvas/canvasTools'
+import { createDesignTools } from '@/windows/main/modules/tool/components/design'
+import { useSettingDefaultStore } from '@/windows/main/store/setting/SettingDefaultStore'
 
 export interface ChatTypeConfig {
   /** 具体名字，eg. 设计创意 */
