@@ -92,11 +92,12 @@ GET|POST http://127.0.0.1:47743/buddy/traffic-light?platform=<软件名>&event=<
 | preload | `src/preload/src/modules/traffic-light/trafficLight.ts` | trafficLightApi 桥 |
 | preload | `src/preload/buddy.ts` | **伙伴窗口独立 preload 入口**：仅注入 inject/serial/trafficLight |
 | renderer | `src/renderer/src/vite-env.d.ts` | `Window.preload.trafficLight: TrafficLightApi`（显式 import 自 @common） |
-| renderer | `src/renderer/src/windows/buddy/pages/hardware/traffic-light/` | 页面：TrafficLight.vue 门面 + softwareRegistry.ts（页签登记）+ useTrafficLight.ts（配置状态单例）+ components/（SerialPanel / SoftwareTabs / ManualLightPanel）+ components/software/（各软件专属面板，如 OpencodePanel.vue） |
+| renderer | `src/renderer/src/windows/buddy/pages/hardware/traffic-light/` | 页面：TrafficLight.vue 门面 + softwareRegistry.ts（页签登记）+ useTrafficLight.ts（配置状态单例）+ components/（SerialPanel / SoftwareTabs / ManualLightPanel / SoftwarePlaceholder）+ components/software/（各软件专属面板，如 OpencodePanel.vue） |
 
 ## 注意事项
 
 - **软件页签 + 专属面板**：页面「软件接入」区按 `SOFTWARE_REGISTRY`（softwareRegistry.ts）渲染 t-tabs，每个软件一个页签；页签内容由 `SoftwareTabs.vue` 的 `PANELS: Record<SoftwareName, Component>` 映射到**该软件的专属面板组件**（`components/software/`，如 OpencodePanel.vue）——不同软件的功能按钮/事件 UI 可能完全不同，一律独立组件不做通用面板（Record 全量键保证加软件必须同时登记面板）
+- **软件接入占位卡（未连接串口）**：门面 `TrafficLight.vue` 以 `connectedPath` 切换「软件接入」区——串口未连接渲染 `components/SoftwarePlaceholder.vue`（同款卡片外框 + 居中空态：渐变圆底 Usb 图标 + 「连接串口后即可配置软件接入」主副文案 + 按 `SOFTWARE_REGISTRY` 渲染的「可接入的软件」chips，图标由组件内 `SOFTWARE_ICONS: Record<SoftwareName, Component>` 登记），连接后切回真实 `SoftwareTabs`。占位卡旨在未连接时不暴露可交互配置面、并预示连接后能力；加软件时需同步在 `SOFTWARE_ICONS` 补图标
 - **调试模式**：串口连接面板的「调试模式」按钮切换 `useSerialLink` 的 `debugMode`，开启后门面才渲染「手动测试」面板（9 指令 + 全灭，供接线/Arduino 调试）
 - **新增软件步骤**：`@common/types/trafficLight` 类型全集（`SoftwareName` + `SoftwareNameOptions` + 事件联合）→ `SOFTWARE_REGISTRY` 登记页签 → `SoftwareTabs.vue` 的 `PANELS` 登记专属面板组件 → main `trafficLightConfig.ts` 默认配置 → main `platformConfig.ts` 补 adapter + `resources/plugins/<软件>/` 放内置插件模板；互斥/唯一校验自动生效
 - **独立 preload**：伙伴窗口不再与主窗口共用 `out/preload/index.js`——`electron.vite.config.ts` preload 段双入口（index + buddy），`buddyWindow.ts` 将 `webPreferences.preload` 覆写为 `buddy.js`；buddy 入口仅注入 `inject`/`serial`/`trafficLight` 三域（`inject` 供 App 外壳 `UseTitlePadding` 判平台），`window.preload.trafficLight` 仅伙伴窗口运行时存在（类型显式 import 自 `@common/types/trafficLight`，主窗口勿调用）
