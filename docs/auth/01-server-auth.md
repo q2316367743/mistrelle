@@ -85,6 +85,10 @@ type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 
 - 触发：仅登录/注册提交后（`LoginContent`）命中 `needEmailVerify`——覆盖「未验证登录被拒 403」与「注册/重复注册返回 token:null」两种路径。不做全局轮询（未验证账号建不了会话，登录成功即已验证，无「登录后仍需验证」场景）。
 - 弹框：`VerifyEmailDialog.tsx`（`DialogPlugin` 外壳）+ `VerifyEmailContent.vue`（内容）。文案提示验证邮件已发送至该邮箱；根据邮箱域名推断提供商（`utils/mailProvider.ts`：知名域名枚举 + 未知域兜底 `https://mail.<domain>`）展示「前往 XX 邮箱」按钮 → `shell.openExternal`；「重新发送验证邮件」按钮调 `auth:resendVerification`，成功后本地 60s 倒计时禁用（与服务端冷却一致）。
+- **完成验证后一键重登**：登录框命中 `needEmailVerify` 关闭时，把表单密码一并传给 `openVerifyEmail(email, password)`（无 password 时隐藏入口）。内容组件底部「已完成验证，重新登录」主按钮用该邮箱 + 密码重调 `signIn`：
+  - `ok` → 登录成功 toast + 关闭弹框（登录状态经 `auth:changed` 广播自动同步）；
+  - `needEmailVerify`（密码对但服务端仍 403，说明验证链接还没点）→ warning 提示先点邮件链接，弹框保留；
+  - 普通失败（如密码错误）→ error 提示，弹框保留，用户可关闭后回登录框重输。
 - 邮箱域名映射是渲染层纯函数（`mailProviderOf(email) → { name, url } | null`），未知邮箱直接隐藏入口，不保证兜底地址真实存在（只是尽力引导）。
 
 ## 关键文件
@@ -97,7 +101,7 @@ type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 | preload 桥 | `src/preload/src/modules/auth/auth.ts` | `window.preload.auth.*` 薄桥 + `onChanged` 订阅 |
 | 渲染 store | `src/renderer/src/windows/main/store/AuthStore.ts` | 拉取快照 + 订阅推送，跨页共享（`types/auth.d.ts` 镜像契约需同步） |
 | 登录弹窗 | `src/renderer/src/components/modals/LoginDialog.tsx` + `LoginContent.vue` | DialogPlugin 命令式弹窗（登录/注册页签），AGENTS.md 拆壳约定 |
-| 邮箱验证引导 | `src/renderer/src/components/modals/VerifyEmailDialog.tsx` + `VerifyEmailContent.vue` | 邮箱未验证弹框：前往提供商邮箱（外链）+ 重发验证邮件（60s 倒计时） |
+| 邮箱验证引导 | `src/renderer/src/components/modals/VerifyEmailDialog.tsx` + `VerifyEmailContent.vue` | 邮箱未验证弹框：前往提供商邮箱（外链）+ 重发验证邮件（60s 倒计时）+ 已完成验证后凭邮箱/密码一键重登 |
 | 邮箱域名推断 | `src/renderer/src/utils/mailProvider.ts` | `mailProviderOf(email)`：知名域枚举 + `mail.<domain>` 兜底 |
 | 页面接入 | `AppSide.vue`、`pages/setting/account/`（见 [06-account-page.md](../setting/06-account-page.md)）、`pages/setting/account/modals/` | 用户菜单；账户页身份主视觉 + 账户与安全 + 第三方密钥；积分流水抽屉（`PointsLedgerDrawer`）；弹窗仍为 EditName / ChangePassword / MemberTier / RedeemCode |
 

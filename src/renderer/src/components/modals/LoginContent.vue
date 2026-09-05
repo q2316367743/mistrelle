@@ -93,9 +93,9 @@ async function handleSubmit(): Promise<void> {
     return
   }
   if (res.needEmailVerify) {
-    // 邮箱未验证：关闭登录框并打开验证引导弹框（前往邮箱 / 重发验证邮件）
+    // 邮箱未验证：关闭登录框并打开验证引导弹框（前往邮箱 / 重发验证邮件 / 完成验证后重登）
     emit('close')
-    openVerifyEmail(email)
+    openVerifyEmail(email, form.password)
     return
   }
   MessageUtil.error(res.msg)

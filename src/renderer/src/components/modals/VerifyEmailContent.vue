@@ -31,7 +31,11 @@
       </div>
     </div>
     <div class="verify-email__footer">
-      <t-button theme="primary" @click="emit('close')">我知道了</t-button>
+      <t-button variant="outline" @click="emit('close')">我知道了</t-button>
+      <t-button v-if="password" theme="primary" :loading="signingIn" @click="handleRelogin">
+        <template #icon><t-icon name="login" /></template>
+        已完成验证，重新登录
+      </t-button>
     </div>
   </div>
 </template>
@@ -41,13 +45,14 @@ import { useAuthStore } from '@/windows/main/store'
 import { MessageUtil } from '@/utils/modal'
 import { mailProviderOf } from '@/utils/mailProvider'
 
-const props = defineProps<{ email: string }>()
+const props = defineProps<{ email: string; password?: string }>()
 const emit = defineEmits<{ close: [] }>()
 
 const authStore = useAuthStore()
 const provider = computed(() => mailProviderOf(props.email))
 
 const sending = ref(false)
+const signingIn = ref(false)
 /** 重发冷却倒计时（与服务端同邮箱 60s 冷却一致，仅前端展示用） */
 const countdown = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
@@ -88,6 +93,29 @@ async function handleResend(): Promise<void> {
     }
   } finally {
     sending.value = false
+  }
+}
+
+/** 用户声称已完成邮箱验证：用弹框传入的邮箱 + 密码重新登录 */
+async function handleRelogin(): Promise<void> {
+  if (signingIn.value) return
+  signingIn.value = true
+  try {
+    const res = await authStore.signIn(props.email, props.password ?? '')
+    if (res.ok) {
+      MessageUtil.success('登录成功')
+      emit('close')
+      return
+    }
+    if (res.needEmailVerify) {
+      // 密码正确但服务端仍拒（尚未点击验证链接）：提示回邮箱完成验证，弹框保留
+      MessageUtil.warning('检测到邮箱尚未完成验证，请先点击邮件中的认证链接')
+      return
+    }
+    // 密码错误等普通失败：提示并保留弹框，可关闭后回登录框重输
+    MessageUtil.error(res.msg)
+  } finally {
+    signingIn.value = false
   }
 }
 </script>
@@ -139,6 +167,7 @@ async function handleResend(): Promise<void> {
   &__footer {
     display: flex;
     justify-content: flex-end;
+    gap: var(--td-comp-margin-s);
   }
 }
 </style>
