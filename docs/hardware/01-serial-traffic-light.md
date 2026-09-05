@@ -53,7 +53,7 @@ IPC 通道（`SerialChannels`）：`serial:list` / `serial:open` / `serial:write
 
 - **页面在伙伴窗口独立入口**：不挂主窗口路由/菜单；主窗口 `App.vue` 的记忆系统、AppSide 等均不在伙伴窗口初始化（两 renderer 进程各跑一份记忆系统会双写）
 - **连接状态跨页面存活**：主进程端口是单例；`useSerialLink.ts` 模块级单例镜像状态（首次调用 `getState()` 回同步已有连接 + 重新订阅 `closed`），窗口隐藏再显示连接不丢
-- **选择即连接**：t-select 选中 → 自动 open（即「尝试通信」，Arduino 端无应答协议，open 成功即视为已连接）；清空选择或点「断开」→ close
+- **选择不连接，需主动点「连接/断开」**：t-select 只记忆目标端口（预选 lastPort 也仅回显），不再选中即 open。按钮语义：当前连接即所选（或已连接但下拉清空）→「断开」关连接；未连/切换端口 →「连接」主动 open（main 侧 open 会先关旧的，天然支持换端口）
 - **Arduino open 复位**：打开串口会使 Arduino 复位（约 400ms），复位期间写入的指令可能丢失；红绿灯指令是状态量，用户重按即可，未做特判
-- `useSerialLink.handleSelect` 参数为 `unknown`（t-select change 回调是 `SelectValue` 联合类型），内部归一为 string
+- `useSerialLink.changeSelection` 参数为 `unknown`（t-select change 回调是 `SelectValue` 联合类型），内部归一为 string，仅更新选择不触发连接
 - 菜单/子菜单均为手写 button 列表（项目约定，非 t-menu）；样式 token 用 `--fluent-*` / `--td-*`

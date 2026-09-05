@@ -49,15 +49,9 @@ async function disconnect(): Promise<void> {
   }
 }
 
-/** 下拉选择变化：选中即尝试连接；清空选择则断开（t-select 清空时值为空） */
-function handleSelect(value: unknown): void {
-  const path = typeof value === 'string' ? value : ''
-  if (path === connectedPath.value) return
-  if (!path) {
-    void disconnect()
-    return
-  }
-  void connect(path)
+/** 下拉选择变化：仅记录目标端口，不自动连接/断开（连接由用户点「连接/断开」按钮主动触发） */
+function changeSelection(value: unknown): void {
+  selectedPath.value = typeof value === 'string' ? value : ''
 }
 
 /** 写入一条指令（自动补换行，Arduino 端按 \n 分帧） */
@@ -93,7 +87,8 @@ export function useSerialLink() {
     listing,
     debugMode,
     refreshPorts,
-    handleSelect,
+    connect,
+    changeSelection,
     disconnect,
     sendCommand
   }

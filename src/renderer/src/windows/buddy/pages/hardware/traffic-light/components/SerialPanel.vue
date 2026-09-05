@@ -9,8 +9,8 @@
         :loading="listing"
         clearable
         filterable
-        placeholder="选择串口（选择后自动连接）"
-        @change="handleSelect"
+        placeholder="选择串口"
+        @change="changeSelection"
       />
       <t-button variant="outline" :loading="listing" @click="refreshPorts">
         <template #icon><refresh-icon /></template>
@@ -20,7 +20,15 @@
         >已连接 {{ connectedPath }}</t-tag
       >
       <t-tag v-else theme="default" variant="light">未连接</t-tag>
-      <t-button v-if="connectedPath" variant="outline" @click="disconnect">断开</t-button>
+      <t-button
+        variant="outline"
+        :theme="showDisconnect ? 'danger' : 'primary'"
+        :loading="connecting"
+        :disabled="!selectedPath && !connectedPath"
+        @click="toggleConnection"
+      >
+        {{ showDisconnect ? '断开' : '连接' }}
+      </t-button>
       <t-button
         variant="outline"
         :theme="debugMode ? 'primary' : 'default'"
@@ -44,12 +52,32 @@ const {
   selectedPath,
   connectedPath,
   listing,
+  connecting,
   debugMode,
   refreshPorts,
-  handleSelect,
+  connect,
+  changeSelection,
   disconnect
 } = useSerialLink()
 const { config } = useTrafficLight()
+
+/**
+ * 按钮语义：
+ * - 下拉选中即连接中的端口，或已连接但未选端口 → 显示「断开」（断开当前连接）
+ * - 其余情况（未连 / 选了新端口）→ 显示「连接」，open 覆盖旧连接
+ */
+const showDisconnect = computed(
+  () => !!connectedPath.value && (connectedPath.value === selectedPath.value || !selectedPath.value)
+)
+
+/** 连接/断开切换 */
+function toggleConnection(): void {
+  if (showDisconnect.value) {
+    void disconnect()
+    return
+  }
+  if (selectedPath.value) void connect(selectedPath.value)
+}
 
 const portOptions = computed(() =>
   ports.value.map((p) => ({
@@ -58,7 +86,7 @@ const portOptions = computed(() =>
   }))
 )
 
-// 预选上次端口（仅反映记忆；连接由 main 启动时自动完成，未连上时用户手动选择）
+// 预选上次端口（仅反映记忆；main 启动时已按 lastPort 自动连接，未连上时用户点「连接」手动连）
 watch(
   ports,
   () => {
