@@ -43,6 +43,11 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/windows/main/pages/design/list/index.vue')
   },
   {
+    name: '设计/卡片风格',
+    path: '/design/card',
+    component: () => import('@/windows/main/pages/design/card/DesginCardPage.vue')
+  },
+  {
     name: '设计/详情',
     path: '/design/detail/:id',
     component: () => import('@/windows/main/pages/design/detail/index.vue')
@@ -65,6 +70,11 @@ export const routes: Array<RouteRecordRaw> = [
     name: '闲庭漫步/文生图',
     path: '/attachment/image',
     component: () => import('@/windows/main/pages/extend/image/AttachmentImagePage.vue')
+  },
+  {
+    name: '闲庭漫步/笔记卡片',
+    path: '/attachment/card',
+    component: () => import('@/windows/main/pages/extend/card/index.vue')
   },
   {
     name: '闲庭漫步/可用性检测工具',

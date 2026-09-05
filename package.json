@@ -23,6 +23,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@zumer/snapdom": "^2.24.15",
     "adm-zip": "^0.6.0",
     "axios": "1.15.2",
     "better-sqlite3": "^13.0.3",
@@ -31,7 +32,9 @@
     "electron-updater": "^6.3.9",
     "express": "^5.2.1",
     "iconv-lite": "^0.7.3",
+    "jszip": "^3.10.1",
     "lucide-vue-next": "^1.0.0",
+    "marked": "^18.0.11",
     "serialport": "^13.0.0",
     "sharp": "^0.34.2",
     "turndown": "^7.2.4"
@@ -79,7 +82,7 @@
     "less": "^4.4.1",
     "less-loader": "^11.1.4",
     "lunar-javascript": "^1.7.7",
-    "mammoth": "^1.12.0",
+    "mammoth": "^1.12.2",
     "monaco-editor": "^0.56.0",
     "motion-v": "^2.4.0",
     "nanoid": "^6.0.1",

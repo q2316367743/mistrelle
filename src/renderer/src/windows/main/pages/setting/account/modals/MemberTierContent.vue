@@ -50,11 +50,12 @@ import { useAuthStore } from '@/windows/main/store'
 import { openPackLots } from './PackLotsDialog'
 import { openPackSelect } from './PackSelectDialog'
 
-type FeatureKey = 'thirdPartyRelay' | 'extendedDesignStyles' | 'customFonts'
+type FeatureKey = 'thirdPartyRelay' | 'extendedDesignStyles' | 'customFonts' | 'extendedCardStyles'
 
 const FEATURES: Array<{ key: FeatureKey; label: string }> = [
   { key: 'thirdPartyRelay', label: '第三方中转' },
   { key: 'extendedDesignStyles', label: '更多设计风格' },
+  { key: 'extendedCardStyles', label: '自定义卡片风格' },
   { key: 'customFonts', label: '自定义字体' }
 ]
 

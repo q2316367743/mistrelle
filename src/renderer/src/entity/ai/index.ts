@@ -1,4 +1,5 @@
 export * from './AiChat'
+export * from './AiCardStyle'
 export * from './AiDesignStyle'
 export * from './AiGroupChat'
 

@@ -11,6 +11,8 @@ export * from '@/windows/main/store/ai/AiAgentStore'
 
 export * from './design/DesignStyleStore'
 
+export * from './card/CardStyleStore'
+
 export * from './AuthStore'
 
 export * from './image/ImageModelStore'

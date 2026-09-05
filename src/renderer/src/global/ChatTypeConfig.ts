@@ -17,6 +17,8 @@ import { createNovelTools } from '@/windows/main/modules/tool/components/novel/n
 import { buildDesignCanvasPrompt } from '@/windows/main/modules/canvas'
 import { createCanvasTools } from '@/windows/main/modules/tool/components/canvas/canvasTools'
 import { createDesignTools } from '@/windows/main/modules/tool/components/design'
+import { cardStyleTools } from '@/windows/main/modules/tool/components/card'
+import { buildCardStylePrompt } from '@/windows/main/modules/card'
 import { useSettingDefaultStore } from '@/windows/main/store/setting/SettingDefaultStore'
 
 export interface ChatTypeConfig {
@@ -91,5 +93,11 @@ export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
         hasImageGenerate: !!useSettingDefaultStore().state.defaultImageModel
       }),
     tools: (ctx) => [...createCanvasTools(ctx), ...createDesignTools(ctx)]
+  },
+  card: {
+    label: '卡片样式生成',
+    // 属性白名单清单由注册表自动生成（CardStylePrompt 内部消费 describeCardStyleProps）
+    prompt: () => buildCardStylePrompt(),
+    tools: () => [...cardStyleTools]
   }
 }

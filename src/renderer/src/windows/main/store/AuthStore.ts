@@ -26,7 +26,8 @@ export const useAuthStore = defineStore('auth', () => {
   const FREE_FEATURES: AuthFeatures = {
     thirdPartyRelay: false,
     customFonts: false,
-    extendedDesignStyles: false
+    extendedDesignStyles: false,
+    extendedCardStyles: false
   }
   const features = computed<AuthFeatures>(() =>
     status.value === 'signed-in' && user.value ? user.value.features : FREE_FEATURES

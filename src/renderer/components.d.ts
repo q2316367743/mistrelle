@@ -39,6 +39,7 @@ declare module 'vue' {
     MChatUser: typeof import('./src/components/chat/chat-user/MChatUser.vue')['default']
     MLink: typeof import('./src/components/ui/MLink.vue')['default']
     MonacoEditorView: typeof import('./src/components/view/MonacoEditorView.vue')['default']
+    NoteCardRenderer: typeof import('./src/components/card/NoteCardRenderer.vue')['default']
     NovelAside: typeof import('./src/components/chat/aside/writing/novelShort/NovelAside.vue')['default']
     NovelEditor: typeof import('./src/components/chat/aside/writing/novelShort/components/NovelEditor.vue')['default']
     NovelSettingTabs: typeof import('./src/components/chat/aside/writing/novelShort/components/NovelSettingTabs.vue')['default']

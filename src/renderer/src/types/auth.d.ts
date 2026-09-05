@@ -7,7 +7,8 @@
 declare type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 
 /** 档位能力键：thirdPartyRelay 暂不消费（模型侧不变，仅透传） */
-declare type AuthFeatureKey = 'thirdPartyRelay' | 'customFonts' | 'extendedDesignStyles'
+declare type AuthFeatureKey =
+  'thirdPartyRelay' | 'customFonts' | 'extendedDesignStyles' | 'extendedCardStyles'
 
 /** 档位能力契约（feature 名 → 是否开放） */
 declare type AuthFeatures = Record<AuthFeatureKey, boolean>
@@ -66,9 +67,7 @@ declare type AuthActionResult = { ok: true } | { ok: false; msg: string }
  * - sign-up 因 requireEmailVerification 不建会话（2xx 但 token 为 null，含重复注册已存在邮箱）。
  * 渲染层命中该态后应关闭登录框并引导前往邮箱验证 / 重发验证邮件。
  */
-declare type AuthSignResult =
-  | { ok: true }
-  | { ok: false; msg: string; needEmailVerify?: boolean }
+declare type AuthSignResult = { ok: true } | { ok: false; msg: string; needEmailVerify?: boolean }
 
 /** 公开档位信息（无需登录；账户卡片未登录态展示额度） */
 declare interface AuthTierInfo {
@@ -85,6 +84,8 @@ declare interface AuthTierInfo {
   customFonts: boolean
   /** 更多设计风格（默认仅自带） */
   extendedDesignStyles: boolean
+  /** 自定义卡片风格（默认仅自带） */
+  extendedCardStyles: boolean
 }
 
 declare interface AuthPackInfo {
@@ -276,7 +277,9 @@ declare interface AuthApi {
   redeemCode(params: AuthCodeParams): Promise<AuthCodeActionResult<AuthCodeRedeemResult>>
   refresh(): Promise<AuthState>
   /** 积分流水分页 */
-  listTransactions(params: AuthPageParams): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>>
+  listTransactions(
+    params: AuthPageParams
+  ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>>
   /** 未过期增量包 lot */
   listPackLots(): Promise<AuthDataResult<AuthPackLots>>
   /** 在线设计风格列表 */

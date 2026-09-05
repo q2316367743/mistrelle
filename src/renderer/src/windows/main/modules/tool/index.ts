@@ -16,6 +16,7 @@ import { skillTools } from './components/skill'
 import { agentTools } from './components/agent'
 import { designStyleTools } from './components/design'
 import { fontListTool } from './components/design/fontTools'
+import { cardStyleTools } from './components/card'
 import { askTool } from './components/ask'
 import { spawnAgentTool } from '@/windows/main/modules/subagent/tool'
 // 叶子导入（勿改用 @/modules/memory 桶）：避免经 memory/index 拉入 ChatService/store 全量图（@see docs/tool/07-tool-policy.md）
@@ -87,6 +88,13 @@ export const toolGroups: Array<ToolGroup> = [
     description:
       '设计风格库管理：查询全部风格清单与完整 tokens 明细（色彩/字体/间距/圆角/边框/阴影/动效），创建或修改风格',
     tools: designStyleTools
+  },
+  {
+    id: 'card-style',
+    group: '卡片风格',
+    description:
+      '卡片风格库管理：查询全部笔记卡片风格清单与完整样式键值对（白名单属性），创建或修改风格，仅注册给「卡片样式生成」Agent',
+    tools: cardStyleTools
   }
 ]
   .map((g) => ({ ...g, tools: g.tools.filter((t) => !t.internal) }))
@@ -123,6 +131,7 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify([fileWriteXlsxTool], 'name'),
   ...objectify(agentTools, 'name'),
   ...objectify(designStyleTools, 'name'),
+  ...objectify(cardStyleTools, 'name'),
   ...objectify([fontListTool], 'name')
 }
 

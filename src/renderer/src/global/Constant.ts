@@ -61,6 +61,11 @@ export const getAppData2Design = () => {
   return window.preload.path.join(dataFolder, 'design')
 }
 
+// ~/.mistrelle/card-style：卡片风格（index.json 索引 + card-style-{id}.json 单条）
+export const getAppData2CardStyle = () => {
+  return window.preload.path.join(dataFolder, 'card-style')
+}
+
 // ~/.mistrelle/soul：记忆系统（长期记忆 / 每日短期记忆 / 记忆状态）+ 个性化设定文件
 export const getSoulDir = () => window.preload.path.join(dataFolder, 'soul')
 

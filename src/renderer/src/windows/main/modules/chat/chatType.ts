@@ -1,4 +1,4 @@
-import { WorkIcon, EditIcon, PaletteIcon } from 'tdesign-icons-vue-next'
+import { WorkIcon, EditIcon, PaletteIcon, StickyNoteIcon } from 'tdesign-icons-vue-next'
 import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
 import type { Component } from 'vue'
 /**
@@ -20,8 +20,9 @@ export interface ChatTypeToolContext {
  * - office：日常办公（默认，侧边栏：概览 / 工作空间 / 沙盒 / Agent 面板）
  * - writing：写作（文章创作侧边栏：文章列表 / 编辑器 / md 预览）
  * - design：设计创意（画布侧边栏：t-select 选择 .canvas + leafer 画布渲染）
+ * - card：卡片样式生成（设计白名单化的卡片风格，工具直管「卡片风格」库）
  */
-export type ChatType = 'office' | 'writing' | 'design'
+export type ChatType = 'office' | 'writing' | 'design' | 'card'
 
 /** 聊天类型选项（供新建对话页等 UI 消费，单一数据源） */
 export interface ChatTypeOption {
@@ -44,5 +45,11 @@ export const CHAT_TYPE_OPTIONS: ChatTypeOption[] = [
     description: 'Leafer 画布，AI 直接绘制设计稿',
     icon: PaletteIcon
   },
-  { value: 'writing', label: '写作', description: '文档创作，侧边栏实时编辑与预览', icon: EditIcon }
+  { value: 'writing', label: '写作', description: '文档创作，侧边栏实时编辑与预览', icon: EditIcon },
+  {
+    value: 'card',
+    label: '卡片样式生成',
+    description: '设计笔记卡片风格，沉淀为可复用样式库',
+    icon: StickyNoteIcon
+  }
 ]

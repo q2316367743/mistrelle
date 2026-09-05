@@ -40,7 +40,11 @@ export const AuthChannels = {
 export type AuthStatus = 'unknown' | 'guest' | 'signed-in'
 
 /** 档位能力键：thirdPartyRelay 暂不消费（模型侧不变，仅透传） */
-export type AuthFeatureKey = 'thirdPartyRelay' | 'customFonts' | 'extendedDesignStyles'
+export type AuthFeatureKey =
+  | 'thirdPartyRelay'
+  | 'customFonts'
+  | 'extendedDesignStyles'
+  | 'extendedCardStyles'
 
 /** 档位能力契约（feature 名 → 是否开放） */
 export type AuthFeatures = Record<AuthFeatureKey, boolean>
@@ -49,17 +53,19 @@ export type AuthFeatures = Record<AuthFeatureKey, boolean>
 export const AUTH_FREE_FEATURES: AuthFeatures = {
   thirdPartyRelay: false,
   customFonts: false,
-  extendedDesignStyles: false
+  extendedDesignStyles: false,
+  extendedCardStyles: false
 }
 
-/** 归一服务端 features（unknown → 三键布尔，缺省 false） */
+/** 归一服务端 features（unknown → 各键布尔，缺省 false） */
 export function normalizeAuthFeatures(raw: unknown): AuthFeatures {
   if (!raw || typeof raw !== 'object') return { ...AUTH_FREE_FEATURES }
   const record = raw as Record<string, unknown>
   return {
     thirdPartyRelay: record.thirdPartyRelay === true,
     customFonts: record.customFonts === true,
-    extendedDesignStyles: record.extendedDesignStyles === true
+    extendedDesignStyles: record.extendedDesignStyles === true,
+    extendedCardStyles: record.extendedCardStyles === true
   }
 }
 
@@ -136,6 +142,8 @@ export interface AuthTierInfo {
   customFonts: boolean
   /** 更多设计风格（默认仅自带） */
   extendedDesignStyles: boolean
+  /** 自定义卡片风格（默认仅自带） */
+  extendedCardStyles: boolean
 }
 
 /** 公开增量包 SKU（GET /api/points-packs/） */

@@ -48,6 +48,7 @@ import {
   AiEducationIcon,
   AppIcon,
   BookmarkIcon,
+  CardIcon,
   ChatIcon,
   InternetIcon,
   LightbulbIcon,
@@ -55,6 +56,7 @@ import {
   PenIcon,
   SecuredIcon,
   Setting1Icon,
+  StickyNoteIcon,
   TextformatColorIcon,
   ToolsIcon,
   UserCircleIcon,
@@ -96,6 +98,7 @@ const menuTree: SideMenuItem[] = [
     activePaths: ['/design/detail/'],
     children: [
       { label: '设计风格', icon: Palette1Icon, to: '/design/list' },
+      { label: '卡片风格', icon: StickyNoteIcon, to: '/design/card' },
       { label: '字体', icon: TextformatColorIcon, to: '/design/font' }
     ]
   },
@@ -103,6 +106,7 @@ const menuTree: SideMenuItem[] = [
     label: '闲庭漫步',
     icon: LightbulbIcon,
     children: [
+      { label: '笔记卡片', icon: CardIcon, to: '/attachment/card' },
       { label: '可用性检测工具', icon: Calculation1Icon, to: '/attachment/test' },
       { label: '模型对比检测', icon: ArrowLeftRight1Icon, to: '/attachment/compare' }
     ]
@@ -164,6 +168,7 @@ onMounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  min-width: 200px;
 }
 
 .user-menu {
