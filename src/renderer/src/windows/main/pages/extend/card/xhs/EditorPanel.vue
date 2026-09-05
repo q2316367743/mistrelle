@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-6">
     <!-- 卡片风格（本页相对参考站的唯一增量） -->
     <div class="flex flex-col gap-3">
-      <label class="flex items-center gap-2 text-sm font-medium text-[#1A1A1A]">
+      <label class="panel-label">
         <PaletteIcon />
         卡片风格
       </label>
@@ -19,24 +19,24 @@
     <!-- 文章内容 -->
     <div class="flex flex-col gap-3">
       <div class="flex items-center justify-between">
-        <label class="flex items-center gap-2 text-sm font-medium text-[#1A1A1A]">
-          <text-icon />
+        <label class="panel-label">
+          <TextIcon />
           文章内容
         </label>
         <div class="flex items-center gap-2">
-          <button
-            class="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#555] bg-[#F5F5F5] rounded-full hover:bg-[#EBEBEB] transition-colors disabled:opacity-50"
+          <t-button
             title="从剪贴板一键粘贴图文（含图片）"
-            :disabled="parsing"
+            theme="default"
+            variant="outline"
+            size="small"
+            :loading="parsing"
             @click="pasteAll"
           >
-            <xhs-icon
-              :node="ICON_NODES.loaderCircle"
-              :class="parsing ? 'w-3.5 h-3.5 animate-spin' : 'hidden'"
-            />
-            <xhs-icon v-if="!parsing" :node="ICON_NODES.clipboardPaste" class="w-3.5 h-3.5" />
+            <template #icon>
+              <PasteIcon />
+            </template>
             {{ parsing ? '解析中...' : '粘贴图文' }}
-          </button>
+          </t-button>
           <t-button
             title="在光标处插入配图标记"
             theme="default"
@@ -130,26 +130,29 @@
 
     <!-- 作者信息 -->
     <div class="flex flex-col gap-4">
-      <label class="flex items-center gap-2 text-sm font-medium text-[#1A1A1A]">
-        <xhs-icon :node="ICON_NODES.user" class="w-4 h-4" />
+      <label class="panel-label">
+        <UserIcon />
         作者信息
       </label>
       <div class="flex gap-4 items-start">
         <div
-          class="upload-zone relative w-16 h-16 !rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
+          class="avatar-zone relative flex-shrink-0"
           :class="{ 'drag-over': avatarDrag }"
           @dragover.prevent="avatarDrag = true"
           @dragleave="avatarDrag = false"
           @drop.prevent.stop="onDrop($event, 'avatar')"
           @click="avatarInput?.click()"
         >
-          <img
-            v-if="state.avatar"
-            :src="state.avatar"
-            alt="avatar"
-            class="w-full h-full object-cover"
-          />
-          <xhs-icon v-else :node="ICON_NODES.user" class="w-6 h-6 text-[#888]" />
+          <t-avatar
+            :image="state.avatar ?? undefined"
+            size="64px"
+            shape="circle"
+            :class="{ 'avatar-zone--empty': !state.avatar }"
+          >
+            <template v-if="!state.avatar" #icon>
+              <UserIcon />
+            </template>
+          </t-avatar>
           <input
             ref="avatarInput"
             type="file"
@@ -157,19 +160,25 @@
             class="hidden"
             @change="onAvatarFile"
           />
-          <button
+          <t-button
             v-if="state.avatar"
-            class="absolute top-0 right-0 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+            class="avatar-zone__remove"
             title="移除头像"
+            shape="circle"
+            variant="text"
+            theme="danger"
+            size="small"
             @click.stop="state.avatar = null"
           >
-            <xhs-icon :node="ICON_NODES.x" class="w-3 h-3" />
-          </button>
+            <template #icon>
+              <CloseIcon />
+            </template>
+          </t-button>
         </div>
         <div class="flex flex-col gap-3 flex-1">
           <input v-model="state.nickname" type="text" placeholder="输入昵称" :class="INPUT_CLASS" />
           <div class="flex items-center gap-2">
-            <xhs-icon :node="ICON_NODES.calendar" class="w-4 h-4 text-[#888]" />
+            <TimeIcon class="panel-aux-icon" />
             <input
               v-model="state.dateStr"
               type="text"
@@ -183,8 +192,8 @@
 
     <!-- 配图 -->
     <div class="flex flex-col gap-3">
-      <label class="flex items-center gap-2 text-sm font-medium text-[#1A1A1A]">
-        <xhs-icon :node="ICON_NODES.imageUp" class="w-4 h-4" />
+      <label class="panel-label">
+        <ImageIcon />
         配图{{ state.images.length > 0 ? `（${state.images.length} 张）` : '' }}
       </label>
       <div
@@ -206,22 +215,33 @@
             >
               图{{ i + 1 }}
             </span>
-            <button
-              class="absolute top-1 right-1 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+            <t-button
+              class="thumb-remove opacity-0 group-hover:opacity-100"
               title="移除这张图"
-              @click="state.images.splice(i, 1)"
+              shape="circle"
+              variant="text"
+              theme="danger"
+              size="small"
+              @click.stop="state.images.splice(i, 1)"
             >
-              <xhs-icon :node="ICON_NODES.x" class="w-3 h-3" />
-            </button>
+              <template #icon>
+                <CloseIcon />
+              </template>
+            </t-button>
           </div>
-          <button
-            class="aspect-square rounded-lg border-2 border-dashed border-[#E5E5E5] flex flex-col items-center justify-center gap-1 text-[#AAA] hover:border-[#C0C0C0] hover:text-[#888] transition-colors"
+          <t-button
+            class="thumb-add"
             title="点击或拖拽添加配图"
+            variant="outline"
+            theme="default"
+            shape="square"
             @click="imagesInput?.click()"
           >
-            <xhs-icon :node="ICON_NODES.plus" class="w-5 h-5" />
-            <span class="text-[10px]">添加</span>
-          </button>
+            <template #icon>
+              <AddIcon />
+            </template>
+            添加
+          </t-button>
         </div>
         <p class="text-xs text-[#AAA] mt-2 px-1">
           支持 JPG、PNG、GIF，可多选或拖拽添加；文中用 [img] 标记控制位置
@@ -239,8 +259,8 @@
 
     <!-- 底部水印 -->
     <div class="flex flex-col gap-3">
-      <label class="flex items-center gap-2 text-sm font-medium text-[#1A1A1A]">
-        <xhs-icon :node="ICON_NODES.copyright" class="w-4 h-4" />
+      <label class="panel-label">
+        <CopyrightIcon />
         底部水印
       </label>
       <input
@@ -262,16 +282,21 @@ import {
   FileWordIcon,
   ImageAddIcon,
   TextformatBoldIcon,
-  PenFluorescenceIcon
+  PenFluorescenceIcon,
+  PasteIcon,
+  UserIcon,
+  TimeIcon,
+  ImageIcon,
+  CloseIcon,
+  AddIcon,
+  CopyrightIcon
 } from 'tdesign-icons-vue-next'
-import XhsIcon from './XhsIcon.vue'
-import { ICON_NODES } from './icons'
 import { useEditorPanel } from './useEditorPanel'
 
 /**
  * 参考站 EditorPanel 的 1:1 移植（内容 / 作者信息 / 配图 / 底部水印），
- * 顶部「卡片风格」为本页唯一增量（RL-04 例外：1:1 复刻参考站的按钮与输入框）。
- * 交互逻辑在 useEditorPanel.ts，本文件只承载模板。
+ * 顶部「卡片风格」为本页唯一业务增量。
+ * 交互逻辑在 useEditorPanel.ts，本文件只承载模板；按钮 / 图标 / 输入框均使用 tdesign。
  */
 const textareaRef = useTemplateRef<HTMLTextAreaElement>('textareaRef')
 const {
@@ -296,4 +321,97 @@ const {
   onWordFile
 } = useEditorPanel(textareaRef)
 </script>
-<style lang="less"></style>
+<style scoped lang="less">
+// tdesign 化后的局部修正：分节标签 / 头像上传区 / 配图缩略图按钮的覆盖与布局样式
+.panel-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
+}
+
+.panel-aux-icon {
+  flex-shrink: 0;
+  color: var(--td-text-color-placeholder);
+}
+
+.avatar-zone {
+  cursor: pointer;
+
+  :deep(.t-avatar--circle) {
+    border: 1.5px dashed var(--td-border-level-2-color);
+  }
+
+  &.avatar-zone--empty :deep(.t-avatar--circle) {
+    background: var(--td-bg-color-secondarycontainer);
+  }
+
+  &.drag-over :deep(.t-avatar--circle) {
+    border-color: var(--td-brand-color);
+    box-shadow: 0 0 0 2px var(--td-brand-color-light);
+  }
+
+  .avatar-zone__remove {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: var(--td-error-color);
+    color: #fff;
+
+    &:hover {
+      background: var(--td-error-color-hover);
+      color: #fff;
+    }
+
+    :deep(.t-button__text) {
+      display: inline-flex;
+    }
+  }
+}
+
+.thumb-add {
+  min-width: 0;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 8px;
+
+  &.t-button--variant-outline {
+    border: 1.5px dashed var(--td-border-level-2-color);
+    background: transparent;
+    color: var(--td-text-color-placeholder);
+  }
+
+  &:hover {
+    border-color: var(--td-brand-color);
+    color: var(--td-brand-color);
+  }
+
+  :deep(.t-button__text) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.thumb-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+  }
+}
+</style>

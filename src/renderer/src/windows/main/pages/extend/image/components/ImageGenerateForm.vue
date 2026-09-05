@@ -5,7 +5,6 @@
       class="prompt-area"
       placeholder="描述你想生成的画面，建议使用详细英文描述（主体 / 风格 / 配色 / 构图）…"
       :autosize="{ minRows: 3, maxRows: 6 }"
-      :maxlength="2000"
       @keydown.ctrl.enter.prevent="handleSubmit"
       @keydown.meta.enter.prevent="handleSubmit"
     />
