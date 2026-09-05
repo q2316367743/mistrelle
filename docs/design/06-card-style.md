@@ -1,14 +1,16 @@
-# 卡片风格与笔记卡片（card style & note card）
+# 卡片风格与 Markdown 卡片（card style & note card）
 
-> 2026-09-05 落地，同日二次修订：**笔记卡片页改为参考站 jinsan.ok.kimi.link（XHS Card Studio）的 1:1 移植**
-> （用户拍板：不要自由发挥，除「卡片风格」可选外其余完全照搬，且不需要本地保存笔记）。
+> 2026-09-05 落地，同日二次修订：**笔记卡片页（/attachment/card）从参考站 jinsan.ok.kimi.link（XHS Card Studio）
+> 的 1:1 移植改为 Markdown 优先的主页面**——文章内容就是 Markdown 源码，卡片经仓库既有
+> `NoteCardRenderer`（iframe 富渲染 + 实测分页 + snapdom 导出）以真实排版呈现；
+> 参考站纯文本正文管线（`**加粗**`/`==高亮==`/`[img]` 标记与分页常量）已整体删除。
 > 卡片风格 = **白名单属性注册表 + JSON 键值对**（数据驱动可扩展）；管理页在设计分组；Agent「卡片样式生成」不变。
 
 ## 1. 全景与关键文件
 
 ```
 卡片风格（样式约束，JSON 键值对，双端共用）
-├── src/renderer/src/global/card-style-props.ts   # ★ 属性注册表（唯一扩展点）
+├── src/renderer/src/global/card-style-props.ts   # ★ 属性注册表（唯一扩展点）→ buildCardStyleCss 供 iframe 注入
 ├── src/renderer/src/global/CardStylePresets.ts   # 6 套内置预设（isSystem，不落盘）
 ├── src/renderer/src/entity/ai/AiCardStyle.ts     # 实体 AiCardStyleItem / AiCardStyle / Form
 ├── src/renderer/src/windows/main/modules/card/service/CardStyleService.ts   # ~/.mistrelle/card-style/
@@ -18,24 +20,22 @@
 │   └── modals/（CardStylePutDrawer / CardStyleDetailDrawer，.tsx 外壳 + .vue 内容）
 └── src/renderer/src/windows/main/modules/card/service/CardStylePrompt.ts    # Agent 提示词（注册表生成）
 
-笔记卡片页（jinsan.ok.kimi.link 的 1:1 移植，无本地持久化）
-├── src/renderer/src/windows/main/pages/extend/card/index.vue     # 入口（/attachment/card）＝参考站 Home
-└── src/renderer/src/windows/main/pages/extend/card/xhs/
-    ├── xhs-studio.css        # 参考站编译产物整体搬入，全部选择器作用域化到 .xhs-studio（防污染全局）
-    ├── protocol.ts           # ★ 解析/分页/常量 1:1 移植 + buildXhsRuntime（注册表→渲染参数）
-    ├── card-html.ts          # ★ 卡片/量测器 HTML 单一事实源（预览与导出共用）
-    ├── exporter.ts           # snapdom 导出（屏幕外渲染同源卡片 → 逐张截图），多卡走 jszip 打包 zip
-    ├── imports.ts            # 图片降采样 / Markdown / Word(mammoth 懒加载) / 剪贴板 HTML 导入
-    ├── PreviewCard.vue       # DOM 实时预览（与导出共用分页器与卡片 HTML，隐藏量测容器量块高）
-    ├── EditorPanel.vue + useEditorPanel.ts   # 内容/作者/配图/水印/导入/粘贴 + 卡片风格选择（唯一增量）
-    ├── ErrorBoundary.vue     # 预览崩溃兜底（参考站同名组件）
-    ├── icons.ts + XhsIcon.vue / state.ts / default-avatar.png
-└── src/renderer/src/windows/main/modules/tool/components/card/cardStyleTools.ts  # Agent 4 工具
+Markdown 卡片主页面（/attachment/card，无本地持久化）
+├── src/renderer/src/windows/main/pages/extend/card/index.vue     # 布局：顶部导出 + 左编辑 / 右预览
+├── src/renderer/src/windows/main/pages/extend/card/state.ts      # 页面内存状态（content=Markdown/nickname/date/avatar/watermark/styleId）
+├── src/renderer/src/windows/main/pages/extend/card/markdown-utils.ts   # md 外链图下载为 dataURL → note-markdown → HTML 块
+└── src/renderer/src/windows/main/pages/extend/card/components/
+    ├── MarkdownEditorPanel.vue   # 卡片风格选择 + Markdown 源码编辑（插入图片）+ 作者信息 + 水印
+    └── MarkdownPreview.vue       # 实时预览（包 NoteCardRenderer，md→blocks 转换 + 页数计数 + 导出代理）
 
-Agent「卡片样式生成」（ChatType 'card'）
-├── src/renderer/src/windows/main/modules/chat/chatType.ts + global/ChatTypeConfig.ts
-└── src/renderer/src/windows/main/modules/subagent/types.ts（SUB_AGENT_ALLOW.card = ['research']）
+Markdown 卡片渲染核心（全仓共用单一事实源）
+├── src/renderer/src/components/card/NoteCardRenderer.vue         # ★ iframe 富卡渲染/实测分页/exportBlobs
+└── src/renderer/src/components/card/note-markdown.ts             # ★ marked（gfm+硬换行）+ ==高亮==→<mark> + sanitize + 分块
+└── src/renderer/src/windows/main/modules/tool/components/card/cardStyleTools.ts  # Agent 4 工具
 ```
+
+> 管理页（设计 → 卡片风格）的整卡预览、主页面（Markdown 卡片）的预览与导出，走**同一套**
+> `NoteCardRenderer` + `note-markdown`，风格系统在主页面直接生效（不再有参考站 runtime 映射层）。
 
 ## 2. 卡片风格数据契约
 
@@ -49,12 +49,14 @@ interface CardStyleProp {
   type: 'color' | 'length' | 'enum' | 'number' | 'font'
   options? / min? / max? / unit?    // 取值约束
   fallback: string     // 缺省 / 非法回落值；空字符串 = 不产出 CSS 规则
-  css: (v) => string   // 合法值 → CSS 规则（作用于 .note-card / .nc-title / .nc-content 骨架）
+  css: (v) => string   // 合法值 → CSS 规则（作用于 iframe 骨架 .note-card / .nc-title / .nc-content 等）
 }
 ```
 
 - `normalizeCardStyleProps(raw)`：白名单外键剔除、逐键类型校验、非法回落 fallback，**输出恒完整**。
-- 首批 26 个属性（含作者 author.* 与页尾 footer.* 两组，服务于管理页预览面）。
+- 全部属性 CSS 作用于 `NoteCardRenderer` iframe 骨架固定类名（`.note-card` / `.nc-header` / `.nc-avatar` /
+  `.nc-author` / `.nc-date` / `.nc-title` / `.nc-content`（h1-6/ul/ol/blockquote/mark/strong/a/hr/pre/img 等）/ `.nc-footer`），
+  `buildCardStyleCss(props)` 逐条生成注入 iframe。
 - **扩展新样式 = 注册表追加一条记录**，校验 / 渲染 / 表单 / AI 提示词 / 工具 schema 全部自动生效。
 
 ### 2.2 存储形状与落盘
@@ -68,52 +70,35 @@ interface AiCardStyle  extends AiCardStyleItem { isSystem: boolean }  // card-st
 `~/.mistrelle/card-style/index.json` + `card-style-{id}.json`（镜像 design 模式，索引项即完整数据，编辑无需读单条文件）。
 内置预设 6 套代码常量不落盘，`CardStyleStore.all` = 预设在前 + 用户自建；`put`/`remove` 硬门控 `extendedCardStyles`。
 
-## 3. 笔记卡片页＝参考站 1:1 移植（2026-09-05 二次修订）
+## 3. Markdown 卡片主页面（2026-09-05 三改定稿）
 
-参考站是 React+Tailwind SPA：**DOM 实时预览 + Canvas 导出共用同一套分页器**，这是我们分页精准的根本。
+> 需求拍板：**主界面就是 Markdown 卡片**——正文区整体改为 Markdown 源码编辑，预览按真实排版渲染；
+> 作者 / 水印保留；配图走 Markdown 图链（本地图上传转 dataURL 插入）。曾短暂尝试的「富 Markdown 抽屉旁路」
+> （rich/）已回退删除，主页面即为富卡本体。
 
-- **布局 / 交互**：固定头部（XHS Card Studio + 导出按钮，多页时显示张数）、左栏「图文卡片生成器」编辑面板
-  （文章内容 + 粘贴图文/插入配图/加粗/高亮/导入 Markdown/导入 Word、作者信息头像昵称日期、配图网格、底部水印）、
-  右栏实时预览（3:4 · 长图自动加长 · 页码）、快门闪光、自定义光标代理、ErrorBoundary。
-- **语法**：`**加粗**`、`==高亮==`、`[img]`（按序取图）/ `[img2]`（指定第 2 张）；无标记时配图依序插入开头。
-- **分页（oh 逐值移植）**：块高 = DOM 实测（隐藏量测容器逐块 offsetHeight，预览与导出同法）；首页扣作者卡头 54、
-  每页扣水印 44；高图（>480）独占整页 fullBleed（页高按宽缩放封顶 1100）；剩余空间够则压高收图（≥120）。
-- **卡片 HTML 单一事实源（`card-html.ts`）**：`buildCardHtml` / `buildMeasurerInnerHtml` 同时供
-  PreviewCard 实时预览（v-html）与导出（屏幕外容器）使用，文本经 escapeHtml，所见即所得由结构保证。
-- **导出（2026-09-05 三改：@zumer/snapdom，替代 Canvas 绘制移植）**：屏幕外容器（`position:fixed; left:-10000px`，
-  禁用 display:none/visibility:hidden 否则截空白）渲染同一份卡片 HTML → 等图片 complete → 逐张
-  `snapdom(el, { scale: 3 })` → `result.toPng().src` 得 1200 宽 PNG dataURL；单张直接下载，多张 jszip 打 zip（懒加载）。
-  旧 Canvas 绘制专用函数（wrapLines/roundRectPath/fontOf/loadImage）已删。
-- **不持久化**：内容 / 作者 / 配图 / 水印均为页面内存状态（state.ts 模块单例，路由切换不丢、重启即空），无任何落盘。
+- **布局 / 交互**：`page-layout` 头部 #extra = 导出卡片按钮（多页显示张数）。左栏 `MarkdownEditorPanel.vue`：
+  顶部卡片风格选择（t-select，同参考站唯一入口惯例），Markdown 源码编辑（t-textarea autosize，「插入图片」
+  把本地图转 dataURL 并以 `![配图](dataURL)` 插到光标处），作者信息（t-avatar 上传 / 昵称 / 日期）、底部水印。
+  右栏 `MarkdownPreview.vue`：3:4 实时预览 · 长文自动分页。
+- **Markdown → 卡片 HTML**：正文 Markdown 经 `markdown-utils.markdownToCardBlocks` → 先收集 `![](url)` 外链图，
+  `fetch` 下载为 dataURL（失败保留原 URL；本地 dataURL 图已内嵌无下载）→ `renderMarkdownHtml`（marked：
+  gfm + hard break + `==高亮==→<mark>`，渲染后 `sanitizeHtml` 纵深防御：剥 script/iframe/on*/javascript:）→
+  `splitHtmlBlocks` 分块。外链图下载成本大，MarkdownPreview 对 content 变更做 **350ms debounce** 再转换。
+- **渲染 / 分页 / 导出**：全部由 `NoteCardRenderer` 承担——iframe 沙箱渲染，探针卡实测各块 offsetHeight 装箱
+  （首页含作者 + 标题占位、后续页仅页尾），图片异步加载完成二次重测；导出走其 `exportBlobs(pixelScale=3)`
+  屏幕外 iframe 逐张 snapdom 截 PNG Blob → `MarkdownPreview.exportPngs` 转 dataURL，主页面单张下载 / 多张 jszip 打 zip。
+- **作者卡头**：NoteCardRenderer 新增可选 `date` prop（昵称下方小字 `.nc-date`），主页面传入昵称 + 日期 +
+  dataURL 头像；管理页预览不传 date，行为不变。
+- **状态**：`state.ts` 模块单例（content=nickname/dateStr/avatar/watermark/styleId），路由切换不丢、重启即空，
+  无任何落盘。风格缺省 = `buildDefaultCardStyleProps()`（默认预设全部 fallback，白底）。
+- **删除的参考站层（勿再引入）**：`pages/extend/card/xhs/` 全部（protocol.ts 分页常量 / card-html.ts /
+  exporter.ts / imports.ts / PreviewCard / EditorPanel / xhs-studio.css 等）与第一版富卡抽屉 `rich/` 已删；
+  纯文本 `[img]` 标记语法、`buildXhsRuntime` 参考站 runtime 映射不再使用。
 
-### 卡片风格注入（本页唯一增量）
-
-`buildXhsRuntime(props)`：把注册表键值对映射为渲染/导出的外观参数（card.background→卡底、card.color→文字、
-body.highlight→高亮底、body.size/lineHeight→字号行高（块间距=1.2×字号随之缩放）、card.padding→内边距（内容宽随之）、
-card.radius/image.radius、card.font→字体栈前插、author.color→日期色、footer.color/size→水印）。
-**不选风格 = 参考站原样**（全部取站点默认值）；选择器用 t-select（RL-04），置于编辑面板顶部。
-注册表的 title.*/quote.* 在本页无对应元素，不参与映射（管理页预览面照常消费）。
-
-### 参考站样式与脚本的隔离
-
-- `xhs-studio.css`：参考站编译 CSS 整体搬入，构建脚本把每个选择器前缀化到 `.xhs-studio`（`html/:root/body` 映射到
-  `.xhs-studio`），Tailwind preflight 不会外泄；`body.cursor-hidden` 特例映射为 `.xhs-studio.cursor-hidden`。
-- **颜色已全部主题化（2026-09-05）**：声明体里的裸色值 / shadcn hsl 变量统一替换为 theme.less 的 tdesign token——
-  文字层级 #1A1A1A→`--td-text-color-primary`、#555/#666→secondary、#888→placeholder、#AAA/#C0C0C0→disabled；
-  背景与边框 #F5F5F5→`--td-bg-color-secondarycontainer`（hover→secondarycontainer-hover）、#F0F0F0→`--td-component-stroke`、
-  #E5E5E5→`--td-border-level-2-color`；品牌红 #FF2442/#E02038→`--td-brand-color(-hover)`、#FFF5F6→`--td-error-color-light`、
-  头部 `bg-white/90`→`--fluent-acrylic-bg`；带透明度的写法用 `color-mix(in srgb, token N%, transparent)`。
-  **选择器里的转义 hex（如 `.bg-\[\#FF2442\]`）不可替换**——替换只作用于声明体；生成脚本见 `/tmp/gen-xhs-css.js` 思路
-  （作用域化 + 仅声明体替换，rgb 平衡括号匹配避免嵌套 var 残留 `)`）。
-- 卡面（`.card-canvas`）与导出图仍由 runtime 决定（默认参考站白底作品色，不随主题翻转）；页面 UI 随主题明暗。
-- `fixed` 头部在应用内容区改为 `.xhs-page .xhs-header { position: sticky }`（覆盖 `fixed` 类，行为一致）。
-- 图标为 lucide 线框（icons.ts 节点数据 1:1 提取自参考站 bundle），`XhsIcon.vue` 渲染。
-
-## 4. 设计 → 卡片风格管理页（保留自首版）
+## 4. 设计 → 卡片风格管理页
 
 - 页面 `/design/card`（DesginCardPage.vue）：hero（新建按钮 + 会员 badge）+ 搜索 + 网格；无详情路由，查看/编辑全抽屉。
-- `CardStyleFace.vue` 用固定示例内容 + NoteCardRenderer（iframe 渲染器）整卡所见即所得，含示例作者/水印
-  （iframe 渲染器 `src/renderer/src/components/card/` 的 NoteCardRenderer + note-markdown 仅服务管理页预览）。
+- `CardStyleFace.vue` 用固定示例内容 + NoteCardRenderer 整卡所见即所得，含示例作者/水印（与主页面同款渲染器）。
 - 编辑表单按注册表分组自动出控件（color→ColorPicker、length/number→InputNumber、enum→Select、font→真实字体下拉）。
 
 ## 5. 「卡片样式生成」Agent
@@ -130,15 +115,17 @@ card.radius/image.radius、card.font→字体栈前插、author.color→日期�
 - `AuthFeatureKey` / `AuthTierInfo` / `AuthStore.FREE_FEATURES` / preload `authChannels.ts`（type + FREE + normalize）+
   `MemberTierContent.vue` 权益表，五处同步；**服务端在 features 数组返回该键后自动生效**（服务端暂未启用）。
 - 语义（同 design 的 `extendedDesignStyles`）：内置预设人人可用；新建/编辑/删除会员限定——UI 锁定（badge+disabled+warning）、
-  Store 硬拒绝（防 AI 工具旁路）、AI 工具层再拦一次；非会员 AI 面仅见内置预设。笔记卡片生成页本身不设门控。
+  Store 硬拒绝（防 AI 工具旁路）、AI 工具层再拦一次；非会员 AI 面仅见内置预设。Markdown 卡片页本身不设门控。
 
 ## 7. 注意事项
 
 - 页面文件名 `DesginCardPage.vue` 为既有命名；菜单：设计→设计风格/卡片风格/字体，闲庭漫步→笔记卡片（/attachment/card）。
-- 参考站移植代码全部收敛在 `pages/extend/card/xhs/` 内；`xhs-studio.css` 是整文件作用域化的第三方产物，勿手工精简。
-- 协议常量（400 逻辑宽、3:4、54/44/32/28/18/1.8 等）与参考站逐值一致，改动前先对照 protocol.ts 注释。
-- 新依赖：`@zumer/snapdom`（管理页 iframe 预览导出）、`marked`（管理页 markdown 渲染）、`jszip`（多卡打包）、
-  `mammoth`（Word 导入，懒加载）。snapdom/mammoth 已按需 dynamic import。
-- 首版曾自研「iframe 渲染器 + 笔记落盘（~/.mistrelle/notes）」，二次修订按用户拍板整体替换为参考站 1:1 移植并删除落盘；
-  iframe 渲染器仅剩管理页预览用途。AppSide/路由/Agent 门控链路不受影响。
-- 首行标题回落、`==高亮==`、`[img]` 序号取图等行为与参考站逐一对齐；`title.*/quote.*` 注册表组仅管理页预览消费。
+- **全仓只有一条 Markdown 卡片渲染链**：`note-markdown`（md→HTML 块）→ `NoteCardRenderer`（iframe 渲染/分页/导出）。
+  主页面与管理页共用，改动影响两侧；卡片风格 = 这套 iframe 骨架 + 注册表 CSS。
+- 卡片逻辑尺寸 360×480（3:4），预览按容器宽度缩放、导出按 1:1×3 截图；注册表 `title.*` 对应首行 `#` 之外的
+  独立标题输入（主页面当前由 Markdown 内部 `##` 承担正文小标题，`.nc-content h1-6` 消费）。
+- 新依赖：`@zumer/snapdom`（iframe 预览导出）、`marked`（markdown 渲染）、`jszip`（多卡打包），均按需 dynamic import。
+- 首版曾自研「iframe 渲染器 + 笔记落盘（~/.mistrelle/notes）」、二次修订为参考站 1:1 移植（字符串正文 + [img]）、
+  三次修订（当前）改为 **Markdown 优先主页面**并删除参考站层；NoteCardRenderer 由此成为主页面与管理页共用的渲染器。
+- 外链图片在预览转换时即下载为 dataURL（导出 iframe 不被跨域污染）；Markdown 源码里保留用户原图链不动，
+  dataURL 只进渲染块。富卡 `==高亮==` 由 note-markdown 预处理为 `<mark>`，注册表 `body.highlight` 控制底色。

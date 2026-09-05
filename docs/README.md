@@ -107,7 +107,7 @@
 | [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写；**会员门控**（免费档隐藏 agent、getById 保留历史会话） |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
 | [05-style-preview.md](./design/05-style-preview.md)           | 风格预览所见即所得：`AiDesignStyleItem` 索引项扩展 typography/tokens/whitespaceRatio（旧数据读取兜底）、`StyleCardFace` 按规范整卡渲染（`--sp-*` 变量换算、留白密度、对比度文字色）、列表卡壳 + 面与详情大样张；**全局风格下拉组件 `StyleSelect`**（t-select 分组 + 选项悬浮 StyleCardFace 预览 + 非会员锁定，PageNew 与文生图表单共用，自带 overlay 全局样式） |
-| [06-card-style.md](./design/06-card-style.md)                 | 卡片风格与笔记卡片（2026-09-05，二次修订）：**白名单属性注册表**（唯一扩展点，CSS/表单/AI 提示词全派生）、6 套内置预设、管理页（/design/card 全抽屉）、**笔记卡片页＝jinsan.ok.kimi.link 的 1:1 移植**（/attachment/card，DOM 预览+Canvas 导出共用分页器，多卡 zip，无本地持久化，唯一增量=卡片风格选择 buildXhsRuntime）、ChatType `card`「卡片样式生成」Agent、会员键 `extendedCardStyles`（服务端暂未返回） |
+| [06-card-style.md](./design/06-card-style.md)                 | 卡片风格与 Markdown 卡片（2026-09-05，三改定稿）：**白名单属性注册表**（唯一扩展点，CSS/表单/AI 提示词全派生）、6 套内置预设、管理页（/design/card 全抽屉）、**Markdown 卡片主页面**（/attachment/card：左 Markdown 源码编辑 + 右实时预览，文章即 Markdown，作者/水印保留、配图走 dataURL 图链，经 NoteCardRenderer iframe 富渲染 + 实测分页 + snapdom 导出；曾两稿——iframe 渲染器+落盘 / 参考站 1:1 字符串正文 `[img]` 管线——均已删除）、ChatType `card`「卡片样式生成」Agent、会员键 `extendedCardStyles`（服务端暂未返回） |
 
 ### chat/ —— 对话
 

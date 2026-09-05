@@ -1,8 +1,5 @@
 import { BaseEntity } from '@/entity'
-import {
-  buildDefaultCardStyleProps,
-  normalizeCardStyleProps
-} from '@/global/card-style-props'
+import { buildDefaultCardStyleProps, normalizeCardStyleProps } from '@/global/card-style-props'
 
 /**
  * 卡片风格（笔记卡片的外观约束）：

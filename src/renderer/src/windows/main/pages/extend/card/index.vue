@@ -1,37 +1,30 @@
 <template>
-  <page-layout title="笔记卡片">
+  <page-layout title="Markdown 卡片">
     <template #extra>
       <t-button :disabled="exporting" @click="handleExport">
-        <template #icon>
-          <download-icon />
-        </template>
+        <template #icon><download-icon /></template>
         {{ exporting ? '导出中...' : pageCount > 1 ? `导出卡片（${pageCount} 张）` : '导出卡片' }}
       </t-button>
     </template>
-    <div class="xhs-studio xhs-page">
-      <div class="shutter-flash" :class="{ active: flashing }" />
-      <main class="note-card">
-        <div class="editor-panel">
-          <EditorPanel />
-        </div>
-        <div class="preview-card">
-          <div class="preview-card__wrapper">
-            <span class="text-xs text-[#888] tracking-wide pb-32px">
-              实时预览 · 3:4 比例 · 长图自动加长{{ pageCount > 1 ? ` · 共 ${pageCount} 页` : '' }}
-            </span>
-            <ErrorBoundary>
-              <PreviewCard
-                :content="state.content"
-                :nickname="state.nickname"
-                :date-str="state.dateStr"
-                :avatar="state.avatar"
-                :images="state.images"
-                :watermark="state.watermark"
-                :runtime="runtime"
-                @pages-change="pageCount = $event"
-              />
-            </ErrorBoundary>
-          </div>
+    <div class="md-card-page">
+      <aside class="md-card-page__editor">
+        <MarkdownEditorPanel />
+      </aside>
+      <main class="md-card-page__preview">
+        <div class="md-card-page__preview-inner">
+          <span class="md-card-page__hint">
+            实时预览 · 3:4 比例 · 长文自动分页{{ pageCount > 1 ? ` · 共 ${pageCount} 页` : '' }}
+          </span>
+          <MarkdownPreview
+            ref="previewRef"
+            :content="state.content"
+            :raw-style-props="styleProps"
+            :author="state.nickname"
+            :date="state.dateStr"
+            :avatar="state.avatar"
+            :watermark="state.watermark"
+            @pages-change="pageCount = $event"
+          />
         </div>
       </main>
     </div>
@@ -39,33 +32,30 @@
 </template>
 
 <script lang="ts" setup>
-import './xhs/xhs-studio.css'
+import { computed, ref } from 'vue'
 import { DownloadIcon } from 'tdesign-icons-vue-next'
 import { MessageUtil } from '@/utils/modal'
 import { useCardStyleStore } from '@/windows/main/store'
-import { normalizeCardStyleProps } from '@/global/card-style-props'
-import EditorPanel from './xhs/EditorPanel.vue'
-import PreviewCard from './xhs/PreviewCard.vue'
-import ErrorBoundary from './xhs/ErrorBoundary.vue'
-import { state } from './xhs/state'
-import { buildXhsRuntime, DEFAULT_RUNTIME } from './xhs/protocol'
-import { exportXhsCards } from './xhs/exporter'
+import { buildDefaultCardStyleProps, normalizeCardStyleProps } from '@/global/card-style-props'
+import { state } from './state'
+import MarkdownEditorPanel from './components/MarkdownEditorPanel.vue'
+import MarkdownPreview from './components/MarkdownPreview.vue'
 
 /**
- * 笔记卡片：jinsan.ok.kimi.link（XHS Card Studio）的 1:1 移植，
- * 唯一增量是 EditorPanel 顶部的「卡片风格」选择（注册表 → 绘制/预览运行时参数）。
+ * Markdown 卡片主页面：左侧 Markdown 源码编辑，右侧 NoteCardRenderer 富渲染实时预览，
+ * 导出走 NoteCardRenderer.exportBlobs（实测分页 + snapdom 截 PNG）。
  */
 defineOptions({ name: 'ExtendCardPage' })
 
 const styleStore = useCardStyleStore()
 const pageCount = ref(1)
 const exporting = ref(false)
-const flashing = ref(false)
+const previewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null)
 
-const runtime = computed(() => {
-  if (!state.styleId) return DEFAULT_RUNTIME
-  const style = styleStore.getById(state.styleId)
-  return buildXhsRuntime(normalizeCardStyleProps(style?.props))
+/** 选中风格 props（缺键补齐）；未选风格用默认预设全部 fallback */
+const styleProps = computed(() => {
+  const base = styleStore.getById(state.styleId)?.props
+  return base ? normalizeCardStyleProps(base) : buildDefaultCardStyleProps()
 })
 
 const download = (href: string, name: string) => {
@@ -75,84 +65,66 @@ const download = (href: string, name: string) => {
   anchor.click()
 }
 
-const handleExport = () => {
+const handleExport = async () => {
+  const preview = previewRef.value
+  if (!preview) return
   exporting.value = true
-  flashing.value = true
-  setTimeout(() => (flashing.value = false), 300)
-  setTimeout(async () => {
-    try {
-      const dataUrls = await exportXhsCards({
-        content: state.content,
-        nickname: state.nickname,
-        dateStr: state.dateStr,
-        avatar: state.avatar ?? undefined,
-        images: state.images,
-        watermark: state.watermark,
-        runtime: runtime.value
-      })
-      const ts = Date.now()
-      if (dataUrls.length === 1) {
-        download(dataUrls[0], `xhs-card-${ts}.png`)
-      } else {
-        const { default: JSZip } = await import('jszip')
-        const zip = new JSZip()
-        dataUrls.forEach((url, i) =>
-          zip.file(`xhs-card-${i + 1}.png`, url.split(',')[1], { base64: true })
-        )
-        const blob = await zip.generateAsync({ type: 'blob' })
-        const url = URL.createObjectURL(blob)
-        download(url, `xhs-cards-${ts}.zip`)
-        setTimeout(() => URL.revokeObjectURL(url), 5000)
-      }
-    } catch (e) {
-      console.error('Export failed:', e)
-      MessageUtil.error('导出失败，请重试')
-    } finally {
-      exporting.value = false
+  try {
+    const urls = await preview.exportPngs(3)
+    if (!urls.length) return
+    const ts = Date.now()
+    if (urls.length === 1) {
+      download(urls[0], `md-card-${ts}.png`)
+    } else {
+      const { default: JSZip } = await import('jszip')
+      const zip = new JSZip()
+      urls.forEach((url, i) =>
+        zip.file(`md-card-${i + 1}.png`, url.split(',')[1], { base64: true })
+      )
+      const blob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(blob)
+      download(url, `md-cards-${ts}.zip`)
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
     }
-  }, 350)
+  } catch (e) {
+    console.error('Export failed:', e)
+    MessageUtil.error('导出失败，请重试')
+  } finally {
+    exporting.value = false
+  }
 }
-
-// ------------------------------ 参考站自定义光标（1:1） ------------------------------
-let cursorCleanup: (() => void) | null = null
-
-onBeforeUnmount(() => {
-  cursorCleanup?.()
-  cursorCleanup = null
-  document.head.querySelectorAll('link[href*="fonts.loli.net"]').forEach((el) => el.remove())
-})
 </script>
 
 <style scoped lang="less">
-// 参考站 header 是 viewport fixed；嵌入应用内容区改为容器内 sticky，视觉行为一致
-.xhs-page .xhs-header {
-  position: sticky;
-}
-
-.xhs-page {
-  background: var(--td-bg-color-container);
-}
-
-.note-card {
-  height: calc(100vh - 48px);
-  width: 100%;
+.md-card-page {
   display: flex;
-}
+  height: calc(100vh - 48px);
+  background: var(--td-bg-color-container);
 
-.editor-panel {
-  width: 45%;
-  overflow-y: auto;
-  padding: 16px;
-}
-.preview-card {
-  width: 55%;
-  overflow-y: auto;
-  padding-top: 5vh;
-  .preview-card__wrapper {
-    display: flex;
-    justify-content: center;
-    flex-direction: column;
-    align-items: center;
+  &__editor {
+    width: 45%;
+    overflow-y: auto;
+    padding: 16px;
+    border-right: 1px solid var(--td-component-stroke);
+  }
+
+  &__preview {
+    width: 55%;
+    overflow-y: auto;
+    padding: 32px 16px;
+
+    &-inner {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+  }
+
+  &__hint {
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    color: var(--td-text-color-placeholder);
+    margin-bottom: 16px;
   }
 }
 </style>

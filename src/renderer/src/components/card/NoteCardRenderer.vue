@@ -25,6 +25,8 @@ const props = withDefaults(
     blocks: Array<string>
     /** 作者名（可空，仅首页卡头展示） */
     author?: string
+    /** 作者日期（可空，紧随作者名的小字，仅首页卡头展示） */
+    date?: string
     /** 作者头像 URL（可空，由调用方把相对路径解析为 /file 资源面 URL） */
     avatarUrl?: string
     /** 页尾水印文字（可空，每张卡底部展示） */
@@ -32,7 +34,7 @@ const props = withDefaults(
     /** 整卡模式：不分页、内容溢出裁切（风格预览面用） */
     fixed?: boolean
   }>(),
-  { title: '', author: '', avatarUrl: '', watermark: '', fixed: false }
+  { title: '', author: '', avatarUrl: '', watermark: '', date: '', fixed: false }
 )
 
 const emit = defineEmits<{ change: [pageCount: number] }>()
@@ -70,6 +72,7 @@ body{-webkit-font-smoothing:antialiased}
 .nc-header{flex:none;display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .nc-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover}
 .nc-author{line-height:1.2}
+.nc-date{display:block;margin-top:2px;font-style:normal;font-size:11px;opacity:.65}
 .nc-title{flex:none}
 .nc-content{flex:1;min-height:0;position:relative;overflow:hidden}
 .nc-footer{flex:none;margin-top:12px;text-align:center}
@@ -93,7 +96,9 @@ const headerHtml = () => {
   const img = props.avatarUrl
     ? `<img class="nc-avatar" src="${escapeHtml(props.avatarUrl)}" />`
     : ''
-  const name = props.author ? `<span class="nc-author">${escapeHtml(props.author)}</span>` : ''
+  const name = props.author
+    ? `<span class="nc-author">${escapeHtml(props.author)}${props.date ? `<em class="nc-date">${escapeHtml(props.date)}</em>` : ''}</span>`
+    : ''
   return `<div class="nc-header">${img}${name}</div>`
 }
 
@@ -212,7 +217,9 @@ const refresh = () => {
 
 /** 图片异步加载完成后再量取一次（图片加载后高度才真实；二次进来已有缓存不再触发） */
 const scheduleImageRelayout = (doc: Document) => {
-  const pending = [...doc.querySelectorAll('img')].filter((img) => !(img as HTMLImageElement).complete)
+  const pending = [...doc.querySelectorAll('img')].filter(
+    (img) => !(img as HTMLImageElement).complete
+  )
   if (pending.length === 0) return
   Promise.all(
     pending.map(
@@ -250,7 +257,15 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => [props.blocks, props.title, props.author, props.avatarUrl, props.watermark, props.styleProps],
+  () => [
+    props.blocks,
+    props.title,
+    props.author,
+    props.date,
+    props.avatarUrl,
+    props.watermark,
+    props.styleProps
+  ],
   () => refresh(),
   { deep: true }
 )
