@@ -1,12 +1,12 @@
 # 内嵌网页浏览抽屉（公共组件 LinkPreviewDrawer）
 
 > 关键文件：`src/renderer/src/components/preview/LinkPreviewDrawer.tsx`（外壳）+ `LinkPreviewContent.vue`（内容）
-> 启用开关：`src/main/index.ts` webPreferences `webviewTag: true`；`did-attach-webview` 给 guest 挂 window.open 转发
-> 演进：原 aihot 页内组件（`AihotLinkDrawer`）已提升为公共组件，aihot 各链接出口改调 `openLinkPreview`
+> 启用开关：`src/main/src/app/aiWindow.ts` webPreferences `webviewTag: true`；`did-attach-webview` 给 guest 挂 window.open 转发
+> 演进：原为 aihot 页内组件（`AihotLinkDrawer`），2026-08 提升为公共组件；2026-09 aihot 功能移除后由 FilePreviewDialog 等继续使用
 
 ## 实现思路
 
-aihot 模块所有外部链接出口（列表卡片 / 热点榜兜底 / 事件「去原站」/ 报道时间线 / 日报条目）统一改为应用内抽屉浏览，不再跳系统浏览器；抽屉工具栏保留「用系统浏览器打开」作为退路。该能力现由公共组件 `LinkPreviewDrawer` 提供，全局（含 FilePreviewDialog 的 url 分支）复用。
+外部链接出口统一走应用内抽屉浏览，不再默认跳系统浏览器；抽屉工具栏保留「用系统浏览器打开」作为退路。该能力由公共组件 `LinkPreviewDrawer` 提供，当前使用方：FilePreviewDialog 的 url 分支等，新调用方零额外成本（`webviewTag: true` 与 `did-attach-webview` 弹窗转发均为全局能力）。
 
 ### 方案选型：`<webview>` 标签 vs `WebContentsView`（2026-08 调研结论）
 
@@ -32,13 +32,11 @@ aihot 模块所有外部链接出口（列表卡片 / 热点榜兜底 / 事件�
 ```
 
 - 外壳唯一导出 `openLinkPreview(url: string, options?: { partition?: string })`：`options.partition` 指定 webview 持久化会话名（缺省 `persist:link-preview`）；内容组件 emit `close` 由外壳销毁抽屉。
-- 新增调用方零额外成本：`webviewTag: true` 与 `did-attach-webview` 弹窗转发均为全局能力。
-- aihot 五处出口统一替换为该函数：`AihotItemCard.vue`、`AihotHotTopicsView.vue`、`AihotStoryDrawerContent.vue`(openOnSite)、`AihotStoryReports.vue`(original || aihot)、`AihotDailyReport.vue`(openLink)。
 
 ## 注意事项
 
 1. **UA 覆写**：站点普遍按 UA 拦截 Electron 流量导致白屏。内容组件基于宿主 Chromium 版本拼标准 Chrome UA（截取到 `(KHTML, like Gecko)` 后接 Chrome 版本 + Safari 尾缀）；UA 结构不符时退化为仅剔除 `Electron/x.y.z` 标记。
-2. **partition 语义**：默认 `persist:link-preview` 持久化会话，与应用主 session 隔离，cookie / 登录态跨打开保留；换名即弃用旧数据（升级自原 `persist:aihot-webview`，aihot 站点 cookie / 登录态会重置一次）。
+2. **partition 语义**：默认 `persist:link-preview` 持久化会话，与应用主 session 隔离，cookie / 登录态跨打开保留；换名即弃用旧数据。
 3. **src 只绑初值**：`:src="initialUrl"`（props 快照），若跟随地址栏变化会在每次跳转时触发重复加载；地址栏展示走 `getURL()` 单向同步。
 4. **导航守卫与 _blank 链接**：主窗口 `will-navigate` 只作用于主 webContents，webview 不受影响。webview 内 `_blank` / `window.open` 走系统浏览器需两处配合：webview 带 `allowpopups` 属性（否则弹窗请求在任何 handler 前就被静默拦死）；Electron 22+ 已移除 `new-window` 事件且宿主 `setWindowOpenHandler` 不覆盖 guest，须在主进程 `did-attach-webview` 时给 guest 单独挂 handler → `shell.openExternal(url)` + deny。
 5. **did-fail-load code -3** 是导航中断（如加载中再次跳转），必须忽略不算失败。

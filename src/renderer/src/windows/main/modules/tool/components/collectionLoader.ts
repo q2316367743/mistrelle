@@ -23,7 +23,7 @@ export const createToolLoadTool = (loadedIds: Ref<string[]>): ToolFunction => ({
       ids: {
         type: 'array',
         description: '要装载的工具集合 id 列表（取值见系统提示词 <available_tool_collections> 目录）',
-        items: { type: 'string', description: '工具集合 id，如 date / browser / aihot' }
+        items: { type: 'string', description: '工具集合 id，如 date / browser' }
       }
     },
     required: ['ids']

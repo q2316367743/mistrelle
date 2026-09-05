@@ -59,7 +59,6 @@ import {
   ToolsIcon,
   UserCircleIcon,
   UserIcon,
-  ComponentRadioIcon,
   AiImageIcon,
   ArrowLeftRight1Icon,
   Calculation1Icon,
@@ -104,7 +103,6 @@ const menuTree: SideMenuItem[] = [
     label: '闲庭漫步',
     icon: LightbulbIcon,
     children: [
-      { label: 'AI HOT', icon: ComponentRadioIcon, to: '/attachment/aihot' },
       { label: '可用性检测工具', icon: Calculation1Icon, to: '/attachment/test' },
       { label: '模型对比检测', icon: ArrowLeftRight1Icon, to: '/attachment/compare' }
     ]

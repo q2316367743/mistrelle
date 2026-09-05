@@ -29,7 +29,7 @@
 
 ```ts
 export interface ToolGroup {
-  id: string          // AI 装载用稳定标识（kebab）：date / clipboard / media / browser / doc / design-style / aihot
+  id: string          // AI 装载用稳定标识（kebab）：date / clipboard / media / browser / doc / design-style
   description: string // 给 AI 的能力描述（进 <available_tool_collections> 目录）
   group: string       // 人类显示名（UI 选择器分组标题），与 id 无关
   tools: ToolFunction[]

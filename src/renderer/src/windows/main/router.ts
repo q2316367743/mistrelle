@@ -62,11 +62,6 @@ export const routes: Array<RouteRecordRaw> = [
   // --------------------------------- 闲庭漫步 ---------------------------------
 
   {
-    name: '闲庭漫步/AIHOT',
-    path: '/attachment/aihot',
-    component: () => import('@/windows/main/pages/extend/aihot/AttachmentAihotPage.vue')
-  },
-  {
     name: '闲庭漫步/文生图',
     path: '/attachment/image',
     component: () => import('@/windows/main/pages/extend/image/AttachmentImagePage.vue')

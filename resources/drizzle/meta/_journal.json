@@ -71,6 +71,13 @@
       "when": 1788352772699,
       "tag": "0009_ambiguous_arachne",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788596863695,
+      "tag": "0010_shocking_molten_man",
+      "breakpoints": true
     }
   ]
 }

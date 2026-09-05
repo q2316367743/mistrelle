@@ -28,7 +28,7 @@ src/main/
     └── db/                     # 数据基础设施（结构未动）
         ├── client.ts           # better-sqlite3 + drizzle 单例 + migrate
         ├── dbIpc.ts            # DB 域 IPC（原 ipc/dbIpc.ts 移入）
-        ├── schema/             # 各领域表定义（aihot/chat/compare/health/image）
+        ├── schema/             # 各领域表定义（chat/compare/health/image）
         └── repo/               # 各领域查询层 DAO
 ```
 

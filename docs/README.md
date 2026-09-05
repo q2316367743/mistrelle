@@ -14,6 +14,7 @@
 | [03-preload-directory.md](./app/03-preload-directory.md) | preload 目录结构（域优先，与 main 同构）：`modules/` 十三域（契约 `*Channels.ts` + 桥同域同居，域划分与 main modules/ 一一对应）+ `lib/` 纯 Node 桥 + 顶层 inject.ts 组装点；channels.ts 大杂烩/inject.ts 四合一拆解记录、三份契约同步关系 |
 | [04-ffmpeg-ppt-removal.md](./app/04-ffmpeg-ppt-removal.md) | ffmpeg 与 PPT 专家功能移除记录（2026-09-04）：删除范围（基础设施/AI 工具/视频导出链/PPT 聊天类型）、保留项（画布动画字段、'ppt' 通用附件识别）、勿再引用符号清单 |
 | [05-mac-dock.md](./app/05-mac-dock.md) | macOS Dock 跟随窗口可见性（2026-09-04）：任一窗口可见才显示 Dock、全隐即隐藏（纯托盘形态、托盘为唯一唤醒入口）、Dock 点击按可见性分流（仅伙伴可见→伙伴，否则→AI）、macDock.ts 注册表契约、accessory 焦点陷阱（ensure-before-show）、最小化不算隐藏 |
+| [06-aihot-removal.md](./app/06-aihot-removal.md) | AIHOT 资讯功能整体移除记录（2026-09-05）：删除范围（页面 13 文件 / API 客户端 / 本地镜像服务 / 4 个 AI 工具 / DB 表 DROP 迁移 0010）、共享文件修改点、保留项（webview 能力与 LinkPreviewDrawer、存量白名单 id 不清理） |
 
 ### server/ —— 本地事件服务
 
@@ -58,7 +59,7 @@
 
 | 文档                                                        | 描述                                                                                 |
 |-------------------------------------------------------------|--------------------------------------------------------------------------------------|
-| [01-sqlite-storage.md](./data/01-sqlite-storage.md)         | SQLite 存储层：Drizzle + better-sqlite3（主进程持有全部 DB 逻辑）、DB 路径 `~/.mistrelle/db/mistrelle.db`、schema、IPC 领域方法契约、aihot 去重/分页、drizzle-kit 迁移流水线 + 资源目录规范、后续模块复用步骤；陷阱：复合列 onConflictDoUpdate 须先声明复合主键（chat_sub 0004 修复）、多语句 DDL 须带 statement-breakpoint |
+| [01-sqlite-storage.md](./data/01-sqlite-storage.md)         | SQLite 存储层：Drizzle + better-sqlite3（主进程持有全部 DB 逻辑）、DB 路径 `~/.mistrelle/db/mistrelle.db`、schema、IPC 领域方法契约、drizzle-kit 迁移流水线 + 资源目录规范、后续模块复用步骤；陷阱：复合列 onConflictDoUpdate 须先声明复合主键（chat_sub 0004 修复）、多语句 DDL 须带 statement-breakpoint、删表同样走 generate 产出 DROP 迁移（aihot 0010） |
 | [02-chat-sqlite-migration.md](./data/02-chat-sqlite-migration.md) | 聊天域迁移 SQLite：chat/chat_content/chat_sub 三表、会话键路由（chat:{id}/sub:{chatId}:{subId}，项目任务保持文件）、记忆进度键改写、`test/migrate-chat-to-sqlite.mjs` 手动迁移脚本（--dry-run、删除范围=index.json+message/、保留 outputs） |
 
 ### browserTool/ —— 浏览器工具
@@ -73,12 +74,11 @@
 |-----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
 | [01-subscribe-module.md](./subscribe/01-subscribe-module.md)           | 订阅模块：博主→视频订阅→详情三级、策略接口（自实现）、FunASR 转写（识别参数）、AI 总结流水线 |
 
-### attachment/ —— 附件与资讯页
+### attachment/ —— 附件与预览
 
 | 文档                                                          | 描述                                                                                                                          |
 |---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| [01-aihot-page.md](./attachment/01-aihot-page.md)             | AIHOT 资讯页：t-tabs 四视图（精选/动态/热点/日报）；精选=本地缓存、动态=在线全量池（lazy 懒挂载）；时间轴；精选集 snapshot/changes 增量同步；日报不可变缓存、429 Retry-After 等接入文档约定落地；已读/未读标记（read 列持久化、点击打开即标记） |
-| [02-aihot-embedded-link-viewer.md](./attachment/02-aihot-embedded-link-viewer.md) | 内嵌网页浏览抽屉（公共组件 `LinkPreviewDrawer`，原 AihotLinkDrawer 提升）：链接出口统一走 `openLinkPreview` → DrawerPlugin + `<webview>`（webviewTag: true）；选型结论（vs WebContentsView）、UA 覆写防白屏、`persist:link-preview` 会话隔离、did-fail-load -3 忽略等注意事项 |
+| [02-embedded-link-viewer.md](./attachment/02-embedded-link-viewer.md) | 内嵌网页浏览抽屉（公共组件 `LinkPreviewDrawer`，原 AihotLinkDrawer 提升）：链接出口统一走 `openLinkPreview` → DrawerPlugin + `<webview>`（webviewTag: true）；选型结论（vs WebContentsView）、UA 覆写防白屏、`persist:link-preview` 会话隔离、did-fail-load -3 忽略等注意事项 |
 | [03-image-generate-page.md](./attachment/03-image-generate-page.md) | 文生图页面（`/attachment/image`）+ **主进程 ImageService**：生图编排与运行态上移 main（单例 Map、提交/轮询/落盘/收尾/广播，跨窗口跨刷新存活、启动 cleanupOrphans 收尾），渲染层只剩视图与 `image:*` IPC 薄代理；**只调自有服务端** `/api/images/*`（Result + camelCase，统一异步任务模型；公开 models / 登录 priced 含积分），模型列表=`ImageModelStore`（未登录也可看档位，登录后展示积分，生成需登录），`defaultImageModel` 语义为服务端档位、仍是工具门控与表单默认来源；`image_generate` 工具走 `record:false` 直出模式（不进页面历史）；`db:image:*` 通道删除、`db:image:list` 迁 `image:list`；`task_id`/`poll_max_at`/`task_terminal` 续轮询语义不变（确认即落库、按剩余窗口续查、不重复扣费）；设计风格仍在渲染层拼 prompt |
 | [04-file-preview-dialog.md](./attachment/04-file-preview-dialog.md) | 文件预览弹窗（公共组件 `FilePreviewDialog`，原 chat-assistant/modals 提升并按约定拆外壳+内容）：`FilePreviewItem` 契约与分发（url→链接抽屉 / md / **html、htm→webview 渲染预览** / code / image / video / audio / showInFolder 兜底）；本地资源经本地事件服务 HTTP `/file` 面加载（见 server/01），MIME 表含 text/html 等 |
 
@@ -178,7 +178,6 @@
 | [06-ego-browser-tools.md](./tool/06-ego-browser-tools.md) | ego-browser 工具：`ego_browser_run` 免审批包装 CLI（nodejs 子命令经 stdin 通道传 script，其余子命令 args 透传）、`ego_browser_exist` 只读探测安装状态；可执行文件路径解析（runtime.egoBrowser 配置 → 平台默认推断 → PATH 兜底）；经「浏览器」可选分组注入（不常驻）；`cliRun` 新增 `stdin` 选项 |
 | [07-tool-policy.md](./tool/07-tool-policy.md)           | 工具安全策略注册与模块循环依赖约束：`registerToolPolicy` / `resolveToolPolicy` 机制、TDZ 崩溃根因（toolPolicy import 闭包拉入 chat/store 全量图）与修复（import 叶子化）、后续新增策略的约束；2026-08 升级：聊天级目录白名单（确认卡片勾选「此目录以后都允许」→ `AiChatContent.allowedDirs`，仅本聊天）、skill 根目录脚本免审批（`ctx.skillRootDirs` 注入）、可信区内 cwd 命令免审批（不依赖沙箱开关） |
 | [08-search-tools.md](./tool/08-search-tools.md)         | 搜索工具：`getDefaultTools()` 动态组装；`zhihu_search` 仅配置 Access Secret 时注入 + `any_search` 可匿名；账号设置知乎项与鉴权头 |
-| [09-aihot-tools.md](./tool/09-aihot-tools.md)         | AIHOT 资讯工具：匿名只读公开 API 客户端（`modules/api/aihot` 全 8 端点，skillhub 同款模式）+ 4 个 safe 工具与资讯页四页签一一对应（精选=本地镜像查询、动态=在线公开池检索、热点=热门榜、日报）；事件时间线 / 日报归档索引仅保留在页面 UI 不暴露为工具；镜像由应用侧 AihotSelectedService 维护，工具不暴露 snapshot+changes 账本协议 |
 | [10-default-tools-slimming.md](./tool/10-default-tools-slimming.md) | 默认工具精简（28→20）：shell 只留 cli_run（js/python/node/git_run 彻底删+死配置清理）、浏览器只留 browser_fetch（ego 移可选）、file_exists/read_skill_file 删除（被 file_stat/file_read 覆盖）、file_write_xlsx 移「文档处理」可选组、image_info 迁 design 场景注入；历史兼容按名集合保留清单 |
 | [11-progressive-tool-collection.md](./tool/11-progressive-tool-collection.md) | 渐进式工具加载：`ToolGroup` 增加 id/description、`<available_tool_collections>` 目录 + `load_tool_collection(ids)` 整组装载、洋葱式三层解析（内置→已装载→全局 toolRegistry 兜底，命中即自动复装实现跨 Loop 恢复）、beginRequest 每轮清空不落库；并行审批 UI（待审块均可作答 + 横幅计数定位）；真问题是能力自助化而非省 token |
 

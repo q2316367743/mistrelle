@@ -1,4 +1,3 @@
-export * from './aihot'
 export * from './chat'
 export * from './compare'
 export * from './health'

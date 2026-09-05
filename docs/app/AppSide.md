@@ -31,7 +31,7 @@ interface SideMenuItem {
 - 新建（`Constant.name`）→ `/new`
 - 生图 → `/attachment/image`
 - 设计（父，`activePaths:['/design/detail/']`）→ 设计风格 `/design/list`、字体 `/design/font`
-- 闲庭漫步（父）→ AI HOT `/attachment/aihot`、可用性检测工具 `/attachment/test`、模型对比检测 `/attachment/compare`
+- 闲庭漫步（父）→ 可用性检测工具 `/attachment/test`、模型对比检测 `/attachment/compare`
 - 更多拓展（父）→ Agent `/agent`、技能 `/skill`、工具 `/tool`
 
 `menus` 定义在 `buddy/App.vue`：红绿灯 → `/hardware/traffic-light`，`match:'prefix'` 覆盖子路径。

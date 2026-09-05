@@ -5,8 +5,6 @@
 import { ipcMain } from 'electron'
 import {
   DbChannels,
-  type AihotBatch,
-  type AihotListParams,
   type ChatItemInput,
   type CompareListParams,
   type CompareQuestionInput,
@@ -15,7 +13,6 @@ import {
   type HealthRecordInput
 } from '~/modules/db/dbChannels'
 import { initDb } from '$/db/client'
-import { aiHotApplyBatch, aiHotClear, aiHotGetMeta, aiHotList, aiHotMarkRead } from '$/db/repo/aihotRepo'
 import {
   compareQuestionDelete,
   compareQuestionList,
@@ -41,18 +38,6 @@ import {
 export function registerDbIpc(): void {
   // 打开数据库并应用 drizzle 迁移（app ready 后调用，可安全使用 app.getPath）
   initDb()
-
-  ipcMain.handle(
-    DbChannels.aihotList,
-    (_event, params: AihotListParams): ReturnType<typeof aiHotList> =>
-      aiHotList(params.filter, params.limit, params.offset)
-  )
-  ipcMain.handle(DbChannels.aihotApplyBatch, (_event, batch: AihotBatch): void =>
-    aiHotApplyBatch(batch)
-  )
-  ipcMain.handle(DbChannels.aihotClear, (): void => aiHotClear())
-  ipcMain.handle(DbChannels.aihotGetMeta, (): ReturnType<typeof aiHotGetMeta> => aiHotGetMeta())
-  ipcMain.handle(DbChannels.aihotMarkRead, (_event, id: string): void => aiHotMarkRead(id))
 
   ipcMain.handle(DbChannels.chatList, (): ReturnType<typeof chatList> => chatList())
   ipcMain.handle(DbChannels.chatGetItem, (_event, id: string) => chatGetItem(id))

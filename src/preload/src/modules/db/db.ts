@@ -5,10 +5,6 @@
 import { ipcRenderer } from 'electron'
 import {
   DbChannels,
-  type AihotBatch,
-  type AihotListParams,
-  type AihotListResult,
-  type AihotMeta,
   type ChatContentResult,
   type ChatItemInput,
   type CompareListParams,
@@ -27,20 +23,6 @@ export interface ChatItemRow extends Omit<ChatItemInput, 'top' | 'privacy'> {
 }
 
 export const dbApi = {
-  aihot: {
-    /** 分页查询精选列表（筛选 / 排序 / 分页在 SQL 内完成） */
-    list: (params: AihotListParams): Promise<AihotListResult> =>
-      ipcRenderer.invoke(DbChannels.aihotList, params),
-    /** 应用一批变更（delete + upsert + meta 水位），单事务原子完成 */
-    applyBatch: (batch: AihotBatch): Promise<void> =>
-      ipcRenderer.invoke(DbChannels.aihotApplyBatch, batch),
-    /** 清空精选数据与元数据（409 重引导时） */
-    clear: (): Promise<void> => ipcRenderer.invoke(DbChannels.aihotClear),
-    /** 读取账本元数据（schemaVersion / fields / cursor 水位 / syncedAt） */
-    getMeta: (): Promise<AihotMeta> => ipcRenderer.invoke(DbChannels.aihotGetMeta),
-    /** 标记单条为已读（点击打开资讯条目时调用） */
-    markRead: (id: string): Promise<void> => ipcRenderer.invoke(DbChannels.aihotMarkRead, id)
-  },
   chat: {
     /** 聊天列表（created_at 倒序，top / privacy 为 0/1） */
     list: (): Promise<ChatItemRow[]> => ipcRenderer.invoke(DbChannels.chatList),

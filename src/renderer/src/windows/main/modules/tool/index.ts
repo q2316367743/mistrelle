@@ -15,7 +15,6 @@ import { getNativeSearchTools } from './components/native/search'
 import { skillTools } from './components/skill'
 import { agentTools } from './components/agent'
 import { designStyleTools } from './components/design'
-import { aihotTools } from './components/aihot'
 import { fontListTool } from './components/design/fontTools'
 import { askTool } from './components/ask'
 import { spawnAgentTool } from '@/windows/main/modules/subagent/tool'
@@ -88,12 +87,6 @@ export const toolGroups: Array<ToolGroup> = [
     description:
       '设计风格库管理：查询全部风格清单与完整 tokens 明细（色彩/字体/间距/圆角/边框/阴影/动效），创建或修改风格',
     tools: designStyleTools
-  },
-  {
-    id: 'aihot',
-    group: 'AI 热点',
-    description: 'AI 资讯聚合检索：精选推荐、公开资讯池、热门话题榜、AI 日报，四类只读数据源',
-    tools: aihotTools
   }
 ]
   .map((g) => ({ ...g, tools: g.tools.filter((t) => !t.internal) }))
@@ -130,7 +123,6 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify([fileWriteXlsxTool], 'name'),
   ...objectify(agentTools, 'name'),
   ...objectify(designStyleTools, 'name'),
-  ...objectify(aihotTools, 'name'),
   ...objectify([fontListTool], 'name')
 }
 
