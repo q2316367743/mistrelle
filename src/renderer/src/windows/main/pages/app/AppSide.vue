@@ -6,14 +6,31 @@
   >
     <div class="h-32px pl-40px"></div>
 
-    <div class="side-container">
-      <SideMenu :items="menuTree" />
-      <t-divider size="8px" />
-      <ChatList />
+    <div :class="['side-container', { setting: setting }]">
+      <div class="side-main">
+        <SideMenu :items="menuTree" />
+        <t-divider size="8px" />
+        <ChatList />
+      </div>
+      <div class="side-setting">
+        <t-button
+          block
+          theme="default"
+          variant="text"
+          style="justify-content: flex-start"
+          @click="handleBack"
+        >
+          <template #icon>
+            <chevron-left-icon />
+          </template>
+          返回工作区
+        </t-button>
+      </div>
     </div>
 
     <div class="user-menu">
-      <div class="w-220px overflow-x-hidden">
+      <t-divider size="1px" />
+      <div class="w-220px overflow-x-hidden mt-4px">
         <t-dropdown
           trigger="click"
           placement="top"
@@ -65,7 +82,8 @@ import {
   ArrowLeftRight1Icon,
   Calculation1Icon,
   LoginIcon,
-  LogoutIcon
+  LogoutIcon,
+  ChevronLeftIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed, isDark } from '@/global/BeanFactory'
 import { useAuthStore } from '@/windows/main/store'
@@ -74,7 +92,9 @@ import { openLogin } from '@/components/modals/LoginDialog'
 import ChatList from './components/ChatList.vue'
 import SideMenu, { type SideMenuItem } from '@/components/menu/SideMenu.vue'
 import { Constant } from '@/global/Constant'
+import { useSafeBack } from '@/hooks'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -138,6 +158,8 @@ const menuItems = computed(() => {
   return [{ label: '登录 / 注册', icon: LoginIcon, value: 'login' }, ...settings]
 })
 
+const setting = computed(() => route.path.startsWith('/setting'))
+
 const handleMenuClick = async (key: string) => {
   if (key === 'login') {
     openLogin()
@@ -151,6 +173,8 @@ const handleMenuClick = async (key: string) => {
   router.push(`/setting/${key}`)
 }
 
+const handleBack = useSafeBack()
+
 onMounted(() => {
   console.log('plugin enter', isDark.value)
 })
@@ -163,12 +187,38 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 48px;
-  padding: 8px 8px 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
   min-width: 200px;
+
+  &.setting {
+    .side-main {
+      left: -220px;
+      right: 220px;
+    }
+    .side-setting {
+      left: 8px;
+    }
+  }
+
+  .side-main {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease-in-out;
+  }
+  .side-setting {
+    position: absolute;
+    top: 8px;
+    left: 220px;
+    right: 8px;
+    bottom: 0;
+    transition: all 0.3s ease-in-out;
+  }
 }
 
 .user-menu {
@@ -176,7 +226,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 8px;
+  padding: 0 8px 6px;
 }
 
 .menu-item {
