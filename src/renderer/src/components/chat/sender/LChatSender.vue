@@ -164,6 +164,7 @@ import {
 import { serializeEditorContent } from './chatSenderContent'
 import type { ChatSenderInitial } from './chatSenderInitial'
 import type { CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
+import type { HtmlElementRef } from '@/components/chat/design/htmlElementBridge'
 import type { ChatRequestParams, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
 import { AiChatMode } from '@/entity'
 import {
@@ -230,16 +231,12 @@ const designStyleName = computed(
 )
 
 const inputValue = ref('')
-const mentionState = ref<{
-  skills: SkillItem[]
-  files: ChatFileRef[]
-  tools: ToolItem[]
-  canvas: CanvasNodeRef[]
-}>({
+const mentionState = ref<MentionState>({
   skills: [],
   files: [],
   tools: [],
-  canvas: []
+  canvas: [],
+  htmlElements: []
 })
 
 type MentionState = {
@@ -247,6 +244,7 @@ type MentionState = {
   files: ChatFileRef[]
   tools: ToolItem[]
   canvas: CanvasNodeRef[]
+  htmlElements: HtmlElementRef[]
 }
 
 const selectAgent = (res: string) => {
@@ -258,6 +256,7 @@ const extractMentions = (editor: Editor): MentionState => {
   const resultFiles: ChatFileRef[] = []
   const resultTools: ToolItem[] = []
   const resultCanvas: CanvasNodeRef[] = []
+  const resultHtmlElements: HtmlElementRef[] = []
   editor.state.doc.descendants((node: PMNode) => {
     if (node.type.name === 'skillMention') {
       resultSkills.push({ path: node.attrs.id, name: node.attrs.label })
@@ -276,13 +275,20 @@ const extractMentions = (editor: Editor): MentionState => {
         nodeId: String(node.attrs.nodeId ?? ''),
         label: String(node.attrs.label ?? '') || undefined
       })
+    } else if (node.type.name === 'htmlElementMention') {
+      resultHtmlElements.push({
+        version: Number(node.attrs.version ?? 0),
+        path: String(node.attrs.path ?? ''),
+        label: String(node.attrs.label ?? '')
+      })
     }
   })
   return {
     skills: resultSkills,
     files: resultFiles,
     tools: resultTools,
-    canvas: resultCanvas
+    canvas: resultCanvas,
+    htmlElements: resultHtmlElements
   }
 }
 
@@ -380,6 +386,35 @@ const CanvasMention = TiptapNode.create({
   ]
 })
 
+/** HTML 设计稿元素引用标签：双击预览元素程序化插入（attrs.label 存完整描述链，显示截断） */
+const HtmlElementMention = TiptapNode.create({
+  name: 'htmlElementMention',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: false,
+  addAttributes: () => ({
+    version: { default: 0 },
+    path: { default: '' },
+    label: { default: '' }
+  }),
+  parseHTML: () => [{ tag: 'span[data-type="html-element"]' }],
+  renderHTML: ({ node }) => {
+    const label = String(node.attrs.label ?? '')
+    const brief = label.split(' > ').pop() || label
+    return [
+      'span',
+      mergeAttributes({
+        class: 'l-chat-sender__inline-tag t-tag t-tag--default t-tag--light t-tag--medium',
+        'data-type': 'html-element',
+        title: label,
+        contenteditable: 'false'
+      }),
+      `设计稿(html-${node.attrs.version})元素(${brief})`
+    ]
+  }
+})
+
 // 直接读取 suggestion 插件内部的 active 状态，作为回车是否让位给选中的权威判断，
 // 避免依赖易失同步的外部标志（曾导致弹层可见时回车误触发发送）。
 const isSuggestionActive = (ed?: Editor | null): boolean => {
@@ -402,7 +437,8 @@ const editor = useEditor({
     SkillMention,
     FileMention,
     ToolMention,
-    CanvasMention
+    CanvasMention,
+    HtmlElementMention
   ],
   content: props.initial.input || '',
   editable: !props.loading,
@@ -489,7 +525,8 @@ const canSend = computed(() =>
     mentionState.value.skills.length ||
     mentionState.value.files.length ||
     mentionState.value.tools.length ||
-    mentionState.value.canvas.length
+    mentionState.value.canvas.length ||
+    mentionState.value.htmlElements.length
   )
 )
 const showPlaceholder = computed(
@@ -498,7 +535,8 @@ const showPlaceholder = computed(
     !mentionState.value.skills.length &&
     !mentionState.value.files.length &&
     !mentionState.value.tools.length &&
-    !mentionState.value.canvas.length
+    !mentionState.value.canvas.length &&
+    !mentionState.value.htmlElements.length
 )
 
 /** 当前上下文占上下文窗口的百分比（圆环展示） */
@@ -586,7 +624,7 @@ const handleClearMode = () => {
 const clear = () => {
   editor.value?.commands.clearContent(true)
   inputValue.value = ''
-  mentionState.value = { skills: [], files: [], tools: [], canvas: [] }
+  mentionState.value = { skills: [], files: [], tools: [], canvas: [], htmlElements: [] }
 }
 
 /** 画布侧边栏双击节点后注入：在输入框插入 canvasMention 标签（LChatEngine 经 DI 桥接调用） */
@@ -598,6 +636,21 @@ const addCanvasNode = (ref: CanvasNodeRef) => {
       {
         type: 'canvasMention',
         attrs: { version: ref.version, nodeId: ref.nodeId, label: ref.label ?? '' }
+      },
+      { type: 'text', text: ' ' }
+    ])
+    .run()
+}
+
+/** 设计稿预览双击元素后注入：在输入框插入 htmlElementMention 标签（useChatSession 经 DI 桥接调用） */
+const addHtmlElementNode = (ref: HtmlElementRef) => {
+  editor.value
+    ?.chain()
+    .focus()
+    .insertContent([
+      {
+        type: 'htmlElementMention',
+        attrs: { version: ref.version, path: ref.path, label: ref.label }
       },
       { type: 'text', text: ' ' }
     ])
@@ -676,7 +729,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => editor.value?.destroy())
 
-defineExpose({ addCanvasNode })
+defineExpose({ addCanvasNode, addHtmlElementNode })
 </script>
 <style scoped lang="less">
 @import 'LChatSender.less';

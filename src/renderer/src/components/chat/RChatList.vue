@@ -191,6 +191,8 @@ const getLocatorTooltip = (message: UserMessage) => {
       if (item.type === 'tool') return item.data.label
       if (item.type === 'canvas')
         return `画布(canvas-${item.data.version})节点(${item.data.label || item.data.nodeId})`
+      if (item.type === 'html-element')
+        return `设计稿(html-${item.data.version})元素(${item.data.label})`
       if (item.type === 'attachment') return item.data.map((file) => file.name ?? '').join(', ')
       return ''
     })

@@ -109,9 +109,12 @@ export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
 
 ```
 components/chat/aside/design/
-├── DesignAside.vue        # 画布引擎（原有）
-├── HtmlDesignAside.vue    # HTML 引擎外壳：版本 t-select + 刷新 + dropdown（文件夹/复制图片/下载图片/复制源码）
-└── HtmlDesignPreview.vue  # 预览子组件：iframe（sandbox）+ contain 缩放（上限 1x）+ doc 变更重建文档
+├── DesignAside.vue          # 画布引擎（原有）
+├── HtmlDesignAside.vue      # HTML 引擎外壳：版本 t-select + 刷新 + dropdown + 全屏树/预览分发 + 双击注入桥
+├── HtmlDesignPreview.vue    # 预览子组件：iframe + contain 缩放 + 双击选中/滚轮升降级 + 元素树上报
+├── HtmlElementTree.vue      # 全屏左栏元素树（镜像 CanvasElementTree 交互）
+├── htmlPreviewDom.ts        # iframe DOM 纯函数：路径解析/描述链/树构建/蓝框样式（从 Preview 拆出守行数）
+└── useHtmlDesignActions.ts  # 动作集合 composable（复制图片/下载图片/复制源码/文件夹中显示）
 ```
 
 - 分发：`LChatAside.vue` 新增 `designScene` prop（default 'canvas'），design 分支
@@ -119,8 +122,33 @@ components/chat/aside/design/
   `useChatSession(session.designScene)` → `LChatEngine` → `LChatAside`
 - 预览缩放 contain 适配容器（`useElementSize` 监听，侧边栏拖宽/全屏自适应），上限 1x 防放大模糊
 - 聊天 pending/streaming 时禁用版本切换（与画布侧边栏同口径）
-- fullscreen 仅放大预览（HTML 无节点模型，无元素树/属性面板）
+- fullscreen 展示「左元素树 + 右预览」双栏（画布引擎是 树+画布+属性面板 三栏，HTML 无节点模型无属性面板）
 - 聊天删除时 `AiChatStore.remove` 同步 `destroyDesignHtmlStore(sandboxDir)`
+
+### 4.1 元素选中与修改（对齐画布双击交互）
+
+- **定位模型**：元素无 id，用「body 相对索引路径」（`'0;1;2'`，每段 = 元素在父级 Element 子节点中的
+  下标）作唯一标识；路径解析（resolvePath）、双击取路径（pathOfElement）、元素树构建（buildTree）
+  三处共用 htmlPreviewDom.ts 同一套函数保证一致
+- **单击选中 + 蓝框，双击注入聊天**：事件监听挂在 iframe 的 `contentWindow` 上（父侧挂一次，跨
+  doc.write 存活，iframe 内零脚本不违反清洗规则；注意跨 realm 不能用 `instanceof Element`，
+  用 `nodeType === 1` 判断）。单击元素 → 记录路径 → 注入 style 规则
+  `[data-dsel]{outline:2px solid <brand> !important}` 圈出（颜色运行时读宿主 `--td-brand-color`
+  token，不写裸色值；outline-offset:-2px 防边缘裁切；仅 Preview 渲染时注入，导出 PNG 不带蓝框）。
+  单击 body 空白取消选中；**双击 = 注入聊天输入框**（单击已选中，双击仅补发 pick）
+- **滚轮升降级**（解决「点 span 想选 div」的层级问题）：滚轮上 = 扩大到 parentElement（压栈当前路径）；
+  滚轮下 = 弹回之前缩小的候选（栈空则进第一个元素子）。树/双击产生的选中变化清空候选栈
+  （Preview 内用 lastWheelPath 区分来源）
+- **全屏元素树**：Preview 每次渲染后遍历 body 上报树（深度≤12、总量≤400 防爆）；
+  HtmlElementTree 树点击 ↔ 预览蓝框双向联动，选中变化自动展开祖先链，再点已选中 = 取消
+- **选中元素注入聊天**（双击触发，镜像画布 CANVAS_NODE_PICK_KEY 全链）：双击 = 选中 + 注入——
+  `HtmlElementItem { version, path, label }`（label = 完整描述链 `body > div.hero > h1 「文本…」`）
+  → `HTML_ELEMENT_PICK_KEY`（htmlElementBridge.ts，useChatSession provide）→
+  `LChatSender.addHtmlElementNode`（htmlElementMention 标签，attrs 存全量链、显示截断末段）→
+  chatSenderContent 序列化 `HtmlElementContent` → `agentContext.buildPinnedContext` 渲染指令
+  「按描述链特征定位元素、仅改该元素、html_write 整页重写其余保持不变」→
+  designHtmlPrompt 有对应「元素引用」契约小节；无桥接时降级复制描述链
+- 消息芯片：MChatUser 渲染 `设计稿(html-vN)元素(末段)` t-tag（title 全链）、RChatList locator tooltip 同步
 
 ## 5. 注意事项
 

@@ -55,13 +55,26 @@
         </t-dropdown-menu>
       </t-dropdown>
     </div>
-    <html-design-preview :doc="current" class="html-design-aside__body" />
+    <div class="html-design-aside__body" :class="{ 'html-design-aside__body--split': fullscreen }">
+      <html-element-tree
+        v-if="fullscreen"
+        :nodes="treeNodes"
+        :selected-path="selectedPath"
+        @select="handleElementSelect"
+      />
+      <html-design-preview
+        :doc="current"
+        :selected-path="selectedPath"
+        class="html-design-aside__preview"
+        @select="handleElementSelect"
+        @pick="handleElementPick"
+        @tree-change="handleTreeChange"
+      />
+    </div>
   </div>
 </template>
 <script lang="ts" setup>
-import dayjs from 'dayjs'
 import { MessageUtil } from '@/utils/modal'
-import { blobToBase64 } from '@/utils/file/CovertUtil'
 import {
   CopyIcon,
   DownloadIcon,
@@ -70,22 +83,22 @@ import {
   MoreIcon,
   RefreshIcon
 } from 'tdesign-icons-vue-next'
-import type { DropdownProps } from 'tdesign-vue-next'
 import {
-  buildDesignHtmlFileName,
-  buildDesignHtmlOutputsDir,
-  exportDesignHtmlPng,
   getDesignHtmlStore
 } from '@/windows/main/modules/designHtml'
 import type { ChatStatus } from '@/windows/main/modules/chat'
+import type { HtmlTreeNode } from '@/components/chat/design/htmlElementBridge'
+import { HTML_ELEMENT_PICK_KEY } from '@/components/chat/design/htmlElementBridge'
 import HtmlDesignPreview from './HtmlDesignPreview.vue'
+import HtmlElementTree from './HtmlElementTree.vue'
+import { useHtmlDesignActions } from './useHtmlDesignActions'
 
 const props = withDefaults(
   defineProps<{
     sandbox?: string
     /** 用户工作空间：已选择时「文件夹中显示」优先打开它 */
     workspace?: string
-    /** 侧边栏全屏：HTML 引擎无节点模型，仅放大预览（预览组件自适应容器） */
+    /** 侧边栏全屏：展示「左元素树 + 右预览」双栏布局 */
     fullscreen?: boolean
     /** 会话作答状态：pending / streaming 视为聊天进行中 */
     status?: ChatStatus
@@ -102,12 +115,23 @@ const store = computed(() => getDesignHtmlStore(props.sandbox ?? ''))
 const current = computed(() => store.value.current.value)
 
 const selected = ref<number | undefined>(undefined)
-const busy = ref(false)
+const selectedPath = ref<string | undefined>(undefined)
+const treeNodes = ref<HtmlTreeNode[]>([])
 
 /** 聊天进行中（pending / streaming）：禁用手动切换设计稿，避免干扰 AI 作答 */
 const isChatRunning = computed(() => props.status === 'pending' || props.status === 'streaming')
 
 const emptyText = '请先让 AI 创建 HTML 设计稿'
+
+/** 设计稿预览 → 聊天输入框的注入回调（useChatSession provide），为空时降级为复制描述链 */
+const pickHtmlElement = inject(HTML_ELEMENT_PICK_KEY, null)
+
+const { busy, handleAction } = useHtmlDesignActions({
+  current: () => current.value ?? undefined,
+  selectedVersion: () => selected.value,
+  sandbox: () => props.sandbox ?? '',
+  workspace: () => props.workspace ?? ''
+})
 
 const docOptions = computed(() =>
   store.value.files.value.map((file) => ({
@@ -156,73 +180,30 @@ const handleRefresh = () => {
   void store.value.refreshFiles()
 }
 
-/** 复制当前设计稿为图片到剪贴板 */
-const handleCopy = async () => {
-  const doc = current.value
-  if (!doc) return
-  busy.value = true
-  try {
-    const blob = await exportDesignHtmlPng(doc)
-    const dataUrl = await blobToBase64(blob)
-    const ok = await window.preload.inject.clipboard.copyImage(dataUrl)
-    if (ok) {
-      MessageUtil.success('已复制到剪贴板')
-    } else {
-      MessageUtil.error('复制失败')
-    }
-  } catch (e) {
-    MessageUtil.error('复制失败', e)
-  } finally {
-    busy.value = false
-  }
+/** 树 / 预览任意来源的选中变化（undefined = 取消选中） */
+const handleElementSelect = (path: string | undefined) => {
+  selectedPath.value = path
 }
 
-/** 下载当前设计稿为图片（选择保存路径，文件名 title+时间戳） */
-const handleDownload = async () => {
-  const doc = current.value
-  if (!doc) return
-  busy.value = true
-  try {
-    const blob = await exportDesignHtmlPng(doc)
-    const name = `${doc.title || doc.name || 'design'}-${dayjs().format('YYYYMMDDHHmmss')}.png`
-    const path = await window.preload.inject.dialog.save({
-      title: '保存设计稿图片',
-      defaultPath: name,
-      filters: [{ name: 'PNG 图片', extensions: ['png'] }]
-    })
-    if (!path) return
-    await window.preload.fs.writeBinaryFile(path, await blob.arrayBuffer())
-    MessageUtil.success('已保存设计稿图片')
-  } catch (e) {
-    MessageUtil.error('保存失败', e)
-  } finally {
-    busy.value = false
-  }
+const handleTreeChange = (nodes: HtmlTreeNode[]) => {
+  treeNodes.value = nodes
 }
 
-const handleAction: DropdownProps['onClick'] = (data) => {
-  if (data.value === 'copy') void handleCopy()
-  else if (data.value === 'download') void handleDownload()
-  else if (data.value === 'source') {
-    const doc = current.value
-    if (!doc) return
-    void window.preload.inject.clipboard.copyText(doc.html).then((ok) => {
-      if (ok) MessageUtil.success('已复制 HTML 源码')
-      else MessageUtil.error('复制失败')
-    })
-  } else if (data.value === 'folder') {
-    if (selected.value) {
-      window.preload.inject.shell.showItemInFolder(
-        window.preload.path.join(
-          buildDesignHtmlOutputsDir(props.sandbox ?? ''),
-          buildDesignHtmlFileName(selected.value)
-        )
-      )
-    } else {
-      window.preload.inject.shell.openPath(
-        props.workspace || buildDesignHtmlOutputsDir(props.sandbox ?? '')
-      )
-    }
+/** 双击元素：注入聊天输入框（AI 按描述链定位修改）；无桥接时降级为复制描述链 */
+const handleElementPick = async (payload: { path: string; chain: string }) => {
+  const doc = current.value
+  if (!doc) return
+  const elementRef = { version: doc.version, path: payload.path, label: payload.chain }
+  if (pickHtmlElement) {
+    pickHtmlElement(elementRef)
+    MessageUtil.success('已将设计稿元素添加到输入框')
+    return
+  }
+  const ok = await window.preload.inject.clipboard.copyText(payload.chain)
+  if (ok) {
+    MessageUtil.success('已复制元素描述链')
+  } else {
+    MessageUtil.error('复制失败')
   }
 }
 </script>
@@ -248,6 +229,17 @@ const handleAction: DropdownProps['onClick'] = (data) => {
     flex: 1;
     min-height: 0;
     margin-top: 8px;
+    display: flex;
+
+    &--split {
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+  }
+
+  &__preview {
+    flex: 1;
+    min-width: 0;
   }
 }
 </style>

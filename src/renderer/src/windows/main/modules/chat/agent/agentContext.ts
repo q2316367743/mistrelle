@@ -4,6 +4,7 @@ import type {
   AIMessageContent,
   CanvasContent,
   ChatMessage,
+  HtmlElementContent,
   SkillContent,
   TextContent,
   ToolCallContent,
@@ -123,7 +124,14 @@ const buildPinnedContext = (msg: ChatMessage): string => {
   const skills = msg.content.filter((c): c is SkillContent => c.type === 'skill')
   const tools = msg.content.filter((c): c is ToolContent => c.type === 'tool')
   const canvases = msg.content.filter((c): c is CanvasContent => c.type === 'canvas')
-  if (skills.length === 0 && tools.length === 0 && canvases.length === 0) return ''
+  const htmlElements = msg.content.filter((c): c is HtmlElementContent => c.type === 'html-element')
+  if (
+    skills.length === 0 &&
+    tools.length === 0 &&
+    canvases.length === 0 &&
+    htmlElements.length === 0
+  )
+    return ''
 
   const parts: string[] = []
   if (skills.length > 0) {
@@ -151,6 +159,17 @@ const buildPinnedContext = (msg: ChatMessage): string => {
       )
       .join('\n')
     parts.push(`用户在本条消息中指定了以下画布节点，请先打开画布定位节点，再按需修改：\n${list}`)
+  }
+  if (htmlElements.length > 0) {
+    const list = htmlElements
+      .map(
+        (e) =>
+          `- 设计稿元素：html-${e.data.version} 中的元素 ${e.data.label}（DOM 路径 ${e.data.path}）：请按描述链特征（标签 / 类名 / 文本）在源码中定位该元素并按用户要求修改；用 html_write 整页重写提交，除该元素相关部分外其余保持不变`
+      )
+      .join('\n')
+    parts.push(
+      `用户在本条消息中选中了以下 HTML 设计稿元素（在预览中点选产生），请定位并修改：\n${list}`
+    )
   }
   return parts.join('\n\n')
 }

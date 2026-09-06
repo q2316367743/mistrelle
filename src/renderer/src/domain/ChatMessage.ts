@@ -106,6 +106,17 @@ export type CanvasItem = {
   label?: string
 }
 export type CanvasContent = ChatBaseContent<'canvas', CanvasItem>
+/**
+ * 用户在 HTML 设计稿预览中双击选中的元素引用：
+ * version 即 html-{version}.html 版本号；path 为 body 相对索引路径（'0;1;2'，父组件按索引定位元素）；
+ * label 为完整 DOM 描述链（如 `body > div.hero > h1.title > span 「文本…」`），供 AI 按特征在源码中定位。
+ */
+export type HtmlElementItem = {
+  version: number
+  path: string
+  label: string
+}
+export type HtmlElementContent = ChatBaseContent<'html-element', HtmlElementItem>
 export type ThinkingContent = ChatBaseContent<
   'thinking',
   {
@@ -163,7 +174,7 @@ type AIContentTypeMap = {
 export type AIContentType = keyof AIContentTypeMap
 export type AIMessageContent = AIContentTypeMap[AIContentType]
 export type UserMessageContent =
-  TextContent | AttachmentContent | SkillContent | ToolContent | CanvasContent
+  TextContent | AttachmentContent | SkillContent | ToolContent | CanvasContent | HtmlElementContent
 /** 思考强度（DeepSeek 思考模式）：low / high / max，默认 high */
 export type ThinkingEffort = 'low' | 'high' | 'max'
 export interface UserMessage extends ChatBaseMessage {

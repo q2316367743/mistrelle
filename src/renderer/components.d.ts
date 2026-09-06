@@ -29,6 +29,7 @@ declare module 'vue' {
     FontPreviewText: typeof import('./src/components/FontPreviewText.vue')['default']
     HtmlDesignAside: typeof import('./src/components/chat/aside/design/HtmlDesignAside.vue')['default']
     HtmlDesignPreview: typeof import('./src/components/chat/aside/design/HtmlDesignPreview.vue')['default']
+    HtmlElementTree: typeof import('./src/components/chat/aside/design/HtmlElementTree.vue')['default']
     InfoResult: typeof import('./src/components/Result/InfoResult.vue')['default']
     LChatAside: typeof import('./src/components/chat/aside/LChatAside.vue')['default']
     LChatAttachment: typeof import('./src/components/chat/sender/LChatAttachment.vue')['default']

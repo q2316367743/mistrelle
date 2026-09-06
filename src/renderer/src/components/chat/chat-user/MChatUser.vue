@@ -82,6 +82,17 @@
             <template #icon><LayersIcon /></template>
             画布(canvas-{{ item.data.version }})节点({{ item.data.label || item.data.nodeId }})
           </t-tag>
+          <t-tag
+            v-else-if="item.type === 'html-element'"
+            theme="default"
+            variant="light"
+            :title="`设计稿 html-${item.data.version} 元素 ${item.data.label}`"
+            size="small"
+            class="r-chat-list__inline-tag"
+          >
+            <template #icon><Html5Icon /></template>
+            设计稿(html-{{ item.data.version }})元素({{ (item.data.label.split(' > ').pop() || '').slice(0, 24) }})
+          </t-tag>
         </template>
       </div>
       <!-- 折叠态：悬浮在底部模糊区中央的向下箭头，点击展开 -->
@@ -124,6 +135,7 @@ import {
   CodeIcon,
   FileIcon,
   FileImageIcon,
+  Html5Icon,
   LayersIcon,
   ToolsIcon
 } from 'tdesign-icons-vue-next'
