@@ -1,6 +1,6 @@
 import { ref, toRaw, watch } from 'vue'
 import { throttledWatch } from '@vueuse/core'
-import type { ChatRequestParams, ChatStatus, ChatType, WritingScene } from '@/windows/main/modules/chat'
+import type { ChatRequestParams, ChatStatus, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
 import type { AiChatMode } from '@/entity/ai'
 import { aiChatContentGet, aiChatContentSet, aiChatGetItem, chatIdFromKey } from '@/windows/main/modules/chat/service/ChatService'
 import { buildDesignStylePrompt } from '@/windows/main/modules/design'
@@ -36,6 +36,8 @@ export class ChatSession {
   readonly type = ref<ChatType>('office')
   /** 跨挂载存活：写作子场景（writing 类型内部分层，创建后锁定；缺省 article） */
   readonly writingScene = ref<WritingScene>('article')
+  /** 跨挂载存活：设计子场景（design 类型的渲染引擎 canvas / html，创建后锁定；缺省 canvas） */
+  readonly designScene = ref<DesignScene>('canvas')
   /** 跨挂载存活：设计风格 id（design 类型，创建后锁定；缺省无） */
   readonly designStyleId = ref('')
   /** 跨挂载存活：当前选中的 agent */
@@ -136,6 +138,9 @@ export class ChatSession {
       // 旧数据无 writingScene 字段时回退 article（历史 free 数据一并并入文章创作）
       this.writingScene.value = content.writingScene ?? 'article'
       this.chat.setWritingScene(this.writingScene.value)
+      // 旧数据无 designScene 字段时回退 canvas（画布引擎，行为不变）
+      this.designScene.value = content.designScene ?? 'canvas'
+      this.chat.setDesignScene(this.designScene.value)
       // 设计风格（design 类型创建后锁定）：读一次完整内容并构建稳定提示词注入引擎，
       // 风格锁定后不再重复读盘；风格文件已删除时跳过注入。
       this.designStyleId.value = content.designStyleId ?? ''
@@ -176,8 +181,9 @@ export class ChatSession {
     if (params.workspace) this.workspace.value = params.workspace
     this.mode.value = params.mode
     if (params.agentId) this.agentId.value = params.agentId
-    // 注意：聊天类型（type）、写作子场景（writingScene）、设计风格（designStyleId）与隐私标记
-    // （privacy）均为「创建后锁定」属性，由 load() 从聊天行 / 持久化内容恢复，此处不得随消息修改。
+    // 注意：聊天类型（type）、写作子场景（writingScene）、设计子场景（designScene）、
+    // 设计风格（designStyleId）与隐私标记（privacy）均为「创建后锁定」属性，
+    // 由 load() 从聊天行 / 持久化内容恢复，此处不得随消息修改。
     await this.chat.sendUserMessage(params)
   }
 
@@ -221,6 +227,7 @@ export class ChatSession {
       mode: this.mode.value,
       type: this.type.value,
       writingScene: this.writingScene.value,
+      designScene: this.designScene.value,
       designStyleId: this.designStyleId.value || undefined,
       allowedDirs: this.chat.allowedDirs.value.length
         ? [...this.chat.allowedDirs.value]

@@ -1,6 +1,6 @@
 import { BaseEntity } from '@/entity'
 import { ChatMessage, TodoItem } from '@/domain'
-import type { ChatRequestParams, ChatType, WritingScene } from '@/windows/main/modules/chat'
+import type { ChatRequestParams, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
 
 /**
  * 聊天索引中的轻量元信息（index.json）
@@ -52,6 +52,8 @@ export interface AiChatContent {
   type?: ChatType
   // 写作子场景（仅 article，writing 类型默认场景），新建对话时选定，创建后锁定；旧数据缺省回退 article
   writingScene?: WritingScene
+  // 设计子场景（design 类型的渲染引擎 canvas / html），新建对话时选定，创建后锁定；旧数据缺省回退 canvas
+  designScene?: DesignScene
   // 设计风格 id（design 类型），新建对话时选定，创建后锁定；旧数据缺省无
   designStyleId?: string
   // 聊天级目录白名单：用户在确认卡片勾选「此目录以后都允许」累积的目录，

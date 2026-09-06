@@ -9,6 +9,7 @@
  */
 import type { ToolFunction } from '@/domain'
 import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
+import type { DesignScene } from '@/windows/main/modules/chat/designScene'
 import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
 import { ARTICLE_SCENE_PROMPT } from '@/windows/main/modules/tool/components/article/articlePrompt'
 import { createArticleTools } from '@/windows/main/modules/tool/components/article/articleTools'
@@ -17,6 +18,8 @@ import { createNovelTools } from '@/windows/main/modules/tool/components/novel/n
 import { buildDesignCanvasPrompt } from '@/windows/main/modules/canvas'
 import { createCanvasTools } from '@/windows/main/modules/tool/components/canvas/canvasTools'
 import { createDesignTools } from '@/windows/main/modules/tool/components/design'
+import { buildDesignHtmlPrompt } from '@/windows/main/modules/designHtml'
+import { createDesignHtmlTools } from '@/windows/main/modules/tool/components/designHtml/designHtmlTools'
 import { useSettingDefaultStore } from '@/windows/main/store/setting/SettingDefaultStore'
 
 export interface ChatTypeConfig {
@@ -57,6 +60,40 @@ export const WRITING_SCENE_CONFIG: Record<WritingScene, WritingSceneConfig> = {
   }
 }
 
+export interface DesignSceneConfig {
+  /** 具体名字，eg. 画布引擎 */
+  label: string
+  /** 引擎固定提示词工厂（引擎创建后锁定 → 可进稳定 system 前缀，不影响 prompt 缓存） */
+  prompt: (ctx: ChatTypeToolContext) => string
+  /** 引擎场景工具工厂（canvas → canvas_* 画布工具；html → html_* 设计稿工具） */
+  tools: (ctx: ChatTypeToolContext) => ToolFunction[]
+}
+
+/**
+ * 设计子场景（渲染引擎）单一数据源（类 WRITING_SCENE_CONFIG 风格）：
+ * canvas = leafer 图层树画布；html = 自包含 HTML 设计稿（iframe 预览 + snapdom 导出）。
+ * 两引擎提示词独立成文（canvasPrompt / designHtmlPrompt），设计素材工具共用。
+ */
+export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
+  canvas: {
+    label: '画布引擎',
+    prompt: () =>
+      buildDesignCanvasPrompt({
+        hasImageGenerate: !!useSettingDefaultStore().state.defaultImageModel
+      }),
+    tools: (ctx) => [...createCanvasTools(ctx), ...createDesignTools(ctx)]
+  },
+  html: {
+    label: 'HTML 引擎',
+    // 与 createDesignTools 同源判断：仅配置默认生图模型时注入 image_generate 生图增强规则
+    prompt: () =>
+      buildDesignHtmlPrompt({
+        hasImageGenerate: !!useSettingDefaultStore().state.defaultImageModel
+      }),
+    tools: (ctx) => [...createDesignHtmlTools(ctx), ...createDesignTools(ctx)]
+  }
+}
+
 /**
  * 聊天类型单一数据源。
  * 同一类型的提示词固定、类型不变，因此类型提示词可安全进入稳定 system 前缀，
@@ -85,11 +122,9 @@ export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
   },
   design: {
     label: '设计创意',
-    // 与 createDesignTools 同源判断：仅配置默认生图模型时注入 image_generate 生图增强规则
-    prompt: () =>
-      buildDesignCanvasPrompt({
-        hasImageGenerate: !!useSettingDefaultStore().state.defaultImageModel
-      }),
-    tools: (ctx) => [...createCanvasTools(ctx), ...createDesignTools(ctx)]
+    // 渲染引擎分层（canvas / html）：提示词与工具按 DESIGN_SCENE_CONFIG 委托；
+    // 子 Agent（sceneType='design'）ctx 无 designScene → 缺省 canvas 保持画布引擎
+    prompt: (ctx) => DESIGN_SCENE_CONFIG[ctx.designScene ?? 'canvas'].prompt(ctx),
+    tools: (ctx) => DESIGN_SCENE_CONFIG[ctx.designScene ?? 'canvas'].tools(ctx)
   }
 }

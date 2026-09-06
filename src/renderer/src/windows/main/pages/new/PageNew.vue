@@ -15,19 +15,24 @@
           <div class="page-new__type-desc">{{ currentScene?.description }}</div>
         </template>
         <template v-if="type === 'design'">
+          <segmented-control v-model="engine" :options="engineOptions" class="page-new__scene" />
+          <div class="page-new__type-desc">{{ currentEngine?.description }}</div>
           <style-select v-model="designStyleId" class="page-new__style" />
         </template>
       </div>
       <div class="page-new__sender">
-        <l-chat-sender :initial="{ model, type, writingScene: scene }" @send="handleSend" />
+        <l-chat-sender
+          :initial="{ model, type, writingScene: scene, designScene: engine }"
+          @send="handleSend"
+        />
       </div>
     </div>
   </page-layout>
 </template>
 <script lang="ts" setup>
 import { useAiChatStore, useSettingDefaultStore } from '@/windows/main/store'
-import type { ChatRequestParams, ChatType, WritingScene } from '@/windows/main/modules/chat'
-import { CHAT_TYPE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/windows/main/modules/chat'
+import type { ChatRequestParams, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
+import { CHAT_TYPE_OPTIONS, DESIGN_SCENE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/windows/main/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { toggleCollapsed } from '@/global/BeanFactory'
 
@@ -40,13 +45,16 @@ const show = ref(true)
 const model = ref('')
 const type = ref<ChatType>('office')
 const scene = ref<WritingScene>('article')
+const engine = ref<DesignScene>('canvas')
 const designStyleId = ref('')
 
 const typeOptions = CHAT_TYPE_OPTIONS
 const sceneOptions = WRITING_SCENE_OPTIONS
+const engineOptions = DESIGN_SCENE_OPTIONS
 
 const currentOption = computed(() => typeOptions.find((option) => option.value === type.value))
 const currentScene = computed(() => sceneOptions.find((option) => option.value === scene.value))
+const currentEngine = computed(() => engineOptions.find((option) => option.value === engine.value))
 
 const handleSend = async (message: ChatRequestParams) => {
   if (!message.message.model) {
@@ -63,10 +71,11 @@ const handleSend = async (message: ChatRequestParams) => {
   resetPageData()
 }
 
-/** 重置页面全部数据：类型、场景、设计风格、模型（输入框内容由 LChatSender 发送成功后自行清空） */
+/** 重置页面全部数据：类型、场景、引擎、设计风格、模型（输入框内容由 LChatSender 发送成功后自行清空） */
 const resetPageData = () => {
   type.value = 'office'
   scene.value = 'article'
+  engine.value = 'canvas'
   designStyleId.value = ''
   model.value = useSettingDefaultStore().state.defaultAssistantModel
   setTimeout(() => {
@@ -78,7 +87,10 @@ const resetPageData = () => {
 }
 
 watch(type, (val) => {
-  if (val !== 'design') designStyleId.value = ''
+  if (val !== 'design') {
+    designStyleId.value = ''
+    engine.value = 'canvas'
+  }
 })
 
 watch(

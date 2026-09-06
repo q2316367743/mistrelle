@@ -16,6 +16,7 @@ import {
 } from '@/windows/main/modules/chat'
 import { useSnowflake } from '@/hooks'
 import { destroyCanvasStore } from '@/windows/main/modules/canvas'
+import { destroyDesignHtmlStore } from '@/windows/main/modules/designHtml'
 import { TextContent, UserMessageContent } from '@/domain'
 
 /**
@@ -82,6 +83,7 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       mode: params.mode,
       type: params.type,
       writingScene: params.writingScene,
+      designScene: params.designScene,
       designStyleId: params.designStyleId
     })
 
@@ -104,8 +106,9 @@ export const useAiChatStore = defineStore('ai-chat', () => {
       await aiChatRemove(id)
       // 删除沙盒目录
       await aiChatSandboxRemove(id)
-      // 释放画布 store（沙盒目录已删除，避免残留内存与失效状态）
+      // 释放画布 / HTML 设计稿 store（沙盒目录已删除，避免残留内存与失效状态）
       destroyCanvasStore(getSandboxDir(id))
+      destroyDesignHtmlStore(getSandboxDir(id))
     }
   }
   const rename = async (id: string, name: string) => {

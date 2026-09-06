@@ -2,7 +2,7 @@ import type { AiStreamChunk } from '@/windows/main/modules/ai'
 import type { AIMessageContent, ThinkingEffort, UserMessageContent } from '@/domain'
 import { AiChatMode, AiProvideFormat } from '@/entity'
 import type { AiModelSupport } from '@/entity'
-import type { ChatType, WritingScene } from '@/windows/main/modules/chat'
+import type { ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
 
 // ==========================================
 //  公共类型定义
@@ -33,6 +33,8 @@ export interface ChatRequestParams {
   type?: ChatType
   // 写作子场景（仅 article，writing 类型默认场景），新建对话时选定，创建后锁定；缺省回退 article
   writingScene?: WritingScene
+  // 设计子场景（design 类型的渲染引擎 canvas / html），新建对话时选定，创建后锁定；缺省回退 canvas
+  designScene?: DesignScene
   // 设计风格 id（design 类型），新建对话时选定，创建后锁定；缺省无
   designStyleId?: string
 }

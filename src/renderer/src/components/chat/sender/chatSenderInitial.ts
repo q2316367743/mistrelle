@@ -1,6 +1,6 @@
 import type { ThinkingEffort } from '@/domain'
 import { AiChatMode } from '@/entity'
-import type { ChatType, WritingScene } from '@/windows/main/modules/chat'
+import type { ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
 
 /**
  * LChatSender 初始化参数：由父组件在挂载时一次性提供，
@@ -17,6 +17,8 @@ export interface ChatSenderInitial {
   privacy?: boolean
   type?: ChatType
   writingScene?: WritingScene
+  // 设计子场景（design 类型的渲染引擎 canvas / html，创建后锁定；仅随首条消息透传）
+  designScene?: DesignScene
   // 设计风格 id（design 类型创建后锁定；聊天室展示只读标签）
   designStyleId?: string
   workspace?: string

@@ -51,6 +51,7 @@
         :active-agent-id="activeAgentId"
         :type="asideType"
         :writing-scene="writingScene"
+        :design-scene="designScene"
         :fullscreen="fullscreen"
         @view-agent="handleViewSubAgent"
       />
@@ -164,6 +165,7 @@ const {
   status,
   workspace,
   writingScene,
+  designScene,
   sandboxDir,
   initialState,
   tokenUsage,

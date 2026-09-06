@@ -16,6 +16,13 @@
     :writing-scene="writingScene"
     :fullscreen="fullscreen"
   />
+  <html-design-aside
+    v-else-if="type === 'design' && designScene === 'html'"
+    :sandbox="sandbox"
+    :workspace="workspace"
+    :fullscreen="fullscreen"
+    :status="status"
+  />
   <design-aside
     v-else-if="type === 'design'"
     :sandbox="sandbox"
@@ -26,16 +33,18 @@
 </template>
 <script lang="ts" setup>
 import type { ChatMessage, TodoItem } from '@/domain'
-import type { ChatStatus, ChatType, WritingScene } from '@/windows/main/modules/chat'
+import type { ChatStatus, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
 import type { AgentHistoryItem } from '@/components/chat/AgentHistoryList.vue'
 import OfficeAside from './OfficeAside.vue'
 import WritingAside from './writing/WritingAside.vue'
 import DesignAside from './design/DesignAside.vue'
+import HtmlDesignAside from './design/HtmlDesignAside.vue'
 
 withDefaults(
   defineProps<{
     type: ChatType
     writingScene?: WritingScene
+    designScene?: DesignScene
     messages: ChatMessage[]
     workspace?: string
     sandbox?: string
@@ -48,6 +57,7 @@ withDefaults(
   {
     type: 'office',
     writingScene: 'article',
+    designScene: 'canvas',
     messages: () => [],
     workspace: '',
     sandbox: '',

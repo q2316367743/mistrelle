@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid'
 import { skillAgentList } from '@/windows/main/modules/skill'
 import type { AiChatMode } from '@/entity'
 import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
+import type { DesignScene } from '@/windows/main/modules/chat/designScene'
 import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
 import type { ToolPolicyContext } from '@/windows/main/modules/tool/toolPolicy'
 import { useSettingAiStore } from '@/windows/main/store'
@@ -102,6 +103,8 @@ export class ToolChat {
   private sceneType?: ChatType
   /** 写作子场景（writing 类型内部分层，新建对话时选定，创建后锁定；缺省 article） */
   private writingScene: WritingScene = 'article'
+  /** 设计子场景（design 类型的渲染引擎 canvas / html，新建对话时选定，创建后锁定；缺省 canvas） */
+  private designScene: DesignScene = 'canvas'
   /** 设计风格提示词（design 类型，创建后锁定；会话水合时由设计风格对象构建，缺省空串不注入） */
   private designStylePrompt = ''
   /** 工作空间设定文件内容缓存，键为 workspace 路径，避免 agent 循环中重复读盘 */
@@ -158,6 +161,7 @@ export class ToolChat {
       getSandboxDir: () => this.sandboxDir,
       getWorkspace: () => this.workspace,
       writingScene: this.writingScene,
+      designScene: this.designScene,
       getAnchorNodeIds: () => this.anchorNodeIds
     }
   }
@@ -401,6 +405,11 @@ export class ToolChat {
   /** 获取当前写作子场景 */
   getWritingScene(): WritingScene {
     return this.writingScene
+  }
+
+  /** 设置设计子场景即渲染引擎（新建对话时选定，创建后锁定；仅 design 类型生效） */
+  setDesignScene(scene: DesignScene): void {
+    this.designScene = scene
   }
 
   /** 设置设计风格提示词（design 类型创建后锁定，会话水合时注入） */

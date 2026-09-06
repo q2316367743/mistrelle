@@ -17,6 +17,8 @@
 export interface ContextWalkState {
   /** 最近一次 canvas_open 打开的画布版本（canvas_get_nodes / canvas_batch_edit 无 version 参数，靠它定位资源） */
   canvasVersion?: number
+  /** 最近一次 html_open / html_create 打开的 HTML 设计稿版本（html_write 无 version 参数，靠它定位资源） */
+  htmlVersion?: number
 }
 
 export interface ToolContextRule {
@@ -36,6 +38,13 @@ const canvasArgKey = (version: unknown): string | undefined =>
 
 const canvasStateKey = (state: ContextWalkState): string =>
   `canvas:${state.canvasVersion ?? '?'}`
+
+const htmlArgKey = (version: unknown): string | undefined =>
+  typeof version === 'number' ? `html:${version}` : undefined
+
+/** 当前 HTML 设计稿资源键：open 后按版本号定位，否则用 current 占位（create / write 流） */
+const htmlStateKey = (state: ContextWalkState): string =>
+  state.htmlVersion != null ? `html:${state.htmlVersion}` : 'html:current'
 
 
 const idKey = (prefix: string, id: unknown): string | undefined =>
@@ -65,6 +74,27 @@ export const toolContextRules: Record<string, ToolContextRule> = {
   canvas_get_nodes: { resource: (_args, state) => canvasStateKey(state) },
   canvas_batch_edit: {
     writeResource: (_args, state) => canvasStateKey(state)
+  },
+
+  // —— HTML 设计稿族：create / write 均携带全量源码，共享当前稿资源键（仅留最后一次成功写）；
+  // 未 open 过时用 current 占位键，open 后按版本号定位并使旧读取过期 ——
+  html_open: {
+    resource: (args) => htmlArgKey(args.version),
+    track: (args, state) => {
+      if (typeof args.version === 'number') state.htmlVersion = args.version
+    }
+  },
+  html_create: {
+    writeResource: () => htmlStateKey({}),
+    track: (_args, state) => {
+      state.htmlVersion = undefined
+    }
+  },
+  html_read: {
+    resource: (args, state) => htmlArgKey(args.version) ?? htmlStateKey(state)
+  },
+  html_write: {
+    writeResource: (_args, state) => htmlStateKey(state)
   },
 
   // —— 写作族：正文读取与角色卡写入 ——

@@ -164,7 +164,7 @@ import {
 import { serializeEditorContent } from './chatSenderContent'
 import type { ChatSenderInitial } from './chatSenderInitial'
 import type { CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
-import type { ChatRequestParams, ChatType, WritingScene } from '@/windows/main/modules/chat'
+import type { ChatRequestParams, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
 import { AiChatMode } from '@/entity'
 import {
   AiEducationIcon,
@@ -218,6 +218,7 @@ const mode = ref<AiChatMode>(props.initial.mode ?? 0)
 const privacy = ref(props.initial.privacy ?? false)
 const type = ref<ChatType>(props.initial.type ?? 'office')
 const writingScene = ref<WritingScene>(props.initial.writingScene ?? 'article')
+const designScene = ref<DesignScene>(props.initial.designScene ?? 'canvas')
 const designStyleId = ref(props.initial.designStyleId ?? '')
 const workspaceRef = ref(props.initial.workspace || '')
 const files = computed(() => [...sandboxFiles.value])
@@ -306,6 +307,7 @@ const buildUserMessage = (): ChatRequestParams | null => {
     workspace: workspaceRef.value,
     type: type.value,
     writingScene: writingScene.value,
+    designScene: designScene.value,
     designStyleId: designStyleId.value || undefined
   }
 }
@@ -639,6 +641,7 @@ watch(
     if (init.privacy !== undefined) privacy.value = init.privacy
     if (init.type !== undefined) type.value = init.type
     if (init.writingScene !== undefined) writingScene.value = init.writingScene
+    if (init.designScene !== undefined) designScene.value = init.designScene
     if (init.designStyleId !== undefined) designStyleId.value = init.designStyleId
     if (init.workspace !== undefined) workspaceRef.value = init.workspace
   }
