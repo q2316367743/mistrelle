@@ -46,6 +46,7 @@ export type ImageContent = ChatBaseContent<
   'image',
   {
     name?: string
+    /** 图片地址；本地文件为绝对路径（渲染层经 pathToHref 转协议展示），由工具返回的 chatImages 回填 */
     url?: string
     width?: number
     height?: number

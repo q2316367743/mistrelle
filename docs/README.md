@@ -79,7 +79,7 @@
 | 文档                                                          | 描述                                                                                                                          |
 |---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
 | [02-embedded-link-viewer.md](./attachment/02-embedded-link-viewer.md) | 内嵌网页浏览抽屉（公共组件 `LinkPreviewDrawer`，原 AihotLinkDrawer 提升）：链接出口统一走 `openLinkPreview` → DrawerPlugin + `<webview>`（webviewTag: true）；选型结论（vs WebContentsView）、UA 覆写防白屏、`persist:link-preview` 会话隔离、did-fail-load -3 忽略等注意事项 |
-| [03-image-generate-page.md](./attachment/03-image-generate-page.md) | 文生图页面（`/attachment/image`）+ **主进程 ImageService**：生图编排与运行态上移 main（单例 Map、提交/轮询/落盘/收尾/广播，跨窗口跨刷新存活、启动 cleanupOrphans 收尾），渲染层只剩视图与 `image:*` IPC 薄代理；**只调自有服务端** `/api/images/*`（Result + camelCase，统一异步任务模型；公开 models / 登录 priced 含积分），模型列表=`ImageModelStore`（未登录也可看档位，登录后展示积分，生成需登录），`defaultImageModel` 语义为服务端档位、仍是工具门控与表单默认来源；`image_generate` 工具走 `record:false` 直出模式（不进页面历史）；`db:image:*` 通道删除、`db:image:list` 迁 `image:list`；`task_id`/`poll_max_at`/`task_terminal` 续轮询语义不变（确认即落库、按剩余窗口续查、不重复扣费）；设计风格仍在渲染层拼 prompt |
+| [03-image-generate-page.md](./attachment/03-image-generate-page.md) | 文生图页面（`/attachment/image`）+ **主进程 ImageService**：生图编排与运行态上移 main（单例 Map、提交/轮询/落盘/收尾/广播，跨窗口跨刷新存活、启动 cleanupOrphans 收尾），渲染层只剩视图与 `image:*` IPC 薄代理；**只调自有服务端** `/api/images/*`（Result + camelCase，统一异步任务模型；公开 models / 登录 priced 含积分），模型列表=`ImageModelStore`（未登录也可看档位，登录后展示积分，生成需登录），`defaultImageModel` 语义为服务端档位、仍是工具门控与表单默认来源；`image_generate` 工具走 `record:false` 直出模式（不进页面历史）；`db:image:*` 通道删除、`db:image:list` 迁 `image:list`；`task_id`/`poll_max_at`/`task_terminal` 续轮询语义不变（确认即落库、按剩余窗口续查、不重复扣费）；设计风格仍在渲染层拼 prompt；`defaultImageModel` 仍为表单默认与工具首选档位来源（工具门控已改登录态，见 tool/12） |
 | [04-file-preview-dialog.md](./attachment/04-file-preview-dialog.md) | 文件预览弹窗（公共组件 `FilePreviewDialog`，原 chat-assistant/modals 提升并按约定拆外壳+内容）：`FilePreviewItem` 契约与分发（url→链接抽屉 / md / **html、htm→webview 渲染预览** / code / image / video / audio / showInFolder 兜底）；本地资源经本地事件服务 HTTP `/file` 面加载（见 server/01），MIME 表含 text/html 等 |
 
 ### extend/ —— 闲庭漫步工具页
@@ -182,6 +182,7 @@
 | [08-search-tools.md](./tool/08-search-tools.md)         | 搜索工具：`getDefaultTools()` 动态组装；`zhihu_search` 仅配置 Access Secret 时注入 + `any_search` 可匿名；账号设置知乎项与鉴权头 |
 | [10-default-tools-slimming.md](./tool/10-default-tools-slimming.md) | 默认工具精简（28→20）：shell 只留 cli_run（js/python/node/git_run 彻底删+死配置清理）、浏览器只留 browser_fetch（ego 移可选）、file_exists/read_skill_file 删除（被 file_stat/file_read 覆盖）、file_write_xlsx 移「文档处理」可选组、image_info 迁 design 场景注入；历史兼容按名集合保留清单 |
 | [11-progressive-tool-collection.md](./tool/11-progressive-tool-collection.md) | 渐进式工具加载：`ToolGroup` 增加 id/description、`<available_tool_collections>` 目录 + `load_tool_collection(ids)` 整组装载、洋葱式三层解析（内置→已装载→全局 toolRegistry 兜底，命中即自动复装实现跨 Loop 恢复）、beginRequest 每轮清空不落库；并行审批 UI（待审块均可作答 + 横幅计数定位）；真问题是能力自助化而非省 token |
+| [12-chat-image-generate.md](./tool/12-chat-image-generate.md) | 通用生图对话直出：`image_generate` 升级为唯一通用工具（office + design 双引擎共用，生成图一律作为 `image` 内容块展示在对话中）、执行器 `chatImages` 标记约定（回填 image 块 + 剥离标记）、`hasImageGenerateAccess()` 登录门控（替代默认生图模型门控，4 处统一）、RChatImage 渲染组件 + 折叠白名单保留图片块 |
 
 ### writing/ —— 写作
 

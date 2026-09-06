@@ -2,6 +2,7 @@ import type { Ref } from 'vue'
 import type { ChatMessage, ToolFunction } from '@/domain'
 import type { ToolCall } from './agentTypes'
 import {
+  appendAssistantContent,
   appendSubAgentId,
   markToolExecuting,
   markToolInteractive,
@@ -49,6 +50,56 @@ export const parseArguments = (raw: string | undefined): Record<string, unknown>
     throw new Error('工具参数必须是 JSON 对象')
   }
   return Object.fromEntries(Object.entries(value))
+}
+
+/**
+ * 工具 → 对话图片块约定：handler 返回对象含 chatImages 数组时，逐项落为 image 内容块
+ * 直接展示在对话中（纯 UI 块，不进模型上下文），并从回传给模型的结果中剥离该标记。
+ * image 块复用工具调用块的 stepId，与工具调用归属同一响应步骤。
+ */
+const appendChatImages = (
+  messages: Ref<ChatMessage[]>,
+  assistantMessageId: string,
+  call: ToolCall,
+  raw: unknown
+): unknown => {
+  if (!raw || typeof raw !== 'object') return raw
+  const images = (raw as { chatImages?: unknown }).chatImages
+  if (!Array.isArray(images) || images.length === 0) return raw
+
+  const assistant = messages.value.find((m) => m.id === assistantMessageId)
+  const stepId =
+    assistant?.role === 'assistant'
+      ? assistant.content?.findLast(
+          (item) => item.type === 'toolcall' && item.data.toolCallId === call.toolCallId
+        )?.stepId
+      : undefined
+
+  for (const item of images) {
+    if (!item || typeof item !== 'object') continue
+    const { path, name, width, height } = item as {
+      path?: unknown
+      name?: unknown
+      width?: unknown
+      height?: unknown
+    }
+    if (typeof path !== 'string' || !path) continue
+    appendAssistantContent(messages, assistantMessageId, {
+      type: 'image',
+      ...(stepId ? { stepId } : {}),
+      data: {
+        ...(typeof name === 'string' && name ? { name } : {}),
+        url: path,
+        ...(typeof width === 'number' ? { width } : {}),
+        ...(typeof height === 'number' ? { height } : {})
+      },
+      time: Date.now()
+    })
+  }
+
+  const rest = { ...(raw as Record<string, unknown>) }
+  delete rest.chatImages
+  return rest
 }
 
 const applyResult = (
@@ -219,7 +270,10 @@ export const runSingleTool = async (
   markToolExecuting(messages, assistantMessageId, call.toolCallId)
 
   try {
-    applyResult(messages, assistantMessageId, call, serializeResult(await fn.handler(args)))
+    const raw = await fn.handler(args)
+    // chatImages 约定：图片块入对话展示后剥离标记，模型只看到业务字段
+    const output = appendChatImages(messages, assistantMessageId, call, raw)
+    applyResult(messages, assistantMessageId, call, serializeResult(output))
   } catch (error: unknown) {
     applyResult(messages, assistantMessageId, call, `错误: ${error instanceof Error ? error.message : String(error)}`)
   }

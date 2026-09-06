@@ -42,7 +42,17 @@ export function buildSettingDefault(): SettingDefault {
     defaultSummaryModel: '',
     defaultTranslateModel: '',
     defaultVectorModel: '',
-    defaultImageModel: '',
-    skillIgnoreDirs: ['.git', '.svn', 'node_modules', '.hg', '.idea', '.vscode', 'dist', '.next', 'build']
+    defaultImageModel: 'economy',
+    skillIgnoreDirs: [
+      '.git',
+      '.svn',
+      'node_modules',
+      '.hg',
+      '.idea',
+      '.vscode',
+      'dist',
+      '.next',
+      'build'
+    ]
   }
 }

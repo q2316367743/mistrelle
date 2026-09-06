@@ -1,6 +1,6 @@
 /**
  * 设计创意类型的 system 提示词工厂。
- * 类型创建后内容稳定，但会随运行时设置动态组装：仅当配置了默认生图模型（image_generate 工具可用）时，
+ * 类型创建后内容稳定，但会随运行时登录态动态组装：仅当用户已登录（image_generate 工具可用）时，
  * 才注入生图增强规则，避免出现「提示词提到 image_generate、工具却未注入」的错配。
  * 其余完整规则（风格 / 构图 / 字体 / 操作 / 工作流）由 canvas_guidelines 按需加载。
  */
@@ -51,10 +51,10 @@ const MAIN_VISUAL_STRATEGY_BASE = [
   '- 规划构图时先定主视觉来源再进构建：真实素材 → 几何图形，避免构建到一半发现没图可放、只能用文字填空。'
 ]
 
-/** 生图增强规则：仅当配置了默认生图模型（image_generate 工具已注入）时追加 */
+/** 生图增强规则：仅当用户已登录（image_generate 工具已注入）时追加 */
 const IMAGE_GENERATE_RULES = [
-  '### 主视觉来源策略（生图增强，已配置默认生图模型）',
-  '- 无真实素材的插画 / 人物 / 场景 / 纹理 / 抽象视觉 → **用 image_generate(prompt, path?) 生成**（已配置默认生图模型，工具可用），把返回的本地 path 填进 image 节点 imageUrl；生成失败或服务不可用时才回退 stock / placeholder / 几何图形组合。',
+  '### 主视觉来源策略（生图增强，已登录可用生图工具）',
+  '- 无真实素材的插画 / 人物 / 场景 / 纹理 / 抽象视觉 → **用 image_generate(prompt, path?) 生成**（已登录，工具可用），把返回的本地 path 填进 image 节点 imageUrl；生成失败或服务不可用时才回退 stock / placeholder / 几何图形组合。',
   '- 多个生图素材合并成一张 sprite 图一次生成、再用 image_crop 切分（省钱规范见 canvas_guidelines("image-generation")）；生图失败时如实告知用户，不反复重试。',
   '- **生图产物带不透明背景色（多为白底，模型不支持真透明）**：需要透明底素材时，用 image_remove_background(path) 去除背景（从边缘清除连续白底，产出带 alpha 的 PNG）后，再把去背景后的 path 填进画布；禁止把带白底的图直接盖在深色 / 彩色背景上。'
 ]
@@ -142,7 +142,7 @@ const DESIGN_CANVAS_AFTER_VISUAL = [
 
 /**
  * 组装设计创意类型提示词。
- * @param hasImageGenerate 是否已配置默认生图模型（image_generate 工具已注入）。
+ * @param hasImageGenerate 是否已登录（image_generate 工具已注入）。
  *   为 true 时追加生图增强规则（image_generate / sprite / image_crop），否则主视觉来源只用真实素材 + 几何图形。
  */
 export const buildDesignCanvasPrompt = ({

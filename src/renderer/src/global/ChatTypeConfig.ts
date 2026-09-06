@@ -20,7 +20,10 @@ import { createCanvasTools } from '@/windows/main/modules/tool/components/canvas
 import { createDesignTools } from '@/windows/main/modules/tool/components/design'
 import { buildDesignHtmlPrompt } from '@/windows/main/modules/designHtml'
 import { createDesignHtmlTools } from '@/windows/main/modules/tool/components/designHtml/designHtmlTools'
-import { useSettingDefaultStore } from '@/windows/main/store/setting/SettingDefaultStore'
+import {
+  createImageGenerateTool,
+  hasImageGenerateAccess
+} from '@/windows/main/modules/tool/components/design/imageGenerate'
 
 export interface ChatTypeConfig {
   /** 具体名字，eg. 设计创意 */
@@ -77,19 +80,13 @@ export interface DesignSceneConfig {
 export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
   canvas: {
     label: '画布引擎',
-    prompt: () =>
-      buildDesignCanvasPrompt({
-        hasImageGenerate: !!useSettingDefaultStore().state.defaultImageModel
-      }),
+    prompt: () => buildDesignCanvasPrompt({ hasImageGenerate: hasImageGenerateAccess() }),
     tools: (ctx) => [...createCanvasTools(ctx), ...createDesignTools(ctx)]
   },
   html: {
     label: 'HTML 引擎',
-    // 与 createDesignTools 同源判断：仅配置默认生图模型时注入 image_generate 生图增强规则
-    prompt: () =>
-      buildDesignHtmlPrompt({
-        hasImageGenerate: !!useSettingDefaultStore().state.defaultImageModel
-      }),
+    // 与 createDesignTools 同源判断：登录后注入 image_generate 生图增强规则
+    prompt: () => buildDesignHtmlPrompt({ hasImageGenerate: hasImageGenerateAccess() }),
     tools: (ctx) => [...createDesignHtmlTools(ctx), ...createDesignTools(ctx)]
   }
 }
@@ -102,9 +99,17 @@ export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
 export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
   office: {
     label: '日常办公',
-    // 日常办公无额外场景指令，保持既有行为
-    prompt: () => '',
-    tools: () => []
+    // 通用生图：登录后注入 image_generate，生成的图片直接展示在对话中；
+    // 未登录不注入且提示词为空（门控动态组装，登录态稳定时前缀不变、可缓存）
+    prompt: () =>
+      hasImageGenerateAccess()
+        ? [
+            '## 生图能力',
+            '- 用户需要生成 / 绘制图片、插画、配图时，调用 image_generate(prompt) 生成，图片会直接展示在对话中',
+            '- 生成完成后简要说明结果，并告知图片保存路径（path）；生成失败如实告知，不反复重试'
+          ].join('\n')
+        : '',
+    tools: (ctx) => (hasImageGenerateAccess() ? [createImageGenerateTool(ctx)] : [])
   },
   writing: {
     label: '写作',

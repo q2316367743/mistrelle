@@ -7,20 +7,19 @@
  * - image_remove_background：去除图片从外到内的连续背景色（默认白底），产出透明 PNG（本地 Sharp）
  * - image_color_map：分析图片颜色分布，返回主色 palette 与突兀区域 anomalies（本地 Sharp，LAB 感知色差）
  * - image_info：读取本地图片格式与宽高（image 节点按真实尺寸等比缩放）
- * - image_generate：文字生图（仅在配置了默认生图模型时注入；真实实现见 main ImageService，经 image 域 IPC 直出）
+ * - image_generate：文字生图（仅登录后注入；生成的图片同时展示在对话中；真实实现见 main ImageService，经 image 域 IPC 直出）
  * - chart_generate：echarts 图表渲染为 SVG 落盘（支持 echarts 全部内置图表类型）
  * 工具注入：chatType.ts（global/ChatTypeConfig）的 design 配置里与画布工具一起挂载。
  * 注：字体入库 / 元数据修改由用户在资源管理页完成（window.preload.font），不对 AI 暴露注册工具。
  */
 import type { ToolFunction } from '@/domain'
-import { useSettingDefaultStore } from '@/windows/main/store/setting/SettingDefaultStore'
 import { createIconSvgTool } from './iconSvg'
 import { createWebsiteLogoTool, type DesignToolContext } from './websiteLogo'
 import { createFontListTool, createFontPickTool } from './fontTools'
 import { createImageCropTool } from './imageCrop'
 import { createImageColorMapTool } from './imageColorMap'
 import { createImageInfoTool } from './imageInfo'
-import { createImageGenerateTool } from './imageGenerate'
+import { createImageGenerateTool, hasImageGenerateAccess } from './imageGenerate'
 import { createImageRemoveBackgroundTool } from './imageRemoveBackground'
 import { createChartGenerateTool } from './chartGenerate'
 
@@ -42,8 +41,8 @@ export const createDesignTools = (ctx: DesignToolContext): ToolFunction[] => {
     createChartGenerateTool(ctx)
     // TODO: 二维码生成
   ]
-  // 仅配置了默认生图模型时注入 image_generate：未配置则 AI 无生图能力，走占位图 / 用户素材
-  if (useSettingDefaultStore().state.defaultImageModel) {
+  // 仅登录后注入 image_generate：积分由服务端校验扣减，生成的图片同时展示在对话中
+  if (hasImageGenerateAccess()) {
     tools.push(createImageGenerateTool(ctx))
   }
   return tools

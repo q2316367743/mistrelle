@@ -43,6 +43,7 @@
         :content="contentItem"
         @view-sub-agent="handleViewSubAgent"
       />
+      <r-chat-image v-else-if="contentItem.type === 'image'" :content="contentItem" />
     </template>
     <FileProductList :message="message" />
 
@@ -87,6 +88,7 @@ import {
   RefreshIcon
 } from 'tdesign-icons-vue-next'
 import RChatTool from '@/components/chat/chat-assistant/RChatTool.vue'
+import RChatImage from '@/components/chat/chat-assistant/RChatImage.vue'
 import FileProductList from '@/components/chat/chat-assistant/FileProductList.vue'
 import { ChatContent } from '@tdesign-vue-next/chat'
 import RChatActionbar from '@/components/chat/RChatActionbar.vue'
@@ -201,15 +203,18 @@ const processExpanded = ref(false)
  * 实际渲染的内容列表：
  * - 进行中（streaming/pending）：全量平铺，实时展示过程
  * - 完成且折叠：保留最终回复 + 全部 continueHint（继续按钮是操作入口，必须始终可见，不能被折叠）
+ *   + image 块（工具生成图是最终成果，折叠后必须保持可见）
  * - 完成且展开 / 无过程可折叠：全量
  */
 const visibleContents = computed(() => {
   const contents = props.message.content ?? []
   if (!isCompleted.value) return contents
   if (processExpanded.value) return contents
-  // 折叠：仅保留最终回复与继续按钮（continueHint），其余过程（thinking/toolcall/中间文本）隐藏；
+  // 折叠：仅保留最终回复与继续按钮（continueHint）、图片块，其余过程（thinking/toolcall/中间文本）隐藏；
   // 无最终回复时结果仅剩 continueHint，过程内容由折叠条 + "异常停止"提示概括
-  return contents.filter((item) => item === finalContent.value || isContinueHint(item))
+  return contents.filter(
+    (item) => item === finalContent.value || isContinueHint(item) || item.type === 'image'
+  )
 })
 
 /**

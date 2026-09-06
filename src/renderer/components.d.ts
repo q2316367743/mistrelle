@@ -50,6 +50,7 @@ declare module 'vue' {
     OfficeAside: typeof import('./src/components/chat/aside/OfficeAside.vue')['default']
     PageLayout: typeof import('./src/components/PageLayout/PageLayout.vue')['default']
     RChatActionbar: typeof import('./src/components/chat/RChatActionbar.vue')['default']
+    RChatImage: typeof import('./src/components/chat/chat-assistant/RChatImage.vue')['default']
     RChatList: typeof import('./src/components/chat/RChatList.vue')['default']
     RChatThink: typeof import('./src/components/chat/chat-assistant/RChatThink.vue')['default']
     RChatTool: typeof import('./src/components/chat/chat-assistant/RChatTool.vue')['default']
