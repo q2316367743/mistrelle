@@ -30,7 +30,7 @@
             <t-tag variant="light" size="small">积分包</t-tag>
           </div>
           <div class="redeem-content__card-desc">
-            {{ verified.pack ? `${verified.points} 积分 · ` : '' }}自到账时刻起 30 天有效，到期未用完清零
+            {{ verified.pack ? `${verified.points} 积分 · ` : '' }}到账后计入永久积分，永不过期
           </div>
         </template>
         <template v-else>
@@ -64,7 +64,7 @@
           </div>
           <div class="redeem-content__success-row">
             <span>去向</span>
-            <span>增量包（自到账起 30 天）</span>
+            <span>永久积分</span>
           </div>
         </template>
         <template v-else>

@@ -24,8 +24,7 @@ import {
   type AuthTierInfo,
   type AuthDesignStyleDetail,
   type AuthDesignStyleItem,
-  type AuthPackCatalog,
-  type AuthPackLots
+  type AuthPackCatalog
 } from './authChannels'
 
 export const authApi = {
@@ -65,9 +64,6 @@ export const authApi = {
     params: AuthPageParams
   ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>> =>
     ipcRenderer.invoke(AuthChannels.listTransactions, params),
-  /** 未过期增量包 lot */
-  listPackLots: (): Promise<AuthDataResult<AuthPackLots>> =>
-    ipcRenderer.invoke(AuthChannels.listPackLots),
   /** 在线设计风格列表（需会员更多设计风格能力） */
   listDesignStyles: (): Promise<AuthDataResult<AuthDesignStyleItem[]>> =>
     ipcRenderer.invoke(AuthChannels.listDesignStyles),

@@ -14,7 +14,7 @@
 端点（Bearer apiKey，业务 Result 包装）：
 
 - `POST /api/user/activation-codes/verify` body `{ code }` → `{ type, tier: { code, name, level, months } | null, points: number | null, pack: { code, name } | null, expiresAt: number | null }`。**展示按 tier / points 是否非空判别**会员码 / 积分包，不依赖 type 字符串值。
-- `POST /api/user/activation-codes/redeem` body `{ code }` → `{ type, tier, tierName, startedAt, expiresAt, grantedPoints, points, membership }`（时间戳毫秒）。会员码：升级档位立即生效，同档/降级档位下一期生效；`grantedPoints` 为 0（会员不再发基础积分），`points` 为 null。增量包：`tier/startedAt/expiresAt` 为 null，`points` 写入 `points_account` 一笔 pack（发放+30 天）。
+- `POST /api/user/activation-codes/redeem` body `{ code }` → `{ type, tier, tierName, startedAt, expiresAt, grantedPoints, points, membership }`（时间戳毫秒）。会员码：升级档位立即生效，同档/降级档位下一期生效；`grantedPoints` 为 0（会员不再发基础积分），`points` 为 null。增量包：`tier/startedAt/expiresAt` 为 null，`points` 累加到永久积分。
 
 | 层 | 文件 | 内容 |
 |---|---|---|
@@ -22,7 +22,7 @@
 | main 服务 | `src/main/src/modules/auth/AuthService.ts` | `verifyActivationCode` / `redeemActivationCode`（经 `apiPost` 业务包装；无凭证返回 `{ok:false,msg:'未登录'}`） |
 | main IPC | `src/main/src/modules/auth/authIpc.ts` | 两通道纯透传 |
 | preload 桥 | `src/preload/src/modules/auth/auth.ts` | `verifyCode` / `redeemCode` |
-| 渲染 store + UI | `AuthStore.ts` `verifyCode/redeemCode`；`RedeemCodeDialog` + `MemberTierDialog`（底部「积分增量包」入口，不铺 SKU）+ `PackLotsDialog` / `PackSelectDialog` / `PackCheckoutDialog`（选 SKU → 结算确认须提示 30 天清零原文，无支付） |
+| 渲染 store + UI | `AuthStore.ts` `verifyCode/redeemCode`；`RedeemCodeDialog` + `MemberTierDialog`（底部「积分增量包」入口，不铺 SKU）+ `PackLotsDialog` / `PackSelectDialog` / `PackCheckoutDialog`（选 SKU → 结算确认永久有效，无支付） |
 
 要点：
 

@@ -1,7 +1,7 @@
 <template>
   <div class="pack-select">
     <p class="pack-select__hint">
-      每笔自兑换到账时刻起 30 天有效，可重复购买叠加。开通走激活码，不对接在线支付。
+      兑换后计入永久积分，永不过期，可重复购买叠加。开通走激活码，不对接在线支付。
     </p>
     <t-empty v-if="rows.length === 0" description="暂无可购增量包" />
     <div v-else class="pack-select__list">
@@ -16,7 +16,7 @@
       >
         <div class="pack-select__info">
           <div class="pack-select__name">{{ pack.name }}</div>
-          <div class="pack-select__quota">+{{ pack.points }} 积分 · 有效 30 天</div>
+          <div class="pack-select__quota">+{{ pack.points }} 积分 · 永久有效</div>
         </div>
         <div class="pack-select__price">
           <span class="pack-select__price-num">¥{{ pack.price }}</span>

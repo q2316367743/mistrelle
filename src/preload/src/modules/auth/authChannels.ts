@@ -24,8 +24,6 @@ export const AuthChannels = {
   redeemCode: 'auth:redeemCode',
   /** 积分流水分页（GET /api/user/transactions） */
   listTransactions: 'auth:listTransactions',
-  /** 未过期增量包 lot（GET /api/user/pack-lots） */
-  listPackLots: 'auth:listPackLots',
   /** 重新发送邮箱验证邮件（POST /auth/resend-verification；恒返回成功，同邮箱 60s 冷却） */
   resendVerification: 'auth:resendVerification',
   /** 在线设计风格列表（GET /api/user/design-styles） */
@@ -85,15 +83,13 @@ export interface AuthUser {
 
 /** 积分余额（GET /api/user/balance 归一后的域模型） */
 export interface AuthBalance {
-  /** 每日赠送剩余（当晚午夜清空） */
+  /** 限时积分：每日赠送剩余（当晚午夜清空） */
   pointsGift: number
-  /** 管理端人工充值剩余（发放起 30 天有效） */
-  pointsPaid: number
-  /** 增量包剩余（未过期账本行之和） */
-  pointsPack: number
+  /** 永久积分：增量包 + 人工充值合并，永不过期 */
+  pointsPermanent: number
   /** 当前档位每日赠送额度 */
   giftQuota: number
-  /** 未过期剩余合计 */
+  /** 可用合计 = 限时 + 永久 */
   total: number
 }
 
@@ -157,24 +153,6 @@ export interface AuthPackInfo {
 
 export interface AuthPackCatalog {
   items: AuthPackInfo[]
-}
-
-export type AuthPackLotSource = 'activation' | 'admin' | 'legacy' | 'login'
-
-export interface AuthPackLot {
-  id: string
-  granted: number
-  remaining: number
-  grantedAt: number
-  expiresAt: number
-  source: AuthPackLotSource
-  packCode: string | null
-  remark: string | null
-}
-
-export interface AuthPackLots {
-  remaining: number
-  items: AuthPackLot[]
 }
 
 export interface AuthNameParams {

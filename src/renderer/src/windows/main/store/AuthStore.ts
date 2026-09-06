@@ -136,10 +136,6 @@ export const useAuthStore = defineStore('auth', () => {
     return window.preload.auth.redeemCode({ code })
   }
 
-  async function listPackLots(): Promise<AuthDataResult<AuthPackLots>> {
-    return window.preload.auth.listPackLots()
-  }
-
   return {
     status,
     user,
@@ -158,7 +154,6 @@ export const useAuthStore = defineStore('auth', () => {
     changePassword,
     verifyCode,
     redeemCode,
-    listPackLots,
     refresh,
     refreshIfStale
   }

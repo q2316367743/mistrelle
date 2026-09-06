@@ -23,14 +23,12 @@ import {
   type AuthTierInfo,
   type AuthDesignStyleDetail,
   type AuthDesignStyleItem,
-  type AuthPackCatalog,
-  type AuthPackLots
+  type AuthPackCatalog
 } from '~/modules/auth/authChannels'
 import {
   changePassword,
   current,
   listTransactions,
-  listPackLots,
   pointsPacks,
   refresh,
   redeemActivationCode,
@@ -88,7 +86,6 @@ export function registerAuthIpc(): void {
       params: AuthPageParams
     ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>> => listTransactions(params)
   )
-  ipcMain.handle(AuthChannels.listPackLots, (): Promise<AuthDataResult<AuthPackLots>> => listPackLots())
   ipcMain.handle(
     AuthChannels.listDesignStyles,
     (): Promise<AuthDataResult<AuthDesignStyleItem[]>> => listDesignStyles()

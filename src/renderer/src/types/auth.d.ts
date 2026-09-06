@@ -29,15 +29,13 @@ declare interface AuthUser {
 
 /** 积分余额（GET /api/user/balance 归一后的域模型） */
 declare interface AuthBalance {
-  /** 每日赠送剩余（当晚午夜清空） */
+  /** 限时积分：每日赠送剩余（当晚午夜清空） */
   pointsGift: number
-  /** 管理端人工充值剩余（发放起 30 天有效） */
-  pointsPaid: number
-  /** 增量包剩余（未过期账本行之和） */
-  pointsPack: number
+  /** 永久积分：增量包 + 人工充值合并，永不过期 */
+  pointsPermanent: number
   /** 当前档位每日赠送额度 */
   giftQuota: number
-  /** 未过期剩余合计 */
+  /** 可用合计 = 限时 + 永久 */
   total: number
 }
 
@@ -98,24 +96,6 @@ declare interface AuthPackInfo {
 
 declare interface AuthPackCatalog {
   items: AuthPackInfo[]
-}
-
-declare type AuthPackLotSource = 'activation' | 'admin' | 'legacy' | 'login'
-
-declare interface AuthPackLot {
-  id: string
-  granted: number
-  remaining: number
-  grantedAt: number
-  expiresAt: number
-  source: AuthPackLotSource
-  packCode: string | null
-  remark: string | null
-}
-
-declare interface AuthPackLots {
-  remaining: number
-  items: AuthPackLot[]
 }
 
 declare interface AuthNameParams {
@@ -280,8 +260,6 @@ declare interface AuthApi {
   listTransactions(
     params: AuthPageParams
   ): Promise<AuthDataResult<AuthPaged<AuthPointsTransaction>>>
-  /** 未过期增量包 lot */
-  listPackLots(): Promise<AuthDataResult<AuthPackLots>>
   /** 在线设计风格列表 */
   listDesignStyles(): Promise<AuthDataResult<AuthDesignStyleItem[]>>
   /** 在线设计风格详情 */

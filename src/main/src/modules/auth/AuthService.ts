@@ -29,7 +29,6 @@ import {
   type AuthState,
   type AuthTierInfo,
   type AuthPackCatalog,
-  type AuthPackLots,
   type AuthSignInParams,
   type AuthSignUpParams,
   type AuthSignResult,
@@ -483,18 +482,6 @@ export async function listTransactions(
       `/api/user/transactions?page=${page}&pageSize=${pageSize}`,
       cred.apiKey
     )
-    return { ok: true, data }
-  } catch (error) {
-    return fail(error)
-  }
-}
-
-/** 未过期增量包 lot（未登录返回错误，不抛跨进程异常） */
-export async function listPackLots(): Promise<AuthDataResult<AuthPackLots>> {
-  const cred = loadCredential()
-  if (!cred) return { ok: false, msg: '未登录' }
-  try {
-    const data = await apiGet<AuthPackLots>('/api/user/pack-lots', cred.apiKey)
     return { ok: true, data }
   } catch (error) {
     return fail(error)

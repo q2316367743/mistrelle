@@ -47,7 +47,7 @@
 | `pages/setting/account/modals/PointsLedgerDrawer.tsx` | 积分流水抽屉外壳（`DrawerPlugin`） |
 | `pages/setting/account/modals/PointsLedgerContent.vue` | 流水表格 + 分页，调用 `auth.listTransactions` |
 
-弹窗：`EditNameDialog` / `ChangePasswordDialog` / `RedeemCodeDialog` / `LoginDialog` 仍为原流程。`MemberTierDialog` 为档位列表 + 底部「积分增量包」收敛入口（不铺 SKU 墙）。`PackLotsDialog` 展示各笔剩余与到期日；`PackSelectDialog` 选 SKU，`PackCheckoutDialog` 结算确认（必须提示「积分包有效期为 30 天，到期未用完自动清零，建议按需购买。」，无支付，可跳兑换激活码）。积分流水为命令式抽屉 `PointsLedgerDrawer`（我的积分，不含增量包购买）。
+弹窗：`EditNameDialog` / `ChangePasswordDialog` / `RedeemCodeDialog` / `LoginDialog` 仍为原流程。`MemberTierDialog` 为档位列表 + 底部「积分增量包」收敛入口（不铺 SKU 墙）。`PackLotsDialog` 展示永久积分总额；`PackSelectDialog` 选 SKU，`PackCheckoutDialog` 结算确认（提示永久有效，无支付，可跳兑换激活码）。积分流水为命令式抽屉 `PointsLedgerDrawer`（我的积分，不含增量包购买）。
 
 ## 设计约定
 
