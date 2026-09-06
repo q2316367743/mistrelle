@@ -25,35 +25,14 @@
           </template>
           返回工作区
         </t-button>
+        <SideMenu :items="menuSettingTree" style="margin-top: 8px" />
       </div>
     </div>
 
     <div class="user-menu">
       <t-divider size="1px" />
       <div class="w-220px overflow-x-hidden mt-4px">
-        <t-dropdown
-          trigger="click"
-          placement="top"
-          max-column-width="188px"
-          min-column-width="188px"
-        >
-          <button class="menu-item" type="button">
-            <user-circle-icon />
-            <span>{{ displayName }}</span>
-          </button>
-          <t-dropdown-menu>
-            <t-dropdown-item
-              v-for="item in menuItems"
-              :key="item.value"
-              @click="handleMenuClick(item.value)"
-            >
-              <template #prefix-icon>
-                <component :is="item.icon" />
-              </template>
-              {{ item.label }}
-            </t-dropdown-item>
-          </t-dropdown-menu>
-        </t-dropdown>
+        <UserMenu />
       </div>
     </div>
   </t-aside>
@@ -81,33 +60,16 @@ import {
   AiImageIcon,
   ArrowLeftRight1Icon,
   Calculation1Icon,
-  LoginIcon,
-  LogoutIcon,
   ChevronLeftIcon
 } from 'tdesign-icons-vue-next'
-import { collapsed, isDark } from '@/global/BeanFactory'
-import { useAuthStore } from '@/windows/main/store'
-import { MessageUtil } from '@/utils/modal'
-import { openLogin } from '@/components/modals/LoginDialog'
+import { collapsed } from '@/global/BeanFactory'
 import ChatList from './components/ChatList.vue'
+import UserMenu from './components/UserMenu.vue'
 import SideMenu, { type SideMenuItem } from '@/components/menu/SideMenu.vue'
 import { Constant } from '@/global/Constant'
-import { useSafeBack } from '@/hooks'
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
-
-const settingOptions = [
-  { label: '系统设置', icon: Setting1Icon, value: 'global' },
-  { label: '账户设置', icon: UserIcon, value: 'account' },
-  { label: '智能体设置', icon: AiArticleIcon, value: 'default' },
-  { label: '个性化', icon: UserCircleIcon, value: 'personalize' },
-  { label: '记忆', icon: BookmarkIcon, value: 'soul' },
-  { label: '模型', icon: AppIcon, value: 'ai' },
-  { label: '安全中心', icon: SecuredIcon, value: 'secure' },
-  { label: '网络设置', icon: InternetIcon, value: 'network' }
-]
 
 const menuTree: SideMenuItem[] = [
   { label: Constant.name, icon: ChatIcon, to: '/new' },
@@ -141,43 +103,20 @@ const menuTree: SideMenuItem[] = [
     ]
   }
 ]
-
-// 已登录展示服务端账号昵称/邮箱，未登录展示「未登录」
-const displayName = computed(() => {
-  const account = authStore.user
-  if (account && (account.name || account.email)) return account.name || account.email
-  return '未登录'
-})
-
-// 用户菜单：未登录时顶部提供「登录 / 注册」入口，已登录时底部提供「退出登录」
-const menuItems = computed(() => {
-  const settings = settingOptions.map((item) => ({ ...item }))
-  if (authStore.status === 'signed-in') {
-    return [...settings, { label: '退出登录', icon: LogoutIcon, value: 'logout' }]
-  }
-  return [{ label: '登录 / 注册', icon: LoginIcon, value: 'login' }, ...settings]
-})
+const menuSettingTree: SideMenuItem[] = [
+  { label: '系统设置', icon: Setting1Icon, to: '/setting/global' },
+  { label: '账户设置', icon: UserIcon, to: '/setting/account' },
+  { label: '智能体设置', icon: AiArticleIcon, to: '/setting/default' },
+  { label: '个性化', icon: UserCircleIcon, to: '/setting/personalize' },
+  { label: '记忆', icon: BookmarkIcon, to: '/setting/soul' },
+  { label: '模型', icon: AppIcon, to: '/setting/ai' },
+  { label: '安全中心', icon: SecuredIcon, to: '/setting/secure' },
+  { label: '网络设置', icon: InternetIcon, to: '/setting/network' }
+]
 
 const setting = computed(() => route.path.startsWith('/setting'))
 
-const handleMenuClick = async (key: string) => {
-  if (key === 'login') {
-    openLogin()
-    return
-  }
-  if (key === 'logout') {
-    const ok = await authStore.signOut()
-    if (ok) MessageUtil.success('已退出登录')
-    return
-  }
-  router.push(`/setting/${key}`)
-}
-
-const handleBack = useSafeBack()
-
-onMounted(() => {
-  console.log('plugin enter', isDark.value)
-})
+const handleBack = () => router.push('/new')
 </script>
 
 <style scoped lang="less">
@@ -196,6 +135,7 @@ onMounted(() => {
     }
     .side-setting {
       left: 8px;
+      right: 8px;
     }
   }
 
@@ -205,6 +145,7 @@ onMounted(() => {
     left: 8px;
     right: 8px;
     bottom: 0;
+    min-width: 200px;
     overflow-x: hidden;
     overflow-y: auto;
     display: flex;
@@ -215,8 +156,11 @@ onMounted(() => {
     position: absolute;
     top: 8px;
     left: 220px;
-    right: 8px;
+    right: 440px;
     bottom: 0;
+    min-width: 200px;
+    overflow-x: hidden;
+    overflow-y: auto;
     transition: all 0.3s ease-in-out;
   }
 }
@@ -227,48 +171,5 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   padding: 0 8px 6px;
-}
-
-.menu-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--td-comp-margin-s);
-  width: calc(100% - 16px);
-  min-width: 204px;
-  min-height: var(--td-comp-size-m);
-  padding: 0 var(--td-comp-paddingLR-s);
-  color: var(--td-text-color-primary);
-  font: var(--td-font-body-medium);
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--td-radius-small);
-  outline: none;
-  cursor: pointer;
-  transition:
-    background var(--fluent-transition-fast),
-    border-color var(--fluent-transition-fast),
-    box-shadow var(--fluent-transition-fast),
-    color var(--fluent-transition-fast);
-
-  &:hover {
-    background: var(--fluent-item-hover);
-  }
-
-  &:focus-visible {
-    box-shadow: var(--fluent-focus-ring);
-  }
-
-  &::before {
-    position: absolute;
-    left: 0;
-    width: 3px;
-    height: 18px;
-    content: '';
-    background: transparent;
-    border-radius: var(--td-radius-round);
-    transition: background var(--fluent-transition-fast);
-  }
 }
 </style>
