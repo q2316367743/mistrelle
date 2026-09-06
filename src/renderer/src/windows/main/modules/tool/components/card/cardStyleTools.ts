@@ -11,6 +11,12 @@ import {
   describeCardStyleProps,
   normalizeCardStyleProps
 } from '@/global/card-style-props'
+import {
+  describeCardStyleCss,
+  describeCardStyleSlots,
+  normalizeCardStyleCss,
+  normalizeCardStyleTemplate
+} from '@/global/card-style-template'
 import { AiCardStyleForm } from '@/entity'
 import { useAuthStore, useCardStyleStore } from '@/windows/main/store'
 
@@ -30,19 +36,34 @@ const PROPS_PROPERTY: ToolProperty = {
   )
 }
 
-/** 概要信息（列表用，含完整样式键值对供模型比对借鉴） */
+/** create/update 共用的自由层入参（HTML 模板 + 自定义 CSS） */
+const TEMPLATE_PROPERTY: ToolProperty = {
+  type: 'string',
+  description: `HTML 模板（可选，整体替换；留空表示使用默认骨架）。${describeCardStyleSlots()}`
+}
+
+const CSS_PROPERTY: ToolProperty = {
+  type: 'string',
+  description: `自定义 CSS（可选，整体替换）。${describeCardStyleCss()}`
+}
+
+/** 概要信息（列表用，含完整样式供模型比对借鉴） */
 const toSummary = (style: {
   id: string
   name: string
   description: string
   tags: Array<string>
   props: Record<string, string>
+  template: string
+  css: string
 }) => ({
   id: style.id,
   name: style.name,
   description: style.description,
   tags: style.tags,
-  props: style.props
+  props: style.props,
+  template: style.template,
+  css: style.css
 })
 
 export const cardStyleTools: ToolFunction[] = [
@@ -87,7 +108,7 @@ export const cardStyleTools: ToolFunction[] = [
     name: 'create_card_style',
     label: '创建卡片风格',
     description:
-      '创建一个新的卡片风格并立即保存。需提供名称（name）与一组符合白名单的样式键值对（props），创建风格时应给出完整协调的样式而不是零散几个键。创建成功后返回新风格的 id。',
+      '创建一个新的卡片风格并立即保存。需提供名称（name）与样式定义（props 白名单键值对必填，可用可选的 template/css 自由层实现注册表表达不了的效果，如信纸横线、纹理装饰），创建风格时应给出完整协调的样式而不是零散几个键。创建成功后返回新风格的 id。',
     parameters: {
       type: 'object',
       properties: {
@@ -98,7 +119,9 @@ export const cardStyleTools: ToolFunction[] = [
           description: '用户自定义标签',
           items: { type: 'string', description: '标签文本' }
         },
-        props: PROPS_PROPERTY
+        props: PROPS_PROPERTY,
+        template: TEMPLATE_PROPERTY,
+        css: CSS_PROPERTY
       },
       required: ['name']
     },
@@ -110,6 +133,8 @@ export const cardStyleTools: ToolFunction[] = [
         description?: string
         tags?: unknown[]
         props?: Record<string, unknown>
+        template?: string
+        css?: string
       }
       if (stylesLocked()) return { error: STYLES_LOCKED_ERROR }
       const name = args.name?.trim()
@@ -118,7 +143,9 @@ export const cardStyleTools: ToolFunction[] = [
         name,
         description: args.description?.trim() ?? '',
         tags: Array.isArray(args.tags) ? args.tags.map(String).slice(0, 10) : [],
-        props: normalizeCardStyleProps(args.props)
+        props: normalizeCardStyleProps(args.props),
+        template: normalizeCardStyleTemplate(args.template),
+        css: normalizeCardStyleCss(args.css)
       }
       const id = await useCardStyleStore().put(form)
       if (!id) return { error: '卡片风格创建失败，未生成 id' }
@@ -129,7 +156,7 @@ export const cardStyleTools: ToolFunction[] = [
     name: 'update_card_style',
     label: '修改卡片风格',
     description:
-      '按 id 修改已有卡片风格并立即保存。props 仅传入要变更的键（与当前值合并，白名单外键剔除）；系统预设（isSystem）只读不可修改。建议先调用 get_card_style 获取当前配置。',
+      '按 id 修改已有卡片风格并立即保存。props 仅传入要变更的键（与当前值合并，白名单外键剔除）；template / css 为整体替换（不传 = 保持不变，传空串 = 清空回退默认骨架）。系统预设（isSystem）只读不可修改。建议先调用 get_card_style 获取当前配置。',
     parameters: {
       type: 'object',
       properties: {
@@ -141,7 +168,9 @@ export const cardStyleTools: ToolFunction[] = [
           description: '用户自定义标签（整体替换）',
           items: { type: 'string', description: '标签文本' }
         },
-        props: PROPS_PROPERTY
+        props: PROPS_PROPERTY,
+        template: TEMPLATE_PROPERTY,
+        css: CSS_PROPERTY
       },
       required: ['id']
     },
@@ -154,6 +183,8 @@ export const cardStyleTools: ToolFunction[] = [
         description?: string
         tags?: unknown[]
         props?: Record<string, unknown>
+        template?: string
+        css?: string
       }
       const { id, ...rest } = args
       const store = useCardStyleStore()
@@ -167,7 +198,11 @@ export const cardStyleTools: ToolFunction[] = [
         description: rest.description?.trim() || old.description,
         tags: Array.isArray(rest.tags) ? rest.tags.map(String).slice(0, 10) : old.tags,
         // 部分键更新：与当前值合并后再按注册表归一（非法键剔除 / 非法值回落）
-        props: rest.props ? normalizeCardStyleProps({ ...old.props, ...rest.props }) : old.props
+        props: rest.props ? normalizeCardStyleProps({ ...old.props, ...rest.props }) : old.props,
+        // 自由层整体替换：不传保持不变，传空串清空
+        template:
+          rest.template !== undefined ? normalizeCardStyleTemplate(rest.template) : old.template,
+        css: rest.css !== undefined ? normalizeCardStyleCss(rest.css) : old.css
       }
       const saved = await store.put(form, id)
       if (!saved) return { error: '卡片风格修改失败' }

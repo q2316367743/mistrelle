@@ -3,6 +3,8 @@
     <note-card-renderer
       ref="rendererRef"
       :style-props="styleProps"
+      :template="template"
+      :extra-css="css"
       :blocks="blocks"
       :author="author"
       :date="date"
@@ -28,6 +30,9 @@ const props = defineProps<{
   content: string
   /** 未归一化的风格键值对（可缺键）；渲染前经 normalizeCardStyleProps 补齐 */
   rawStyleProps: Record<string, string>
+  /** 风格 HTML 模板与自定义 CSS（渲染器内部归一兜底） */
+  template?: string
+  css?: string
   author: string
   date: string
   avatar?: string | null

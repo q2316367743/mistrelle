@@ -19,6 +19,8 @@
             ref="previewRef"
             :content="state.content"
             :raw-style-props="styleProps"
+            :template="styleFree.template"
+            :css="styleFree.css"
             :author="state.nickname"
             :date="state.dateStr"
             :avatar="state.avatar"
@@ -56,6 +58,12 @@ const previewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null)
 const styleProps = computed(() => {
   const base = styleStore.getById(state.styleId)?.props
   return base ? normalizeCardStyleProps(base) : buildDefaultCardStyleProps()
+})
+
+/** 选中风格的自由层（模板 + 自定义 CSS；未选风格为空 = 默认骨架） */
+const styleFree = computed(() => {
+  const style = styleStore.getById(state.styleId)
+  return { template: style?.template ?? '', css: style?.css ?? '' }
 })
 
 const download = (href: string, name: string) => {

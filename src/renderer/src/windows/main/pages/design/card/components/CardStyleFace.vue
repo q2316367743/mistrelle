@@ -3,6 +3,8 @@
     <div class="card-face__render">
       <note-card-renderer
         :style-props="safeProps"
+        :template="style.template ?? ''"
+        :extra-css="style.css ?? ''"
         :blocks="SAMPLE_BLOCKS"
         author="山月"
         watermark="@半窗烟雨 · 笔记卡片"

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { AiCardStyle, AiCardStyleForm, AiCardStyleItem, normalizeCardStyleItem } from '@/entity'
 import { normalizeCardStyleProps } from '@/global/card-style-props'
+import { normalizeCardStyleCss, normalizeCardStyleTemplate } from '@/global/card-style-template'
 import { CARD_STYLE_PRESETS } from '@/global/CardStylePresets'
 import {
   cardStyleList,
@@ -56,6 +57,8 @@ export const useCardStyleStore = defineStore('card:style', () => {
     if (!useAuthStore().features.extendedCardStyles) return undefined
     const now = Date.now()
     const props = normalizeCardStyleProps(form.props)
+    const template = normalizeCardStyleTemplate(form.template)
+    const css = normalizeCardStyleCss(form.css)
     const existing = id ? state.value.findIndex((e) => e.id === id) : -1
     const item: AiCardStyleItem = {
       id: id ?? useSnowflake().nextId(),
@@ -63,6 +66,8 @@ export const useCardStyleStore = defineStore('card:style', () => {
       description: form.description,
       tags: form.tags,
       props,
+      template,
+      css,
       createdAt: existing >= 0 ? state.value[existing].createdAt : now,
       updatedAt: now
     }

@@ -8,7 +8,7 @@
 
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| [AppSide.md](./app/AppSide.md)       | 侧边栏菜单（全局组件 `@/components/menu/`）：AppSide 外壳 + SideMenu/SideMenuNode 递归菜单组件，主窗口与伙伴窗口（buddy）共用（SideMenuItem 数据模型、active 推导、展开/收起高度动画、宽度自适应）、menuTree 映射与导航约定 |
+| [AppSide.md](./app/AppSide.md)       | 侧边栏菜单（全局组件 `@/components/menu/`）：AppSide 外壳 + SideMenu/SideMenuNode 递归菜单、底部 UserMenu（`t-popup` 账号面板：会员/积分/外观/登录登出）+ 设置侧栏全入口；主窗口与伙伴窗口共用 SideMenuItem 数据模型、active 推导、展开动画 |
 | [01-app-shell.md](./app/01-app-shell.md) | 应用外壳生命周期：托盘常驻（显示 AI 窗口/打开伙伴/退出）+ AI 主窗口启动即建（默认隐藏/关闭只隐藏）、闪退修复（close 拦截只隐藏 + before-quit 放行真退出 + closed 置空引用）、AI 主窗口模块（createAiWindow/showAiWindow）、index.ts 仅生命周期编排 |
 | [02-main-directory.md](./app/02-main-directory.md) | 主进程目录结构（域优先）：`app/`（aiWindow/tray）+ `server/`（本地事件服务）+ `modules/` 十一业务域（service+ipc 同域同居，与渲染层 modules/ 对称）+ `db/` 基础设施 + 顶层 registerIpc 聚合；import 规则、新增域方法、外部同步点（$ 别名/drizzle/`__dirname` 均不受影响） |
 | [03-preload-directory.md](./app/03-preload-directory.md) | preload 目录结构（域优先，与 main 同构）：`modules/` 十三域（契约 `*Channels.ts` + 桥同域同居，域划分与 main modules/ 一一对应）+ `lib/` 纯 Node 桥 + 顶层 inject.ts 组装点；channels.ts 大杂烩/inject.ts 四合一拆解记录、三份契约同步关系 |
@@ -107,7 +107,7 @@
 | [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写；**会员门控**（免费档隐藏 agent、getById 保留历史会话） |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
 | [05-style-preview.md](./design/05-style-preview.md)           | 风格预览所见即所得：`AiDesignStyleItem` 索引项扩展 typography/tokens/whitespaceRatio（旧数据读取兜底）、`StyleCardFace` 按规范整卡渲染（`--sp-*` 变量换算、留白密度、对比度文字色）、列表卡壳 + 面与详情大样张；**全局风格下拉组件 `StyleSelect`**（t-select 分组 + 选项悬浮 StyleCardFace 预览 + 非会员锁定，PageNew 与文生图表单共用，自带 overlay 全局样式） |
-| [06-card-style.md](./design/06-card-style.md)                 | 卡片风格与 Markdown 卡片（2026-09-05，三改定稿）：**白名单属性注册表**（唯一扩展点，CSS/表单/AI 提示词全派生）、6 套内置预设、管理页（/design/card 全抽屉）、**Markdown 卡片主页面**（/attachment/card：左 Markdown 源码编辑 + 右实时预览，文章即 Markdown，作者/水印保留、配图走 dataURL 图链，经 NoteCardRenderer iframe 富渲染 + 实测分页 + snapdom 导出；曾两稿——iframe 渲染器+落盘 / 参考站 1:1 字符串正文 `[img]` 管线——均已删除）、ChatType `card`「卡片样式生成」Agent、会员键 `extendedCardStyles`（服务端暂未返回） |
+| [06-card-style.md](./design/06-card-style.md)                 | 卡片风格与 Markdown 卡片（2026-09-06 三层模型）：**白名单属性注册表**（快捷层，CSS/表单/AI 提示词全派生）+ **自由层 template/css**（HTML 模板 data-nc 插槽契约 + 自定义 CSS，含清洗规则；信纸横线/纸纹/装饰可行）、7 套内置预设（含自由层示范「苹果备忘录」）、管理页（/design/card 全抽屉 + 模板编辑区）、**Markdown 卡片主页面**（/attachment/card：左 Markdown 源码编辑 + 右实时预览，经 NoteCardRenderer iframe 富渲染 + 实测分页 + snapdom 导出）、ChatType `card`「卡片样式生成」Agent（工具含 template/css 参数）、会员键 `extendedCardStyles`（服务端暂未返回） |
 
 ### chat/ —— 对话
 

@@ -14,6 +14,8 @@
       :color-modes="['monochrome']"
       :enable-alpha="false"
       :input-props="{ clearable: true }"
+      :swatch-colors="[]"
+      :recent-colors="false"
       @change="(v: string) => emit('update', v)"
     />
 
@@ -26,7 +28,7 @@
       :decimal-places="prop.type === 'number' ? 2 : 0"
       theme="normal"
       align="left"
-      :suffix="prop.type === 'length' ? prop.unit ?? 'px' : ''"
+      :suffix="prop.type === 'length' ? (prop.unit ?? 'px') : ''"
       @change="(v: unknown) => emit('update', toStoreValue(v))"
     />
 

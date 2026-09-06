@@ -4,21 +4,27 @@
 
 <script lang="ts" setup>
 import { buildCardStyleCss } from '@/global/card-style-props'
+import { normalizeCardStyleCss, normalizeCardStyleTemplate } from '@/global/card-style-template'
+import { CARD_BASE_CSS, CARD_GAP, DEFAULT_CARD_TEMPLATE, renderCardTemplate } from './card-template'
 import { escapeHtml } from './note-markdown'
 
 /**
  * 笔记卡片渲染器（iframe 隔离，样式不污染主文档）：
- * - 卡片骨架固定：卡头（作者头像+名字，仅首页）+ 标题（仅首页）+ 正文 + 页尾水印（每张卡），
- *   样式 CSS 由注册表键值对生成注入
+ * - 卡片骨架由模板决定：风格自带 template（data-nc 插槽契约，@/components/card/card-template）
+ *   或默认骨架；样式三层叠加：注册表 CSS（nc-style）→ 骨架基础 CSS（nc-base）→ 风格自由 CSS（nc-extra）
  * - 预览按容器宽度缩放（transform scale）；导出走屏幕外 iframe 以 1:1 逻辑尺寸逐张 snapdom
- * - 分页 = **实测装箱**：先在探针卡里渲染全部块、量取每个块的真实 offsetTop/offsetHeight
- *   （首条款包括作者+标题占位、后续款仅页尾占位），再按真实高度切页——无估算偏差
+ * - 分页 = **实测装箱**：先在探针卡里渲染全部块、量取每块真实 offsetTop/offsetHeight
+ *   （首页含卡头+标题占位、后续页仅页尾占位），再按真实高度切页——无估算偏差
  * - 图片异步加载完成后再触发一次重分页（图片有缓存，二次量取即准确）
  */
 const props = withDefaults(
   defineProps<{
     /** 卡片样式键值对（键必须在注册表白名单内，已归一化） */
     styleProps: Record<string, string>
+    /** HTML 模板（data-nc 插槽契约；空 = 默认骨架） */
+    template?: string
+    /** 风格自定义 CSS（注入在注册表与骨架样式之后，可覆盖） */
+    extraCss?: string
     /** 卡片标题（可空，仅首页展示） */
     title?: string
     /** markdown 渲染出的 HTML 块数组（图片 src 已解析为可访问 URL） */
@@ -34,7 +40,9 @@ const props = withDefaults(
     /** 整卡模式：不分页、内容溢出裁切（风格预览面用） */
     fixed?: boolean
   }>(),
-  { title: '', author: '', avatarUrl: '', watermark: '', date: '', fixed: false }
+  {
+    template: '', extraCss: '', title: '', author: '', avatarUrl: '', watermark: '', date: '', fixed: false
+  }
 )
 
 const emit = defineEmits<{ change: [pageCount: number] }>()
@@ -42,7 +50,6 @@ const emit = defineEmits<{ change: [pageCount: number] }>()
 /** 卡片逻辑尺寸（3:4），导出按此尺寸 × pixelScale 输出 */
 const CARD_W = 360
 const CARD_H = 480
-const CARD_GAP = 16
 
 const frameRef = ref<HTMLIFrameElement | null>(null)
 const frameReady = ref(false)
@@ -58,40 +65,15 @@ const currentScale = computed(() => {
 
 // ------------------------------ 卡片骨架 HTML ------------------------------
 
-/** 卡片样式 CSS（注册表生成） */
+/** 注册表样式 CSS（键值对逐条生成）与风格自由 CSS（清洗兜底） */
 const styleCss = () => buildCardStyleCss(props.styleProps)
+const extraCssText = () => normalizeCardStyleCss(props.extraCss)
 
-/** 模板自有基础 CSS（骨架布局；.nc-content 需 position:relative 供分页量取 offsetTop） */
-const baseCss = () => `
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{background:transparent}
-body{-webkit-font-smoothing:antialiased}
-#nc-root{display:flex;flex-direction:column;gap:${CARD_GAP}px}
-.nc-slot{overflow:hidden}
-.note-card{width:${CARD_W}px;height:${CARD_H}px;transform-origin:top left;overflow:hidden;display:flex;flex-direction:column}
-.nc-header{flex:none;display:flex;align-items:center;gap:8px;margin-bottom:14px}
-.nc-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover}
-.nc-author{line-height:1.2}
-.nc-date{display:block;margin-top:2px;font-style:normal;font-size:11px;opacity:.65}
-.nc-title{flex:none}
-.nc-content{flex:1;min-height:0;position:relative;overflow:hidden}
-.nc-footer{flex:none;margin-top:12px;text-align:center}
-.nc-content p{margin:0 0 .8em}
-.nc-content p:last-child{margin-bottom:0}
-.nc-content ul,.nc-content ol{margin:0 0 .8em;padding-left:1.4em}
-.nc-content h1,.nc-content h2,.nc-content h3,.nc-content h4,.nc-content h5,.nc-content h6{margin:0 0 .6em;line-height:1.35}
-.nc-content h1{font-size:1.5em}.nc-content h2{font-size:1.3em}.nc-content h3{font-size:1.2em}
-.nc-content h4,.nc-content h5,.nc-content h6{font-size:1.1em}
-.nc-content img{max-width:100%;display:block;margin:8px auto}
-.nc-content blockquote{margin:0 0 .8em;padding:10px 12px;border-left:3px solid;border-radius:4px}
-.nc-content blockquote p{margin:0}
-.nc-content blockquote p:last-child{margin-bottom:0}
-.nc-content hr{border:none;height:2px;width:40%;margin:1.2em auto}
-.nc-content pre{padding:12px;border-radius:8px;background:rgba(128,128,128,.12);white-space:pre-wrap;word-break:break-all;margin:0 0 .8em}
-.nc-content code{font-family:Menlo,Consolas,monospace;font-size:.9em}
-`
+/** 生效模板（非法或缺 content 插槽时回退默认骨架） */
+const templateHtml = () => normalizeCardStyleTemplate(props.template) || DEFAULT_CARD_TEMPLATE
 
-const headerHtml = () => {
+/** 插槽内容（卡头 / 标题 / 页尾，空串的插槽在实例化时被移除） */
+const headerInner = () => {
   if (!props.author && !props.avatarUrl) return ''
   const img = props.avatarUrl
     ? `<img class="nc-avatar" src="${escapeHtml(props.avatarUrl)}" />`
@@ -99,24 +81,23 @@ const headerHtml = () => {
   const name = props.author
     ? `<span class="nc-author">${escapeHtml(props.author)}${props.date ? `<em class="nc-date">${escapeHtml(props.date)}</em>` : ''}</span>`
     : ''
-  return `<div class="nc-header">${img}${name}</div>`
+  return `${img}${name}`
 }
+const titleInner = () => (props.title ? escapeHtml(props.title) : '')
+const footerInner = () => (props.watermark ? escapeHtml(props.watermark) : '')
 
-const titleHtml = () => (props.title ? `<h1 class="nc-title">${escapeHtml(props.title)}</h1>` : '')
-
-const footerHtml = () =>
-  props.watermark ? `<div class="nc-footer">${escapeHtml(props.watermark)}</div>` : ''
-
-/** 首页卡头（作者 + 标题，仅首页出现） */
-const topHtml = () => `${headerHtml()}${titleHtml()}`
+/** 单页卡片内部 HTML（模板实例化 + 插槽填充） */
+const cardInner = (blocks: Array<string>, withTop: boolean) =>
+  renderCardTemplate(templateHtml(), {
+    header: withTop ? headerInner() : '',
+    title: withTop ? titleInner() : '',
+    content: blocks.join(''),
+    footer: footerInner()
+  })
 
 /** 单张卡片 HTML（外层槽位占缩放后尺寸，内层卡片按逻辑尺寸缩放） */
-const cardHtml = (blocks: string[], withTop: boolean, scale: number) =>
-  `<section class="note-card" style="transform:scale(${scale})">` +
-  `${withTop ? topHtml() : ''}` +
-  `<div class="nc-content">${blocks.join('')}</div>` +
-  `${footerHtml()}` +
-  `</section>`
+const cardHtml = (blocks: Array<string>, withTop: boolean, scale: number) =>
+  `<section class="note-card" style="transform:scale(${scale})">${cardInner(blocks, withTop)}</section>`
 
 const rootHtml = (scale: number) => {
   const w = Math.round(CARD_W * scale * 100) / 100
@@ -134,7 +115,8 @@ const rootHtml = (scale: number) => {
 const fullHtml = (scale: number) =>
   `<!DOCTYPE html><html><head><meta charset="utf-8">` +
   `<style id="nc-style">${styleCss()}</style>` +
-  `<style id="nc-base">${baseCss()}</style></head>` +
+  `<style id="nc-base">${CARD_BASE_CSS}</style>` +
+  `<style id="nc-extra">${extraCssText()}</style></head>` +
   `<body><div id="nc-root">${rootHtml(scale)}</div></body></html>`
 
 /** 全量写入文档（导出 iframe 每次重建，保证干净状态） */
@@ -149,12 +131,14 @@ const applyDoc = (scale: number) => {
   const doc = frameRef.value?.contentDocument
   if (!doc) return
   const styleEl = doc.getElementById('nc-style')
+  const extraEl = doc.getElementById('nc-extra')
   const rootEl = doc.getElementById('nc-root')
-  if (!styleEl || !rootEl) {
+  if (!styleEl || !extraEl || !rootEl) {
     writeDoc(doc, scale)
     return
   }
   styleEl.textContent = styleCss()
+  extraEl.textContent = extraCssText()
   rootEl.innerHTML = rootHtml(scale)
 }
 
@@ -162,7 +146,7 @@ const applyDoc = (scale: number) => {
 
 /**
  * 实测装箱：探针卡渲染全部块量真实高度。
- * 首页可用高度含作者+标题占位，后续页仅页尾占位（transform scale 不影响布局量取）。
+ * 首页可用高度含卡头+标题占位，后续页仅页尾占位（transform scale 不影响布局量取）。
  */
 const measurePages = (doc: Document): Array<Array<string>> => {
   const all = props.blocks
@@ -172,11 +156,10 @@ const measurePages = (doc: Document): Array<Array<string>> => {
   const probe = (withTop: boolean): HTMLElement => {
     rootEl.innerHTML =
       `<div class="nc-slot"><section class="note-card" style="transform:scale(${currentScale.value})">` +
-      `${withTop ? topHtml() : ''}` +
-      `<div class="nc-content">${all.join('')}</div>` +
-      `${footerHtml()}` +
-      `</section></div>`
-    return doc.querySelector('.nc-content') as HTMLElement
+      `${cardInner(all, withTop)}</section></div>`
+    // 契约兜底：正常必有 content 插槽；异常模板（标记仅在注释中）回退测量画布本身，防空指针
+    return (doc.querySelector('.note-card [data-nc="content"]') ??
+      doc.querySelector('.note-card')) as HTMLElement
   }
   const contentA = probe(true)
   const limitFirst = contentA.clientHeight
@@ -210,7 +193,9 @@ const refresh = () => {
   pages.value = props.fixed ? [props.blocks] : measurePages(doc)
   applyDoc(currentScale.value)
   frameHeight.value =
-    pages.value.length * CARD_H * currentScale.value + (pages.value.length - 1) * CARD_GAP + 4
+    pages.value.length * CARD_H * currentScale.value +
+    (pages.value.length - 1) * CARD_GAP +
+    4
   emit('change', pages.value.length)
   scheduleImageRelayout(doc)
 }
@@ -264,7 +249,9 @@ watch(
     props.date,
     props.avatarUrl,
     props.watermark,
-    props.styleProps
+    props.styleProps,
+    props.template,
+    props.extraCss
   ],
   () => refresh(),
   { deep: true }

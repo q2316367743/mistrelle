@@ -2,6 +2,8 @@
   <div class="detail-content">
     <note-card-renderer
       :style-props="target?.props ?? {}"
+      :template="target?.template ?? ''"
+      :extra-css="target?.css ?? ''"
       :blocks="SAMPLE_BLOCKS"
       author="山月"
       watermark="@半窗烟雨 · 笔记卡片"
@@ -24,6 +26,14 @@
         </div>
       </div>
     </div>
+
+    <template v-if="target?.template || target?.css">
+      <div class="detail-content__group">
+        <h4 class="detail-content__group-title">自由层</h4>
+        <pre v-if="target?.template" class="detail-content__code">{{ target.template }}</pre>
+        <pre v-if="target?.css" class="detail-content__code">{{ target.css }}</pre>
+      </div>
+    </template>
 
     <div class="detail-content__footer">
       <t-button v-if="!isSystem" variant="outline" theme="danger" @click="handleDelete">
@@ -145,6 +155,20 @@ const handleDelete = async () => {
     color: var(--td-text-color-primary);
     word-break: break-all;
     text-align: right;
+  }
+
+  &__code {
+    margin: 0;
+    padding: 8px;
+    border-radius: var(--td-radius-default);
+    background: var(--td-bg-color-secondarycontainer);
+    font-family: Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--td-text-color-secondary);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 160px;
+    overflow-y: auto;
   }
 
   &__swatch {
