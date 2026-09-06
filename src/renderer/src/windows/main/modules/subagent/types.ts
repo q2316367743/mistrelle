@@ -9,14 +9,13 @@ export type SubAgentType = 'research' | 'design'
 
 /**
  * 子 Agent 能力矩阵（单一数据源）：各聊天类型允许派发的子 Agent 类型。
- * - 日常办公 / 设计创意 / 卡片样式生成：仅调研型（样式产物走各自工具直管，子 Agent 不重复）
+ * - 日常办公 / 设计创意：仅调研型（样式产物走各自工具直管，子 Agent 不重复）
  * - 写作：调研型 + 设计型（文章配图走 design 型子 Agent）
  * 新增聊天类型或能力类型只需改这里。
  */
 export const SUB_AGENT_ALLOW: Record<ChatType, ReadonlyArray<SubAgentType>> = {
   office: ['research'],
   design: ['research'],
-  card: ['research'],
   writing: ['research', 'design']
 }
 

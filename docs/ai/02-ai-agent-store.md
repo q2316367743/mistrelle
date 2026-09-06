@@ -72,17 +72,22 @@ export const getAgentPath = () => window.preload.path.join(dataFolder, 'agent.js
 - `options`：`CommonSelect[]`（label = name，value = id）
 - `put(form: AiAgentForm, id?: string): Promise<string>`：新增 / 更新后全量 `agentSave`
 - `remove(id: string)`：删除后全量 `agentSave`
-- `getById(id?: string)`：从 `all` 中查找
+- `getById(id?)`：内置走 `BUILTIN_AGENTS` 全量、自建走 `state`（不随会员过滤，见下方门控章节）
 - 内置 Agent 只读保护：`BUILTIN_IDS` 命中时 `put` / `remove` 直接短路返回，不写文件
 
 移除项：`rev` 冲突控制、`DbStorageUtil` / `LocalNameEnum.LIST_AI_AGENT` 依赖。
 
-## 内置 Agent 会员门控（features.extendedDesignStyles）
+## 内置 Agent 会员门控（BUILTIN_AGENT_FEATURE_GATES）
 
-`builtin:design-style`（设计风格创建助手）的核心能力是创建 / 修改自定义设计风格，而自定义设计风格为会员功能，故该内置 Agent 一并受门控（语义见 `docs/auth/02`）：
+绑定会员能力的内置 Agent 以「id → feature key」映射统一门控（语义见 `docs/auth/02`）：
 
-- `all` / `options` 按会员档过滤：`features.extendedDesignStyles === false` 时剔除 `builtin:design-style`（常量 `BUILTIN_AGENT_DESIGN_STYLE_ID`）。消费 `all` 的入口（对话 Expert 面板、专家管理页、发送器专家下拉、`list_agents`）自动隐藏，无需逐个改。
-- **`getById` 不随 `all` 过滤**：直接在 `BUILTIN_AGENTS` + `state` 全量底层查找，会员期内用该 agent 开过的历史聊天免费档仍可继续（防 brick，同 `DesignStyleStore.getDetail` 先例）。仅「新建 / 切换」入口经 `all` 不可见，达成隐藏语义。
+| 内置 Agent | feature key |
+|------------|-------------|
+| `builtin:design-style`（设计风格创建助手） | `extendedDesignStyles` |
+| `builtin:card-style`（卡片风格创建助手，绑定 cardStyleTools） | `extendedCardStyles` |
+
+- `all` / `options` 按会员档过滤：`features[key] === false` 时剔除对应内置 Agent（映射常量 `BUILTIN_AGENT_FEATURE_GATES`，新增 gated Agent 只改映射一条）。消费 `all` 的入口（对话 Expert 面板、专家管理页、发送器专家下拉、`list_agents`）自动隐藏，无需逐个改。
+- **`getById` 不随 `all` 过滤**：直接在 `BUILTIN_AGENTS` + `state` 全量底层查找，会员期内用这些 agent 开过的历史聊天免费档仍可继续（防 brick，同 `DesignStyleStore.getDetail` 先例）。仅「新建 / 切换」入口经 `all` 不可见，达成隐藏语义。
 - `put` / `remove` 对内置 id 只读保护不变（与会员无关）。
 - 引 `useAuthStore` 须**直连 `@/store/AuthStore` 文件**：本模块经 `@/store` index 再导出，经 index 引 `AuthStore` 会成环（`index → AiAgentStore → index`），与 `DesignStyleStore.ts` 同一先例。
 

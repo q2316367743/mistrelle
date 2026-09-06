@@ -8,7 +8,7 @@
 > 2026-09-06 三次修订：**卡片风格升级为三层结构**——白名单 props 之外新增自由层
 > `template`（HTML 模板，data-nc 插槽契约）与 `css`（自定义 CSS），注册表表达不了的效果
 > （信纸横线、纸纹、伪元素装饰、自定义结构）由此可行；新增内置预设「苹果备忘录」作自由层示范。
-> 管理页在设计分组；Agent「卡片样式生成」不变。
+> 管理页在设计分组；卡片风格生成入口 = 内置专家「卡片风格创建助手」（同日移除 ChatType `'card'`，能力由内置专家承担）。
 
 ## 1. 全景与关键文件
 
@@ -134,16 +134,21 @@ interface AiCardStyle  extends AiCardStyleItem { isSystem: boolean }  // card-st
   下方「自定义模板」区提供 HTML 模板 / 自定义 CSS 两个等宽 t-textarea（折叠面板展示插槽契约说明），预览实时联动。
 - 详情抽屉在注册表分组值之外，风格含自由层时以等宽 `<pre>` 只读展示模板与 CSS 源码。
 
-## 5. 「卡片样式生成」Agent
+## 5. 「卡片风格创建助手」内置专家
 
-- `ChatType` 新增 `'card'`；`CHAT_TYPE_OPTIONS`（StickyNoteIcon）；`SUB_AGENT_ALLOW.card = ['research']`。
-- `CHAT_TYPE_CONFIG.card`：prompt = `buildCardStylePrompt()`（三层模型说明 + 属性白名单清单 + 插槽契约 + CSS 说明，
-  前两者自动从注册表 / 契约生成）；tools = `cardStyleTools` 直注。
+- 内置专家 `builtin:card-style`（`BuiltInAgent.ts`，同族：agent-create / skill-create / design-style）：
+  identity 覆盖三层模型（props 七组 / template 插槽契约 / css 自由层，含「注册表 props 只作用 `.nc-*` 类名」的作用域提醒），
+  tools = cardStyleTools 直注 + `font_list`；placeholder「描述你想要的卡片风格，例如：一个苹果备忘录样式的横线信纸卡片」。
+- **会员门控**：`AiAgentStore.BUILTIN_AGENT_FEATURE_GATES`（id → feature key 映射）按 `extendedCardStyles` 过滤，
+  非会员不可见；会员期内开过的历史会话经 `getById`（全量查找）仍可继续（同 design-style 先例，见 docs/ai/02）。
 - `cardStyleTools.ts`：`list_card_styles` / `get_card_style` / `create_card_style` / `update_card_style`，
   全部 `internal: true`（镜像 designStyleTools，同时注册进 toolGroups `card-style` 与 toolMap）；
   props 经注册表校验清洗（update 支持部分键合并）；template/css 经自由层清洗（**整体替换**语义，不传 = 不变）；
   list/get 概要含完整 props/template/css 供模型借鉴；系统预设只读。
-- 注册表 / 契约扩展后，工具 schema 与提示词自动同步，无需改动。
+- 注册表 / 契约扩展后，工具 schema 自动同步，无需改动。
+- **历史沿革**：曾有 ChatType `'card'`「卡片样式生成」（prompt = buildCardStylePrompt + 同组工具），
+  2026-09-06 因内置专家承接同一能力而整体移除（ChatType 联合 / CHAT_TYPE_OPTIONS / CHAT_TYPE_CONFIG /
+  SUB_AGENT_ALLOW 的 card 键、CardStylePrompt.ts 均已删）；存量 `'card'` 类型会话不特殊处理（同 PPT 移除先例）。
 
 ## 6. 会员门控（`extendedCardStyles`）
 

@@ -107,7 +107,7 @@
 | [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写；**会员门控**（免费档隐藏 agent、getById 保留历史会话） |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
 | [05-style-preview.md](./design/05-style-preview.md)           | 风格预览所见即所得：`AiDesignStyleItem` 索引项扩展 typography/tokens/whitespaceRatio（旧数据读取兜底）、`StyleCardFace` 按规范整卡渲染（`--sp-*` 变量换算、留白密度、对比度文字色）、列表卡壳 + 面与详情大样张；**全局风格下拉组件 `StyleSelect`**（t-select 分组 + 选项悬浮 StyleCardFace 预览 + 非会员锁定，PageNew 与文生图表单共用，自带 overlay 全局样式） |
-| [06-card-style.md](./design/06-card-style.md)                 | 卡片风格与 Markdown 卡片（2026-09-06 三层模型）：**白名单属性注册表**（快捷层，CSS/表单/AI 提示词全派生）+ **自由层 template/css**（HTML 模板 data-nc 插槽契约 + 自定义 CSS，含清洗规则；信纸横线/纸纹/装饰可行）、7 套内置预设（含自由层示范「苹果备忘录」）、管理页（/design/card 全抽屉 + 模板编辑区）、**Markdown 卡片主页面**（/attachment/card：左 Markdown 源码编辑 + 右实时预览，经 NoteCardRenderer iframe 富渲染 + 实测分页 + snapdom 导出）、ChatType `card`「卡片样式生成」Agent（工具含 template/css 参数）、会员键 `extendedCardStyles`（服务端暂未返回） |
+| [06-card-style.md](./design/06-card-style.md)                 | 卡片风格与 Markdown 卡片（2026-09-06 三层模型）：**白名单属性注册表**（快捷层，CSS/表单/AI 提示词全派生）+ **自由层 template/css**（HTML 模板 data-nc 插槽契约 + 自定义 CSS，含清洗规则；信纸横线/纸纹/装饰可行）、7 套内置预设（含自由层示范「苹果备忘录」）、管理页（/design/card 全抽屉 + 模板编辑区）、**Markdown 卡片主页面**（/attachment/card：左 Markdown 源码编辑 + 右实时预览，经 NoteCardRenderer iframe 富渲染 + 实测分页 + snapdom 导出）、内置专家「卡片风格创建助手」（cardStyleTools 含 template/css 参数，extendedCardStyles 门控隐藏；ChatType 'card' 已删）、会员键 `extendedCardStyles`（服务端暂未返回） |
 
 ### chat/ —— 对话
 
