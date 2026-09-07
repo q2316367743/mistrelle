@@ -6510,11 +6510,6 @@ lru-cache@^6.0.0:
   dependencies:
     yallist "^4.0.0"
 
-lucide-vue-next@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.npmmirror.com/lucide-vue-next/-/lucide-vue-next-1.0.0.tgz"
-  integrity sha512-V6SPvx1IHTj/UY+FrIYWV5faISsPSb8BnWSFDxAtezWKvWc9ZZ40PDrdu1/Qb5vg4lHWr1hs1BAMGVGm6V1Xdg==
-
 lunar-javascript@^1.7.7:
   version "1.7.7"
   resolved "https://registry.npmmirror.com/lunar-javascript/-/lunar-javascript-1.7.7.tgz"

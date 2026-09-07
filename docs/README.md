@@ -201,6 +201,7 @@
 |--------------------------------------------------------|------------------------------------------------------------------------------------------|
 | [01-app-icon.md](./build/01-app-icon.md)               | 应用图标生成机制：electron-builder 自动从 `build/icon.png` 转换 icns/ico，禁止手动预生成  |
 | [02-monaco-editor.md](./build/02-monaco-editor.md)     | Monaco worker 配置：`vite-plugin-monaco-editor` 已移除，改 `?worker` 原生导入 + `MonacoEnvironment` label 分发 |
+| [03-dependency-scope.md](./build/03-dependency-scope.md) | 依赖归属判定：`externalizeDepsPlugin` 只外部化 dependencies 且随包进 asar，渲染层专用/零引用包应放 devDependencies 或删除（marked/snapdom/jszip 迁移、lucide 删除、electron-updater 保留） |
 
 ### hardware/ —— 硬件控制
 

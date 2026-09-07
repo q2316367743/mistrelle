@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "description": "半窗烟雨",
   "main": "./out/main/index.js",
-  "author": "example.com",
+  "author": {
+    "name": "落雨不悔",
+    "url": "https://blog.esion.xyz",
+    "email": "m17762618644@163.com"
+  },
   "homepage": "https://mistrelle.esion.xyz",
   "scripts": {
     "format": "prettier --write .",
@@ -23,7 +27,6 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "@zumer/snapdom": "^2.24.15",
     "adm-zip": "^0.6.0",
     "axios": "1.15.2",
     "better-sqlite3": "^13.0.3",
@@ -32,9 +35,6 @@
     "electron-updater": "^6.3.9",
     "express": "^5.2.1",
     "iconv-lite": "^0.7.3",
-    "jszip": "^3.10.1",
-    "lucide-vue-next": "^1.0.0",
-    "marked": "^18.0.11",
     "serialport": "^13.0.0",
     "sharp": "^0.34.2",
     "turndown": "^7.2.4"
@@ -67,6 +67,7 @@
     "@vitejs/plugin-vue-jsx": "^5.1.6",
     "@vueuse/core": "^9.13.0",
     "@vueuse/integrations": "^10.11.1",
+    "@zumer/snapdom": "^2.24.15",
     "dayjs": "^1.11.14",
     "drizzle-kit": "^0.31.10",
     "echarts": "^6.1.0",
@@ -77,12 +78,14 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.39.1",
     "eslint-plugin-vue": "^10.6.2",
+    "jszip": "^3.10.1",
     "leafer-editor": "^2.2.9",
     "leafer-ui": "^2.2.9",
     "less": "^4.4.1",
     "less-loader": "^11.1.4",
     "lunar-javascript": "^1.7.7",
     "mammoth": "^1.12.2",
+    "marked": "^18.0.11",
     "monaco-editor": "^0.56.0",
     "motion-v": "^2.4.0",
     "nanoid": "^6.0.1",
