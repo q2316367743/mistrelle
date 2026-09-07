@@ -2,10 +2,11 @@
  * 本地事件服务（main 进程，express）：127.0.0.1:47743，只绑回环。
  * 1. 资源面：渲染层经 pathToHref 生成的 GET /file/<encodeURIComponent(绝对路径)> 读盘返回
  *    （字体 / 图片等子资源；dev 下 http 页面加载 file:// 会被 Chromium 拦截，统一走本服务）。
- * 2. 事件面：外部进程（如 opencode 插件）GET|POST /<模块>/<功能>?<query> 投递事件，
- *    当前仅 buddy/traffic-light → applyEvent。
+ * 2. 事件面：外部进程（如 opencode 接入插件）GET|POST /buddy/event?platform=…&event=… 投递事件，
+ *    只做协议校验（platform/event 双白名单）后经 buddyEventBus 发布；业务消费方在各自域服务
+ *    init 内 subscribe（红绿灯 / ESP32 LCD 等），本模块零业务依赖。
  * 处理逻辑单份、参数方案单份（platform/event query）；不经系统唤起、结构性不抢焦点。
- * 详见 docs/server/01-event-server.md。
+ * 详见 docs/server/01-event-server.md 与 docs/hardware/05。
  */
 import { app } from 'electron'
 import express from 'express'
@@ -13,7 +14,9 @@ import type { Request, Response } from 'express'
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { EVENT_SERVER_ORIGIN } from '@common/server/eventServer'
-import { applyEvent } from '$/buddy/traffic-light/TrafficLightService'
+import { isBuddyEvent } from '@common/types/buddyEvent'
+import { isSoftwareName } from '@common/types/trafficLight'
+import { publishBuddyEvent } from '$/buddy/events/buddyEventBus'
 
 const HOST = '127.0.0.1'
 const PORT = Number(new URL(EVENT_SERVER_ORIGIN).port)
@@ -72,11 +75,15 @@ const sendFile = async (req: Request, res: Response): Promise<void> => {
   }
 }
 
-/** 事件面：/<模块>/<功能>?<query>；处理逻辑单份，未知路由 404 */
+/** 事件面：/buddy/event?platform=<软件>&event=<Buddy 事件>；非法参数静默 204，未知路由 404 */
 const dispatchEvent = (req: Request, res: Response): void => {
   console.info(`[server] 收到事件：${req.originalUrl}`)
-  if (req.path === '/buddy/traffic-light') {
-    void applyEvent(String(req.query.platform ?? ''), String(req.query.event ?? ''))
+  if (req.path === '/buddy/event') {
+    const platform = String(req.query.platform ?? '')
+    const event = String(req.query.event ?? '')
+    if (isSoftwareName(platform) && isBuddyEvent(event)) {
+      void publishBuddyEvent(platform, event)
+    }
     res.status(204).end()
     return
   }

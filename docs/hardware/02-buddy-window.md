@@ -7,7 +7,7 @@
 - **默认隐藏**：启动不创建（比「创建但不显示」更彻底）；`showBuddyWindow()` 是唯一入口（托盘菜单），首次点击才创建，`ready-to-show` 时 show+focus
 - **关闭只隐藏**：`close` 拦截 + hide（复用主窗口 `isAppQuitting()` 置位放行真关闭），窗口常驻，串口状态不受影响
 - **独立入口**：`electron.vite.config.ts` renderer 段 `build.rollupOptions.input` 双入口（index + buddy）；dev 下 `ELECTRON_RENDERER_URL/buddy.html`，prod `loadFile(buddy.html)`
-- **独立 preload**：preload 段同样双入口（index + buddy），产物 `out/preload/buddy.js` 仅注入 `inject` + `serial` + `trafficLight` 域，不与主窗口共用全量 API；`buddyWindow.ts` 将 `webPreferences.preload` 覆写为 `buddy.js`。**给伙伴窗口页面新增共享能力时，先确认域是否在 `src/preload/buddy.ts` 注入**（如 App 外壳 `UseTitlePadding` 依赖 `inject.os`）
+- **独立 preload**：preload 段同样双入口（index + buddy），产物 `out/preload/buddy.js` 仅注入 `inject` + `serial` + `trafficLight` + `esp32Lcd` 域，不与主窗口共用全量 API；`buddyWindow.ts` 将 `webPreferences.preload` 覆写为 `buddy.js`。**给伙伴窗口页面新增共享能力时，先确认域是否在 `src/preload/buddy.ts` 注入**（如 App 外壳 `UseTitlePadding` 依赖 `inject.os`）
 - **独立应用**：`windows/buddy/main.ts` 自行 createApp（pinia + 独立 router + uno/global 样式，不引 monaco）；`App.vue` 为精简外壳（drag 区域 + 侧栏菜单 + 折叠按钮 + router-view）；**不初始化记忆系统**（主/伙伴两 renderer 进程各跑一份会双写）
 - **窗口样式复用**：`aiWindow.ts` 导出 `windowOptions()`（平台标题栏/毛玻璃配置）供 buddyWindow 覆盖尺寸/标题
 
@@ -22,7 +22,7 @@
 | renderer | `src/renderer/src/windows/buddy/main.ts` | 伙伴窗口应用入口（pinia + router + 全局样式） |
 | renderer | `src/renderer/src/windows/buddy/App.vue` | 窗口外壳：左侧功能菜单（collapsed 折叠）+ window-drag-region + 折叠按钮 + router-view；`useColorMode()` 初始化暗色跟随 |
 | renderer | `src/renderer/src/windows/buddy/router/index.ts` | 独立路由表（`/` → `/hardware/traffic-light`） |
-| preload | `src/preload/buddy.ts` | 伙伴窗口独立 preload 入口（仅 inject/serial/trafficLight，产物 `out/preload/buddy.js`） |
+| preload | `src/preload/buddy.ts` | 伙伴窗口独立 preload 入口（仅 inject/serial/trafficLight/esp32Lcd，产物 `out/preload/buddy.js`） |
 | 构建 | `electron.vite.config.ts` | renderer 与 preload 段 `build.rollupOptions.input` 各自双入口（index + buddy） |
 
 ## 注意事项
@@ -31,6 +31,6 @@
 - **外壳与主窗口同构**：App.vue = 侧栏功能菜单（`menus` 数组，collapsed 折叠为 0 宽）+ window-drag-region + common-operator（折叠按钮）+ main-container（`padding-top: 48px` 避开拖动条）；折叠状态是伙伴窗口本地 ref，不与主窗口共享 localStorage
 - **单按钮形态声明**：伙伴窗口 `common-operator` 仅「收起」一个按钮（主窗口另有「新建」按钮）。`App.vue` 入口 `useTitlePadding({ kind: 'buddy' })` 声明窗口形态（hook 内模块级单例），共享的 `PageLayout` 折叠态标题起点（`l2`）随之取 `l1 + 32 + 8` 单按钮宽；若伙伴窗口将来出现需要两个按钮的形态，需在对应页面显式传 `:pl` 覆盖。详见 `docs/setting/03-window-glass-titlebar.md`
 - **页面即纯内容**：菜单在 App.vue 壳上（对齐主窗口 AppSide 模式），路由页只渲染内容区；新增功能 = `menus` 加一项 + 路由表加一条 + pages 下建页面
-- **preload 按窗口裁剪**：伙伴窗口用独立 preload（`out/preload/buddy.js`，仅 inject/serial/trafficLight），主窗口仍用全量 `out/preload/index.js`；两窗口 `window.preload` 可用域不同，伙伴窗口勿使用未注入的域（`window.preload.trafficLight` 为伙伴窗口专属）
+- **preload 按窗口裁剪**：伙伴窗口用独立 preload（`out/preload/buddy.js`，仅 inject/serial/trafficLight/esp32Lcd），主窗口仍用全量 `out/preload/index.js`；两窗口 `window.preload` 可用域不同，伙伴窗口勿使用未注入的域（`window.preload.trafficLight`/`esp32Lcd` 为伙伴窗口专属）
 - **will-navigate 守卫**：dev 放行 dev server 同源，prod 仅放行 `file://…/renderer/buddy.html`，其余导航一律吞掉（同主窗口防 file:// 劫持）
 - **新建独立窗口页面时**：路由表加路由即可；页面如需 auto-import（ref/computed、tdesign 组件自动注册）无需额外配置，vite 插件对多入口统一生效

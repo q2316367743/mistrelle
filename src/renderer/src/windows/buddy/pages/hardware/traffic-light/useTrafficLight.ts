@@ -1,22 +1,28 @@
 /**
- * 红绿灯配置状态（模块级单例）：配置经 IPC 读写（main 持有文件并校验）。
- * 即改即存，保存后以 main 回读为准（失败自动回滚 UI）；串口连接成功后自动记忆 lastPort。
+ * 红绿灯配置状态（模块级单例）：配置经 IPC 读写（main 持有文件并校验），
+ * 即改即存，保存后以 main 回读为准（失败自动回滚 UI）。
+ * 连接编排/lastPort 记忆都在 main（TrafficLightService），渲染层只发指令与展示运行态。
  */
 import type {
+  BuddyEventName,
+} from '@common/types/buddyEvent'
+import type {
   LightState,
-  OpencodeEventName,
   PlatformStatus,
   SoftwareLightConfig,
   SoftwareName,
   TrafficLightConfig
 } from '@common/types/trafficLight'
 import { MessageUtil } from '@/utils/modal'
-import { useSerialLink } from '../useSerialLink'
 
 const config = ref<TrafficLightConfig | null>(null)
 const saving = ref(false)
 /** 当前软件的事件接入配置状态（如 opencode 插件安装态） */
 const platformStatus = ref<PlatformStatus | null>(null)
+/** 连接运行态（main 推送；渲染层纯展示） */
+const connectedPath = ref<string | null>(null)
+/** 硬件调试模式：开启后页面显示手动测试面板（伙伴窗口本地状态） */
+const debugMode = ref(false)
 
 let initialized = false
 
@@ -58,7 +64,7 @@ async function saveSoftware(name: SoftwareName, next: SoftwareLightConfig): Prom
 /** 绑定单事件灯态（即改即存；''=解除绑定） */
 async function bindEvent(
   name: SoftwareName,
-  event: OpencodeEventName,
+  event: BuddyEventName,
   state: LightState | ''
 ): Promise<void> {
   const current = config.value?.config[name]
@@ -76,16 +82,55 @@ async function setEnabled(name: SoftwareName, enabled: boolean): Promise<void> {
   await saveSoftware(name, { ...current, enabled })
 }
 
+/** 连接串口（指令发往 main；成功即记忆 lastPort，失败 toast 原因） */
+async function connect(path: string): Promise<void> {
+  const result = await window.preload.trafficLight.connect(path)
+  if (!result.ok) MessageUtil.error(result.msg || '串口连接失败')
+}
+
+/** 断开当前连接（指令发往 main，运行态随推送同步） */
+function disconnect(): Promise<void> {
+  return window.preload.trafficLight.disconnect()
+}
+
+/** 发送一条灯态指令（调试面板；失败 toast） */
+async function sendCommand(code: string): Promise<void> {
+  try {
+    await window.preload.trafficLight.sendCommand(code)
+  } catch (e) {
+    MessageUtil.error('指令发送失败：' + (e as Error).message)
+  }
+}
+
 export function useTrafficLight() {
   if (!initialized) {
     initialized = true
     void reload()
     void checkPlatform('opencode')
-    // 串口连接成功后记忆端口（含手动重连），供下次启动自动连接
-    const { connectedPath } = useSerialLink()
-    watch(connectedPath, (path) => {
-      if (path) void window.preload.trafficLight.setLastPort(path)
+    // 连接运行态：先拉一次再订阅推送（连接/断开/意外断开都由 main 广播）
+    void window.preload.trafficLight.getState().then((state) => {
+      connectedPath.value = state.connectedPath
+    })
+    let prev: string | null = null
+    window.preload.trafficLight.onState((state) => {
+      connectedPath.value = state.connectedPath
+      if (prev && !state.connectedPath) MessageUtil.warning('串口连接已断开')
+      prev = state.connectedPath
     })
   }
-  return { config, saving, platformStatus, bindEvent, setEnabled, checkPlatform, installPlatform, reload }
+  return {
+    config,
+    saving,
+    platformStatus,
+    connectedPath,
+    debugMode,
+    bindEvent,
+    setEnabled,
+    checkPlatform,
+    installPlatform,
+    connect,
+    disconnect,
+    sendCommand,
+    reload
+  }
 }

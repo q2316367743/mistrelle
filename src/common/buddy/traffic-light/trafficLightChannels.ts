@@ -9,10 +9,20 @@ export const TrafficLightChannels = {
   getConfig: 'trafficLight:getConfig',
   /** 保存单个软件配置（灯态唯一/软件互斥由 main 校验归一） */
   saveSoftwareConfig: 'trafficLight:saveSoftwareConfig',
-  /** 记住上次使用的串口（伙伴窗口连接成功后调用） */
+  /** 记住上次使用的串口（连接成功时 main 自动调用） */
   setLastPort: 'trafficLight:setLastPort',
   /** 检查指定软件的事件接入配置是否已安装（与内置模板内容比对） */
   checkPlatform: 'trafficLight:checkPlatform',
   /** 安装/更新指定软件的事件接入配置（覆盖写入其插件目录） */
-  installPlatform: 'trafficLight:installPlatform'
+  installPlatform: 'trafficLight:installPlatform',
+  /** 连接串口（9600；成功即记忆 lastPort 并广播运行态） */
+  connect: 'trafficLight:connect',
+  /** 断开当前连接 */
+  disconnect: 'trafficLight:disconnect',
+  /** 发送一条灯态指令（调试面板用） */
+  sendCommand: 'trafficLight:sendCommand',
+  /** 读取连接运行态 */
+  getState: 'trafficLight:getState',
+  /** 主进程 → 渲染层：连接运行态变化（连接/断开/意外断开） */
+  state: 'trafficLight:state'
 } as const

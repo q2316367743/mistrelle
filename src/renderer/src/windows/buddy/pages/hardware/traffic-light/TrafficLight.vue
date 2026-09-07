@@ -14,12 +14,12 @@ import SerialPanel from './components/SerialPanel.vue'
 import SoftwareTabs from './components/SoftwareTabs.vue'
 import SoftwarePlaceholder from './components/SoftwarePlaceholder.vue'
 import ManualLightPanel from './components/ManualLightPanel.vue'
-import { useSerialLink } from '../useSerialLink'
+import { useTrafficLight } from './useTrafficLight'
 
 defineOptions({ name: 'TrafficLight' })
 
-// 调试模式开启才显示手动测试面板（开关在串口连接面板）
-const { debugMode, connectedPath } = useSerialLink()
+// 调试模式开启才显示手动测试面板（开关在串口连接面板）；连接运行态来自 main 推送
+const { debugMode, connectedPath } = useTrafficLight()
 </script>
 
 <style scoped lang="less">

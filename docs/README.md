@@ -20,7 +20,7 @@
 
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| [01-event-server.md](./server/01-event-server.md)             | 本地事件服务（express，127.0.0.1:47743 只绑回环）：`/file/<编码绝对路径>` 资源面（渲染层加载本地字体/图片，替代已删的 `mistrelle://` 自定义协议）+ `/<模块>/<功能>?<query>` 事件面（外部进程投递，替代已删的系统深链）+ `/ping` 探活；Origin 守卫防浏览器 drive-by 读盘；端口事实源 `@common/server/eventServer.ts` |
+| [01-event-server.md](./server/01-event-server.md)             | 本地事件服务（express，127.0.0.1:47743 只绑回环）：`/file/<编码绝对路径>` 资源面（渲染层加载本地字体/图片，替代已删的 `mistrelle://` 自定义协议）+ `/buddy/event` 事件面（外部进程投递，platform/event 双白名单，词汇表见 hardware/05）+ `/ping` 探活；Origin 守卫防浏览器 drive-by 读盘；端口事实源 `@common/server/eventServer.ts` |
 
 ### auth/ —— 服务端账号
 
@@ -47,6 +47,7 @@
 | 文档                                                           | 描述                                                                                             |
 |----------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
 | [01-shell-exec.md](./plugin/01-shell-exec.md)                 | shell 执行插件：cliRun / jsRun 双层超时保障（底层 kill + 前端 IPC 挂起兜底）、超时契约与兼容性   |
+| [02-quota-plugins.md](./plugin/02-quota-plugins.md)           | 额度插件体系（独立公共域，2026-09-07）：`src/main/src/buddy/quota/` 不依附任何设备（ESP32 LCD 经 quotaBus 订阅消费，未来更多硬件）；统一插件模型（内置预置可关闭 + `~/.mistrelle/buddy/plugins/` 第三方目录，definePlugin 契约、声明式 settings、独立配置 quota.json）；伙伴窗口「额度插件」独立页面管理；内置随版本更新可关闭、目录替换文件即更新，为在线插件列表+版本化预留演进位 |
 
 ### migration/ —— 平台迁移
 
@@ -205,9 +206,11 @@
 
 | 文档                                            | 描述                                                                                                                        |
 |-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| [01-serial-traffic-light.md](./hardware/01-serial-traffic-light.md) | 串口通信域（serialport v13）与红绿灯页面：main SerialService 单例 + preload serial 域桥、Arduino 行协议（灯+模式/off、9600）、原生模块集成复用 postinstall 链路 |
+| [01-serial-traffic-light.md](./hardware/01-serial-traffic-light.md) | 串口通信域（serialport v13）：main SerialService **多端口**（`Map<path>`）+ 意外断开 onPortClosed 回调（不面向渲染层）；serial 渲染层桥只剩 `serial:list` 只读查询，**连接/写入/断开一律由各业务域服务编排并经域 IPC 暴露**（渲染层纯展示）；Arduino 行协议（灯+模式/off、9600）、原生模块集成复用 postinstall 链路 |
 | [02-buddy-window.md](./hardware/02-buddy-window.md) | 伙伴窗口（独立入口）：`buddy.html` → `windows/buddy/` 独立应用（独立 main/router/preload/外壳）、默认隐藏 + 托盘「打开伙伴」唯一入口、关闭只隐藏、renderer 与 preload 双入口配置、独立窗口目录约定、**外壳单按钮形态声明**（`useTitlePadding({ kind: 'buddy' })`，共享 PageLayout 折叠标题随窗口自适应） |
 | [03-traffic-light-config.md](./hardware/03-traffic-light-config.md) | 红绿灯配置（软件状态驱动）：`~/.mistrelle/buddy/traffic-light.json` 结构、事件→灯态绑定（状态唯一/软件互斥两条规则）、灯态全集含呼吸/全灭（事实源 `@common/types/trafficLight`，type 下方 `XxxOptions` 名称映射、全集派生）、本地事件服务 HTTP 事件投递链路（见 server/01）、内置 opencode 插件模板与一键安装（checkPlatform/installPlatform 三态检查、adapter 注册表扩展点）、伙伴窗口独立 preload 入口 |
+| [04-esp32-lcd.md](./hardware/04-esp32-lcd.md) | ESP32-S3-LCD-1.28 圆屏页面（2026-09-07）：独立串口连接（SerialService 多端口 + 连接编排/lastPort 记忆全在 main，`esp32Lcd:connect` 指令化 + state 推送）+ 独立配置 `~/.mistrelle/buddy/esp32-lcd.json`；**额度快照经 quotaBus 订阅**（额度是独立公共域，见 plugin/02）+ 当前事件状态（buddyEventBus 订阅 → 行协议 JSON 下发、暂定可改）；启动即初始化（无 init IPC） |
+| [05-buddy-event-protocol.md](./hardware/05-buddy-event-protocol.md) | Buddy 事件协议 v2（2026-09-07）：`/buddy/traffic-light` 升级 `/buddy/event`，事件收口为跨设备白名单词汇表 `@common/types/buddyEvent`（24 个、opencode 蓝本同名，存量红绿灯绑定天然兼容）；server 只做校验+**发布到 buddyEventBus（pub/sub）**，红绿灯/圆屏各域 init 内订阅消费，新增设备零改动 server；插件端白名单过滤投递 |
 
 ### todo/ —— 规划与待办
 

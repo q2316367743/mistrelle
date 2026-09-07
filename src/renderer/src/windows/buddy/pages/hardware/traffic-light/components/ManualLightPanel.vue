@@ -22,11 +22,11 @@
 </template>
 
 <script lang="ts" setup>
-import { useSerialLink } from '../../useSerialLink'
+import { useTrafficLight } from '../useTrafficLight'
 
 defineOptions({ name: 'ManualLightPanel' })
 
-const { connectedPath, sendCommand } = useSerialLink()
+const { connectedPath, sendCommand } = useTrafficLight()
 
 /** 灯色（协议 r/g/y）与展示色（tdesign token：error=红 success=绿 warning=黄） */
 const LIGHTS = [

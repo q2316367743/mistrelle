@@ -6,6 +6,7 @@
  * window 挂载由渲染层 vite-env.d.ts 声明（仅伙伴窗口独立 preload 注入）。
  */
 import { CommonSelect } from './CommonSelect'
+import type { BuddyEventName } from './buddyEvent'
 
 /** 灯态指令（Arduino 行协议：灯 r/g/y × 模式 o=常亮 s=闪烁 h=呼吸；off=全灭） */
 export type LightState = 'ro' | 'rs' | 'rh' | 'go' | 'gs' | 'gh' | 'yo' | 'ys' | 'yh' | 'off'
@@ -38,34 +39,15 @@ export const SoftwareNameOptions: Array<CommonSelect<SoftwareName>> = [
 /** 软件全集（运行时校验用，派生自 SoftwareNameOptions） */
 export const SOFTWARE_NAMES: readonly SoftwareName[] = SoftwareNameOptions.map((opt) => opt.value)
 
-/** Opencode 事件目录（只保留对信号灯有意义的 6 个，与官方事件名一致） */
-export type OpencodeEventName =
-  | 'message.part.updated'
-  | 'session.idle'
-  | 'permission.asked'
-  | 'session.error'
-  | 'tool.execute.before'
-  | 'tool.execute.after'
+/** 软件名白名单校验（事件投递接口与各域服务共用；纯类型侧函数，main 无业务依赖） */
+export function isSoftwareName(value: string): value is SoftwareName {
+  return (SOFTWARE_NAMES as readonly string[]).includes(value)
+}
 
-/** Opencode 事件名称映射 */
-export const OpencodeEventNameOptions: Array<CommonSelect<OpencodeEventName>> = [
-  { value: 'message.part.updated', label: '正在回复' },
-  { value: 'tool.execute.before', label: '开始执行工具' },
-  { value: 'tool.execute.after', label: '工具执行结束' },
-  { value: 'session.idle', label: '回复完成' },
-  { value: 'permission.asked', label: '等待授权' },
-  { value: 'session.error', label: '会话出错' }
-]
-
-/** Opencode 事件全集（运行时校验用，派生自 OpencodeEventNameOptions） */
-export const OPENCODE_EVENT_NAMES: readonly OpencodeEventName[] = OpencodeEventNameOptions.map(
-  (opt) => opt.value
-)
-
-/** 单个软件的接入配置：启用开关 + 事件→灯态绑定（缺失 = 不响应） */
+/** 单个软件的接入配置：启用开关 + 事件→灯态绑定（缺失 = 不响应；事件全集见 @common/types/buddyEvent） */
 export interface SoftwareLightConfig {
   enabled: boolean
-  bindings: Partial<Record<OpencodeEventName, LightState>>
+  bindings: Partial<Record<BuddyEventName, LightState>>
 }
 
 /** 红绿灯配置（落盘结构）：lastPort 记住上次串口 + 各软件配置 */
@@ -75,10 +57,16 @@ export interface TrafficLightConfig {
   config: Partial<Record<SoftwareName, SoftwareLightConfig>>
 }
 
-/** 保存软件配置的结果（失败时 msg 为中文原因，不抛错） */
+/** 保存/连接操作结果（失败时 msg 为中文原因，不抛错） */
 export interface TrafficLightSaveResult {
   ok: boolean
   msg?: string
+}
+
+/** 红绿灯连接运行态（渲染层纯展示用；连接编排与记忆都在 main） */
+export interface TrafficLightState {
+  /** 当前已连接的串口路径（= 配置 lastPort 已开时）；未连接为 null */
+  connectedPath: string | null
 }
 
 /**
@@ -109,7 +97,7 @@ export interface PlatformInstallResult {
   path: string
 }
 
-/** window.preload.trafficLight 契约：红绿灯配置桥（仅伙伴窗口的独立 preload 注入，主窗口运行时不存在） */
+/** window.preload.trafficLight 契约：红绿灯域桥（仅伙伴窗口的独立 preload 注入，主窗口运行时不存在） */
 export interface TrafficLightApi {
   /** 读取整份配置（含 lastPort 与各软件绑定） */
   getConfig(): Promise<TrafficLightConfig>
@@ -118,10 +106,20 @@ export interface TrafficLightApi {
     software: SoftwareName,
     config: SoftwareLightConfig
   ): Promise<TrafficLightSaveResult>
-  /** 记住上次使用的串口（伙伴窗口连接成功后调用） */
+  /** 记住上次使用的串口（连接成功时 main 自动调用，渲染层一般无需直接使用） */
   setLastPort(path: string): Promise<void>
   /** 检查指定软件的事件接入配置状态（opencode = 插件文件与内置模板比对） */
   checkPlatform(software: SoftwareName): Promise<PlatformStatus>
   /** 安装/更新指定软件的事件接入配置（覆盖写入其插件目录） */
   installPlatform(software: SoftwareName): Promise<PlatformInstallResult>
+  /** 连接串口（9600 固定波特率；成功即记忆 lastPort 并广播运行态） */
+  connect(path: string): Promise<TrafficLightSaveResult>
+  /** 断开当前连接 */
+  disconnect(): Promise<void>
+  /** 发送一条灯态指令（调试面板用；未连接时 reject） */
+  sendCommand(code: string): Promise<void>
+  /** 读取连接运行态 */
+  getState(): Promise<TrafficLightState>
+  /** 订阅连接运行态变化推送（连接/断开/意外断开）；返回取消订阅函数 */
+  onState(callback: (state: TrafficLightState) => void): () => void
 }

@@ -19,7 +19,7 @@
   </t-layout>
 </template>
 <script lang="ts" setup>
-import { TrafficIcon } from 'tdesign-icons-vue-next'
+import { TrafficIcon, TvIcon, WalletIcon } from 'tdesign-icons-vue-next'
 import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
 import SideMenu, { type SideMenuItem } from '@/components/menu/SideMenu.vue'
 import { useColorMode, useTitlePadding } from '@/hooks'
@@ -36,7 +36,9 @@ const operatorLeft = computed(() => `${l1}px`)
 
 /** 硬件功能菜单（后续拓展往这里加） */
 const menus: SideMenuItem[] = [
-  { label: '红绿灯', icon: TrafficIcon, to: '/hardware/traffic-light', match: 'prefix' }
+  { label: '红绿灯', icon: TrafficIcon, to: '/hardware/traffic-light', match: 'prefix' },
+  { label: 'ESP32-S3-LCD-1.28', icon: TvIcon, to: '/hardware/esp32-lcd', match: 'prefix' },
+  { label: '额度插件', icon: WalletIcon, to: '/plugins/quota', match: 'prefix' }
 ]
 </script>
 <style scoped lang="less">

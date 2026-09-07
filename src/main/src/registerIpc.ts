@@ -16,6 +16,10 @@ import { registerRelayIpc } from './modules/relay/relayIpc'
 import { registerSerialIpc } from './modules/serial/serialIpc'
 import { registerTrafficLightIpc } from './buddy/traffic-light/trafficLightIpc'
 import { initTrafficLight } from './buddy/traffic-light/TrafficLightService'
+import { registerEsp32LcdIpc } from './buddy/esp32-lcd/esp32LcdIpc'
+import { initEsp32Lcd } from './buddy/esp32-lcd/esp32LcdService'
+import { registerQuotaIpc } from './buddy/quota/quotaIpc'
+import { initQuota } from './buddy/quota/quotaService'
 
 export function registerIpc(): void {
   registerShellIpc()
@@ -37,6 +41,12 @@ export function registerIpc(): void {
   registerRelayIpc()
   registerSerialIpc()
   registerTrafficLightIpc()
+  registerEsp32LcdIpc()
+  registerQuotaIpc()
   // 加载红绿灯配置并按 lastPort 自动连接串口（失败静默，伙伴窗口可手动重连）
   void initTrafficLight()
+  // ESP32 LCD 同理：加载配置自动连接串口 + 订阅事件/额度快照总线
+  void initEsp32Lcd()
+  // 额度插件公共域：加载配置 + 启动刷新定时器（快照经 quotaBus 分发订阅设备）
+  initQuota()
 }

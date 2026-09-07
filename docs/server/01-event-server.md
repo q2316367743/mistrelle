@@ -2,7 +2,7 @@
 
 > main 进程内置 express 服务，监听 **127.0.0.1:47743**（只绑回环）。承载两个面：
 > **资源面** `/file/<编码绝对路径>`（渲染层加载本地字体 / 图片，替代原 `mistrelle://` 自定义协议）；
-> **事件面** `/<模块>/<功能>?<query>`（外部进程投递事件，替代原深链投递）。
+> **事件面** `/buddy/event?platform=…&event=…`（外部进程投递事件，词汇表白名单详见 hardware/05）。
 > 不经系统唤起、不激活应用；`mistrelle://` 协议（含系统级链接）已于 2026-09-04 整体删除。
 
 ## 背景与动机
@@ -21,7 +21,7 @@
 |----|------|------|
 | 探活 | `GET /ping` → 204 | 外部进程判断应用是否在跑 |
 | 资源 | `GET /file/<encodeURIComponent(绝对路径)>` | 读盘返回，`Content-Type` 按扩展名映射 + `Access-Control-Allow-Origin: *` |
-| 事件 | `GET\|POST /<模块>/<功能>?<query>` | 当前仅 `/buddy/traffic-light?platform=<软件>&event=<事件>` → `applyEvent`；未知路由 404 |
+| 事件 | `GET\|POST /buddy/event?platform=<软件>&event=<Buddy 事件>` | 双白名单校验（软件名 + 词汇表），非法静默 204；命中仅 `publishBuddyEvent` 发布到 buddyEventBus（消费方在各域服务 init 内订阅，本模块零业务依赖）；未知路由 404 |
 
 - 地址事实源：`src/common/server/eventServer.ts` 的 `EVENT_SERVER_ORIGIN`（main 与 preload 共享；
   插件模板为独立文件无法 import，端口常量注释互指）。
@@ -45,7 +45,7 @@
 - **Origin 守卫**（资源面）：请求带 `Origin` 且非本应用来源（`http://localhost:7743` /
   `http://127.0.0.1:7743` / `null`）→ 403。防公网网页经浏览器回环 drive-by 读盘（带 Origin 的
   CORS 请求被拒；`<img>`/字体等子资源与插件、curl 均无 Origin，不受影响）。
-- 事件面只消费 query 参数，进 `applyEvent`（未启用/未知事件/未绑定静默忽略），无命令执行能力。
+- 事件面只消费 query 参数，platform/event 双白名单（未启用/未知事件/未绑定静默忽略），无命令执行能力。
 - 无 Range 分片（字体 / 图片全量返回；后续视频预览需要时再加）。
 
 ## 生命周期与验证
@@ -55,4 +55,4 @@
 - 手动验证：
   - `curl 'http://127.0.0.1:47743/ping' -o /dev/null -w '%{http_code}'` → 204
   - `curl 'http://127.0.0.1:47743/file/%2FUsers%2F%E2%80%A6%2Fx.png' -o /dev/null -w '%{http_code}'` → 200
-  - `curl 'http://127.0.0.1:47743/buddy/traffic-light?platform=opencode&event=session.idle'` → 204 且亮灯
+  - `curl 'http://127.0.0.1:47743/buddy/event?platform=opencode&event=session.idle'` → 204 且各设备分发

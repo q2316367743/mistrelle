@@ -1,17 +1,11 @@
 /**
- * 串口通信 IPC handler（main 进程）：serial 域透传 SerialService。
+ * 串口通信 IPC handler（main 进程）：只透传系统级只读查询（设备列表）。
+ * 连接/写入/断开由各业务域服务编排（经各自域 IPC），不经本域。
  */
 import { ipcMain } from 'electron'
-import { SerialChannels, type SerialPortItem, type SerialState } from '~/modules/serial/serialChannels'
-import { closePort, getState, listPorts, openPort, writePort } from './SerialService'
+import { SerialChannels, type SerialPortItem } from '~/modules/serial/serialChannels'
+import { listPorts } from './SerialService'
 
 export function registerSerialIpc(): void {
   ipcMain.handle(SerialChannels.list, (): Promise<SerialPortItem[]> => listPorts())
-  ipcMain.handle(
-    SerialChannels.open,
-    (_event, path: string, baudRate?: number): Promise<void> => openPort(path, baudRate)
-  )
-  ipcMain.handle(SerialChannels.write, (_event, data: string): Promise<void> => writePort(data))
-  ipcMain.handle(SerialChannels.close, (): Promise<void> => closePort())
-  ipcMain.handle(SerialChannels.getState, (): SerialState => getState())
 }

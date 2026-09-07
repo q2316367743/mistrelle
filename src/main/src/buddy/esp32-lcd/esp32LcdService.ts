@@ -1,0 +1,175 @@
+/**
+ * ESP32-S3-LCD-1.28 服务（main 进程，模块级单例）：持有配置、编排串口连接、推送心跳。
+ * 事件消费走 buddyEventBus 订阅（init 内注册，server 只发布，本模块与协议层解耦）；
+ * 额度快照走 quotaBus 订阅（额度是独立公共域，本域是其消费设备之一）。
+ * 下行协议 = LCD 心跳行协议 v2（见 lcdProtocol.ts）：事件映射 status 行（携带最近屏显额度），
+ * 额度快照到达追加同状态额度行，空闲期每 5s 发 beat 保活（协议建议节奏）。
+ * 连接编排/lastPort 记忆/意外断开处理都在本服务（渲染层只发指令与展示运行态）。
+ */
+import { BrowserWindow } from 'electron'
+import { Esp32LcdChannels } from '@common/buddy/esp32-lcd/esp32LcdChannels'
+import { isBuddyEvent } from '@common/types/buddyEvent'
+import type {
+  BuddyEventState,
+  Esp32LcdConfig,
+  Esp32LcdSaveResult,
+  LcdConnectedState
+} from '@common/types/esp32Lcd'
+import type { QuotaSnapshot } from '@common/types/quota'
+import { subscribeBuddyEvent } from '$/buddy/events/buddyEventBus'
+import { subscribeQuotaSnapshot } from '$/buddy/quota/quotaBus'
+import { isSoftwareName } from '@common/types/trafficLight'
+import {
+  closePort,
+  getState as getSerialState,
+  listPorts,
+  onPortClosed,
+  openPort,
+  writePort
+} from '$/modules/serial/SerialService'
+import {
+  buildHeartbeatLine,
+  LCD_STATUS_BY_EVENT,
+  LCD_TEXT_BY_EVENT,
+  pickScreenQuota,
+  type LcdScreenQuota,
+  type LcdStatus
+} from './lcdProtocol'
+import {
+  defaultEsp32LcdConfig,
+  loadEsp32LcdConfig,
+  normalizeEsp32LcdConfig,
+  saveEsp32LcdConfigFile
+} from './esp32LcdConfig'
+
+// 声明即给默认值：onBuddyEvent 经事件总线在任何时序下都可能被调用
+let config: Esp32LcdConfig = defaultEsp32LcdConfig()
+/** 最近一次事件（伙伴窗口 getState 首拉 + event 推送） */
+let lastEvent: BuddyEventState | null = null
+/** 心跳状态机：当前屏幕状态（beat 沿用前一状态；由事件映射驱动） */
+let lastStatus: LcdStatus = 'idle'
+/** 心跳序号（协议 seq 列，单调递增供板端判新消息） */
+let seq = 0
+/** 最近屏显额度（心跳行 type/pct/value/unit 来源；额度快照到达时更新） */
+let screenQuota: LcdScreenQuota | null = null
+
+/** 广播给所有窗口（伙伴窗口订阅消费，主窗口无订阅无影响） */
+export function broadcastEsp32Lcd(channel: string, payload: unknown): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(channel, payload)
+  }
+}
+
+/** 连接运行态（配置 lastPort 已开视为已连接） */
+export function getConnectedState(): LcdConnectedState {
+  const connected = getSerialState().ports.some((item) => item.path === config.lastPort)
+  return { connectedPath: connected ? config.lastPort : null }
+}
+
+/** 广播连接运行态给渲染层 */
+function broadcastState(): void {
+  broadcastEsp32Lcd(Esp32LcdChannels.state, getConnectedState())
+}
+
+/** 下行一条心跳行（未连接/写失败静默——屏幕是旁路反馈） */
+function sendLine(line: string): void {
+  if (!config.lastPort) return
+  void writePort(config.lastPort, line + '\n').catch(() => {})
+}
+
+/** 组装并下发一条心跳（自动递增 seq） */
+function sendHeartbeat(status: LcdStatus, text?: string): void {
+  sendLine(buildHeartbeatLine({ status, seq: seq++, quota: screenQuota, text }))
+}
+
+/** 启动初始化（main 启动即执行，不依赖渲染层）：订阅总线，加载配置并自动重连 */
+export async function initEsp32Lcd(): Promise<void> {
+  config = loadEsp32LcdConfig()
+  // 订阅 buddy 事件总线（协议层发布 → 本域消费映射屏幕状态）
+  subscribeBuddyEvent((platform, event) => onBuddyEvent(platform, event))
+  // 订阅额度快照总线：更新屏显额度并追加一条同状态额度行（协议：额度变化 → 追加发送）
+  subscribeQuotaSnapshot((snapshot: QuotaSnapshot) => {
+    screenQuota = pickScreenQuota(snapshot)
+    if (!screenQuota || !config.eventForward) return
+    sendHeartbeat(lastStatus)
+  })
+  // 自己的端口意外断开（拔线）时广播运行态，渲染层同步展示
+  onPortClosed((path) => {
+    if (path === config.lastPort) broadcastState()
+  })
+  // 空闲期 beat 保活（协议建议约 5s；状态计时只被非 beat 消息刷新；进程退出随系统清理）
+  setInterval(() => {
+    if (!config.lastPort || !config.eventForward) return
+    sendHeartbeat('beat')
+  }, 5_000)
+
+  const port = config.lastPort
+  if (!port || getSerialState().ports.some((item) => item.path === port)) return
+  try {
+    const paths = (await listPorts()).map((item) => item.path)
+    if (!paths.includes(port)) return
+    await openPort(port, config.baudRate)
+    console.info('[esp32-lcd] 已自动连接串口', port)
+    sendHeartbeat('idle')
+  } catch (error) {
+    console.info('[esp32-lcd] 自动连接串口失败，可在伙伴窗口手动重连', (error as Error).message)
+  }
+}
+
+/**
+ * 事件消费（事件总线订阅入口）：缓存最近事件并推送渲染层；
+ * 命中状态映射时下发 status 心跳行（携带最近屏显额度，文案可覆写）。
+ */
+async function onBuddyEvent(platform: string, event: string): Promise<void> {
+  if (!isSoftwareName(platform) || !isBuddyEvent(event)) return
+  lastEvent = { platform, event, at: Date.now() }
+  broadcastEsp32Lcd(Esp32LcdChannels.event, lastEvent)
+  if (!config.eventForward) return
+  const status = LCD_STATUS_BY_EVENT[event]
+  if (!status) return
+  lastStatus = status
+  sendHeartbeat(status, LCD_TEXT_BY_EVENT[event])
+}
+
+/**
+ * 连接串口：成功即记忆 lastPort/baudRate 并广播运行态。
+ * 连接编排与记忆收口在本服务，渲染层只发指令。
+ */
+export async function connect(path: string, baudRate?: number): Promise<Esp32LcdSaveResult> {
+  const rate = baudRate ?? config.baudRate
+  try {
+    await openPort(path, rate)
+  } catch (e) {
+    return { ok: false, msg: '串口连接失败：' + (e as Error).message }
+  }
+  config.lastPort = path
+  config.baudRate = rate
+  saveEsp32LcdConfigFile(config)
+  broadcastState()
+  // 连接后推送初始待机心跳（Arduino/ESP32 open 复位后屏幕从已知状态开始）
+  sendHeartbeat('idle')
+  return { ok: true }
+}
+
+/** 断开当前连接并广播运行态 */
+export async function disconnect(): Promise<void> {
+  await closePort(config.lastPort)
+  broadcastState()
+}
+
+/** 读取整份配置 */
+export function getEsp32LcdConfig(): Esp32LcdConfig {
+  return config
+}
+
+/** 读取最近一次事件 */
+export function getLastEvent(): BuddyEventState | null {
+  return lastEvent
+}
+
+/** 保存整份配置：归一化后落盘 */
+export function saveEsp32LcdConfig(raw: unknown): Esp32LcdSaveResult {
+  config = normalizeEsp32LcdConfig(raw)
+  saveEsp32LcdConfigFile(config)
+  return { ok: true }
+}

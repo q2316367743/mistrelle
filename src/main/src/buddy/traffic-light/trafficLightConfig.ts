@@ -5,19 +5,19 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { app } from 'electron'
+import { BUDDY_EVENT_NAMES, type BuddyEventName } from '@common/types/buddyEvent'
 import {
+  isSoftwareName,
   LIGHT_STATE_CODES,
-  OPENCODE_EVENT_NAMES,
   SOFTWARE_NAMES,
   type LightState,
-  type OpencodeEventName,
   type SoftwareLightConfig,
   type SoftwareName,
   type TrafficLightConfig
 } from '@common/types/trafficLight'
 
-/** 首次使用时的默认绑定（语义见 docs/hardware/03；tool.execute.after 默认不绑） */
-const DEFAULT_OPENCODE_BINDINGS: Partial<Record<OpencodeEventName, LightState>> = {
+/** 首次使用时的默认绑定（tool.execute.after 默认不绑） */
+const DEFAULT_OPENCODE_BINDINGS: Partial<Record<BuddyEventName, LightState>> = {
   'message.part.updated': 'gs',
   'tool.execute.before': 'yo',
   'session.idle': 'go',
@@ -45,17 +45,13 @@ function isLightState(value: string): value is LightState {
   return (LIGHT_STATE_CODES as readonly string[]).includes(value)
 }
 
-function isSoftwareName(value: string): value is SoftwareName {
-  return (SOFTWARE_NAMES as readonly string[]).includes(value)
-}
-
 /** 归一化单个软件配置：未知事件/灯态剔除，enabled 仅认 true */
 export function normalizeSoftware(raw: unknown): SoftwareLightConfig {
   if (!isRecord(raw)) return { enabled: false, bindings: {} }
-  const bindings: Partial<Record<OpencodeEventName, LightState>> = {}
+  const bindings: Partial<Record<BuddyEventName, LightState>> = {}
   const rawBindings = raw.bindings
   if (isRecord(rawBindings)) {
-    for (const event of OPENCODE_EVENT_NAMES) {
+    for (const event of BUDDY_EVENT_NAMES) {
       const state = rawBindings[event]
       if (typeof state === 'string' && isLightState(state)) bindings[event] = state
     }
@@ -126,4 +122,5 @@ export function applySoftwareExclusion(
   return next
 }
 
+/** 软件名白名单校验收口在 @common/types/trafficLight（协议层与各域共用），此处 re-export 保持兼容 */
 export { isSoftwareName }

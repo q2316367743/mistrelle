@@ -1,6 +1,6 @@
 /**
- * 红绿灯 IPC handler（main 进程）：配置读取 / 单软件配置保存 / lastPort 记忆 / 接入配置检查与安装。
- * 事件入口 applyEvent 不走 IPC（main 内部由事件接入方直接调用）。
+ * 红绿灯 IPC handler（main 进程）：配置读写 + 连接编排 + 指令发送 + 接入配置检查与安装。
+ * 事件消费不走 IPC（init 内经 buddyEventBus 订阅，见 TrafficLightService）。
  */
 import { ipcMain } from 'electron'
 import { TrafficLightChannels } from '@common/buddy/traffic-light/trafficLightChannels'
@@ -10,10 +10,19 @@ import type {
   SoftwareLightConfig,
   SoftwareName,
   TrafficLightConfig,
-  TrafficLightSaveResult
+  TrafficLightSaveResult,
+  TrafficLightState
 } from '@common/types/trafficLight'
 import { checkPlatform, installPlatform } from './platformConfig'
-import { getConfig, saveSoftwareConfig, setLastPort } from './TrafficLightService'
+import {
+  connect,
+  disconnect,
+  getConfig,
+  getState,
+  saveSoftwareConfig,
+  sendCommand,
+  setLastPort
+} from './TrafficLightService'
 
 export function registerTrafficLightIpc(): void {
   ipcMain.handle(TrafficLightChannels.getConfig, (): TrafficLightConfig => getConfig())
@@ -31,4 +40,13 @@ export function registerTrafficLightIpc(): void {
     TrafficLightChannels.installPlatform,
     (_event, software: string): PlatformInstallResult => installPlatform(software)
   )
+  ipcMain.handle(
+    TrafficLightChannels.connect,
+    (_event, path: string): Promise<TrafficLightSaveResult> => connect(path)
+  )
+  ipcMain.handle(TrafficLightChannels.disconnect, (): Promise<void> => disconnect())
+  ipcMain.handle(TrafficLightChannels.sendCommand, (_event, code: string): Promise<void> =>
+    sendCommand(code)
+  )
+  ipcMain.handle(TrafficLightChannels.getState, (): TrafficLightState => getState())
 }

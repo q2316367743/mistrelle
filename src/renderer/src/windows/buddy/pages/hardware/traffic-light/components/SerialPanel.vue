@@ -42,29 +42,42 @@
 
 <script lang="ts" setup>
 import { RefreshIcon } from 'tdesign-icons-vue-next'
-import { useSerialLink } from '../../useSerialLink'
 import { useTrafficLight } from '../useTrafficLight'
 
 defineOptions({ name: 'SerialPanel' })
 
 const {
-  ports,
-  selectedPath,
+  config,
   connectedPath,
-  listing,
-  connecting,
   debugMode,
-  refreshPorts,
   connect,
-  changeSelection,
   disconnect
-} = useSerialLink()
-const { config } = useTrafficLight()
+} = useTrafficLight()
+
+const ports = ref<SerialPortItem[]>([])
+const selectedPath = ref('')
+const connecting = ref(false)
+const listing = ref(false)
+
+/** 拉取串口设备列表（保持当前选择） */
+async function refreshPorts(): Promise<void> {
+  listing.value = true
+  try {
+    ports.value = await window.preload.serial.list()
+  } finally {
+    listing.value = false
+  }
+}
+
+/** 下拉选择变化：仅记录目标端口，不自动连接/断开（连接由用户点「连接/断开」按钮主动触发） */
+function changeSelection(value: unknown): void {
+  selectedPath.value = typeof value === 'string' ? value : ''
+}
 
 /**
  * 按钮语义：
  * - 下拉选中即连接中的端口，或已连接但未选端口 → 显示「断开」（断开当前连接）
- * - 其余情况（未连 / 选了新端口）→ 显示「连接」，open 覆盖旧连接
+ * - 其余情况（未连 / 选了新端口）→ 显示「连接」，连接指令发往 main（成功即记忆 lastPort）
  */
 const showDisconnect = computed(
   () => !!connectedPath.value && (connectedPath.value === selectedPath.value || !selectedPath.value)
@@ -72,11 +85,17 @@ const showDisconnect = computed(
 
 /** 连接/断开切换 */
 function toggleConnection(): void {
+  connecting.value = true
+  const done = () => (connecting.value = false)
   if (showDisconnect.value) {
-    void disconnect()
+    void disconnect().finally(done)
     return
   }
-  if (selectedPath.value) void connect(selectedPath.value)
+  if (selectedPath.value) {
+    void connect(selectedPath.value).finally(done)
+    return
+  }
+  done()
 }
 
 const portOptions = computed(() =>
@@ -97,6 +116,8 @@ watch(
   },
   { immediate: true }
 )
+
+void refreshPorts()
 </script>
 
 <style scoped lang="less">
