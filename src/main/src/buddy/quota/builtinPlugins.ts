@@ -23,7 +23,10 @@ export const BUILTIN_QUOTA_PLUGINS: readonly BuiltinQuotaPlugin[] = [
 definePlugin({
   id: 'deepseek',
   name: 'DeepSeek 余额',
-  settings: [{ key: 'apiKey', label: 'API Key', secret: true }],
+  settings: [
+    { key: 'apiKey', label: 'API Key', secret: true },
+    { key: 'maxQuota', label: '最大额度', placeholder: '留空则按当前余额视为满格' }
+  ],
   async fetch(ctx) {
     if (!ctx.settings.apiKey) throw new Error('请先填写 DeepSeek API Key')
     const res = await ctx.fetch('https://api.deepseek.com/user/balance', {
@@ -36,15 +39,17 @@ definePlugin({
     if (!info) throw new Error('响应中没有余额数据')
     const units = { CNY: '元', USD: '$' }
     const unit = units[info.currency] || info.currency || ''
-    return {
-      items: [{
-        label: 'DeepSeek 余额',
-        value: info.total_balance + ' ' + unit,
-        screenTemplate: 'deepseek',
-        screenValue: info.total_balance,
-        screenUnit: unit
-      }]
+    // 最大额度兜底：未设置/非法时以当前余额为分母（圆环满格）
+    const max = parseFloat(ctx.settings.maxQuota)
+    const item = {
+      label: 'DeepSeek 余额',
+      value: info.total_balance + ' ' + unit,
+      screenTemplate: 'deepseek',
+      screenValue: info.total_balance,
+      screenUnit: unit
     }
+    if (max > 0) item.screenPct = (info.total_balance / max) * 100
+    return { items: [item] }
   }
 })
 `

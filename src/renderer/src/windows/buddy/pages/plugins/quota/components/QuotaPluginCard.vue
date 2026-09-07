@@ -27,6 +27,7 @@
           v-model="localSettings[field.key]"
           class="setting-input"
           :type="field.secret ? 'password' : 'text'"
+          :placeholder="field.placeholder"
           :disabled="disabled || !enabled"
           @blur="save"
           @enter="save"

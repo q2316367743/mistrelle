@@ -26,7 +26,9 @@
       <t-alert v-if="lastQuota?.error" theme="warning" :message="lastQuota.error" />
       <div v-for="item in lastQuota?.items ?? []" :key="item.label" class="snapshot-row">
         <span class="label">{{ item.label }}</span>
-        <span class="value">{{ item.value }}</span>
+        <span class="value">
+          {{ item.value }}<template v-if="item.screenPct != null"> ({{ item.screenPct }}%)</template>
+        </span>
       </div>
       <div v-if="!lastQuota?.items.length" class="empty">暂无数据</div>
     </div>

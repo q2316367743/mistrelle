@@ -28,7 +28,7 @@ quota 域（配置 ~/.mistrelle/buddy/quota.json + 插件扫描/执行/调度）
 definePlugin({
   id: 'xxx',
   name: '显示名',
-  settings: [{ key: 'apiKey', label: 'API Key', secret: true }],  // 可选；secret 项 UI 用密码框
+  settings: [{ key: 'apiKey', label: 'API Key', secret: true, placeholder: '…' }],  // 可选；secret 项 UI 用密码框，placeholder 为输入占位提示
   async fetch(ctx) {
     // ctx.settings = 该插件的持久化键值；ctx.fetch(url, {headers}) = 极简 HTTP（15s 超时，回 {status, body}）
     return {
@@ -48,6 +48,9 @@ definePlugin({
 - 恰好调用一次 `definePlugin`；`id/name/settings` 元数据由脚本声明、`collectQuotaPlugin` 取出（单一事实源），列表展示与执行同源
 - 屏显字段逐项校验（枚举/范围/字符集），非法字段忽略不影响 UI 展示；heartbeat 行组装见圆屏域 `lcdProtocol.ts`
 - **脚本在主进程 Node 环境执行，无沙箱**：本地自写脚本信任模型，勿粘贴运行不可信脚本
+- **最大额度兜底语义（内置 deepseek）**：deepseek 声明第二个设置项 `maxQuota`（最大额度，币种随余额）。每次刷新计算
+  `screenPct = 余额 / maxQuota × 100`（归一化钳制 0..100）；**未设置/非法时以本次拉到的余额为分母**——圆环满格；
+  填了最大额度后圆环随消耗下降，该兜底是每次动态计算、不做首次记忆
 
 ## 配置结构（`~/.mistrelle/buddy/quota.json`，独立公共域配置）
 
@@ -55,7 +58,7 @@ definePlugin({
 {
   "intervalMinutes": 5,
   "screen": "deepseek",
-  "builtin": { "deepseek": { "enabled": true, "settings": { "apiKey": "sk-…" } } },
+  "builtin": { "deepseek": { "enabled": true, "settings": { "apiKey": "sk-…", "maxQuota": "200" } } },
   "external": { "deepseek-plus.js": { "enabled": false, "settings": {} } }
 }
 ```

@@ -53,6 +53,8 @@ export interface PluginSettingField {
   key: string
   label: string
   secret?: boolean
+  /** 输入框占位提示（如「留空则按当前余额视为满格」） */
+  placeholder?: string
 }
 
 /** 额度插件描述（UI 列表渲染用；builtin/external 统一模型） */

@@ -47,7 +47,7 @@
 | 文档                                                           | 描述                                                                                             |
 |----------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
 | [01-shell-exec.md](./plugin/01-shell-exec.md)                 | shell 执行插件：cliRun / jsRun 双层超时保障（底层 kill + 前端 IPC 挂起兜底）、超时契约与兼容性   |
-| [02-quota-plugins.md](./plugin/02-quota-plugins.md)           | 额度插件体系（独立公共域，2026-09-07）：`src/main/src/buddy/quota/` 不依附任何设备（ESP32 LCD 经 quotaBus 订阅消费，未来更多硬件）；统一插件模型（内置预置可关闭 + `~/.mistrelle/buddy/plugins/` 第三方目录，definePlugin 契约、声明式 settings、独立配置 quota.json）；伙伴窗口「额度插件」独立页面管理；内置随版本更新可关闭、目录替换文件即更新，为在线插件列表+版本化预留演进位 |
+| [02-quota-plugins.md](./plugin/02-quota-plugins.md)           | 额度插件体系（独立公共域，2026-09-07）：`src/main/src/buddy/quota/` 不依附任何设备（ESP32 LCD 经 quotaBus 订阅消费，未来更多硬件）；统一插件模型（内置预置可关闭 + `~/.mistrelle/buddy/plugins/` 第三方目录，definePlugin 契约、声明式 settings、独立配置 quota.json）；伙伴窗口「额度插件」独立页面管理；内置随版本更新可关闭、目录替换文件即更新，为在线插件列表+版本化预留演进位；内置 deepseek 含「最大额度 maxQuota」设置（未设置时以当前余额为分母=圆环满格） |
 
 ### migration/ —— 平台迁移
 

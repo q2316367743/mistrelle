@@ -35,7 +35,9 @@ HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结
   `session.created`→idle、`session.idle`→done（板端 3s 自动回 idle）、`session.error`→idle+文案「会话出错」、
   `message.part.updated`/`message.updated`→thinking、`tool.execute.before`→ask、`tool.execute.after`→thinking、
   `permission.asked`/`permission.updated`→permission、`permission.replied`→thinking、`command.executed`→thinking
-- **额度 → type/pct/value/unit**：取快照中第一条带屏显字段的条目（`QuotaItem.screenTemplate/screenPct/screenValue/screenUnit`，如内置 deepseek → `deepseek,100,110.00,元`）
+- **额度 → type/pct/value/unit**：取快照中第一条带屏显字段的条目（`QuotaItem.screenTemplate/screenPct/screenValue/screenUnit`，
+  如内置 deepseek 设了最大额度 200、余额 110 → `deepseek,55,110.00,元`）；`screenPct` 缺省发 100——
+  DeepSeek 未设置「最大额度」时以当前余额为分母（圆环满格），设置后按 余额/最大额度 随消耗下降（见 [docs/plugin/02](../plugin/02-quota-plugins.md)）
 - **发送节奏**（协议建议）：事件命中映射立即发 status 行（携带最近屏显额度）；额度快照到达追加同状态额度行；空闲期每 5s 发 `beat` 保活（状态计时只被非 beat 消息刷新）；连接建立后发一条 `idle` 初始心跳
 - 发送端约束：`value` 仅 `[0-9.]` ≤15 字符、`unit` ≤7 字节、`text` ≤23 字节（超长字节级截断）、seq 单调递增、整行超 127B 依次丢 text/unit 兜底
 - `eventForward` 开关（圆屏页「向屏幕推送心跳」）控制全部下行（status 行 / 额度行 / beat）
