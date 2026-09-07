@@ -11,6 +11,7 @@
   1. **状态绑定唯一**：同一软件内一种灯态只能被一个事件绑定。main 保存时校验（违规返回 `{ok:false, msg}`），渲染层下拉中已被其它事件占用的灯态直接 disabled
   2. **软件互斥**：同一时间只允许一个软件启用。main 保存时归一（启用任一软件自动停用其余），当前仅 opencode，逻辑按多软件写
 - **事件映射**：`applyEvent(software, event)` → 查启用软件的 bindings → 未启用/未绑定/串口未连接一律忽略；连续同指令去重（流式事件防刷串口）；禁用软件时主动发 `off` 清灯
+- **锁存防覆盖**（`buddyEventLatch.ts`，语义分层见 [05](./05-buddy-event-protocol.md)）：`applyEvent` 对**全量事件先喂锁存器**（含未绑定事件——默认未绑定的 `permission.replied` 也要参与解锁，喂入须在绑定查询之前），被抑制的绑定事件跳过写串口——否则 `permission.asked→ys` 黄闪会被紧随的 `message.part.updated→gs` 绿灯覆盖；connect/disconnect 与 lastCommand 同点重建锁存实例
 
 ## 配置文件结构
 
@@ -89,6 +90,7 @@ GET|POST http://127.0.0.1:47743/buddy/event?platform=<软件名>&event=<Buddy �
 | resources | `resources/plugins/opencode/mistrelle-integration.js` | 内置 opencode 插件模板（事件过滤 + 每事件 trailing 节流 500ms + 纯 fetch 投递本地事件服务） |
 | main | `src/main/src/server/index.ts` | 本地事件服务：HTTP 事件路由 `/buddy/event` → 校验 + publishBuddyEvent（兼渲染层 `/file` 资源面，见 docs/server/01 与 hardware/05） |
 | main | `src/main/src/buddy/events/buddyEventBus.ts` | Buddy 事件总线（subscribe/publish）：server 只发布，各设备域 init 内订阅，新增设备零改动 server |
+| main | `src/main/src/buddy/events/buddyEventLatch.ts` | 事件锁存判定器（设备域共用工厂，本域与圆屏各自实例化），防 permission.asked 等灯态被流式噪音覆盖 |
 | main | `src/main/src/registerIpc.ts` | 注册 trafficLightIpc 并触发 initTrafficLight |
 | common | `src/common/types/trafficLight.ts` | 域类型 + 名称映射（每个 type 下方 `XxxOptions`）+ 全集常量（`*_NAMES`/`LIGHT_STATE_CODES` 从 Options 派生）+ `TrafficLightApi` 契约，跨端唯一事实源 |
 | common | `src/common/buddy/traffic-light/trafficLightChannels.ts` | IPC 通道常量（`TrafficLightChannels`） |

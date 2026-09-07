@@ -17,6 +17,7 @@ import type {
 } from '@common/types/esp32Lcd'
 import type { QuotaSnapshot } from '@common/types/quota'
 import { subscribeBuddyEvent } from '$/buddy/events/buddyEventBus'
+import { createBuddyEventLatch } from '$/buddy/events/buddyEventLatch'
 import { subscribeQuotaSnapshot } from '$/buddy/quota/quotaBus'
 import { isSoftwareName } from '@common/types/trafficLight'
 import {
@@ -48,6 +49,8 @@ let config: Esp32LcdConfig = defaultEsp32LcdConfig()
 let lastEvent: BuddyEventState | null = null
 /** 心跳状态机：当前屏幕状态（beat 沿用前一状态；由事件映射驱动） */
 let lastStatus: LcdStatus = 'idle'
+/** 事件锁存判定器：permission/done/ask 落屏后抑制思考类噪音事件，防状态被流式收尾覆盖 */
+let shouldSuppressEvent = createBuddyEventLatch()
 /** 心跳序号（协议 seq 列，单调递增供板端判新消息） */
 let seq = 0
 /** 最近屏显额度（心跳行 type/pct/value/unit 来源；额度快照到达/屏显配置变更时更新） */
@@ -133,6 +136,8 @@ async function onBuddyEvent(platform: string, event: string): Promise<void> {
   if (!config.eventForward) return
   const status = LCD_STATUS_BY_EVENT[event]
   if (!status) return
+  // 锁存期噪音（如 permission.asked 后紧随的流式收尾）不改状态、不下发心跳
+  if (shouldSuppressEvent(event)) return
   lastStatus = status
   sendHeartbeat(status, LCD_TEXT_BY_EVENT[event])
 }
@@ -154,6 +159,9 @@ export async function connect(path: string, baudRate?: number): Promise<Esp32Lcd
   broadcastState()
   // 连接后推送初始待机心跳（Arduino/ESP32 open 复位后屏幕从已知状态开始）
   sendHeartbeat('idle')
+  // 锁存重建、lastStatus 对齐：防跨连接的旧锁抑制后续事件
+  shouldSuppressEvent = createBuddyEventLatch()
+  lastStatus = 'idle'
   return { ok: true }
 }
 

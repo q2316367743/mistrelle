@@ -40,6 +40,32 @@ GET|POST /buddy/event?platform=<原文>&event=<原文>
 → 其他 path：404
 ```
 
+## 事件语义分层与锁存（防覆盖，2026-09-07）
+
+opencode 在 `permission.asked`、`session.idle` 之后仍会推 `message.part.updated` / `message.updated`
+（含插件 500ms 节流的尾部补发，实测滞后 +159~504ms），设备端若「最后命中事件直接赢」，
+permission/done 状态会立刻被 thinking 类覆盖（等待授权显示成思考中、完成显示成思考中）。
+为此事件在语义上分三层，事实源 `src/main/src/buddy/events/buddyEventLatch.ts`：
+
+- **噪音类**（映射为 thinking 类）：`message.part.updated` / `message.updated` / `command.executed`
+  ——锁存期内被抑制，且不改变锁存
+- **释放类**（真实活动边界）：`permission.replied` / `tool.execute.before` / `tool.execute.after` /
+  `permission.asked` / `session.created` / `session.idle` / `session.error`——解除现有锁存；
+  其中 `permission.asked` / `permission.updated` / `tool.execute.before` / `session.idle`
+  随后立即立新锁（锁存触发表）。注意 `tool.execute.after` 必须在释放集而非噪音集，
+  否则 ask 锁永远解不开
+- **元数据类**（session.updated/diff 等其余事件）：不触碰锁存、直接放行
+
+锁存形态：`permission` / `ask` 无时限（等释放事件解锁）；`done` 仅在 1.5s 静默窗内抑制
+（`DONE_QUIET_MS`，覆盖实测收尾事件与尾部补发），窗外新活动的流式事件正常放行。
+消费方各自 `createBuddyEventLatch()` 持独立实例，feed(event) 返回 true 即跳过状态下发：
+
+- **红绿灯**（绑定可配置）：`applyEvent` 对**全量事件先喂锁存器**（含未绑定事件——
+  默认未绑定的 `permission.replied` 也要参与解锁，否则锁存链路断裂），被抑制的绑定事件跳过写串口
+- **圆屏**（映射固定全集）：`onBuddyEvent` 命中 `LCD_STATUS_BY_EVENT` 后调用即可
+  （全部触发/释放事件都在映射表内）；被抑制事件不改 `lastStatus`、不下发心跳，
+  `lastEvent` 缓存与推送保持全量不受影响
+
 ## 关键文件
 
 | 文件 | 职责 |
@@ -48,6 +74,7 @@ GET|POST /buddy/event?platform=<原文>&event=<原文>
 | `resources/plugins/opencode/mistrelle-integration.js` | 投递方（白名单过滤 → /buddy/event，节流） |
 | `src/main/src/server/index.ts` | dispatchEvent：路径判断 + 零校验转发原始事件（零业务依赖） |
 | `src/main/src/buddy/events/buddyEventBus.ts` | 两条总线：原始事件总线（raw，server 发布）+ 校验后事件总线（typed，设备消费） |
+| `src/main/src/buddy/events/buddyEventLatch.ts` | 事件锁存判定器（噪音/释放/触发表三层语义 + done 静默窗），设备域共用工厂、各自实例 |
 | `src/main/src/buddy/events/buddyEventFilter.ts` | 监听器①：双白名单过滤，命中发布校验后总线 |
 | `src/main/src/buddy/integrations/integrationsActivity.ts` | 监听器②：集成调试事件流全量采集（见 hardware/06） |
 | `src/main/src/buddy/traffic-light/TrafficLightService.ts` | 订阅方①：事件→灯态（init 内 subscribe） |

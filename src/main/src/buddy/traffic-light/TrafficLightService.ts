@@ -6,6 +6,7 @@
  */
 import { BrowserWindow } from 'electron'
 import { subscribeBuddyEvent } from '$/buddy/events/buddyEventBus'
+import { createBuddyEventLatch } from '$/buddy/events/buddyEventLatch'
 import {
   closePort,
   getState as getSerialState,
@@ -37,6 +38,8 @@ import {
 let config: TrafficLightConfig = defaultConfig()
 /** 指令去重：事件流里同一灯态连续触发（如流式回复）不重复写串口 */
 let lastCommand = ''
+/** 事件锁存判定器：permission/done/ask 相位内的思考类噪音事件不触发灯态，防覆盖 */
+let shouldSuppressEvent = createBuddyEventLatch()
 
 /** 连接运行态（配置 lastPort 已开视为已连接） */
 export function getState(): TrafficLightState {
@@ -92,8 +95,10 @@ async function applyEvent(software: string, event: string): Promise<void> {
   const item = config.config[software]
   if (!item || !item.enabled) return
   if (!isBuddyEvent(event)) return
+  // 全量事件先喂锁存器（含未绑定事件，释放链路不因绑定缺失断裂）；锁存期噪音的绑定事件跳过
+  const suppressed = shouldSuppressEvent(event)
   const state = item.bindings[event]
-  if (!state || state === lastCommand) return
+  if (!state || suppressed || state === lastCommand) return
   try {
     await writePort(config.lastPort, state + '\n')
     lastCommand = state
@@ -114,8 +119,9 @@ export async function connect(path: string): Promise<TrafficLightSaveResult> {
   }
   config.lastPort = path
   saveConfigFile(config)
-  // 重连后 Arduino 已复位全灭，指令去重缓存重置让首个事件能写入
+  // 重连后 Arduino 已复位全灭，指令去重缓存与事件锁存重置让首个事件能写入
   lastCommand = ''
+  shouldSuppressEvent = createBuddyEventLatch()
   broadcastState()
   return { ok: true }
 }
@@ -128,6 +134,7 @@ export async function disconnect(): Promise<void> {
   config.lastPort = ''
   saveConfigFile(config)
   lastCommand = ''
+  shouldSuppressEvent = createBuddyEventLatch()
   broadcastState()
 }
 

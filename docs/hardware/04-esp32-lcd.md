@@ -42,6 +42,11 @@ HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结
   `session.created`→idle、`session.idle`→done（板端 3s 自动回 idle）、`session.error`→idle+文案「会话出错」、
   `message.part.updated`/`message.updated`→thinking、`tool.execute.before`→ask、`tool.execute.after`→thinking、
   `permission.asked`/`permission.updated`→permission、`permission.replied`→thinking、`command.executed`→thinking
+- **锁存防覆盖**（`buddyEventLatch.ts`，语义分层见 [05](./05-buddy-event-protocol.md)）：permission/ask 落屏后锁存到
+  释放事件（`permission.replied` / `tool.execute.after` / `session.idle` 等），done 落屏后 1.5s 内抑制 thinking 类事件——
+  opencode 在 asked/idle 之后仍会推流式收尾事件（含插件 500ms 节流尾部补发，实测 +159~504ms），
+  未加锁存时会把「等待授权/已完成」立刻覆盖回 thinking；被抑制事件不改 `lastStatus`、不下发心跳，
+  `lastEvent` 缓存与推送保持全量不受影响；connect 后锁存重建、lastStatus 对齐 idle
 - **额度 → type/pct/value/unit**：按 `screenQuota` 键取对应插件的屏显条目（`lcdProtocol.ts` `pickScreenQuota(snapshot, key)`；
   按键精确匹配失败回落第一条带屏显字段的条目。`QuotaItem.screenTemplate/screenPct/screenValue/screenUnit`，
   如内置 deepseek 设了最大额度 200、余额 110 → `deepseek,55,110.00,元`）；`screenPct` 缺省发 100——
@@ -59,6 +64,7 @@ HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结
 | common | `src/common/buddy/esp32-lcd/esp32LcdChannels.ts` | 通道常量（5 invoke + 2 推送） |
 | main | `src/main/src/buddy/esp32-lcd/esp32LcdConfig.ts` | 配置读写与归一化（`~/.mistrelle/buddy/esp32-lcd.json`） |
 | main | `src/main/src/buddy/esp32-lcd/lcdProtocol.ts` | 心跳行协议 v2 适配：事件→status 映射、屏显额度挑选、行组装（字节截断/整行长度兜底） |
+| main | `src/main/src/buddy/events/buddyEventLatch.ts` | 事件锁存判定器（设备域共用工厂，本域与红绿灯各自实例化），防 permission/done/ask 被流式噪音覆盖 |
 | main | `src/main/src/buddy/esp32-lcd/esp32LcdService.ts` | 单例：init（订阅事件/快照总线与意外断开 + 自动重连）、connect/disconnect 连接编排、onBuddyEvent 转发、writeLcdJson、运行态广播 |
 | main | `src/main/src/buddy/esp32-lcd/esp32LcdIpc.ts` | handler 全集（配置/连接/运行态） |
 | preload | `src/preload/src/modules/esp32-lcd/esp32Lcd.ts` | 薄封装；`src/preload/buddy.ts` 注入 `esp32Lcd` 域 |
