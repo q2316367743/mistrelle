@@ -3,6 +3,7 @@ import { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { AiStreamApi } from '@/types/aiStream'
 import { RelayApi } from '@/types/relay'
 import { TrafficLightApi } from '@common/types/trafficLight'
+import { IntegrationApi } from '@common/types/integrations'
 import { Esp32LcdApi } from '@common/types/esp32Lcd'
 import { QuotaApi } from '@common/types/quota'
 
@@ -44,6 +45,8 @@ declare global {
       serial: SerialApi
       /** 红绿灯配置桥：仅伙伴窗口独立 preload（out/preload/buddy.js）注入，主窗口运行时不存在 */
       trafficLight: TrafficLightApi
+      /** 应用集成桥：外部软件接入配置检查/安装，仅伙伴窗口独立 preload 注入，主窗口运行时不存在 */
+      integrations: IntegrationApi
       /** ESP32 LCD 配置桥：仅伙伴窗口独立 preload 注入，主窗口运行时不存在 */
       esp32Lcd: Esp32LcdApi
       /** 额度插件公共域桥：仅伙伴窗口独立 preload 注入，主窗口运行时不存在 */

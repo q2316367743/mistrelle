@@ -16,6 +16,14 @@
         :disabled="saving"
         @change="changeInterval"
       />
+      <span class="label">屏显额度</span>
+      <t-select
+        class="screen-select"
+        :value="screenQuota"
+        :options="screenOptions"
+        :disabled="saving || lcdSaving"
+        @change="changeScreenQuota"
+      />
       <t-button variant="outline" :loading="refreshing" @click="runQuotaNow">
         <template #icon><refresh-icon /></template>
         立即刷新
@@ -38,12 +46,16 @@
 <script lang="ts" setup>
 import { RefreshIcon } from 'tdesign-icons-vue-next'
 import { useRouter } from 'vue-router'
-import { useQuota } from '../../../plugins/quota/useQuota'
+import { CommonSelect } from '@/domain'
+import { useQuota } from '../../../settings/quota/useQuota'
+import { useEsp32Lcd } from '../useEsp32Lcd'
 
 defineOptions({ name: 'QuotaPanel' })
 
 const router = useRouter()
-const { config, saving, lastQuota, refreshing, patch, runQuotaNow } = useQuota()
+const { config, saving, plugins, lastQuota, refreshing, patch, runQuotaNow } = useQuota()
+// 屏显额度选择属于屏幕自身显示配置（esp32-lcd.json），与额度插件配置解耦
+const { config: lcdConfig, patch: patchLcd, saving: lcdSaving } = useEsp32Lcd()
 
 const interval = ref(5)
 
@@ -56,6 +68,21 @@ watch(
   { immediate: true }
 )
 
+/** 屏显额度下拉值（'' = 默认：回落第一条带屏显字段的额度条目） */
+const screenQuota = computed(() => lcdConfig.value?.screenQuota ?? '')
+
+/** 下拉选项：默认 + 全部额度插件（按键写 esp32-lcd 配置，效果即时生效） */
+const screenOptions = computed<Array<CommonSelect<string>>>(() => [
+  { value: '', label: '默认（第一条可用）' },
+  ...plugins.value.map((descriptor) => ({ value: descriptor.key, label: descriptor.name }))
+])
+
+/** 屏显额度即改即存（main 按最近快照重挑并补发一条心跳） */
+function changeScreenQuota(value: unknown): void {
+  if (typeof value !== 'string' || !lcdConfig.value) return
+  void patchLcd({ screenQuota: value || undefined })
+}
+
 /** 间隔即改即存（main 保存后自动重启刷新定时器） */
 function changeInterval(value: unknown): void {
   if (typeof value === 'number' && config.value) {
@@ -63,9 +90,9 @@ function changeInterval(value: unknown): void {
   }
 }
 
-/** 插件配置在独立页面操作 */
+/** 插件配置在「设置-额度配置」页操作 */
 function goPlugins(): void {
-  void router.push('/plugins/quota')
+  void router.push('/settings/quota')
 }
 
 function formatTime(at: number): string {
@@ -104,6 +131,10 @@ function formatTime(at: number): string {
   .label {
     font: var(--td-font-body-small);
     color: var(--td-text-color-secondary);
+  }
+
+  .screen-select {
+    width: 176px;
   }
 
   .refreshed-at {

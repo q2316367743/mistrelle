@@ -16,6 +16,7 @@ import { registerRelayIpc } from './modules/relay/relayIpc'
 import { registerSerialIpc } from './modules/serial/serialIpc'
 import { registerTrafficLightIpc } from './buddy/traffic-light/trafficLightIpc'
 import { initTrafficLight } from './buddy/traffic-light/TrafficLightService'
+import { registerIntegrationsIpc } from './buddy/integrations/integrationsIpc'
 import { registerEsp32LcdIpc } from './buddy/esp32-lcd/esp32LcdIpc'
 import { initEsp32Lcd } from './buddy/esp32-lcd/esp32LcdService'
 import { registerQuotaIpc } from './buddy/quota/quotaIpc'
@@ -41,6 +42,7 @@ export function registerIpc(): void {
   registerRelayIpc()
   registerSerialIpc()
   registerTrafficLightIpc()
+  registerIntegrationsIpc()
   registerEsp32LcdIpc()
   registerQuotaIpc()
   // 加载红绿灯配置并按 lastPort 自动连接串口（失败静默，伙伴窗口可手动重连）

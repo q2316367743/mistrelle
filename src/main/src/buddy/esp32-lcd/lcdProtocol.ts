@@ -6,7 +6,7 @@
  * 心跳行组装（UTF-8 字节截断与整行长度兜底）。
  */
 import type { BuddyEventName } from '@common/types/buddyEvent'
-import type { QuotaSnapshot } from '@common/types/quota'
+import type { QuotaItem, QuotaSnapshot } from '@common/types/quota'
 
 /** 屏幕工作状态（协议 status 列六态） */
 export type LcdStatus = 'idle' | 'thinking' | 'ask' | 'permission' | 'done' | 'beat'
@@ -46,15 +46,30 @@ export interface LcdScreenQuota {
   unit: string
 }
 
-/** 从快照取屏显额度：优先主额度条目（quota 配置 screen 指定），无则 null=屏显额度缺省 */
-export function pickScreenQuota(snapshot: QuotaSnapshot | null): LcdScreenQuota | null {
-  const main = snapshot?.main
-  if (!main?.screenTemplate || !main.screenValue) return null
+/** 带完整屏显字段的条目（template + value 齐备才可上屏） */
+type ScreenableItem = QuotaItem & { screenTemplate: 'codex' | 'deepseek'; screenValue: string }
+
+const hasScreenFields = (item: QuotaItem): item is ScreenableItem =>
+  !!item.screenTemplate && !!item.screenValue
+
+/**
+ * 从快照取屏显额度：screenKey（esp32Lcd 配置）精确匹配该插件条目；
+ * 缺省/选中键无效或无屏显字段条目时回落第一条带屏显字段的条目；全无则 null=屏显额度缺省。
+ */
+export function pickScreenQuota(
+  snapshot: QuotaSnapshot | null,
+  screenKey?: string
+): LcdScreenQuota | null {
+  const items = snapshot?.items ?? []
+  // 先按选中键缩小范围，该插件无屏显条目时回落全部条目里的第一条屏显条目
+  const scoped = screenKey ? items.filter((item) => item.pluginKey === screenKey) : items
+  const hit = scoped.find(hasScreenFields) ?? items.find(hasScreenFields)
+  if (!hit) return null
   return {
-    template: main.screenTemplate,
-    pct: main.screenPct,
-    value: main.screenValue,
-    unit: main.screenUnit ?? ''
+    template: hit.screenTemplate,
+    pct: hit.screenPct,
+    value: hit.screenValue,
+    unit: hit.screenUnit ?? ''
   }
 }
 

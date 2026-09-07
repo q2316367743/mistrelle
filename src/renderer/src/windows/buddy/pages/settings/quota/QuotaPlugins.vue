@@ -1,5 +1,5 @@
 <template>
-  <page-layout title="额度插件">
+  <page-layout title="额度配置">
     <div class="quota-plugins">
       <div class="intro">
         额度插件是独立公共能力，为各类硬件设备（如 ESP32 LCD 屏幕）提供余额快照：内置插件随应用版本更新、可随时关闭；
@@ -20,11 +20,9 @@
           :descriptor="item.descriptor"
           :enabled="item.config.enabled"
           :settings="item.config.settings"
-          :screen-active="config?.screen === screenKeyOf(item.descriptor)"
           :disabled="saving"
           @toggle="(enabled) => patchPlugin(item, { enabled })"
           @save="(settings) => patchPlugin(item, { settings })"
-          @set-screen="setScreen(item.descriptor)"
         />
         <div v-if="!pluginRows.length" class="empty">
           暂无插件；把插件 .js 文件放入插件目录后点「刷新插件列表」
@@ -59,16 +57,6 @@ const pluginRows = computed(() => {
     }
   })
 })
-
-/** 插件配置键（builtin = id；external = 文件名） */
-function screenKeyOf(descriptor: QuotaPluginDescriptor): string {
-  return descriptor.key
-}
-
-/** 设为屏显主额度（屏幕类设备只显示主额度的快照条目） */
-function setScreen(descriptor: QuotaPluginDescriptor): void {
-  void patch({ screen: descriptor.key })
-}
 
 /** 修改单个插件配置（启停/settings），合并进配置后整份提交 */
 function patchPlugin(

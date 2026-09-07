@@ -1,24 +1,19 @@
 <template>
   <div class="opencode-panel">
+    <t-alert v-if="status !== 'ready'" theme="warning" class="gate-alert" :message="gateText">
+      <template #operation>
+        <t-link theme="primary" @click="goIntegrations">
+          {{ status === 'missing' ? '去安装集成' : '去更新插件' }}
+        </t-link>
+      </template>
+    </t-alert>
     <div class="software-head">
       <div class="desc">AI 编程 agent，事件经自定义协议上报</div>
       <t-switch
         :value="enabled"
-        :disabled="!config || saving"
+        :disabled="notInstalled || !config || saving"
         @change="(value) => setEnabled('opencode', value === true)"
       />
-    </div>
-    <div class="install-row">
-      <span class="status" :data-status="installStatus">{{ installText }}</span>
-      <t-button
-        v-if="installStatus !== 'ready'"
-        size="small"
-        variant="outline"
-        :loading="installing"
-        @click="install"
-      >
-        {{ installStatus === 'outdated' ? '更新插件' : '安装插件' }}
-      </t-button>
     </div>
     <div class="hint">一种灯态只能被一个事件绑定；未绑定的事件不点亮，修改即时生效。</div>
     <div v-for="group in BUDDY_EVENT_GROUPS" :key="group.title" class="binding-group">
@@ -32,7 +27,7 @@
           class="state-select"
           :value="currentValue(item.value)"
           :options="stateOptions(item.value)"
-          :disabled="!enabled || saving"
+          :disabled="notInstalled || !enabled || saving"
           @change="(value) => bindEvent('opencode', item.value, toState(value))"
         />
       </div>
@@ -41,47 +36,40 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  LightStateOptions,
-  type LightState,
-  type PlatformConfigStatus
-} from '@common/types/trafficLight'
+import type { LightState } from '@common/types/trafficLight'
+import { LightStateOptions } from '@common/types/trafficLight'
 import {
   BuddyEventOptions,
   BUDDY_EVENT_GROUPS,
   type BuddyEventName
 } from '@common/types/buddyEvent'
 import { CommonSelect } from '@/domain'
+import { useRouter } from 'vue-router'
 import { useTrafficLight } from '../../useTrafficLight'
+import { useIntegrations } from '@/windows/buddy/pages/settings/integrations/useIntegrations'
 
 defineOptions({ name: 'OpencodePanel' })
 
-const { config, saving, platformStatus, bindEvent, setEnabled, installPlatform } = useTrafficLight()
+const router = useRouter()
+const { config, saving, bindEvent, setEnabled } = useTrafficLight()
+const { statusOf } = useIntegrations()
 
 const softwareConfig = computed(() => config.value?.config.opencode)
 const enabled = computed(() => softwareConfig.value?.enabled ?? false)
 
-const installing = ref(false)
-const installStatus = computed<PlatformConfigStatus>(
-  () => platformStatus.value?.status ?? 'missing'
+/** 接入状态：未安装置灰启用与绑定，待更新仅提醒不置灰（插件旧版功能仍正常） */
+const status = computed(() => statusOf('opencode'))
+const notInstalled = computed(() => status.value === 'missing')
+
+const gateText = computed(() =>
+  status.value === 'missing'
+    ? 'opencode 集成插件未安装，事件无法点亮信号灯；安装后才能启用与配置。'
+    : 'opencode 集成插件有更新，建议更新以保持事件上报正常。'
 )
 
-/** 各安装态的说明文案（missing/outdated 提供一键安装入口） */
-const INSTALL_TEXT: Record<PlatformConfigStatus, string> = {
-  missing: '事件接入插件未安装，安装后 opencode 事件才能点亮信号灯',
-  outdated: '事件接入插件有更新，建议更新以保持事件上报正常',
-  ready: '事件接入插件已安装，事件可点亮信号灯'
-}
-const installText = computed(() => INSTALL_TEXT[installStatus.value])
-
-/** 安装/更新内置插件到 opencode 插件目录（成功提示与状态刷新在 useTrafficLight 内） */
-async function install(): Promise<void> {
-  installing.value = true
-  try {
-    await installPlatform('opencode')
-  } finally {
-    installing.value = false
-  }
+/** 前往「设置-应用集成」安装/更新插件 */
+function goIntegrations(): void {
+  void router.push('/settings/integrations')
 }
 
 /** 组事件列表 → 下拉行数据（label 取 Buddy 事件词汇表映射） */
@@ -123,6 +111,10 @@ function toState(value: unknown): LightState | '' {
 </script>
 
 <style scoped lang="less">
+.gate-alert {
+  margin-bottom: 8px;
+}
+
 .software-head {
   display: flex;
   align-items: center;
@@ -133,30 +125,6 @@ function toState(value: unknown): LightState | '' {
   .desc {
     font: var(--td-font-body-small);
     color: var(--td-text-color-secondary);
-  }
-}
-
-.install-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background: var(--td-bg-color-secondarycontainer);
-
-  .status {
-    font: var(--td-font-body-small);
-    color: var(--td-text-color-secondary);
-
-    &[data-status='ready'] {
-      color: var(--td-success-color-7);
-    }
-
-    &[data-status='outdated'] {
-      color: var(--td-warning-color-7);
-    }
   }
 }
 

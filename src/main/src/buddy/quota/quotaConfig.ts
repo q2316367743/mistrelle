@@ -66,7 +66,6 @@ export function normalizeQuotaConfig(raw: unknown): QuotaConfig {
     }
     config.external = external
   }
-  if (typeof raw.screen === 'string') config.screen = raw.screen
   return config
 }
 

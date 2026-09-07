@@ -7,21 +7,28 @@
 
 ## 实现思路
 
-- **串口独立**：`SerialService` 多端口表（`Map<path, {port, baudRate}>`）让红绿灯与圆屏可同时各连一个设备；圆屏连接编排全部在 main（`esp32LcdService.connect/disconnect`，经 `esp32Lcd:connect/disconnect` IPC 暴露，成功即记忆 lastPort/baudRate），连接运行态由 `esp32Lcd:state` 推送，渲染层纯展示。
-- **配置独立**：`~/.mistrelle/buddy/esp32-lcd.json` 仅屏幕自身配置（lastPort/baudRate/eventForward），main 持有、整份保存、归一化兜底。
+- **串口独立**：`SerialService` 多端口表（`Map<path, {port, baudRate}>`）让红绿灯与圆屏可同时各连一个设备；圆屏连接编排全部在 main（`esp32LcdService.connect/disconnect`，经 `esp32Lcd:connect/disconnect` IPC 暴露，连接成功即记忆 lastPort/baudRate、**主动断开与意外断开都清除 lastPort 并落盘**——下次启动不再自动连接，需手动连接一次重新记忆），连接运行态由 `esp32Lcd:state` 推送，渲染层纯展示。
+- **配置独立**：`~/.mistrelle/buddy/esp32-lcd.json` 仅屏幕自身配置（lastPort/baudRate/eventForward/screenQuota），main 持有、整份保存、归一化兜底。
 - **额度快照消费**：`initEsp32Lcd` 内 `subscribeQuotaSnapshot`（quotaBus，公共域发布）→ 已连接即下行 `{"type":"quota","items":[…]}`；本域不感知插件与调度，依赖单向。
 - **事件转发**：本地事件服务 `/buddy/event` 经 buddyEventBus 发布（server 只发布），本域服务 init 内 `subscribeBuddyEvent` 订阅消费；缓存 `lastEvent` 推送渲染层，`eventForward` 开启且已连接时下行 `{"type":"event","platform":"…","event":"…"}`。协议为行协议 JSON（`\n` 分帧，UTF-8，**暂定可改**）。
-- **启动即初始化**：`initEsp32Lcd()` 随 registerIpc 在 app ready 执行（无 init 类 IPC，不依赖渲染层）：加载配置 → 订阅事件总线/额度快照总线/意外断开（`onPortClosed`，自己的端口断了广播运行态）→ 按 lastPort 自动重连。
+- **启动即初始化**：`initEsp32Lcd()` 随 registerIpc 在 app ready 执行（无 init 类 IPC，不依赖渲染层）：加载配置 → 订阅事件总线/额度快照总线/意外断开（`onPortClosed`，自己的端口断了清 lastPort + 广播运行态）→ lastPort 非空才自动重连。
+- **未连接不暴露配置（参考红绿灯）**：`Esp32Lcd.vue` 以 `connectedPath` 门控——未连接时额度快照与事件状态两块配置面板整体替换为 `LcdPlaceholder.vue` 占位提示（连接串口后即可配置屏显），连接成功后才渲染 `QuotaPanel`/`EventStatusPanel`。
 
 ## 配置结构（事实源 `@common/types/esp32Lcd.ts`）
 
 ```jsonc
 {
-  "lastPort": "",            // 上次串口（连接成功自动记忆，启动自动重连）
+  "lastPort": "",            // 上次串口（连接成功自动记忆、断开/意外断开即清除，启动时非空才自动重连）
   "baudRate": 115200,        // 波特率（LCD_BAUD_RATES 白名单内）
-  "eventForward": true       // 是否把 buddy 事件经串口转发给屏幕
+  "eventForward": true,      // 是否把 buddy 事件经串口转发给屏幕
+  "screenQuota": "deepseek"  // 屏显额度插件键（builtin id / external 文件名；空 = 默认回落第一条）
 }
 ```
+
+- **`screenQuota` = 屏显额度选择**：额度快照聚合全部启用插件（额度是独立公共域，见 docs/plugin/02），屏上同时只显示一个额度——
+  按键精确匹配对应插件的条目（该插件无带屏显字段条目时回落第一条带屏显字段者）。这是**屏幕自身的显示配置**
+  （页面「额度快照」面板的「屏显额度」下拉即改即存，写入本键；额度配置页不涉及屏显），保存后 main 按最近快照重挑并补发一条心跳，即时生效
+- 旧 quota 配置的 `screen` 键与快照 `main` 条目已废弃（职责归位到本键）；存量 `quota.json` 的 `screen` 由归一化丢弃，在圆屏页重选一次即可
 
 ## 串口下行协议：心跳行协议 v2（已定稿）
 
@@ -35,12 +42,14 @@ HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结
   `session.created`→idle、`session.idle`→done（板端 3s 自动回 idle）、`session.error`→idle+文案「会话出错」、
   `message.part.updated`/`message.updated`→thinking、`tool.execute.before`→ask、`tool.execute.after`→thinking、
   `permission.asked`/`permission.updated`→permission、`permission.replied`→thinking、`command.executed`→thinking
-- **额度 → type/pct/value/unit**：取快照中第一条带屏显字段的条目（`QuotaItem.screenTemplate/screenPct/screenValue/screenUnit`，
+- **额度 → type/pct/value/unit**：按 `screenQuota` 键取对应插件的屏显条目（`lcdProtocol.ts` `pickScreenQuota(snapshot, key)`；
+  按键精确匹配失败回落第一条带屏显字段的条目。`QuotaItem.screenTemplate/screenPct/screenValue/screenUnit`，
   如内置 deepseek 设了最大额度 200、余额 110 → `deepseek,55,110.00,元`）；`screenPct` 缺省发 100——
   DeepSeek 未设置「最大额度」时以当前余额为分母（圆环满格），设置后按 余额/最大额度 随消耗下降（见 [docs/plugin/02](../plugin/02-quota-plugins.md)）
 - **发送节奏**（协议建议）：事件命中映射立即发 status 行（携带最近屏显额度）；额度快照到达追加同状态额度行；空闲期每 5s 发 `beat` 保活（状态计时只被非 beat 消息刷新）；连接建立后发一条 `idle` 初始心跳
 - 发送端约束：`value` 仅 `[0-9.]` ≤15 字符、`unit` ≤7 字节、`text` ≤23 字节（超长字节级截断）、seq 单调递增、整行超 127B 依次丢 text/unit 兜底
 - `eventForward` 开关（圆屏页「向屏幕推送心跳」）控制全部下行（status 行 / 额度行 / beat）
+- **集成门控**：EventStatusPanel 消费 `useIntegrations` 的 opencode 接入状态——missing 时心跳开关置灰 + warning alert 链接「设置-应用集成」；outdated 仅提醒不置灰；串口与额度面板不依赖集成、不受门控
 
 ## 关键文件
 
@@ -54,7 +63,7 @@ HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结
 | main | `src/main/src/buddy/esp32-lcd/esp32LcdIpc.ts` | handler 全集（配置/连接/运行态） |
 | preload | `src/preload/src/modules/esp32-lcd/esp32Lcd.ts` | 薄封装；`src/preload/buddy.ts` 注入 `esp32Lcd` 域 |
 | renderer | `windows/buddy/pages/hardware/esp32-lcd/` | `Esp32Lcd.vue` 骨架 + `useEsp32Lcd.ts` 域状态单例 + components/（LcdSerialPanel 含波特率下拉、QuotaPanel 额度运行态、EventStatusPanel 事件状态） |
-| renderer | `windows/buddy/pages/plugins/quota/` | 额度插件独立管理页（公共域，见 [docs/plugin/02](../../plugin/02-quota-plugins.md)） |
+| renderer | `windows/buddy/pages/settings/quota/` | 额度插件独立管理页（公共域，见 [docs/plugin/02](../../plugin/02-quota-plugins.md)） |
 
 ## 注意事项
 

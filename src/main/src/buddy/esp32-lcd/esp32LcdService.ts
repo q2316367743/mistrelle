@@ -50,8 +50,10 @@ let lastEvent: BuddyEventState | null = null
 let lastStatus: LcdStatus = 'idle'
 /** 心跳序号（协议 seq 列，单调递增供板端判新消息） */
 let seq = 0
-/** 最近屏显额度（心跳行 type/pct/value/unit 来源；额度快照到达时更新） */
+/** 最近屏显额度（心跳行 type/pct/value/unit 来源；额度快照到达/屏显配置变更时更新） */
 let screenQuota: LcdScreenQuota | null = null
+/** 最近一次额度快照（屏显额度选择变更时重挑，无需等下次刷新） */
+let lastQuotaSnapshot: QuotaSnapshot | null = null
 
 /** 广播给所有窗口（伙伴窗口订阅消费，主窗口无订阅无影响） */
 export function broadcastEsp32Lcd(channel: string, payload: unknown): void {
@@ -89,13 +91,17 @@ export async function initEsp32Lcd(): Promise<void> {
   subscribeBuddyEvent((platform, event) => onBuddyEvent(platform, event))
   // 订阅额度快照总线：更新屏显额度并追加一条同状态额度行（协议：额度变化 → 追加发送）
   subscribeQuotaSnapshot((snapshot: QuotaSnapshot) => {
-    screenQuota = pickScreenQuota(snapshot)
+    lastQuotaSnapshot = snapshot
+    screenQuota = pickScreenQuota(snapshot, config.screenQuota)
     if (!screenQuota || !config.eventForward) return
     sendHeartbeat(lastStatus)
   })
-  // 自己的端口意外断开（拔线）时广播运行态，渲染层同步展示
+  // 自己的端口意外断开（拔线）时：与主动断开一致清除记忆串口并广播运行态
   onPortClosed((path) => {
-    if (path === config.lastPort) broadcastState()
+    if (path !== config.lastPort) return
+    config.lastPort = ''
+    saveEsp32LcdConfigFile(config)
+    broadcastState()
   })
   // 空闲期 beat 保活（协议建议约 5s；状态计时只被非 beat 消息刷新；进程退出随系统清理）
   setInterval(() => {
@@ -151,9 +157,13 @@ export async function connect(path: string, baudRate?: number): Promise<Esp32Lcd
   return { ok: true }
 }
 
-/** 断开当前连接并广播运行态 */
+/** 断开当前连接：清除记忆串口并落盘（下次启动不再自动连接）后广播运行态 */
 export async function disconnect(): Promise<void> {
-  await closePort(config.lastPort)
+  const path = config.lastPort
+  if (!path) return
+  await closePort(path)
+  config.lastPort = ''
+  saveEsp32LcdConfigFile(config)
   broadcastState()
 }
 
@@ -167,9 +177,11 @@ export function getLastEvent(): BuddyEventState | null {
   return lastEvent
 }
 
-/** 保存整份配置：归一化后落盘 */
+/** 保存整份配置：归一化后落盘；屏显额度选择变更时按最近快照重挑并补发一条心跳（即时生效） */
 export function saveEsp32LcdConfig(raw: unknown): Esp32LcdSaveResult {
   config = normalizeEsp32LcdConfig(raw)
   saveEsp32LcdConfigFile(config)
+  screenQuota = pickScreenQuota(lastQuotaSnapshot, config.screenQuota)
+  if (screenQuota && config.eventForward) sendHeartbeat(lastStatus)
   return { ok: true }
 }

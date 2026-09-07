@@ -19,7 +19,7 @@
   </t-layout>
 </template>
 <script lang="ts" setup>
-import { TrafficIcon, TvIcon, WalletIcon } from 'tdesign-icons-vue-next'
+import { SettingIcon, TrafficIcon, TvIcon } from 'tdesign-icons-vue-next'
 import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
 import SideMenu, { type SideMenuItem } from '@/components/menu/SideMenu.vue'
 import { useColorMode, useTitlePadding } from '@/hooks'
@@ -34,11 +34,19 @@ const operatorLeft = computed(() => `${l1}px`)
 
 /** 侧栏折叠（伙伴窗口本地状态，不与主窗口共享持久化） */
 
-/** 硬件功能菜单（后续拓展往这里加） */
+/** 侧栏菜单（硬件功能 + 设置；后续拓展往这里加） */
 const menus: SideMenuItem[] = [
   { label: '红绿灯', icon: TrafficIcon, to: '/hardware/traffic-light', match: 'prefix' },
   { label: 'ESP32-S3-LCD-1.28', icon: TvIcon, to: '/hardware/esp32-lcd', match: 'prefix' },
-  { label: '额度插件', icon: WalletIcon, to: '/plugins/quota', match: 'prefix' }
+  {
+    label: '设置',
+    icon: SettingIcon,
+    activePaths: ['/settings/nc'],
+    children: [
+      { label: '应用集成', to: '/settings/integrations' },
+      { label: '额度配置', to: '/settings/quota' }
+    ]
+  }
 ]
 </script>
 <style scoped lang="less">

@@ -8,7 +8,6 @@ import type {
 } from '@common/types/buddyEvent'
 import type {
   LightState,
-  PlatformStatus,
   SoftwareLightConfig,
   SoftwareName,
   TrafficLightConfig
@@ -17,8 +16,6 @@ import { MessageUtil } from '@/utils/modal'
 
 const config = ref<TrafficLightConfig | null>(null)
 const saving = ref(false)
-/** 当前软件的事件接入配置状态（如 opencode 插件安装态） */
-const platformStatus = ref<PlatformStatus | null>(null)
 /** 连接运行态（main 推送；渲染层纯展示） */
 const connectedPath = ref<string | null>(null)
 /** 硬件调试模式：开启后页面显示手动测试面板（伙伴窗口本地状态） */
@@ -29,22 +26,6 @@ let initialized = false
 /** 以 main 为准回读整份配置 */
 async function reload(): Promise<void> {
   config.value = await window.preload.trafficLight.getConfig()
-}
-
-/** 查询指定软件的事件接入配置状态（与内置模板内容比对） */
-async function checkPlatform(name: SoftwareName): Promise<void> {
-  platformStatus.value = await window.preload.trafficLight.checkPlatform(name)
-}
-
-/** 安装/更新指定软件的事件接入配置，成功后刷新状态（opencode 需重启后加载插件） */
-async function installPlatform(name: SoftwareName): Promise<void> {
-  const result = await window.preload.trafficLight.installPlatform(name)
-  if (!result.ok) {
-    MessageUtil.error(result.msg || '安装失败')
-    return
-  }
-  MessageUtil.success('已安装，重启 opencode 后生效')
-  await checkPlatform(name)
 }
 
 /** 保存单个软件配置（无论成败都回读，UI 始终与 main 对齐） */
@@ -106,7 +87,6 @@ export function useTrafficLight() {
   if (!initialized) {
     initialized = true
     void reload()
-    void checkPlatform('opencode')
     // 连接运行态：先拉一次再订阅推送（连接/断开/意外断开都由 main 广播）
     void window.preload.trafficLight.getState().then((state) => {
       connectedPath.value = state.connectedPath
@@ -121,13 +101,10 @@ export function useTrafficLight() {
   return {
     config,
     saving,
-    platformStatus,
     connectedPath,
     debugMode,
     bindEvent,
     setEnabled,
-    checkPlatform,
-    installPlatform,
     connect,
     disconnect,
     sendCommand,

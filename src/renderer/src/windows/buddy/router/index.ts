@@ -18,9 +18,14 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/windows/buddy/pages/hardware/esp32-lcd/Esp32Lcd.vue')
   },
   {
-    name: '插件/额度插件',
-    path: '/plugins/quota',
-    component: () => import('@/windows/buddy/pages/plugins/quota/QuotaPlugins.vue')
+    name: '设置/应用集成',
+    path: '/settings/integrations',
+    component: () => import('@/windows/buddy/pages/settings/integrations/IntegrationsPage.vue')
+  },
+  {
+    name: '设置/额度配置',
+    path: '/settings/quota',
+    component: () => import('@/windows/buddy/pages/settings/quota/QuotaPlugins.vue')
   }
 ]
 

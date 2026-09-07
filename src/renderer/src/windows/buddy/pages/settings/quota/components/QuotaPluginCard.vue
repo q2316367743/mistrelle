@@ -9,13 +9,6 @@
         <span class="desc">{{ descriptor.source === 'builtin' ? '随应用版本更新' : descriptor.key }}</span>
       </div>
       <div class="head-actions">
-        <t-radio
-          :checked="screenActive"
-          :disabled="disabled || !enabled"
-          @change="emit('setScreen')"
-        >
-          屏显额度
-        </t-radio>
         <t-switch :value="enabled" :disabled="disabled" @change="(value) => emit('toggle', value === true)" />
       </div>
     </div>
@@ -48,15 +41,12 @@ const props = defineProps<{
   descriptor: QuotaPluginDescriptor
   enabled: boolean
   settings: Record<string, string>
-  /** 本卡是否为当前屏显主额度（屏幕类设备只显示主额度的快照条目） */
-  screenActive: boolean
   disabled?: boolean
 }>()
 
 const emit = defineEmits<{
   toggle: [enabled: boolean]
   save: [settings: Record<string, string>]
-  setScreen: []
 }>()
 
 /** settings 本地编辑态（失焦/回车整份提交，避免每次击键写盘） */

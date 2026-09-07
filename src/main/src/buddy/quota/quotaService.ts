@@ -6,7 +6,7 @@
  */
 import { BrowserWindow } from 'electron'
 import { QuotaChannels } from '@common/buddy/quota/quotaChannels'
-import type { QuotaConfig, QuotaItem, QuotaSaveResult, QuotaSnapshot } from '@common/types/quota'
+import type { QuotaConfig, QuotaSaveResult, QuotaSnapshot } from '@common/types/quota'
 import { BUILTIN_QUOTA_PLUGINS } from './builtinPlugins'
 import { defaultQuotaConfig, loadQuotaConfig, normalizeQuotaConfig, saveQuotaConfigFile } from './quotaConfig'
 import { readPluginCode } from './externalPlugins'
@@ -60,7 +60,7 @@ function scheduleQuotaTimer(intervalMinutes: number): void {
 
 /** 立即刷新：执行启用的插件 → 汇总快照 → 推送渲染层 + 总线分发设备。无可用插件时返回带 error 的空快照 */
 export async function runQuotaNow(): Promise<QuotaSnapshot> {
-  /** 每个启用插件一个 job，携带键用于屏显主额度挑选 */
+  /** 每个启用插件一个 job，键用于给快照条目标注来源 */
   const jobs: Array<{ key: string; promise: Promise<QuotaPluginResult> }> = []
 
   // 内置预置（可关闭；enabled 才执行）
@@ -84,42 +84,21 @@ export async function runQuotaNow(): Promise<QuotaSnapshot> {
   if (!jobs.length) {
     snapshot.error = '未启用任何额度插件'
   } else {
-    /** 键 → 该插件快照条目（屏显主额度按键挑选） */
-    const itemsByKey = new Map<string, QuotaSnapshot['items']>()
     const errors: string[] = []
     const results = await Promise.allSettled(jobs.map((job) => job.promise))
     jobs.forEach((job, index) => {
       const result = results[index]
       if (result.status === 'fulfilled') {
-        itemsByKey.set(job.key, result.value.items)
-        snapshot.items.push(...result.value.items)
+        // 每条快照条目带来源插件键：屏幕类设备按各自配置（esp32Lcd screenQuota）挑选上屏条目
+        snapshot.items.push(...result.value.items.map((item) => ({ ...item, pluginKey: job.key })))
       } else {
         errors.push((result.reason as Error)?.message ?? String(result.reason))
       }
     })
     if (errors.length) snapshot.error = errors.join('；')
-    snapshot.main = pickMainItem(itemsByKey, config.screen)
   }
   lastSnapshot = snapshot
   broadcastSnapshot(snapshot)
   await publishQuotaSnapshot(snapshot)
   return snapshot
-}
-
-/** 屏显主额度条目：screen 键精确匹配；缺省/无效回落第一条带屏显字段的条目 */
-function pickMainItem(
-  itemsByKey: Map<string, QuotaSnapshot['items']>,
-  screenKey: string | undefined
-): QuotaSnapshot['main'] {
-  const hasScreenFields = (item: QuotaItem): boolean =>
-    !!item.screenTemplate && !!item.screenValue
-  if (screenKey) {
-    const hit = (itemsByKey.get(screenKey) ?? []).find(hasScreenFields)
-    if (hit) return hit
-  }
-  for (const items of itemsByKey.values()) {
-    const hit = items.find(hasScreenFields)
-    if (hit) return hit
-  }
-  return undefined
 }

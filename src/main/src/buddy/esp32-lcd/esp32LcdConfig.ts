@@ -35,6 +35,7 @@ export function normalizeEsp32LcdConfig(raw: unknown): Esp32LcdConfig {
   if (typeof raw.lastPort === 'string') config.lastPort = raw.lastPort
   config.baudRate = normalizeBaudRate(raw.baudRate)
   if (typeof raw.eventForward === 'boolean') config.eventForward = raw.eventForward
+  if (typeof raw.screenQuota === 'string') config.screenQuota = raw.screenQuota
   return config
 }
 

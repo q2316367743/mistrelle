@@ -6,7 +6,7 @@
 
 ```
 quota 域（配置 ~/.mistrelle/buddy/quota.json + 插件扫描/执行/调度）
-  ├─ quota:* IPC → 渲染层「额度插件」独立页面（伙伴窗口 /plugins/quota）
+  ├─ quota:* IPC → 渲染层「额度配置」独立页面（伙伴窗口 /settings/quota，设置下二级目录）
   ├─ quota:snapshot 推送 → 渲染层快照展示（圆屏页等）
   └─ quotaBus（main 内 pub/sub）→ 订阅设备自行消费
         └─ esp32LcdService init 内订阅 → 串口 JSON 下发屏幕（设备是消费方，非归属方）
@@ -20,7 +20,7 @@ quota 域（配置 ~/.mistrelle/buddy/quota.json + 插件扫描/执行/调度）
 - 目录：`~/.mistrelle/buddy/plugins/`，**归用户所有，应用只读扫描不写入**
 - 安装第三方插件 = 把单文件 `.js` 放入目录（definePlugin 契约，与内置完全一致）→ 插件页「刷新插件列表」；**替换文件即更新**，下次刷新额度自动生效
 - 文件名白名单 `^[A-Za-z0-9._-]+\.js$`（防路径穿越）；扫描失败/语法错误的文件记 `error` 展示，不拖垮其他插件
-- UI 入口：伙伴窗口「额度插件」独立页面（`/plugins/quota`，仅插件配置；圆屏页只留运行控制与快照展示，经 t-link 跳转）
+- UI 入口：伙伴窗口「设置-额度配置」独立页面（`/settings/quota`，仅插件配置；圆屏页只留运行控制与快照展示，经 t-link 跳转）
 
 ## 插件契约（内置与第三方一致）
 
@@ -57,14 +57,14 @@ definePlugin({
 ```jsonc
 {
   "intervalMinutes": 5,
-  "screen": "deepseek",
   "builtin": { "deepseek": { "enabled": true, "settings": { "apiKey": "sk-…", "maxQuota": "200" } } },
   "external": { "deepseek-plus.js": { "enabled": false, "settings": {} } }
 }
 ```
 
 - 键：builtin = 插件 id；external = 文件名；normalize 兼容旧结构顶层 `apiKey`；command code（曾存在于 esp32-lcd.json 的 `customScript`）已删除，自定义一律落目录文件
-- **`screen` = 屏显主额度**：屏幕类设备同时只显示一个额度，`screen` 指定哪条上屏；缺省/无效回落第一条带屏显字段的启用插件。快照聚合全部启用插件（`items` UI 全量预览），主额度条目单独放 `snapshot.main` 供设备消费
+- **额度插件只管理「启停 + settings」**；「上屏哪个额度」不是 quota 域的配置——属消费设备自身的显示配置（ESP32 LCD = `~/.mistrelle/buddy/esp32-lcd.json` 的 `screenQuota` 键，见 docs/hardware/04），旧 quota 配置的 `screen` 字段已废弃、归一化丢弃，快照也不再预置 `main` 条目
+- 快照聚合全部启用插件（`items` UI 全量预览）；每条快照条目带 `pluginKey`（汇总时由 quotaService 写入，插件脚本无需返回），供设备侧按各自配置键挑选上屏条目
 
 ## 关键文件
 
@@ -80,13 +80,13 @@ definePlugin({
 | main | `src/main/src/buddy/quota/quotaBus.ts` | 快照总线（subscribe/publish）：设备域 init 内订阅消费，新增设备零改动 quota 域 |
 | main | `src/main/src/buddy/quota/quotaIpc.ts` | quota:* handler 全集 |
 | preload | `src/preload/src/modules/quota/quota.ts` | quotaApi 桥；`src/preload/buddy.ts` 注入第 5 域 `quota` |
-| renderer | `windows/buddy/pages/plugins/quota/` | 独立插件管理页：QuotaPlugins.vue + useQuota.ts（域状态单例）+ components/QuotaPluginCard.vue |
-| renderer | `windows/buddy/pages/hardware/esp32-lcd/components/QuotaPanel.vue` | 圆屏页的额度运行态：间隔 / 立即刷新 / 快照预览 + 跳转插件页 |
+| renderer | `windows/buddy/pages/settings/quota/` | 独立插件管理页：QuotaPlugins.vue + useQuota.ts（域状态单例）+ components/QuotaPluginCard.vue |
+| renderer | `windows/buddy/pages/hardware/esp32-lcd/components/QuotaPanel.vue` | 圆屏页的额度运行态：间隔 / 屏显额度下拉（写 esp32-lcd.json `screenQuota`）/ 立即刷新 / 快照预览 + 跳转额度配置页 |
 
 ## 注意事项
 
 - **内置可关闭**：关闭后完全不执行；因内置随 app 发版更新，若供应商接口大改而新版本未发布，可关闭内置并用目录第三方插件顶替
-- **多插件聚合 + 主额度单选**：启用多个插件时全部执行、快照 `items` 聚合（UI 全量预览）；屏幕只显示「屏显额度」选中的那一条（每卡 radio，写入配置 `screen` 键，回落第一条带屏显字段者）
+- **多插件聚合 + 设备侧挑选**：启用多个插件时全部执行、快照 `items` 聚合（UI 全量预览）；屏幕上显示哪条由消费设备自身的配置决定（ESP32 LCD 页「屏显额度」下拉，写入 esp32-lcd.json 的 `screenQuota` 键，回落第一条带屏显字段者），quota 域不感知屏幕
 - **演进位**：external 按文件名键控，未来在线安装/更新（下载 js 进目录 + version/source 字段）可无破坏扩展；`listPlugins` 已把 builtin/external 统一为 `QuotaPluginDescriptor`，在线列表可平替该来源
-- 配置与运行态分离：插件启停与配置在「额度插件」页；刷新间隔/立即刷新/快照展示在消费设备页（如圆屏页）
+- 配置与运行态分离：插件启停与配置在「额度配置」页（设置下二级目录）；刷新间隔/屏显额度/立即刷新/快照展示在消费设备页（如圆屏页）
 - 存量迁移：曾嵌在 `esp32-lcd.json` 的 `quota` 段（含 apiKey）不自动迁移，删除 command code 后重新在插件页配置即可

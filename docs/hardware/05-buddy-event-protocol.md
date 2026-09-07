@@ -13,7 +13,7 @@
   全集 24 个：会话 8（created/updated/deleted/diff/status/idle/compacted/error）+ 消息 4 +
   文件 2 + 权限 3 + 工具 2 + 其他 5（command.executed/todo.updated/pty.exited/vcs.branch.updated/
   installation.update.available）；排除 tui/lsp/ide 等硬件无关事件。
-- **插件端**（`resources/plugins/opencode/mistrelle-traffic-light.js`，文件名保留防旧安装残留）：
+- **插件端**（`resources/plugins/opencode/mistrelle-integration.js`，曾用名 `mistrelle-traffic-light.js`，安装时自动清理旧名残留）：
   `EVENTS` Set 即词汇表白名单，命中才投递 `buddy/event?platform=opencode&event=<encodeURIComponent>`；
   每事件独立节流（500ms + 尾部补发）不变；投递失败静默丢弃不变。
 - **服务端**（`src/main/src/server/index.ts` `dispatchEvent`）：path 判 `/buddy/event`；
@@ -40,12 +40,12 @@ GET|POST /buddy/event?platform=<SoftwareName>&event=<BuddyEventName>
 | 文件 | 职责 |
 |------|------|
 | `src/common/types/buddyEvent.ts` | 词汇表事实源（type + Options + 全集派生 + 分组） |
-| `resources/plugins/opencode/mistrelle-traffic-light.js` | 投递方（白名单过滤 → /buddy/event，节流） |
+| `resources/plugins/opencode/mistrelle-integration.js` | 投递方（白名单过滤 → /buddy/event，节流） |
 | `src/main/src/server/index.ts` | dispatchEvent：路径 + 双白名单校验 + 发布（零业务依赖） |
 | `src/main/src/buddy/events/buddyEventBus.ts` | 事件总线（subscribe/publish，Promise.allSettled 并发投递） |
 | `src/main/src/buddy/traffic-light/TrafficLightService.ts` | 订阅方①：事件→灯态（init 内 subscribe） |
 | `src/main/src/buddy/esp32-lcd/esp32LcdService.ts` | 订阅方②：事件转发屏幕 + 推送渲染层（init 内 subscribe） |
-| `src/renderer/src/windows/buddy/pages/hardware/traffic-light/components/software/OpencodePanel.vue` | 绑定 UI：按 BUDDY_EVENT_GROUPS 分组渲染 |
+| `src/renderer/src/windows/buddy/pages/hardware/traffic-light/components/software/OpencodePanel.vue` | 绑定 UI：按 BUDDY_EVENT_GROUPS 分组渲染（集成未安装时置灰，见 hardware/06） |
 
 ## 注意事项
 

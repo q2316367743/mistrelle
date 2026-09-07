@@ -57,9 +57,13 @@ export async function initTrafficLight(): Promise<void> {
   config = loadConfig()
   // 订阅 buddy 事件总线（协议层发布 → 本域消费映射灯态）
   subscribeBuddyEvent((platform, event) => applyEvent(platform, event))
-  // 自己的端口意外断开（拔线）时广播运行态，渲染层同步展示
+  // 自己的端口意外断开（拔线）时：与主动断开一致清除记忆串口并广播运行态
   onPortClosed((path) => {
-    if (path === config.lastPort) broadcastState()
+    if (path !== config.lastPort) return
+    config.lastPort = ''
+    saveConfigFile(config)
+    lastCommand = ''
+    broadcastState()
   })
 
   const port = config.lastPort
@@ -116,9 +120,14 @@ export async function connect(path: string): Promise<TrafficLightSaveResult> {
   return { ok: true }
 }
 
-/** 断开当前连接并广播运行态 */
+/** 断开当前连接：清除记忆串口并落盘（下次启动不再自动连接）后广播运行态 */
 export async function disconnect(): Promise<void> {
-  await closePort(config.lastPort)
+  const path = config.lastPort
+  if (!path) return
+  await closePort(path)
+  config.lastPort = ''
+  saveConfigFile(config)
+  lastCommand = ''
   broadcastState()
 }
 

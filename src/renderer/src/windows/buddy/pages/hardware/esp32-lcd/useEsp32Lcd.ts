@@ -2,7 +2,7 @@
  * ESP32 LCD 配置状态（模块级单例）：配置经 IPC 读写（main 持有文件并归一化），
  * 即改即存（整份提交），保存后以 main 回读为准（失败自动回滚 UI）。
  * 连接编排/lastPort 记忆都在 main（esp32LcdService），渲染层只发指令与展示运行态；
- * 事件流由 main 推送。额度快照是独立公共域（见 pages/plugins/quota/useQuota）。
+ * 事件流由 main 推送。额度快照是独立公共域（见 pages/settings/quota/useQuota）。
  */
 import type { BuddyEventState, Esp32LcdConfig } from '@common/types/esp32Lcd'
 import { MessageUtil } from '@/utils/modal'

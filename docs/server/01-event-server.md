@@ -36,7 +36,7 @@
 | `src/common/server/eventServer.ts` | `EVENT_SERVER_ORIGIN` 端口事实源（跨端共享） |
 | `src/main/index.ts` | `whenReady` 内调 `startEventServer()`，先于建窗（保证渲染层子资源可达） |
 | `src/preload/src/lib/net.ts` | `pathToHref`：绝对路径 → `{ORIGIN}/file/<enc>` |
-| `resources/plugins/opencode/mistrelle-traffic-light.js` | 事件投递方（纯 fetch，见 docs/hardware/03） |
+| `resources/plugins/opencode/mistrelle-integration.js` | 事件投递方（纯 fetch，见 docs/hardware/03） |
 
 ## 安全模型
 

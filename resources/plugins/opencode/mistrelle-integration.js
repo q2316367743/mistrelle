@@ -1,5 +1,5 @@
 /**
- * Mistrelle 事件接入插件（opencode）
+ * Mistrelle 应用集成插件（opencode）
  * 监听 opencode 事件，经本地事件服务 HTTP 接口投递给 mistrelle 桌面端，
  * 由其分发给 buddy 设备（红绿灯按用户配置映射灯态、ESP32 LCD 屏转发显示）。
  * 投递 = fetch GET http://127.0.0.1:47743/buddy/event?platform=…&event=…，
@@ -7,6 +7,7 @@
  * src/common/types/buddyEvent.ts 的全集一致），不是 opencode 原生事件名直传。
  * 不经系统唤起、不抢焦点、不拉起进程；应用未运行时投递失败静默丢弃（灯灭语义，绝不冷启动拉起应用）。
  * 安装位置：~/.config/opencode/plugins/（opencode 官方全局插件目录，启动自动加载，无需注册 opencode.json）。
+ * 由 mistrelle「设置-应用集成」页一键安装（曾用名 mistrelle-traffic-light.js，安装时自动清理旧名残留）。
  */
 
 /** 本地事件服务地址（与 mistrelle 端 src/common/server/eventServer.ts 的 EVENT_SERVER_ORIGIN 保持一致；
@@ -55,7 +56,7 @@ async function sendEvent(route) {
   }
 }
 
-export const MistrelleTrafficLight = async () => {
+export const MistrelleIntegration = async () => {
   /** 每事件独立节流：上次投递时间 + 尾部补发定时器 */
   const lastSentAt = new Map()
   const trailing = new Map()

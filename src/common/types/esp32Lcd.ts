@@ -23,6 +23,12 @@ export interface Esp32LcdConfig {
   baudRate: number
   /** 是否把 buddy 事件经串口转发给屏幕 */
   eventForward: boolean
+  /**
+   * 屏显额度插件键（builtin id 或 external 文件名；空 = 默认）。
+   * 额度快照聚合全部启用插件，屏上同时只显示一个额度：按键挑选对应插件的条目；
+   * 缺省/选中键无效或该插件无带屏显字段的条目时，回落第一条带屏显字段的条目。
+   */
+  screenQuota?: string
 }
 
 /** 当前事件状态（渲染层展示用） */

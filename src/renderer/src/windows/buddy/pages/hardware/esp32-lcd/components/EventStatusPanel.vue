@@ -6,11 +6,23 @@
         <span class="label">向屏幕推送心跳</span>
         <t-switch
           :value="eventForward"
-          :disabled="!config || saving"
+          :disabled="notInstalled || !config || saving"
           @change="(value) => patch({ eventForward: value === true })"
         />
       </div>
     </div>
+    <t-alert
+      v-if="status !== 'ready'"
+      theme="warning"
+      class="gate-alert"
+      :message="gateText"
+    >
+      <template #operation>
+        <t-link theme="primary" @click="goIntegrations">
+          {{ status === 'missing' ? '去安装集成' : '去更新插件' }}
+        </t-link>
+      </template>
+    </t-alert>
     <div class="event-body">
       <template v-if="lastEvent">
         <span class="event-name">{{ eventLabel(lastEvent.event) }}</span>
@@ -27,13 +39,32 @@
 
 <script lang="ts" setup>
 import { BuddyEventOptions } from '@common/types/buddyEvent'
+import { useRouter } from 'vue-router'
 import { useEsp32Lcd } from '../useEsp32Lcd'
+import { useIntegrations } from '@/windows/buddy/pages/settings/integrations/useIntegrations'
 
 defineOptions({ name: 'EventStatusPanel' })
 
+const router = useRouter()
 const { config, saving, lastEvent, patch } = useEsp32Lcd()
+const { statusOf } = useIntegrations()
 
 const eventForward = computed(() => config.value?.eventForward ?? false)
+
+/** 接入状态：未安装置灰心跳开关，待更新仅提醒不置灰（插件旧版功能仍正常） */
+const status = computed(() => statusOf('opencode'))
+const notInstalled = computed(() => status.value === 'missing')
+
+const gateText = computed(() =>
+  status.value === 'missing'
+    ? 'opencode 集成插件未安装，暂无事件可推送屏幕；安装后才能启用。'
+    : 'opencode 集成插件有更新，建议更新以保持事件上报正常。'
+)
+
+/** 前往「设置-应用集成」安装/更新插件 */
+function goIntegrations(): void {
+  void router.push('/settings/integrations')
+}
 
 function eventLabel(event: string): string {
   return BuddyEventOptions.find((opt) => opt.value === event)?.label ?? event
@@ -69,6 +100,10 @@ function formatTime(at: number): string {
       color: var(--td-text-color-secondary);
     }
   }
+}
+
+.gate-alert {
+  margin-bottom: 12px;
 }
 
 .panel-title {

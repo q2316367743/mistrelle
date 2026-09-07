@@ -1,14 +1,14 @@
 /**
- * 软件事件接入配置（main 进程）：按软件分发「接入配置检查 / 安装」。
+ * 应用集成配置（main 进程）：按软件分发「接入配置检查 / 安装」。
  * 接入的含义由各软件 adapter 决定：opencode = 把内置插件模板复制到其全局插件目录
  * （官方约定启动自动加载，无需注册 opencode.json）。
  * 新增软件 = SOFTWARE_NAMES 加成员 + resources/plugins/<软件>/ 放模板 + 此处补一个 adapter。
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { app } from 'electron'
-import type { PlatformInstallResult, PlatformStatus, SoftwareName } from '@common/types/trafficLight'
-import { isSoftwareName } from './trafficLightConfig'
+import type { PlatformInstallResult, PlatformStatus } from '@common/types/integrations'
+import { isSoftwareName, type SoftwareName } from '@common/types/trafficLight'
 
 /** 接入 adapter：check 判定三态，install 覆盖安装（均不抛错，结果对象返回） */
 interface PlatformAdapter {
@@ -19,13 +19,16 @@ interface PlatformAdapter {
 /** 内置插件模板路径（resources 整体 asarUnpack，dev/打包均以 __dirname 相对定位） */
 const OPENCODE_PLUGIN_TEMPLATE = join(
   __dirname,
-  '../../resources/plugins/opencode/mistrelle-traffic-light.js'
+  '../../resources/plugins/opencode/mistrelle-integration.js'
 )
 
 /** opencode 全局插件目录（~/.config/opencode/plugins/，跨平台一致） */
 function opencodePluginFile(): string {
-  return join(app.getPath('home'), '.config', 'opencode', 'plugins', 'mistrelle-traffic-light.js')
+  return join(app.getPath('home'), '.config', 'opencode', 'plugins', 'mistrelle-integration.js')
 }
+
+/** 改名前的旧插件文件名（install 时顺带清理，防 opencode 同时加载两份插件造成事件双投递） */
+const OPENCODE_LEGACY_PLUGIN_NAME = 'mistrelle-traffic-light.js'
 
 function checkOpencode(): PlatformStatus {
   const path = opencodePluginFile()
@@ -44,6 +47,11 @@ function installOpencode(): PlatformInstallResult {
   try {
     mkdirSync(dirname(path), { recursive: true })
     copyFileSync(OPENCODE_PLUGIN_TEMPLATE, path)
+    try {
+      rmSync(join(dirname(path), OPENCODE_LEGACY_PLUGIN_NAME), { force: true })
+    } catch {
+      // 旧文件清理失败不影响安装结果（残留只可能导致事件重复投递，下次安装再清理）
+    }
     return { ok: true, path }
   } catch (error) {
     return { ok: false, msg: '插件安装失败：' + (error as Error).message, path }

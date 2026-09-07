@@ -69,34 +69,6 @@ export interface TrafficLightState {
   connectedPath: string | null
 }
 
-/**
- * 软件事件接入配置状态（如 opencode 插件是否已装入其插件目录）：
- * missing=未安装；outdated=已安装但内容与内置模板不一致（可更新）；ready=已就绪。
- */
-export type PlatformConfigStatus = 'missing' | 'outdated' | 'ready'
-
-/** 接入配置状态名称映射 */
-export const PlatformConfigStatusOptions: Array<CommonSelect<PlatformConfigStatus>> = [
-  { value: 'missing', label: '未安装' },
-  { value: 'outdated', label: '待更新' },
-  { value: 'ready', label: '已就绪' }
-]
-
-/** 接入配置检查结果 */
-export interface PlatformStatus {
-  status: PlatformConfigStatus
-  /** 接入配置的目标文件路径 */
-  path: string
-}
-
-/** 接入配置安装结果（失败时 msg 为中文原因，不抛错） */
-export interface PlatformInstallResult {
-  ok: boolean
-  msg?: string
-  /** 接入配置的目标文件路径（无论成败都返回期望路径） */
-  path: string
-}
-
 /** window.preload.trafficLight 契约：红绿灯域桥（仅伙伴窗口的独立 preload 注入，主窗口运行时不存在） */
 export interface TrafficLightApi {
   /** 读取整份配置（含 lastPort 与各软件绑定） */
@@ -108,10 +80,6 @@ export interface TrafficLightApi {
   ): Promise<TrafficLightSaveResult>
   /** 记住上次使用的串口（连接成功时 main 自动调用，渲染层一般无需直接使用） */
   setLastPort(path: string): Promise<void>
-  /** 检查指定软件的事件接入配置状态（opencode = 插件文件与内置模板比对） */
-  checkPlatform(software: SoftwareName): Promise<PlatformStatus>
-  /** 安装/更新指定软件的事件接入配置（覆盖写入其插件目录） */
-  installPlatform(software: SoftwareName): Promise<PlatformInstallResult>
   /** 连接串口（9600 固定波特率；成功即记忆 lastPort 并广播运行态） */
   connect(path: string): Promise<TrafficLightSaveResult>
   /** 断开当前连接 */

@@ -6,8 +6,6 @@ import { ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import { TrafficLightChannels } from '@common/buddy/traffic-light/trafficLightChannels'
 import type {
-  PlatformInstallResult,
-  PlatformStatus,
   SoftwareLightConfig,
   SoftwareName,
   TrafficLightConfig,
@@ -27,12 +25,6 @@ export const trafficLightApi = {
   /** 记住上次使用的串口（连接成功时 main 自动调用，渲染层一般无需直接使用） */
   setLastPort: (path: string): Promise<void> =>
     ipcRenderer.invoke(TrafficLightChannels.setLastPort, path),
-  /** 检查指定软件的事件接入配置状态（opencode = 插件文件与内置模板比对） */
-  checkPlatform: (software: SoftwareName): Promise<PlatformStatus> =>
-    ipcRenderer.invoke(TrafficLightChannels.checkPlatform, software),
-  /** 安装/更新指定软件的事件接入配置（覆盖写入其插件目录） */
-  installPlatform: (software: SoftwareName): Promise<PlatformInstallResult> =>
-    ipcRenderer.invoke(TrafficLightChannels.installPlatform, software),
   /** 连接串口（9600 固定波特率；成功即记忆 lastPort 并广播运行态） */
   connect: (path: string): Promise<TrafficLightSaveResult> =>
     ipcRenderer.invoke(TrafficLightChannels.connect, path),

@@ -35,11 +35,6 @@ export interface QuotaConfig {
   builtin: Partial<Record<BuiltinQuotaPluginId, BuiltinQuotaPluginConfig>>
   /** 第三方插件配置（键 = 插件目录下的文件名；未来在线安装/更新复用此结构扩展 version/source） */
   external: Record<string, ExternalQuotaPluginConfig>
-  /**
-   * 屏显主额度插件的键（builtin id 或 external 文件名）。
-   * 屏幕类设备同时只显示一个额度：主额度键指定哪条上屏；缺省/无效时回落第一条带屏显字段的启用插件。
-   */
-  screen?: string
 }
 
 /** 保存配置结果（失败时 msg 为中文原因，不抛错） */
@@ -74,6 +69,8 @@ export interface QuotaPluginDescriptor {
 
 /** 额度条目（插件 fetch 返回的快照项） */
 export interface QuotaItem {
+  /** 来源插件键（builtin = id / external = 文件名）；由执行器汇总快照时写入，插件脚本无需返回 */
+  pluginKey?: string
   label: string
   value: string
   /** 屏显模板（LCD 心跳协议 type 列：codex=按次额度 / deepseek=剩余价值）；缺省该条目不下发屏幕 */
@@ -88,15 +85,11 @@ export interface QuotaItem {
 
 /** 额度快照（渲染层展示 / 设备下发 / 串口协议共用；error 非空表示本次刷新有失败项） */
 export interface QuotaSnapshot {
+  /** items 为全部启用插件的聚合（UI 全量预览）；屏幕类设备按 esp32Lcd 配置 screenQuota 键自行挑选上屏条目 */
   items: QuotaItem[]
   error?: string
   /** 刷新完成时间（ms 时间戳） */
   at: number
-  /**
-   * 屏显主额度条目（quota 配置 screen 指定；缺省/无效回落第一条带屏显字段者）。
-   * items 为全部启用插件的聚合（UI 全量预览），屏幕类设备只消费 main 这一条。
-   */
-  main?: QuotaItem
 }
 
 /** window.preload.quota 契约：额度插件域桥（仅伙伴窗口的独立 preload 注入，主窗口运行时不存在） */
