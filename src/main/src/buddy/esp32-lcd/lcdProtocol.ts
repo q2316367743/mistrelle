@@ -1,7 +1,8 @@
 /**
  * LCD 心跳行协议 v2 适配层（main 进程，esp32-lcd 域内设备适配）。
- * 协议：`HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>`，`,` 分段、`\n` 结尾、
- * 整行 ≤127 字节；字段位置敏感，type 起可省略。规范见固件仓库 docs/protocol.md（v14+ 固件）。
+ * 协议：`HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<platform>,<text>,<ts>`，`,` 分段、`\n` 结尾、
+ * 整行 ≤127 字节；字段位置敏感，type 起可省略；platform 列紧随 unit（事件来源软件，非事件心跳沿用最近来源）。
+ * 规范见固件仓库 docs/protocol.md（v14+ 固件）。
  * 职责：Buddy 事件 → 屏幕 status 映射、快照条目 → 屏显额度（type/pct/value/unit）挑选、
  * 心跳行组装（UTF-8 字节截断与整行长度兜底）。
  */
@@ -90,14 +91,18 @@ function truncateUtf8(text: string, maxBytes: number): string {
   return out
 }
 
-/** 组装一条心跳行：status+seq 必填，额度/文案可选（省略取板端默认）；自动截断并保证 ≤127 字节 */
+/**
+ * 组装一条心跳行：status+seq 必填，额度/文案/平台可选（省略取板端默认）；自动截断并保证 ≤127 字节。
+ * 单条 text/unit/platform 来源额度条目或事件上下文；发送端不保证三者齐全，缺省即空列由板端回落默认。
+ */
 export function buildHeartbeatLine(options: {
   status: LcdStatus
   seq: number
   quota?: LcdScreenQuota | null
+  platform?: string
   text?: string
 }): string {
-  const { status, seq, quota, text } = options
+  const { status, seq, quota, platform, text } = options
   const pct = quota?.pct
   const value =
     typeof quota?.value === 'string' && /^[0-9.]{1,15}$/.test(quota.value) ? quota.value : ''
@@ -107,15 +112,16 @@ export function buildHeartbeatLine(options: {
     typeof pct === 'number' ? String(Math.min(100, Math.max(0, Math.round(pct)))) : '100',
     value,
     truncateUtf8(quota?.unit ?? '', MAX_UNIT_BYTES),
+    truncateUtf8(platform ?? '', MAX_TEXT_BYTES),
     truncateUtf8(text ?? '', MAX_TEXT_BYTES),
     String(Math.floor(Date.now() / 1000))
   ]
   const line = [...head, ...tail].join(',')
   // 整行长度兜底（板端行缓冲 128B，超长整行丢弃）：先丢文案再丢单位
   if (utf8Bytes(line) > MAX_LINE_BYTES) {
-    const withoutText = [...head, ...tail.slice(0, 4), ''].join(',')
+    const withoutText = [...head, ...tail.slice(0, 5), ''].join(',')
     if (utf8Bytes(withoutText) <= MAX_LINE_BYTES) return withoutText
-    return [...head, ...tail.slice(0, 3), '', ''].join(',')
+    return [...head, ...tail.slice(0, 4), '', ''].join(',')
   }
   return line
 }

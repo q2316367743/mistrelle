@@ -19,7 +19,7 @@ import type { QuotaSnapshot } from '@common/types/quota'
 import { subscribeBuddyEvent } from '$/buddy/events/buddyEventBus'
 import { createBuddyEventLatch } from '$/buddy/events/buddyEventLatch'
 import { subscribeQuotaSnapshot } from '$/buddy/quota/quotaBus'
-import { isSoftwareName } from '@common/types/trafficLight'
+import { isSoftwareName, type SoftwareName } from '@common/types/trafficLight'
 import {
   closePort,
   getState as getSerialState,
@@ -47,6 +47,8 @@ import {
 let config: Esp32LcdConfig = defaultEsp32LcdConfig()
 /** 最近一次事件（伙伴窗口 getState 首拉 + event 推送） */
 let lastEvent: BuddyEventState | null = null
+/** 最近一次事件来源软件（心跳行 platform 列；非事件心跳沿用，默认 opencode） */
+let lastPlatform: SoftwareName = 'opencode'
 /** 心跳状态机：当前屏幕状态（beat 沿用前一状态；由事件映射驱动） */
 let lastStatus: LcdStatus = 'idle'
 /** 事件锁存判定器：permission/done/ask 落屏后抑制思考类噪音事件，防状态被流式收尾覆盖 */
@@ -82,9 +84,9 @@ function sendLine(line: string): void {
   void writePort(config.lastPort, line + '\n').catch(() => {})
 }
 
-/** 组装并下发一条心跳（自动递增 seq） */
-function sendHeartbeat(status: LcdStatus, text?: string): void {
-  sendLine(buildHeartbeatLine({ status, seq: seq++, quota: screenQuota, text }))
+/** 组装并下发一条心跳（自动递增 seq）；platform 缺省沿用最近事件来源 */
+function sendHeartbeat(status: LcdStatus, text?: string, platform?: SoftwareName): void {
+  sendLine(buildHeartbeatLine({ status, seq: seq++, quota: screenQuota, platform: platform ?? lastPlatform, text }))
 }
 
 /** 启动初始化（main 启动即执行，不依赖渲染层）：订阅总线，加载配置并自动重连 */
@@ -133,13 +135,14 @@ async function onBuddyEvent(platform: string, event: string): Promise<void> {
   if (!isSoftwareName(platform) || !isBuddyEvent(event)) return
   lastEvent = { platform, event, at: Date.now() }
   broadcastEsp32Lcd(Esp32LcdChannels.event, lastEvent)
+  lastPlatform = platform
   if (!config.eventForward) return
   const status = LCD_STATUS_BY_EVENT[event]
   if (!status) return
   // 锁存期噪音（如 permission.asked 后紧随的流式收尾）不改状态、不下发心跳
   if (shouldSuppressEvent(event)) return
   lastStatus = status
-  sendHeartbeat(status, LCD_TEXT_BY_EVENT[event])
+  sendHeartbeat(status, LCD_TEXT_BY_EVENT[event], platform)
 }
 
 /**

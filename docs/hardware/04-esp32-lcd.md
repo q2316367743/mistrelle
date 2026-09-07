@@ -35,13 +35,15 @@
 固件规范见 ESP32 固件仓库 `docs/protocol.md`（v14+ 固件，向后兼容 v1）。桌面端按协议推送心跳行：
 
 ```
-HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结尾、整行 ≤127B）
+HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<platform>,<text>,<ts>   （, 分段、\n 结尾、整行 ≤127B）
 ```
 
 - **事件 → status 映射**（`lcdProtocol.ts` 的 `LCD_STATUS_BY_EVENT`，未收录事件不上屏）：
   `session.created`→idle、`session.idle`→done（板端 3s 自动回 idle）、`session.error`→idle+文案「会话出错」、
   `message.part.updated`/`message.updated`→thinking、`tool.execute.before`→ask、`tool.execute.after`→thinking、
   `permission.asked`/`permission.updated`→permission、`permission.replied`→thinking、`command.executed`→thinking
+- **platform → 平台列**：platform 列紧随 unit（事件来源软件，`onBuddyEvent` 的 platform 原样下发）；
+  非事件心跳（beat 保活 / 额度到达 / 连接初始 idle）无独立来源 → 沿用模块级 `lastPlatform`（最近一次事件来源，启动默认 `opencode`），保证该列恒有值
 - **锁存防覆盖**（`buddyEventLatch.ts`，语义分层见 [05](./05-buddy-event-protocol.md)）：permission/ask 落屏后锁存到
   释放事件（`permission.replied` / `tool.execute.after` / `session.idle` 等），done 落屏后 1.5s 内抑制 thinking 类事件——
   opencode 在 asked/idle 之后仍会推流式收尾事件（含插件 500ms 节流尾部补发，实测 +159~504ms），
@@ -52,7 +54,7 @@ HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结
   如内置 deepseek 设了最大额度 200、余额 110 → `deepseek,55,110.00,元`）；`screenPct` 缺省发 100——
   DeepSeek 未设置「最大额度」时以当前余额为分母（圆环满格），设置后按 余额/最大额度 随消耗下降（见 [docs/plugin/02](../plugin/02-quota-plugins.md)）
 - **发送节奏**（协议建议）：事件命中映射立即发 status 行（携带最近屏显额度）；额度快照到达追加同状态额度行；空闲期每 5s 发 `beat` 保活（状态计时只被非 beat 消息刷新）；连接建立后发一条 `idle` 初始心跳
-- 发送端约束：`value` 仅 `[0-9.]` ≤15 字符、`unit` ≤7 字节、`text` ≤23 字节（超长字节级截断）、seq 单调递增、整行超 127B 依次丢 text/unit 兜底
+- 发送端约束：`value` 仅 `[0-9.]` ≤15 字符、`unit` ≤7 字节、`platform`/`text` ≤23 字节（超长字节级截断）、seq 单调递增、整行超 127B 依次丢 text/unit 兜底（platform 保留）
 - `eventForward` 开关（圆屏页「向屏幕推送心跳」）控制全部下行（status 行 / 额度行 / beat）
 - **集成门控**：EventStatusPanel 消费 `useIntegrations` 的 opencode 接入状态——missing 时心跳开关置灰 + warning alert 链接「设置-应用集成」；outdated 仅提醒不置灰；串口与额度面板不依赖集成、不受门控
 
