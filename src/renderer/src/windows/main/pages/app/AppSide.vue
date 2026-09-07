@@ -123,10 +123,10 @@ const handleBack = () => router.push('/new')
 .side-container {
   position: absolute;
   top: 40px;
-  left: 0;
-  right: 0;
+  left: 8px;
   bottom: 48px;
   min-width: 200px;
+  max-width: 220px;
 
   &.setting {
     .side-main {
@@ -135,7 +135,6 @@ const handleBack = () => router.push('/new')
     }
     .side-setting {
       left: 8px;
-      right: 8px;
     }
   }
 
@@ -143,7 +142,7 @@ const handleBack = () => router.push('/new')
     position: absolute;
     top: 8px;
     left: 8px;
-    right: 8px;
+    right: 0;
     bottom: 0;
     min-width: 200px;
     overflow-x: hidden;
@@ -156,9 +155,10 @@ const handleBack = () => router.push('/new')
     position: absolute;
     top: 8px;
     left: 220px;
-    right: 440px;
     bottom: 0;
     min-width: 200px;
+    width: 204px;
+    max-width: 220px;
     overflow-x: hidden;
     overflow-y: auto;
     transition: all 0.3s ease-in-out;
@@ -167,7 +167,7 @@ const handleBack = () => router.push('/new')
 
 .user-menu {
   position: absolute;
-  left: 0;
+  left: 8px;
   right: 0;
   bottom: 0;
   padding: 0 8px 6px;
