@@ -21,13 +21,13 @@ export const DESIGN_SCENE_OPTIONS: DesignSceneOption[] = [
   {
     value: 'canvas',
     label: '画布引擎',
-    description: 'Leafer 画布，节点级精准编辑',
+    description: 'Leafer 画布，节点级精准编辑，可应对各种场景',
     icon: LayersIcon
   },
   {
     value: 'html',
     label: 'HTML 引擎',
-    description: 'AI 生成 HTML 设计稿，实时预览',
+    description: 'AI 生成 HTML 设计稿，适合文字内容较多的场景',
     icon: Html5Icon
   }
 ]
