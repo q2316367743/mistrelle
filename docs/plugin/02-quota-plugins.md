@@ -80,13 +80,13 @@ definePlugin({
 | main | `src/main/src/buddy/quota/quotaBus.ts` | 快照总线（subscribe/publish）：设备域 init 内订阅消费，新增设备零改动 quota 域 |
 | main | `src/main/src/buddy/quota/quotaIpc.ts` | quota:* handler 全集 |
 | preload | `src/preload/src/modules/quota/quota.ts` | quotaApi 桥；`src/preload/buddy.ts` 注入第 5 域 `quota` |
-| renderer | `windows/buddy/pages/settings/quota/` | 独立插件管理页：QuotaPlugins.vue + useQuota.ts（域状态单例）+ components/QuotaPluginCard.vue |
-| renderer | `windows/buddy/pages/hardware/esp32-lcd/components/QuotaPanel.vue` | 圆屏页的额度运行态：间隔 / 屏显额度下拉（写 esp32-lcd.json `screenQuota`）/ 立即刷新 / 快照预览 + 跳转额度配置页 |
+| renderer | `windows/buddy/pages/settings/quota/` | 额度配置页（额度管理）：插件启停/settings + 刷新间隔 + 立即刷新；QuotaPlugins.vue + useQuota.ts（域状态单例）+ components/QuotaPluginCard.vue |
+| renderer | `windows/buddy/pages/hardware/esp32-lcd/components/QuotaPanel.vue` | 圆屏页「屏显额度」设备面板：屏显下拉（写 esp32-lcd.json `screenQuota`）+ 上屏额度预览（按键挑选，回落提示）；刷新节奏不在此页 |
 
 ## 注意事项
 
 - **内置可关闭**：关闭后完全不执行；因内置随 app 发版更新，若供应商接口大改而新版本未发布，可关闭内置并用目录第三方插件顶替
 - **多插件聚合 + 设备侧挑选**：启用多个插件时全部执行、快照 `items` 聚合（UI 全量预览）；屏幕上显示哪条由消费设备自身的配置决定（ESP32 LCD 页「屏显额度」下拉，写入 esp32-lcd.json 的 `screenQuota` 键，回落第一条带屏显字段者），quota 域不感知屏幕
 - **演进位**：external 按文件名键控，未来在线安装/更新（下载 js 进目录 + version/source 字段）可无破坏扩展；`listPlugins` 已把 builtin/external 统一为 `QuotaPluginDescriptor`，在线列表可平替该来源
-- 配置与运行态分离：插件启停与配置在「额度配置」页（设置下二级目录）；刷新间隔/屏显额度/立即刷新/快照展示在消费设备页（如圆屏页）
+- 配置与运行态分离：额度管理（插件启停/参数 + 自动刷新间隔 + 立即刷新）全在「额度配置」页（设置下二级目录）；设备页只做设备自己的事——屏显挑选/上屏预览（如圆屏页「屏显额度」面板）
 - 存量迁移：曾嵌在 `esp32-lcd.json` 的 `quota` 段（含 apiKey）不自动迁移，删除 command code 后重新在插件页配置即可

@@ -1,13 +1,27 @@
 <template>
   <page-layout title="额度配置">
     <div class="quota-plugins">
-      <div class="intro">
-        额度插件是独立公共能力，为各类硬件设备（如 ESP32 LCD 屏幕）提供余额快照：内置插件随应用版本更新、可随时关闭；
-        第三方插件为 definePlugin 契约的单文件 .js，放入插件目录后刷新即可安装，替换文件即更新。
+      <div class="toolbar">
+        <span class="label">自动刷新间隔</span>
+        <t-input-number
+          :value="interval"
+          :min="1"
+          :max="1440"
+          :step="1"
+          theme="column"
+          suffix="分钟"
+          :disabled="saving"
+          @change="changeInterval"
+        />
+        <t-button variant="outline" :loading="refreshing" @click="runQuotaNow">
+          <template #icon><refresh-icon /></template>
+          立即刷新
+        </t-button>
+        <span v-if="lastQuota" class="refreshed-at">上次刷新 {{ formatTime(lastQuota.at) }}</span>
       </div>
+      <t-alert v-if="lastQuota?.error" theme="warning" :message="lastQuota.error" />
       <div class="dir-bar">
         <t-button size="small" variant="outline" :loading="loadingPlugins" @click="refreshPlugins">
-          <template #icon><refresh-icon /></template>
           刷新插件列表
         </t-button>
         <t-button size="small" variant="outline" @click="openPluginsDir">打开插件目录</t-button>
@@ -40,8 +54,18 @@ import { useQuota } from './useQuota'
 
 defineOptions({ name: 'QuotaPlugins' })
 
-const { config, saving, plugins, loadingPlugins, patch, refreshPlugins, openPluginsDir } =
-  useQuota()
+const {
+  config,
+  saving,
+  plugins,
+  loadingPlugins,
+  lastQuota,
+  refreshing,
+  patch,
+  refreshPlugins,
+  openPluginsDir,
+  runQuotaNow
+} = useQuota()
 
 /** 插件行：描述 + 当前配置（目录插件配置缺省 = 未启用） */
 const pluginRows = computed(() => {
@@ -57,6 +81,27 @@ const pluginRows = computed(() => {
     }
   })
 })
+
+/** 刷新间隔显示（配置回读后同步） */
+const interval = ref(5)
+watch(
+  config,
+  (next) => {
+    if (next) interval.value = next.intervalMinutes
+  },
+  { immediate: true }
+)
+
+/** 刷新间隔即改即存（main 保存后自动重启刷新定时器） */
+function changeInterval(value: unknown): void {
+  if (typeof value === 'number' && config.value) {
+    void patch({ intervalMinutes: value })
+  }
+}
+
+function formatTime(at: number): string {
+  return new Date(at).toLocaleTimeString()
+}
 
 /** 修改单个插件配置（启停/settings），合并进配置后整份提交 */
 function patchPlugin(
@@ -82,12 +127,21 @@ function patchPlugin(
   padding: 16px;
 }
 
-.intro {
-  padding: 8px 12px;
-  border-radius: 6px;
-  font: var(--td-font-body-small);
-  color: var(--td-text-color-secondary);
-  background: var(--td-bg-color-secondarycontainer);
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  .label {
+    font: var(--td-font-body-small);
+    color: var(--td-text-color-secondary);
+  }
+
+  .refreshed-at {
+    font: var(--td-font-body-small);
+    color: var(--td-text-color-placeholder);
+  }
 }
 
 .dir-bar {

@@ -27,7 +27,7 @@
 
 - **`screenQuota` = 屏显额度选择**：额度快照聚合全部启用插件（额度是独立公共域，见 docs/plugin/02），屏上同时只显示一个额度——
   按键精确匹配对应插件的条目（该插件无带屏显字段条目时回落第一条带屏显字段者）。这是**屏幕自身的显示配置**
-  （页面「额度快照」面板的「屏显额度」下拉即改即存，写入本键；额度配置页不涉及屏显），保存后 main 按最近快照重挑并补发一条心跳，即时生效
+  （页面「屏显额度」面板下拉即改即存，写入本键；额度刷新节奏/插件管理在额度配置页），保存后 main 按最近快照重挑并补发一条心跳，即时生效
 - 旧 quota 配置的 `screen` 键与快照 `main` 条目已废弃（职责归位到本键）；存量 `quota.json` 的 `screen` 由归一化丢弃，在圆屏页重选一次即可
 
 ## 串口下行协议：心跳行协议 v2（已定稿）
@@ -62,7 +62,7 @@ HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结
 | main | `src/main/src/buddy/esp32-lcd/esp32LcdService.ts` | 单例：init（订阅事件/快照总线与意外断开 + 自动重连）、connect/disconnect 连接编排、onBuddyEvent 转发、writeLcdJson、运行态广播 |
 | main | `src/main/src/buddy/esp32-lcd/esp32LcdIpc.ts` | handler 全集（配置/连接/运行态） |
 | preload | `src/preload/src/modules/esp32-lcd/esp32Lcd.ts` | 薄封装；`src/preload/buddy.ts` 注入 `esp32Lcd` 域 |
-| renderer | `windows/buddy/pages/hardware/esp32-lcd/` | `Esp32Lcd.vue` 骨架 + `useEsp32Lcd.ts` 域状态单例 + components/（LcdSerialPanel 含波特率下拉、QuotaPanel 额度运行态、EventStatusPanel 事件状态） |
+| renderer | `windows/buddy/pages/hardware/esp32-lcd/` | `Esp32Lcd.vue` 骨架 + `useEsp32Lcd.ts` 域状态单例 + components/（LcdSerialPanel 含波特率下拉、QuotaPanel 屏显额度面板、EventStatusPanel 事件状态、LcdPlaceholder 未连接占位） |
 | renderer | `windows/buddy/pages/settings/quota/` | 额度插件独立管理页（公共域，见 [docs/plugin/02](../../plugin/02-quota-plugins.md)） |
 
 ## 注意事项
@@ -71,7 +71,6 @@ HB,<status>,<seq>,<type>,<pct>,<value>,<unit>,<text>,<ts>   （, 分段、\n 结
   事件/运行态都是 main 推送（`esp32Lcd:event` / `esp32Lcd:state`），渲染层 composable 只做
   「先拉一次 getState 再订阅推送」的展示同步。
 - **波特率下拉是连接参数**：连接成功后由 main 记忆进配置；已连接时改下拉不影响当前连接，重连生效。
-- **额度插件在独立页面配置**（伙伴窗口「额度插件」菜单）：本页 QuotaPanel 只保留间隔/立即刷新/快照预览；
-  快照经 quotaBus 订阅下发，插件启停/settings/目录管理见 [docs/plugin/02](../plugin/02-quota-plugins.md)。
+- **额度管理在「额度配置」页**（伙伴窗口 设置-额度配置）：插件启停/settings、自动刷新间隔、立即刷新全在该页（公共域，见 [docs/plugin/02](../plugin/02-quota-plugins.md)）；本页 QuotaPanel 只做设备自己的事——「屏显额度」下拉（写本设备 esp32-lcd.json `screenQuota`）+ 上屏额度预览，不涉及额度刷新。
 - DeepSeek 余额接口：`GET https://api.deepseek.com/user/balance`（Bearer 认证），
   响应取 `balance_infos[0].total_balance/currency`（插件实现在 quota 域 builtinPlugins）。
