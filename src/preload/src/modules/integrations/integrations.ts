@@ -7,7 +7,6 @@ import type { IpcRendererEvent } from 'electron'
 import { IntegrationChannels } from '@common/buddy/integrations/integrationChannels'
 import type {
   IntegrationActivityEntry,
-  IntegrationActivityState,
   PlatformInstallResult,
   PlatformStatus
 } from '@common/types/integrations'
@@ -20,10 +19,10 @@ export const integrationsApi = {
   /** 安装/更新指定软件的接入配置（覆盖写入其插件目录） */
   installPlatform: (software: SoftwareName): Promise<PlatformInstallResult> =>
     ipcRenderer.invoke(IntegrationChannels.install, software),
-  /** 拉取调试事件流快照（缓冲 + 各软件已捕获事件；纯内存，重启清空） */
-  getActivity: (): Promise<IntegrationActivityState> =>
+  /** 拉取调试事件流（全量缓冲，含未命中白名单被丢弃的请求；纯内存，重启清空） */
+  getActivity: (): Promise<IntegrationActivityEntry[]> =>
     ipcRenderer.invoke(IntegrationChannels.getActivity),
-  /** 清空全部调试事件流（缓冲与已捕获标记一并复位） */
+  /** 清空全部调试事件流 */
   clearActivity: (): Promise<void> => ipcRenderer.invoke(IntegrationChannels.clearActivity),
   /** 订阅实时调试事件流推送；返回取消订阅函数 */
   onActivity: (callback: (entry: IntegrationActivityEntry) => void): (() => void) => {

@@ -108,7 +108,7 @@ export function buildHeartbeatLine(options: {
     value,
     truncateUtf8(quota?.unit ?? '', MAX_UNIT_BYTES),
     truncateUtf8(text ?? '', MAX_TEXT_BYTES),
-    '0'
+    String(Math.floor(Date.now() / 1000))
   ]
   const line = [...head, ...tail].join(',')
   // 整行长度兜底（板端行缓冲 128B，超长整行丢弃）：先丢文案再丢单位

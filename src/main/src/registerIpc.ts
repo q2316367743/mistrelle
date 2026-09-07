@@ -18,6 +18,7 @@ import { registerTrafficLightIpc } from './buddy/traffic-light/trafficLightIpc'
 import { initTrafficLight } from './buddy/traffic-light/TrafficLightService'
 import { registerIntegrationsIpc } from './buddy/integrations/integrationsIpc'
 import { initIntegrationsActivity } from './buddy/integrations/integrationsActivity'
+import { initBuddyEventFilter } from './buddy/events/buddyEventFilter'
 import { registerEsp32LcdIpc } from './buddy/esp32-lcd/esp32LcdIpc'
 import { initEsp32Lcd } from './buddy/esp32-lcd/esp32LcdService'
 import { registerQuotaIpc } from './buddy/quota/quotaIpc'
@@ -46,7 +47,9 @@ export function registerIpc(): void {
   registerIntegrationsIpc()
   registerEsp32LcdIpc()
   registerQuotaIpc()
-  // 集成调试事件流：订阅 buddy 事件总线并广播给渲染层（纯内存，先于建窗，避免漏收）
+  // 事件协议层监听器①白名单过滤：原始事件 → 校验后总线（设备域消费）
+  void initBuddyEventFilter()
+  // 监听器②集成调试事件流：全量采集广播渲染层（纯内存；registerIpc 先于事件服务启动，不漏收）
   void initIntegrationsActivity()
   // 加载红绿灯配置并按 lastPort 自动连接串口（失败静默，伙伴窗口可手动重连）
   void initTrafficLight()

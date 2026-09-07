@@ -9,9 +9,7 @@
     </div>
     <div v-if="expanded" class="feed-body">
       <div class="feed-toolbar">
-        <span class="feed-hint">
-          仅展示已通过校验并分发给设备的合法事件；未触发的在下方「支持事件」列表里保持灰色
-        </span>
+        <span class="feed-hint">绿字 = 命中白名单已分发；灰字 = 未命中白名单被丢弃</span>
         <div class="feed-actions">
           <t-button variant="text" size="small" @click="follow = !follow">
             {{ follow ? '暂停跟随' : '恢复跟随' }}
@@ -26,10 +24,16 @@
       </div>
       <div ref="listEl" class="feed-list">
         <template v-if="myActivity.length">
-          <div v-for="(entry, i) in myActivity" :key="i" class="feed-row">
+          <div
+            v-for="(entry, i) in myActivity"
+            :key="i"
+            class="feed-row"
+            :class="entry.accepted ? 'feed-row--accepted' : 'feed-row--dropped'"
+          >
             <span class="feed-time">{{ formatTime(entry.at) }}</span>
-            <span class="feed-name">{{ eventLabel(entry.event) }}</span>
+            <span v-if="entry.accepted" class="feed-name">{{ eventLabel(entry.event) }}</span>
             <span class="feed-code">{{ entry.event }}</span>
+            <span v-if="!entry.accepted" class="feed-dropped">已丢弃</span>
           </div>
         </template>
         <t-empty v-else description="暂无事件，等待外部软件投递" />
@@ -40,7 +44,7 @@
 
 <script lang="ts" setup>
 import { ChevronDownIcon, ChevronRightIcon, DeleteIcon } from 'tdesign-icons-vue-next'
-import { BuddyEventOptions, type BuddyEventName } from '@common/types/buddyEvent'
+import { BuddyEventOptions } from '@common/types/buddyEvent'
 import type { SoftwareName } from '@common/types/trafficLight'
 import { useIntegrations } from '../useIntegrations'
 
@@ -70,7 +74,7 @@ watch(
   }
 )
 
-/** 清空全部事件（main 缓冲与卡片「已捕获」标记一并复位；成功后无需本地处理） */
+/** 清空全部事件（main 缓冲复位，本地 activity 随 useIntegrations 同步清空） */
 async function clearAll(): Promise<void> {
   await clearActivity()
 }
@@ -85,7 +89,7 @@ function toggleExpand(): void {
   }
 }
 
-function eventLabel(event: BuddyEventName): string {
+function eventLabel(event: string): string {
   return BuddyEventOptions.find((opt) => opt.value === event)?.label ?? event
 }
 
@@ -182,19 +186,29 @@ function formatTime(at: number): string {
   .feed-time {
     flex-shrink: 0;
     font-family: var(--td-font-family-code);
-    color: var(--td-text-color-placeholder);
   }
 
   .feed-name {
     flex-shrink: 0;
     font-weight: 600;
-    color: var(--td-text-color-primary);
   }
 
   .feed-code {
     font-family: var(--td-font-family-code);
-    color: var(--td-text-color-secondary);
     word-break: break-all;
+  }
+
+  .feed-dropped {
+    flex-shrink: 0;
+  }
+
+  /* 命中白名单整行绿字；未命中整行灰字（已丢弃） */
+  &--accepted {
+    color: var(--td-success-color-7);
+  }
+
+  &--dropped {
+    color: var(--td-text-color-placeholder);
   }
 }
 </style>

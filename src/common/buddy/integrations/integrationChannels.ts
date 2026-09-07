@@ -10,10 +10,10 @@ export const IntegrationChannels = {
   check: 'integrations:check',
   /** 安装/更新指定软件的接入配置（覆盖写入其插件目录） */
   install: 'integrations:install',
-  /** 拉取调试事件流快照（缓冲 + 各软件已捕获事件） */
+  /** 拉取调试事件流（全量缓冲，含未命中白名单被丢弃的请求） */
   getActivity: 'integrations:getActivity',
-  /** 清空全部调试事件流（缓冲与已捕获标记一并复位） */
+  /** 清空全部调试事件流 */
   clearActivity: 'integrations:clearActivity',
-  /** 主进程 → 渲染层：一条新集成事件 */
+  /** 主进程 → 渲染层：一条新集成事件（含未命中白名单的） */
   activity: 'integrations:activity'
 } as const

@@ -21,7 +21,7 @@
 |----|------|------|
 | 探活 | `GET /ping` → 204 | 外部进程判断应用是否在跑 |
 | 资源 | `GET /file/<encodeURIComponent(绝对路径)>` | 读盘返回，`Content-Type` 按扩展名映射 + `Access-Control-Allow-Origin: *` |
-| 事件 | `GET\|POST /buddy/event?platform=<软件>&event=<Buddy 事件>` | 双白名单校验（软件名 + 词汇表），非法静默 204；命中仅 `publishBuddyEvent` 发布到 buddyEventBus（消费方在各域服务 init 内订阅，本模块零业务依赖）；未知路由 404 |
+| 事件 | `GET\|POST /buddy/event?platform=<软件>&event=<Buddy 事件>` | **零校验纯转发**：完整原始事件 `publishRawBuddyEvent` 发布到原始事件总线（`buddyEventBus.ts` raw 段），监听器各取所需——白名单过滤（`buddyEventFilter`，命中发布校验后总线供设备消费）与集成调试事件流（`integrationsActivity`，全量转发伙伴窗口）；对外始终 204，未知路由 404 |
 
 - 地址事实源：`src/common/server/eventServer.ts` 的 `EVENT_SERVER_ORIGIN`（main 与 preload 共享；
   插件模板为独立文件无法 import，端口常量注释互指）。
@@ -33,6 +33,9 @@
 | 文件 | 职责 |
 |------|------|
 | `src/main/src/server/index.ts` | `startEventServer()`：express 装配（/ping、/file 资源面、事件路由）、Origin 守卫、生命周期 |
+| `src/main/src/buddy/events/buddyEventBus.ts` | 原始事件总线（raw）+ 校验后事件总线（typed） |
+| `src/main/src/buddy/events/buddyEventFilter.ts` | 事件面白名单过滤监听器（校验收口） |
+| `src/main/src/buddy/integrations/integrationsActivity.ts` | 集成调试事件流全量采集（见 hardware/06） |
 | `src/common/server/eventServer.ts` | `EVENT_SERVER_ORIGIN` 端口事实源（跨端共享） |
 | `src/main/index.ts` | `whenReady` 内调 `startEventServer()`，先于建窗（保证渲染层子资源可达） |
 | `src/preload/src/lib/net.ts` | `pathToHref`：绝对路径 → `{ORIGIN}/file/<enc>` |
@@ -45,7 +48,8 @@
 - **Origin 守卫**（资源面）：请求带 `Origin` 且非本应用来源（`http://localhost:7743` /
   `http://127.0.0.1:7743` / `null`）→ 403。防公网网页经浏览器回环 drive-by 读盘（带 Origin 的
   CORS 请求被拒；`<img>`/字体等子资源与插件、curl 均无 Origin，不受影响）。
-- 事件面只消费 query 参数，platform/event 双白名单（未启用/未知事件/未绑定静默忽略），无命令执行能力。
+- 事件面只消费 query 参数，无命令执行能力；platform/event 白名单校验收口在原始总线的
+  过滤监听器（`buddyEventFilter`），未命中不进入设备消费链路（调试事件流仅本地展示）。
 - 无 Range 分片（字体 / 图片全量返回；后续视频预览需要时再加）。
 
 ## 生命周期与验证

@@ -3,8 +3,9 @@
  * 1. 资源面：渲染层经 pathToHref 生成的 GET /file/<encodeURIComponent(绝对路径)> 读盘返回
  *    （字体 / 图片等子资源；dev 下 http 页面加载 file:// 会被 Chromium 拦截，统一走本服务）。
  * 2. 事件面：外部进程（如 opencode 接入插件）GET|POST /buddy/event?platform=…&event=… 投递事件，
- *    只做协议校验（platform/event 双白名单）后经 buddyEventBus 发布；业务消费方在各自域服务
- *    init 内 subscribe（红绿灯 / ESP32 LCD 等），本模块零业务依赖。
+ *    零校验纯转发——完整原始事件发布到原始事件总线（publishRawBuddyEvent），监听器各取所需：
+ *    白名单过滤（buddyEventFilter，命中发布校验后总线供设备消费）与集成调试事件流
+ *    （integrationsActivity，全量转发伙伴窗口）。本模块零校验、零业务依赖。
  * 处理逻辑单份、参数方案单份（platform/event query）；不经系统唤起、结构性不抢焦点。
  * 详见 docs/server/01-event-server.md 与 docs/hardware/05。
  */
@@ -14,9 +15,7 @@ import type { Request, Response } from 'express'
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { EVENT_SERVER_ORIGIN } from '@common/server/eventServer'
-import { isBuddyEvent } from '@common/types/buddyEvent'
-import { isSoftwareName } from '@common/types/trafficLight'
-import { publishBuddyEvent } from '$/buddy/events/buddyEventBus'
+import { publishRawBuddyEvent } from '$/buddy/events/buddyEventBus'
 
 const HOST = '127.0.0.1'
 const PORT = Number(new URL(EVENT_SERVER_ORIGIN).port)
@@ -75,15 +74,12 @@ const sendFile = async (req: Request, res: Response): Promise<void> => {
   }
 }
 
-/** 事件面：/buddy/event?platform=<软件>&event=<Buddy 事件>；非法参数静默 204，未知路由 404 */
+/** 事件面：/buddy/event?platform=<软件>&event=<Buddy 事件>；零校验纯转发，对外静默 204，未知路由 404 */
 const dispatchEvent = (req: Request, res: Response): void => {
-  console.info(`[server] 收到事件：${req.originalUrl}`)
   if (req.path === '/buddy/event') {
     const platform = String(req.query.platform ?? '')
     const event = String(req.query.event ?? '')
-    if (isSoftwareName(platform) && isBuddyEvent(event)) {
-      void publishBuddyEvent(platform, event)
-    }
+    void publishRawBuddyEvent(platform, event)
     res.status(204).end()
     return
   }

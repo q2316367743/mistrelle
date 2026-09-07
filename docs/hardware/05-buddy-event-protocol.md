@@ -17,10 +17,14 @@
   `EVENTS` Set 即词汇表白名单，命中才投递 `buddy/event?platform=opencode&event=<encodeURIComponent>`；
   每事件独立节流（500ms + 尾部补发）不变；投递失败静默丢弃不变。
 - **服务端**（`src/main/src/server/index.ts` `dispatchEvent`）：path 判 `/buddy/event`；
-  `platform`（isSoftwareName）与 `event`（isBuddyEvent）双白名单校验，非法静默 204；
-  命中后仅 `publishBuddyEvent(platform, event)` **发布到 buddyEventBus**（`src/main/src/buddy/events/buddyEventBus.ts`），
-  server 零业务依赖。各设备域服务在**自身 init 内 `subscribeBuddyEvent` 订阅消费**
-  （TrafficLightService → 映射灯态；esp32LcdService → 转发屏幕）；新增设备 = 新域服务订阅，server 与总线零改动。
+  **零校验纯转发**——完整原始事件 `publishRawBuddyEvent(platform, event)` 发布到**原始事件总线**
+  （`buddyEventBus.ts` 内 raw 段），server 零校验、零业务依赖。原始总线的**两个监听器**各取所需：
+  ① `buddyEventFilter.ts` 白名单过滤——`platform`（isSoftwareName）与 `event`（isBuddyEvent）
+  命中才 `publishBuddyEvent` **发布到校验后 buddyEventBus**，各设备域服务在**自身 init 内
+  `subscribeBuddyEvent` 订阅消费**（TrafficLightService → 映射灯态；esp32LcdService → 转发屏幕）；
+  ② `buddy/integrations/integrationsActivity.ts` 集成调试事件流——**全量**采集（含未命中白名单
+  被丢弃的请求，打 accepted 标记）广播给伙伴窗口「设置-应用集成」页展示（见 hardware/06）；
+  新增设备 = 新域服务订阅校验后总线，server 与总线零改动。
 - **红绿灯兼容**：`trafficLight.ts` 的 `OpencodeEventName` 目录删除，`SoftwareLightConfig.bindings`
   键改 `BuddyEventName`；原 6 事件键名在词汇表中不变 → **存量配置 bindings 天然兼容，无需迁移**；
   默认绑定不变（message.part.updated→gs、tool.execute.before→yo、session.idle→go、
@@ -29,9 +33,10 @@
 ## URL 契约
 
 ```
-GET|POST /buddy/event?platform=<SoftwareName>&event=<BuddyEventName>
-→ 参数合法：发布到 buddyEventBus（各订阅域并发消费、单方失败不互涉），204
-→ platform/event 非法（白名单外）：静默 204
+GET|POST /buddy/event?platform=<原文>&event=<原文>
+→ server 零校验，原始事件发布到原始事件总线（publishRawBuddyEvent），204
+  ├─ 监听器① buddyEventFilter：双白名单命中 → 发布校验后 buddyEventBus（各订阅域并发消费）；未命中丢弃
+  └─ 监听器② integrationsActivity：全量采集（accepted 标记）→ 广播伙伴窗口调试展示
 → 其他 path：404
 ```
 
@@ -41,8 +46,10 @@ GET|POST /buddy/event?platform=<SoftwareName>&event=<BuddyEventName>
 |------|------|
 | `src/common/types/buddyEvent.ts` | 词汇表事实源（type + Options + 全集派生 + 分组） |
 | `resources/plugins/opencode/mistrelle-integration.js` | 投递方（白名单过滤 → /buddy/event，节流） |
-| `src/main/src/server/index.ts` | dispatchEvent：路径 + 双白名单校验 + 发布（零业务依赖） |
-| `src/main/src/buddy/events/buddyEventBus.ts` | 事件总线（subscribe/publish，Promise.allSettled 并发投递） |
+| `src/main/src/server/index.ts` | dispatchEvent：路径判断 + 零校验转发原始事件（零业务依赖） |
+| `src/main/src/buddy/events/buddyEventBus.ts` | 两条总线：原始事件总线（raw，server 发布）+ 校验后事件总线（typed，设备消费） |
+| `src/main/src/buddy/events/buddyEventFilter.ts` | 监听器①：双白名单过滤，命中发布校验后总线 |
+| `src/main/src/buddy/integrations/integrationsActivity.ts` | 监听器②：集成调试事件流全量采集（见 hardware/06） |
 | `src/main/src/buddy/traffic-light/TrafficLightService.ts` | 订阅方①：事件→灯态（init 内 subscribe） |
 | `src/main/src/buddy/esp32-lcd/esp32LcdService.ts` | 订阅方②：事件转发屏幕 + 推送渲染层（init 内 subscribe） |
 | `src/renderer/src/windows/buddy/pages/hardware/traffic-light/components/software/OpencodePanel.vue` | 绑定 UI：按 BUDDY_EVENT_GROUPS 分组渲染（集成未安装时置灰，见 hardware/06） |
