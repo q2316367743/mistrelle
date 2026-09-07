@@ -88,6 +88,7 @@
             size="small"
             @change="handleAppearance"
           >
+            <t-radio-button value="system">系统</t-radio-button>
             <t-radio-button value="light">浅色</t-radio-button>
             <t-radio-button value="dark">深色</t-radio-button>
           </t-radio-group>
@@ -118,7 +119,7 @@ import {
   UserIcon,
   WalletIcon
 } from 'tdesign-icons-vue-next'
-import { isDark, setColorMode } from '@/global/BeanFactory'
+import { mode, setColorMode } from '@/global/BeanFactory'
 import { useAuthStore } from '@/windows/main/store'
 import { MessageUtil } from '@/utils/modal'
 import { copyText } from '@/utils/native'
@@ -138,7 +139,7 @@ const visible = ref(false)
 const refreshing = ref(false)
 
 const signedIn = computed(() => authStore.status === 'signed-in')
-const appearance = computed(() => (isDark.value ? 'dark' : 'light'))
+const appearance = computed(() => mode.value)
 
 const displayName = computed(() => {
   const account = authStore.user
@@ -212,7 +213,7 @@ async function handleRefresh(): Promise<void> {
 }
 
 function handleAppearance(value: string | number | boolean): void {
-  if (value === 'light' || value === 'dark') setColorMode(value)
+  if (value === 'system' || value === 'light' || value === 'dark') setColorMode(value)
 }
 
 async function handleLogout(): Promise<void> {

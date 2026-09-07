@@ -1,6 +1,6 @@
 # AppSide 侧边栏菜单
 
-> 主应用外壳左侧导航栏。原为 `AppSide.vue` 内逐行手写的 `<button>` + `v-if` 子菜单（无展开动画），已重构为**数据驱动、可递归复用**的菜单组件；2026-09-04 起组件上移为全局组件（`@/components/menu/`），主窗口 `AppSide` 与伙伴窗口 `buddy/App.vue` 共用同一套侧边栏菜单。2026-09-06：底部用户区由 `t-dropdown` 改为 `t-popup` 自定义面板（参考 Workbuddy 账号菜单），设置侧栏补齐全部设置页入口。
+> 主应用外壳左侧导航栏。原为 `AppSide.vue` 内逐行手写的 `<button>` + `v-if` 子菜单（无展开动画），已重构为**数据驱动、可递归复用**的菜单组件；2026-09-04 起组件上移为全局组件（`@/components/menu/`），主窗口 `AppSide` 与伙伴窗口 `buddy/App.vue` 共用同一套侧边栏菜单。2026-09-06：底部用户区由 `t-dropdown` 改为 `t-popup` 自定义面板（参考 Workbuddy 账号菜单），设置侧栏补齐全部设置页入口。外观由「浅色/深色」扩展为「系统/浅色/深色」三态（2026-09-07）。
 
 ## 组件职责
 
@@ -61,20 +61,22 @@ interface SideMenuItem {
 | 登录 / 注册 | 未登录显示，打开 `LoginDialog` |
 | 设置 | 不在设置路由时进入 `/setting/global`（侧栏切到 `menuSettingTree`）；已在设置内则只关面板 |
 | 记忆与进化 | 进入 `/setting/soul` |
-| 外观 | `t-radio-group` 浅色 / 深色，调用 `setColorMode`（见下） |
+| 外观 | `t-radio-group` 系统 / 浅色 / 深色，调用 `setColorMode`（见下） |
 | 退出登录 | 仅已登录，`authStore.signOut` |
 
 未移植 Workbuddy 的「加油站 / 邀约 / 成长计划 / 帮助与反馈 / 检查更新」：本产品没有对应能力，不造空入口。打开弹层时 `refreshIfStale`。
 
 ## 外观（ColorMode）
 
-`useColorMode`（`@/hooks/ColorMode.ts`，主窗口经 `BeanFactory` 单例导出 `isDark` / `setColorMode`）：
+`useColorMode`（`@/hooks/ColorMode.ts`，主窗口经 `BeanFactory` 单例导出 `isDark` / `mode` / `setColorMode`）：
 
-- 无本地记录时跟随 `prefers-color-scheme`
-- 用户在面板选择浅色/深色后写入 `localStorage` 键 `mistrelle-color-mode`（`light` \| `dark`），之后不再被系统主题覆盖
-- 写 `document.documentElement[theme-mode]`，与 tdesign / Fluent token 一致
+- **`mode`**（`'system' | 'light' | 'dark'`）：记录用户"所选模式"，默认（无本地记录）为 `system`；面板三态按钮绑定它。
+- **`isDark`**（布尔）：当前"生效深浅"，系统模式下跟随 `prefers-color-scheme`，其余消费方（Monaco、右键菜单等）只看 `isDark`，语义不变。
+- `setColorMode` 把所选模式写入 `localStorage` 键 `mistrelle-color-mode`（`system` \| `light` \| `dark`），并立即同步 `isDark`。
+- `prefers-color-scheme` 变化监听：仅当 `mode === 'system'` 时更新 `isDark`（兼容存量只存 `light`/`dark` 的旧值，其视为用户锁定）。
+- 写 `document.documentElement[theme-mode]`，与 tdesign / Fluent token 一致。
 
-伙伴窗口仍自己调用 `useColorMode()`，不共享主窗口的 `isDark` ref；新开窗口会读到已持久化的选择。
+伙伴窗口仍自己调用 `useColorMode()`，不共享主窗口的 `isDark` ref / `mode`；新开窗口会读到已持久化的选择。
 
 ## 宽度自适应
 
