@@ -35,6 +35,8 @@ export interface QuotaConfig {
   builtin: Partial<Record<BuiltinQuotaPluginId, BuiltinQuotaPluginConfig>>
   /** 第三方插件配置（键 = 插件目录下的文件名；未来在线安装/更新复用此结构扩展 version/source） */
   external: Record<string, ExternalQuotaPluginConfig>
+  /** 上次刷新快照（main 刷新后写入并落盘，启动时恢复；渲染层保存配置原样带回即可，main 以内存值为准） */
+  lastSnapshot?: QuotaSnapshot | null
 }
 
 /** 保存配置结果（失败时 msg 为中文原因，不抛错） */

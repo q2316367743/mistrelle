@@ -58,13 +58,15 @@ definePlugin({
 {
   "intervalMinutes": 5,
   "builtin": { "deepseek": { "enabled": true, "settings": { "apiKey": "sk-…", "maxQuota": "200" } } },
-  "external": { "deepseek-plus.js": { "enabled": false, "settings": {} } }
+  "external": { "deepseek-plus.js": { "enabled": false, "settings": {} } },
+  "lastSnapshot": { "items": [], "at": 0, "error": "" }
 }
 ```
 
 - 键：builtin = 插件 id；external = 文件名；normalize 兼容旧结构顶层 `apiKey`；command code（曾存在于 esp32-lcd.json 的 `customScript`）已删除，自定义一律落目录文件
 - **额度插件只管理「启停 + settings」**；「上屏哪个额度」不是 quota 域的配置——属消费设备自身的显示配置（ESP32 LCD = `~/.mistrelle/buddy/esp32-lcd.json` 的 `screenQuota` 键，见 docs/hardware/04），旧 quota 配置的 `screen` 字段已废弃、归一化丢弃，快照也不再预置 `main` 条目
 - 快照聚合全部启用插件（`items` UI 全量预览）；每条快照条目带 `pluginKey`（汇总时由 quotaService 写入，插件脚本无需返回），供设备侧按各自配置键挑选上屏条目
+- **快照持久化（`lastSnapshot`，可选）**：每次刷新完成后由 quotaService 写回 quota.json，启动时恢复内存快照并广播 + 经 quotaBus 发布一次——渲染层首拉与订阅设备（LCD 等）启动即有数据，不等首轮刷新；归一化严格校验（`at` 非法或条目缺 `label`/`value` 即丢弃，可选字段逐项类型校验），防御手改文件；**保存配置时快照一律以内存值为准**（渲染层整份回存的可能已过期，防止把新快照回滚成旧值）；写盘失败仅记日志不影响刷新主流程
 
 ## 关键文件
 
@@ -76,7 +78,7 @@ definePlugin({
 | main | `src/main/src/buddy/quota/builtinPlugins.ts` | 内置插件登记（key + 源码；现仅 deepseek），源码不落盘随版本更新 |
 | main | `src/main/src/buddy/quota/externalPlugins.ts` | 插件目录扫描 / 读源码 / 目录惰性创建 |
 | main | `src/main/src/buddy/quota/quotaConfig.ts` | `~/.mistrelle/buddy/quota.json` 读写与归一化 |
-| main | `src/main/src/buddy/quota/quotaService.ts` | 单例：initQuota（加载+定时器）、runQuotaNow（enabled 插件 → allSettled 汇总 → 渲染层推送 + quotaBus 发布） |
+| main | `src/main/src/buddy/quota/quotaService.ts` | 单例：initQuota（加载+恢复持久化快照+定时器）、runQuotaNow（enabled 插件 → allSettled 汇总 → 快照落盘 → 渲染层推送 + quotaBus 发布） |
 | main | `src/main/src/buddy/quota/quotaBus.ts` | 快照总线（subscribe/publish）：设备域 init 内订阅消费，新增设备零改动 quota 域 |
 | main | `src/main/src/buddy/quota/quotaIpc.ts` | quota:* handler 全集 |
 | preload | `src/preload/src/modules/quota/quota.ts` | quotaApi 桥；`src/preload/buddy.ts` 注入第 5 域 `quota` |

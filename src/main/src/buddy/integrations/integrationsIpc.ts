@@ -4,8 +4,13 @@
  */
 import { ipcMain } from 'electron'
 import { IntegrationChannels } from '@common/buddy/integrations/integrationChannels'
-import type { PlatformInstallResult, PlatformStatus } from '@common/types/integrations'
+import type {
+  IntegrationActivityState,
+  PlatformInstallResult,
+  PlatformStatus
+} from '@common/types/integrations'
 import { checkPlatform, installPlatform } from './platformConfig'
+import { clearIntegrationActivity, getIntegrationActivity } from './integrationsActivity'
 
 export function registerIntegrationsIpc(): void {
   ipcMain.handle(IntegrationChannels.check, (_event, software: string): PlatformStatus =>
@@ -14,4 +19,10 @@ export function registerIntegrationsIpc(): void {
   ipcMain.handle(IntegrationChannels.install, (_event, software: string): PlatformInstallResult =>
     installPlatform(software)
   )
+  ipcMain.handle(IntegrationChannels.getActivity, (): IntegrationActivityState =>
+    getIntegrationActivity()
+  )
+  ipcMain.handle(IntegrationChannels.clearActivity, (): void => {
+    clearIntegrationActivity()
+  })
 }

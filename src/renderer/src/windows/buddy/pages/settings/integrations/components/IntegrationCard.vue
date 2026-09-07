@@ -26,16 +26,28 @@
       <span class="meta-value mono">{{ statusDetail?.path || '—' }}</span>
     </div>
     <div class="events">
-      <div class="events-title">支持事件（{{ item.events.length }} 个）</div>
+      <div class="events-title">
+        支持事件
+        <span class="events-count"
+          >{{ receivedEvents.length }} / {{ item.events.length }} 已捕获</span
+        >
+      </div>
       <div v-for="group in eventGroups" :key="group.title" class="event-group">
         <span class="group-title">{{ group.title }}</span>
         <div class="chips">
-          <t-tag v-for="event in group.events" :key="event" size="small" variant="outline">
+          <t-tag
+            v-for="event in group.events"
+            :key="event"
+            size="small"
+            :theme="isReceived(event) ? 'success' : 'default'"
+            :variant="isReceived(event) ? 'light' : 'outline'"
+          >
             {{ eventLabel(event) }}
           </t-tag>
         </div>
       </div>
     </div>
+    <event-feed-panel :platform="item.name" />
     <div class="hint">安装 / 更新插件后需重启对应软件才能加载生效。</div>
   </div>
 </template>
@@ -50,12 +62,13 @@ import {
 } from '@common/types/buddyEvent'
 import type { IntegrationItem } from '../registry'
 import { useIntegrations } from '../useIntegrations'
+import EventFeedPanel from './EventFeedPanel.vue'
 
 defineOptions({ name: 'IntegrationCard' })
 
 const props = defineProps<{ item: IntegrationItem }>()
 
-const { statuses, install } = useIntegrations()
+const { statuses, received, install } = useIntegrations()
 
 const installing = ref(false)
 
@@ -97,6 +110,14 @@ const eventGroups = computed(() =>
     events: group.events.filter((event) => props.item.events.includes(event))
   })).filter((group) => group.events.length > 0)
 )
+
+/** 该软件支持事件中已捕获（收到过）的集合 */
+const receivedEvents = computed<BuddyEventName[]>(() => received.value[props.item.name] ?? [])
+
+/** 某事件是否已捕获（点亮绿色；未捕获保持灰 outline） */
+function isReceived(event: BuddyEventName): boolean {
+  return receivedEvents.value.includes(event)
+}
 
 function eventLabel(event: BuddyEventName): string {
   return BuddyEventOptions.find((opt) => opt.value === event)?.label ?? event
@@ -184,10 +205,18 @@ function eventLabel(event: BuddyEventName): string {
   border-top: 1px solid var(--td-component-stroke);
 
   .events-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 8px;
     font: var(--td-font-body-small);
     font-weight: 600;
     color: var(--td-text-color-primary);
+
+    .events-count {
+      font-weight: 400;
+      color: var(--td-text-color-placeholder);
+    }
   }
 
   .event-group {

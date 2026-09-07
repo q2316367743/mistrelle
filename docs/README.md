@@ -47,7 +47,7 @@
 | 文档                                                           | 描述                                                                                             |
 |----------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
 | [01-shell-exec.md](./plugin/01-shell-exec.md)                 | shell 执行插件：cliRun / jsRun 双层超时保障（底层 kill + 前端 IPC 挂起兜底）、超时契约与兼容性   |
-| [02-quota-plugins.md](./plugin/02-quota-plugins.md)           | 额度插件体系（独立公共域，2026-09-07）：`src/main/src/buddy/quota/` 不依附任何设备（ESP32 LCD 经 quotaBus 订阅消费，未来更多硬件）；统一插件模型（内置预置可关闭 + `~/.mistrelle/buddy/plugins/` 第三方目录，definePlugin 契约、声明式 settings、独立配置 quota.json）；插件只管启停+settings，「屏显哪个额度」是设备侧自身配置（LCD 的 esp32-lcd.json `screenQuota` 键）——旧 quota `screen` 与快照 `main` 已废弃、条目带 `pluginKey` 供设备自挑；伙伴窗口「设置-额度配置」独立页面管理；内置随版本更新可关闭、目录替换文件即更新，为在线插件列表+版本化预留演进位；内置 deepseek 含「最大额度 maxQuota」设置（未设置时以当前余额为分母=圆环满格） |
+| [02-quota-plugins.md](./plugin/02-quota-plugins.md)           | 额度插件体系（独立公共域，2026-09-07）：`src/main/src/buddy/quota/` 不依附任何设备（ESP32 LCD 经 quotaBus 订阅消费，未来更多硬件）；统一插件模型（内置预置可关闭 + `~/.mistrelle/buddy/plugins/` 第三方目录，definePlugin 契约、声明式 settings、独立配置 quota.json）；插件只管启停+settings，「屏显哪个额度」是设备侧自身配置（LCD 的 esp32-lcd.json `screenQuota` 键）——旧 quota `screen` 与快照 `main` 已废弃、条目带 `pluginKey` 供设备自挑；伙伴窗口「设置-额度配置」独立页面管理；内置随版本更新可关闭、目录替换文件即更新，为在线插件列表+版本化预留演进位；内置 deepseek 含「最大额度 maxQuota」设置（未设置时以当前余额为分母=圆环满格）；快照持久化 `lastSnapshot` 落盘 quota.json、启动恢复广播（首次启动不再空白），保存配置以内存快照为准 |
 
 ### migration/ —— 平台迁移
 
@@ -212,7 +212,7 @@
 | [03-traffic-light-config.md](./hardware/03-traffic-light-config.md) | 红绿灯配置（软件状态驱动）：`~/.mistrelle/buddy/traffic-light.json` 结构、事件→灯态绑定（状态唯一/软件互斥两条规则）、灯态全集含呼吸/全灭（事实源 `@common/types/trafficLight`，type 下方 `XxxOptions` 名称映射、全集派生）、本地事件服务 HTTP 事件投递链路（见 server/01）、内置 opencode 插件模板与一键安装（已迁应用集成域，见 hardware/06；软件面板按集成状态门控）、伙伴窗口独立 preload 入口 |
 | [04-esp32-lcd.md](./hardware/04-esp32-lcd.md) | ESP32-S3-LCD-1.28 圆屏页面（2026-09-07）：独立串口连接（SerialService 多端口 + 连接编排/lastPort 记忆全在 main，`esp32Lcd:connect` 指令化 + state 推送）+ 独立配置 `~/.mistrelle/buddy/esp32-lcd.json`（含 `screenQuota` 屏显额度键——屏幕自身的显示配置，圆屏页下拉即改即存、保存后即时补发心跳）；**额度快照经 quotaBus 订阅**（额度是独立公共域，见 plugin/02）+ 当前事件状态（buddyEventBus 订阅 → 行协议 JSON 下发、暂定可改；心跳开关按 opencode 集成状态门控，见 hardware/06）；启动即初始化（无 init IPC） |
 | [05-buddy-event-protocol.md](./hardware/05-buddy-event-protocol.md) | Buddy 事件协议 v2（2026-09-07）：`/buddy/traffic-light` 升级 `/buddy/event`，事件收口为跨设备白名单词汇表 `@common/types/buddyEvent`（24 个、opencode 蓝本同名，存量红绿灯绑定天然兼容）；server 只做校验+**发布到 buddyEventBus（pub/sub）**，红绿灯/圆屏各域 init 内订阅消费，新增设备零改动 server；插件端白名单过滤投递 |
-| [06-app-integrations.md](./hardware/06-app-integrations.md) | 应用集成页（2026-09-07）：插件安装从红绿灯页独立为「设置-应用集成」（设置下二级目录，含额度配置迁移）；检测/安装 IPC 迁独立 integrations 域（`integrations:check/install` + `buddy/integrations/platformConfig.ts` adapter 注册表）；插件改名 `mistrelle-integration.js`（install 清理旧名残留）；`useIntegrations` 状态单例 + `INTEGRATION_REGISTRY` 登记表（含支持事件说明）；红绿灯/圆屏硬件页按三态门控（missing 置灰引导安装、outdated 提醒不置灰） |
+| [06-app-integrations.md](./hardware/06-app-integrations.md) | 应用集成页（2026-09-07）：插件安装从红绿灯页独立为「设置-应用集成」（设置下二级目录，含额度配置迁移）；检测/安装 IPC 迁独立 integrations 域（`integrations:check/install` + `buddy/integrations/platformConfig.ts` adapter 注册表）；插件改名 `mistrelle-integration.js`（install 清理旧名残留）；`useIntegrations` 状态单例 + `INTEGRATION_REGISTRY` 登记表（含支持事件说明）；红绿灯/圆屏硬件页按三态门控（missing 置灰引导安装、outdated 提醒不置灰）；集成卡片「最近事件」调试面板 + 支持事件已捕获点亮（`integrations:getActivity/clearActivity/activity` + `buddyEventBus` 订阅侧采集；已捕获标记独立于缓冲上限；纯内存不落盘，仅伙伴窗口） |
 
 ### todo/ —— 规划与待办
 

@@ -3,6 +3,8 @@
 > 2026-09-07：插件安装从红绿灯页 OpencodePanel 独立为「设置-应用集成」页；检测/安装 IPC 从
 > trafficLight 域迁出为独立 integrations 域；插件改名 `mistrelle-integration.js`；
 > 硬件页（红绿灯/圆屏）按集成状态门控启用与配置。
+> 2026-09-07：集成卡片新增「最近事件」调试面板（同页加收）——集成事件流实时前端展示，
+> 纯内存不落盘；详见下方「调试事件流」节。
 
 ## 实现思路
 
@@ -39,9 +41,14 @@
 
 - **类型** `@common/types/integrations.ts`：`PlatformConfigStatus`（+Options 名称映射）、
   `PlatformStatus { status, path }`、`PlatformInstallResult { ok, msg?, path }`（均不抛错）、
-  `IntegrationApi { checkPlatform(software), installPlatform(software) }`
+  `INTEGRATION_ACTIVITY_LIMIT`（事件流上限 200）、`IntegrationActivityEntry { platform, event, at }`、
+  `IntegrationActivityState { entries, received }`（缓冲 + 各软件已捕获事件，getActivity 返回）、
+  `IntegrationApi { checkPlatform(software), installPlatform(software), getActivity(), clearActivity(),
+  onActivity(cb) }`
   （`window.preload.integrations`，仅伙伴窗口独立 preload 注入，vite-env.d.ts 声明）。
-- **通道** `@common/buddy/integrations/integrationChannels.ts`：`integrations:check` / `integrations:install`。
+- **通道** `@common/buddy/integrations/integrationChannels.ts`：`integrations:check` /
+  `integrations:install` / `integrations:getActivity`（渲染层首拉快照）/ `integrations:clearActivity`
+  （清空缓冲与已捕获标记）/ `integrations:activity`（主进程 → 渲染层单条推送）。
 - **登记表** 渲染层 `registry.ts`：`INTEGRATION_REGISTRY: IntegrationItem[]`
   （`{ name: SoftwareName, label, description, devices, events }`），决定集成页卡片与顺序；
   `events` 为该软件插件支持上报的事件全集（opencode = `BUDDY_EVENT_NAMES` 24 个），
@@ -58,13 +65,41 @@
 | common | `src/common/types/integrations.ts` | 域类型契约（三态/检查/安装结果/IntegrationApi），事实源 |
 | common | `src/common/buddy/integrations/integrationChannels.ts` | IPC 通道常量 |
 | main | `src/main/src/buddy/integrations/platformConfig.ts` | adapter 注册表 + opencode 三态检查/覆盖安装/旧名清理 |
-| main | `src/main/src/buddy/integrations/integrationsIpc.ts` | 两个 handler（registerIpc.ts 注册 `registerIntegrationsIpc()`） |
-| preload | `src/preload/src/modules/integrations/integrations.ts` | integrationsApi 薄封装；`preload/buddy.ts` 注入 `integrations` 域 |
+| main | `src/main/src/buddy/integrations/integrationsIpc.ts` | 四个 handler（registerIpc.ts 注册 `registerIntegrationsIpc()`） |
+| main | `src/main/src/buddy/integrations/integrationsActivity.ts` | 调试事件流单例：订阅 buddyEventBus + 内存缓冲(200) + 各软件已捕获标记 + 广播 + 清空（registerIpc.ts 注册 `initIntegrationsActivity()`） |
+| preload | `src/preload/src/modules/integrations/integrations.ts` | integrationsApi 薄封装（check/install + activity 订阅 + get/clear）；`preload/buddy.ts` 注入 `integrations` 域 |
 | renderer | `windows/buddy/pages/settings/integrations/registry.ts` | INTEGRATION_REGISTRY 集成登记表 |
-| renderer | `windows/buddy/pages/settings/integrations/useIntegrations.ts` | 状态单例（statuses/statusOf/check/install，init 遍历登记表检测） |
+| renderer | `windows/buddy/pages/settings/integrations/useIntegrations.ts` | 状态单例（statuses/statusOf/check/install + activity/received/clearActivity，init 遍历登记表检测并订阅事件流） |
 | renderer | `windows/buddy/pages/settings/integrations/IntegrationsPage.vue` | 页面骨架 + intro |
-| renderer | `windows/buddy/pages/settings/integrations/components/IntegrationCard.vue` | 集成卡片：状态 tag/安装按钮/可驱动设备/插件位置/支持事件分组 chips |
+| renderer | `windows/buddy/pages/settings/integrations/components/IntegrationCard.vue` | 集成卡片：状态 tag/安装按钮/可驱动设备/插件位置/支持事件分组 chips（已捕获点亮绿、未捕获灰）+ 事件流面板 |
+| renderer | `windows/buddy/pages/settings/integrations/components/EventFeedPanel.vue` | 卡片内「最近事件」折叠面板（展开滚动日志/跟随滚底开关/空态/清空按钮） |
 | renderer | `windows/buddy/router/index.ts` + `App.vue` | `/settings/*` 路由 + 「设置」多级菜单（activePaths 高亮父级） |
+
+## 调试事件流（2026-09-07 加收）
+
+- **动机**：集成卡片原来只说明「支持哪些事件」，无法确认外部软件是否真的在投递、投递了哪些事件。
+  「最近事件」面板把该集成软件**通过校验并实际分发给 buddy 设备**的事件实时展示在卡片内，
+  纯调试用途；**不落盘、不建表**（main 内存环形缓冲上限 200，重启清空），也不影响设备域消费。
+- **采集点 = 总线订阅侧**：server 是事件触发节点，`server/index.ts` 的 `dispatchEvent` 只做
+  platform/event 双白名单校验后 `publishBuddyEvent`；集成域在 `buddyEventBus` **新增一个订阅者**
+  （`initIntegrationsActivity`，registerIpc.ts 与 initTrafficLight/initEsp32Lcd 并列注册）把合法事件
+  打时间戳后转发，server 模块零业务依赖保持不变。面板不展示被白名单拦截的非法请求（调试缺事件
+  应先在插件侧/协议层排查）。
+- **域化四件套**（对齐 esp32Lcd「main 持有 + getState 首拉 + onEvent 订阅推送」范式）：
+  契约类型 `IntegrationActivityEntry { platform, event, at }` + 通道
+  `integrations:getActivity`（渲染层首拉快照，补足伙伴窗口懒创建前的事件）/
+  `integrations:activity`（主进程 → 渲染层单条推送）；main 缓冲广播、preload `onActivity` 订阅返回退订函数、
+  渲染层 `useIntegrations` 模块级单例首拉 + 订阅，卡片内 `EventFeedPanel.vue` 按 `platform` prop 过滤展示。
+- **已捕获对照**：main 另维护「各软件已捕获事件」集合（`receivedByPlatform`，至少收到一次即记录，
+  去重、**独立于 200 条缓冲上限**——事件即使被缓冲挤掉仍记为已捕获），getActivity 随快照一并返回。
+  集成卡片的「支持事件」列表据此逐项点亮：已收到事件 green light chip + 标题计数
+  「N / M 已捕获」；未收到保持灰色 outline——一眼区分**哪个触发了、哪个没触发**。
+  清空操作把缓冲与捕获标记**一并复位**，计数回到 0 / M、全部灰。
+- **UI**：折叠面板默认收起；展开为滚动日志（`HH:mm:ss.SSS` 时间 + 事件中文名（`BuddyEventOptions`）
+  + 事件码等宽），「跟随」默认开启自动滚底、可暂停，空态 t-empty「暂无事件，等待外部软件投递」；
+  面板带「清空」按钮（调用 `clearActivity`，缓冲与已捕获标记一并复位，用于开始一轮新调试）。
+- **新增集成 / 新增事件**：事件流经总线自动接入，集成侧**零改动**——只要事件在
+  `BuddyEventName` 白名单内并被发布，即进入缓冲与面板；多集成软件各自卡片按 platform 过滤看各自事件。
 
 ## 注意事项
 

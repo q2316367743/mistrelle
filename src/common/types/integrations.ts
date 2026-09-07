@@ -7,7 +7,11 @@
  * window 挂载由渲染层 vite-env.d.ts 声明（仅伙伴窗口独立 preload 注入）。
  */
 import { CommonSelect } from './CommonSelect'
+import type { BuddyEventName } from './buddyEvent'
 import type { SoftwareName } from './trafficLight'
+
+/** 调试事件流内存上限（纯展示、不落盘，超限丢最旧） */
+export const INTEGRATION_ACTIVITY_LIMIT = 200
 
 /**
  * 接入配置状态（如 opencode 插件是否已装入其插件目录）：
@@ -37,10 +41,31 @@ export interface PlatformInstallResult {
   path: string
 }
 
+export interface IntegrationActivityEntry {
+  platform: SoftwareName
+  event: BuddyEventName
+  /** 事件时间（ms 时间戳，main 收到后打点） */
+  at: number
+}
+
+/** 调试事件流快照（getActivity 返回） */
+export interface IntegrationActivityState {
+  /** 事件流缓冲（时间正序，新事件在后；上限 INTEGRATION_ACTIVITY_LIMIT） */
+  entries: IntegrationActivityEntry[]
+  /** 各软件已捕获事件（至少收到一次；独立于缓冲上限，清空时一起复位） */
+  received: Partial<Record<SoftwareName, BuddyEventName[]>>
+}
+
 /** window.preload.integrations 契约：应用集成域桥（仅伙伴窗口的独立 preload 注入，主窗口运行时不存在） */
 export interface IntegrationApi {
   /** 检查指定软件的接入配置状态（opencode = 插件文件与内置模板比对） */
   checkPlatform(software: SoftwareName): Promise<PlatformStatus>
   /** 安装/更新指定软件的接入配置（覆盖写入其插件目录） */
   installPlatform(software: SoftwareName): Promise<PlatformInstallResult>
+  /** 拉取调试事件流快照（纯内存缓冲 + 各软件已捕获事件；重启清空） */
+  getActivity(): Promise<IntegrationActivityState>
+  /** 清空全部调试事件流与已捕获标记（调用方在成功后同步复位本地状态） */
+  clearActivity(): Promise<void>
+  /** 订阅实时调试事件流推送；返回取消订阅函数 */
+  onActivity(callback: (entry: IntegrationActivityEntry) => void): () => void
 }

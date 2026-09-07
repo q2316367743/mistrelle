@@ -9,7 +9,9 @@ import {
   type BuiltinQuotaPluginConfig,
   type BuiltinQuotaPluginId,
   type ExternalQuotaPluginConfig,
-  type QuotaConfig
+  type QuotaConfig,
+  type QuotaItem,
+  type QuotaSnapshot
 } from '@common/types/quota'
 import { isSafePluginFile } from './externalPlugins'
 
@@ -46,6 +48,36 @@ function normalizePluginConfig(raw: unknown): BuiltinQuotaPluginConfig {
   return { enabled: raw.enabled === true, settings }
 }
 
+/**
+ * 归一化持久化快照（启动恢复用，防御手改文件）：at 非法整体丢弃；
+ * items 逐条过滤（label/value 必为字符串），可选字段按类型校验保留。
+ */
+function normalizeQuotaSnapshot(raw: unknown): QuotaSnapshot | null {
+  if (!isRecord(raw)) return null
+  if (typeof raw.at !== 'number' || !Number.isFinite(raw.at)) return null
+  const items: QuotaItem[] = []
+  if (Array.isArray(raw.items)) {
+    for (const item of raw.items) {
+      if (!isRecord(item)) continue
+      if (typeof item.label !== 'string' || typeof item.value !== 'string') continue
+      const normalized: QuotaItem = { label: item.label, value: item.value }
+      if (typeof item.pluginKey === 'string') normalized.pluginKey = item.pluginKey
+      if (item.screenTemplate === 'codex' || item.screenTemplate === 'deepseek') {
+        normalized.screenTemplate = item.screenTemplate
+      }
+      if (typeof item.screenPct === 'number' && Number.isFinite(item.screenPct)) {
+        normalized.screenPct = item.screenPct
+      }
+      if (typeof item.screenValue === 'string') normalized.screenValue = item.screenValue
+      if (typeof item.screenUnit === 'string') normalized.screenUnit = item.screenUnit
+      items.push(normalized)
+    }
+  }
+  const snapshot: QuotaSnapshot = { items, at: raw.at }
+  if (typeof raw.error === 'string' && raw.error) snapshot.error = raw.error
+  return snapshot
+}
+
 /** 归一化整份配置：间隔钳制 1-1440 分钟，builtin 未知插件剔除、external 键按安全文件名过滤 */
 export function normalizeQuotaConfig(raw: unknown): QuotaConfig {
   const config = defaultQuotaConfig()
@@ -66,6 +98,7 @@ export function normalizeQuotaConfig(raw: unknown): QuotaConfig {
     }
     config.external = external
   }
+  config.lastSnapshot = normalizeQuotaSnapshot(raw.lastSnapshot)
   return config
 }
 

@@ -25,9 +25,15 @@ function broadcastSnapshot(snapshot: QuotaSnapshot): void {
   }
 }
 
-/** 启动初始化（main 启动即执行，不依赖渲染层）：加载配置 + 启动刷新定时器 */
+/** 启动初始化（main 启动即执行，不依赖渲染层）：加载配置 + 恢复上次快照 + 启动刷新定时器 */
 export function initQuota(): void {
   config = loadQuotaConfig()
+  // 恢复上次快照（持久化在 quota.json）：渲染层首拉与订阅设备（LCD 等）启动即有数据，不等首轮刷新
+  if (config.lastSnapshot) {
+    lastSnapshot = config.lastSnapshot
+    broadcastSnapshot(lastSnapshot)
+    void publishQuotaSnapshot(lastSnapshot)
+  }
   scheduleQuotaTimer(config.intervalMinutes)
 }
 
@@ -36,9 +42,10 @@ export function getQuotaConfig(): QuotaConfig {
   return config
 }
 
-/** 保存整份配置：归一化落盘，刷新定时器随间隔变化重启 */
+/** 保存整份配置：归一化落盘，刷新定时器随间隔变化重启；快照以内存值为准（渲染层回存的可能已过期） */
 export function saveQuotaConfig(raw: unknown): QuotaSaveResult {
   config = normalizeQuotaConfig(raw)
+  config.lastSnapshot = lastSnapshot
   saveQuotaConfigFile(config)
   scheduleQuotaTimer(config.intervalMinutes)
   return { ok: true }
@@ -98,7 +105,18 @@ export async function runQuotaNow(): Promise<QuotaSnapshot> {
     if (errors.length) snapshot.error = errors.join('；')
   }
   lastSnapshot = snapshot
+  config.lastSnapshot = snapshot
+  persistConfigQuietly()
   broadcastSnapshot(snapshot)
   await publishQuotaSnapshot(snapshot)
   return snapshot
+}
+
+/** 配置落盘（含最新快照）：失败只记日志，不影响刷新主流程 */
+function persistConfigQuietly(): void {
+  try {
+    saveQuotaConfigFile(config)
+  } catch (error) {
+    console.error('[quota] 配置落盘失败', error)
+  }
 }
