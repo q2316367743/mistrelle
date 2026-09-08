@@ -102,6 +102,22 @@ const appendChatImages = (
   return rest
 }
 
+/**
+ * image_read → 请求图片注入约定：handler 返回对象含 visionImages（路径数组）时，
+ * 路径经 ext 落到工具调用块上，请求构建时读盘重建为图像块、以「紧随 tool 消息的
+ * user 消息」注入模型上下文（工具结果消息本身不支持图像块），并从回传给模型的
+ * 结果中剥离该标记。
+ */
+const extractVisionImagePaths = (raw: unknown): { rest: unknown; paths?: string[] } => {
+  if (!raw || typeof raw !== 'object') return { rest: raw }
+  const images = (raw as { visionImages?: unknown }).visionImages
+  if (!Array.isArray(images)) return { rest: raw }
+  const paths = images.filter((item): item is string => typeof item === 'string' && !!item)
+  const rest = { ...(raw as Record<string, unknown>) }
+  delete rest.visionImages
+  return paths.length > 0 ? { rest, paths } : { rest }
+}
+
 const applyResult = (
   messages: Ref<ChatMessage[]>,
   assistantMessageId: string,
@@ -273,7 +289,15 @@ export const runSingleTool = async (
     const raw = await fn.handler(args)
     // chatImages 约定：图片块入对话展示后剥离标记，模型只看到业务字段
     const output = appendChatImages(messages, assistantMessageId, call, raw)
-    applyResult(messages, assistantMessageId, call, serializeResult(output))
+    // visionImages 约定（image_read）：路径落 ext 供请求构建注入图像块，模型可见文本剥离标记
+    const { rest, paths } = extractVisionImagePaths(output)
+    applyResult(
+      messages,
+      assistantMessageId,
+      call,
+      serializeResult(rest),
+      paths ? { visionImagePaths: paths } : undefined
+    )
   } catch (error: unknown) {
     applyResult(messages, assistantMessageId, call, `错误: ${error instanceof Error ? error.message : String(error)}`)
   }

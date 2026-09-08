@@ -133,6 +133,7 @@
 | [15-interactive-confirm-visibility.md](./chat/15-interactive-confirm-visibility.md) | 挂起确认的可见性与「停止≠拒绝」：confirm 卡片被超长结果推出视口致 agent 静默阻塞等批准的事故复盘；RChatList 顶部横幅+视口外自动滚动定位卡片（data-tool-call-id 锚点）、clear() 产生的 null 与用户拒绝分开文案、isSkillScriptCall 整串 command 的 token 级放行 |
 | [16-privacy-chat.md](./chat/16-privacy-chat.md)                     | 隐私聊天（创建后锁定）：chat 表 privacy 列（唯一写入口 AiChatStore.add）、不注入记忆 / 不注册 record_memory（含子 Agent 继承）、提取跳过但推进进度、聊天室开关禁用（lock-privacy）、引擎标题「私」tag |
 | [17-tool-phase-lifecycle.md](./chat/17-tool-phase-lifecycle.md)     | 工具调用四态生命周期：`ToolPhase`（pending/confirm/executing/complete/stop）块级单一事实源、`setAssistantStatus` 连坐事故复盘（审批卡消失 + DB complete/UI 执行中悬案同根因）、`toolPhaseOf` 历史旧值归一、UI 纯状态驱动（撤 effectiveStatus 覆盖与探针）、AgentChat 拆分五模块（1052→445 行） |
+| [18-agent-image-read.md](./chat/18-agent-image-read.md)             | Agent 主动读图：`image_read` 工具（识图模型下发、safe 免审批）+ `visionImages` 约定键（剥离后路径落 toolcall ext）；工具结果消息不支持图像块，请求构建时以「紧随 tool 消息的 user 消息」注入（适配器零改动）；contextRules 读类过期使同路径旧图不重注入、用户附件同路径去重 |
 
 ### memory/ —— 记忆
 

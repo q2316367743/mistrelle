@@ -37,7 +37,9 @@ const appendAssistantStep = (
   contents: AIMessageContent[],
   filterSkillTools: boolean,
   compactPlan: ToolCallCompactPlan,
-  thinking: boolean
+  thinking: boolean,
+  /** toolCallId → image_read 等工具引用的图像块（识图模型时由调用方异步预构建） */
+  imagesByToolCallId: Map<string, AiImageBlock[]> = new Map()
 ): void => {
   const toolContents = contents.filter(
     (item): item is ToolCallContent =>
@@ -79,6 +81,39 @@ const appendAssistantStep = (
         : (item.data.result ?? '')
     })
   }
+  appendStepVisionImages(out, toolContents, compactPlan, imagesByToolCallId)
+}
+
+/**
+ * 把本步工具调用引用的图片（image_read 经 ext.visionImagePaths 落库）追加为一条
+ * 紧随 tool 消息的 user 消息：role:'tool' 在各协议下只支持纯文本，图像块只能走
+ * user 消息通道。紧凑化已过期调用的图片不再注入（结果已替换为占位提示）。
+ */
+const appendStepVisionImages = (
+  out: AiMessageParam[],
+  toolContents: ToolCallContent[],
+  compactPlan: ToolCallCompactPlan,
+  imagesByToolCallId: Map<string, AiImageBlock[]>
+): void => {
+  if (imagesByToolCallId.size === 0) return
+  const blocks: AiImageBlock[] = []
+  const paths: string[] = []
+  for (const item of toolContents) {
+    if (compactPlan.expiredToolCallIds.has(item.data.toolCallId)) continue
+    const callBlocks = imagesByToolCallId.get(item.data.toolCallId)
+    if (!callBlocks || callBlocks.length === 0) continue
+    blocks.push(...callBlocks)
+    const callPaths = item.ext?.visionImagePaths
+    for (const path of Array.isArray(callPaths) ? callPaths : []) {
+      if (typeof path === 'string' && path) paths.push(path)
+    }
+  }
+  if (blocks.length === 0) return
+  const note = paths.length > 0 ? `（对应路径：\n${paths.map((path) => `- ${path}`).join('\n')}）` : ''
+  out.push({
+    role: 'user',
+    content: [{ type: 'text' as const, text: `[以上工具返回的图片${note}]` }, ...blocks]
+  })
 }
 
 const appendAssistantMessage = (
@@ -86,14 +121,15 @@ const appendAssistantMessage = (
   message: AIMessage,
   filterSkillTools: boolean,
   compactPlan: ToolCallCompactPlan,
-  thinking: boolean
+  thinking: boolean,
+  imagesByToolCallId: Map<string, AiImageBlock[]>
 ): void => {
   const contents = message.content ?? []
   let step: AIMessageContent[] = []
   let stepId: string | undefined
 
   const flush = () => {
-    appendAssistantStep(out, step, filterSkillTools, compactPlan, thinking)
+    appendAssistantStep(out, step, filterSkillTools, compactPlan, thinking, imagesByToolCallId)
     step = []
     stepId = undefined
   }
@@ -181,7 +217,9 @@ export const toAgentRequestMessages = (
   /** 消息 id → 图像内容块（识图模型时由调用方异步预构建，全部历史保留） */
   imagesByMessageId: Map<string, AiImageBlock[]> = new Map(),
   /** 本次请求思考模式是否开启（未显式关闭视为开启，与服务端默认一致） */
-  thinking = true
+  thinking = true,
+  /** toolCallId → 工具引用图像块（image_read，识图模型时由调用方异步预构建） */
+  imagesByToolCallId: Map<string, AiImageBlock[]> = new Map()
 ): AiMessageParam[] => {
   const out: AiMessageParam[] = []
   const activeAssistantIndex = messages.findIndex(
@@ -228,7 +266,14 @@ export const toAgentRequestMessages = (
       continue
     }
 
-    appendAssistantMessage(out, message, message.id !== activeAssistantMessageId, compactPlan, thinking)
+    appendAssistantMessage(
+      out,
+      message,
+      message.id !== activeAssistantMessageId,
+      compactPlan,
+      thinking,
+      imagesByToolCallId
+    )
   }
 
   return out

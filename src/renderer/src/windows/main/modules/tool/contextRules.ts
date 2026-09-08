@@ -56,6 +56,7 @@ export const toolContextRules: Record<string, ToolContextRule> = {
   file_read_docx: { resource: (args) => fileKey(args.path) },
   file_read_xlsx: { resource: (args) => fileKey(args.path) },
   file_read_pdf: { resource: (args) => fileKey(args.path) },
+  image_read: { resource: (args) => fileKey(args.path) },
   file_write: {
     writeResource: (args) => fileKey(args.path)
   },

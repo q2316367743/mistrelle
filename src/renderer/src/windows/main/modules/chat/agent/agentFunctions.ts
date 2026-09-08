@@ -6,11 +6,12 @@ import type { ChatRequestParams } from '@/windows/main/modules/chat'
 import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG } from '@/global/ChatTypeConfig'
 import { getDefaultTools, isShellExecTool, toolMap, toolRegistry } from '@/windows/main/modules/tool'
+import { IMAGE_READ_TOOL_NAME } from '@/windows/main/modules/tool/components/native/file'
 import { createToolLoadTool } from '@/windows/main/modules/tool/components/collectionLoader'
 import { recordMemoryTool } from '@/windows/main/modules/memory'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/windows/main/modules/subagent/tool'
 import { SUB_AGENT_ALLOW } from '@/windows/main/modules/subagent/types'
-import { useAiAgentStore } from '@/windows/main/store'
+import { useAiAgentStore, useSettingAiStore } from '@/windows/main/store'
 import { createTodoTool } from './todo'
 
 /**
@@ -38,6 +39,14 @@ const getUserToolNames = (params: ChatRequestParams): string[] =>
   params.message.content
     .filter((content): content is ToolContent => content.type === 'tool')
     .map((content) => content.data.name)
+
+/** 当前请求的模型是否具备识图能力（optionMap 查询与 ToolChat.resolveModel 同款键） */
+const isVisionModelRequest = (params: ChatRequestParams): boolean => {
+  const option = useSettingAiStore().optionMap.get(
+    `${params.message.provide}:${params.message.model}`
+  )
+  return option?.support?.includes('image') ?? false
+}
 
 /** 按聊天类型 / 子 Agent 能力场景注入场景级工具（design → canvas_*） */
 const getTypeTools = (ctx: ToolSurfaceContext): ToolFunction[] => {
@@ -77,6 +86,8 @@ export const buildBaseFunctions = (
     if (ctx.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) continue
     // 隐私聊天不暴露记忆工具（用户 # 显式指定也不注入，防止对话内容经工具写入记忆）
     if (ctx.privacy && fn.name === recordMemoryTool.name) continue
+    // 非识图模型不下发 image_read（图像传了也看不见，避免诱导无效调用）
+    if (fn.name === IMAGE_READ_TOOL_NAME && !isVisionModelRequest(params)) continue
     // 主 Agent：按聊天类型裁剪 spawn_agent 的可用子 Agent 类型（SUB_AGENT_ALLOW 能力矩阵），减少模型试错
     if (!ctx.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) {
       map.set(fn.name, createSpawnAgentTool(SUB_AGENT_ALLOW[ctx.chatType]))

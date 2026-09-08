@@ -1,6 +1,10 @@
 import { ToolFunction } from '@/domain'
 import { useSettingSecureStore } from '@/windows/main/store/setting/SettingSecureStore'
 import { isPathBlacklisted } from '@/utils/sandbox'
+import { readImageInfo } from '@/utils/imageInfo'
+import { imageMimeFromPath, MAX_IMAGE_BYTES } from '@/windows/main/modules/chat/agent/visionBlocks'
+
+export const IMAGE_READ_TOOL_NAME = 'image_read'
 
 function checkBlacklist(path: string): string | null {
   const store = useSettingSecureStore()
@@ -225,6 +229,47 @@ export const fileTools: ToolFunction[] = [
         return await window.preload.fs.grep({ path, pattern, include, ignoreCase })
       } catch (e) {
         return { error: `搜索文件内容失败：${e instanceof Error ? e.message : String(e)}` }
+      }
+    }
+  },
+  {
+    name: IMAGE_READ_TOOL_NAME,
+    label: '读取图片',
+    description:
+      '读取本地图片文件，把图像内容提供给模型查看（仅识图模型可用）。支持 png / jpg / jpeg / gif / webp，单图上限 20MiB。返回图片格式与宽高元数据，图像本身随工具结果注入对话上下文',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: '图片文件路径' }
+      },
+      required: ['path']
+    },
+    risk: 'safe',
+    handler: async (...params: unknown[]) => {
+      const { path } = params[0] as { path: string }
+      const error = checkBlacklist(path)
+      if (error) return { error }
+      const mime = imageMimeFromPath(path)
+      if (!mime) {
+        return { error: `不支持的图片格式：${path}（仅支持 png / jpg / jpeg / gif / webp）` }
+      }
+      let buffer: ArrayBuffer
+      try {
+        buffer = await window.preload.fs.readBinaryFile(path)
+      } catch (e) {
+        return { error: `读取图片失败：${e instanceof Error ? e.message : String(e)}` }
+      }
+      if (buffer.byteLength > MAX_IMAGE_BYTES) {
+        return {
+          error: `图片超过单图上限（${(buffer.byteLength / 1024 / 1024).toFixed(1)}MiB > ${MAX_IMAGE_BYTES / 1024 / 1024}MiB）：${path}`
+        }
+      }
+      const info = await readImageInfo(path)
+      return {
+        content: `图片已读取，图像随本轮工具结果提供给模型：${path}`,
+        path,
+        ...(info ? { format: info.format, width: info.width, height: info.height } : {}),
+        visionImages: [path]
       }
     }
   }

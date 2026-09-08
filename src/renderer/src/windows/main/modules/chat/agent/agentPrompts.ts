@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 import type { AttachmentContent, ChatMessage, TodoItem } from '@/domain'
-import type { AiMessageParam } from '@/windows/main/modules/ai'
+import type { AiImageBlock, AiMessageParam } from '@/windows/main/modules/ai'
 import type { AiChatMode } from '@/entity'
 import type { ResolvedChatRequestParams } from '@/windows/main/modules/chat'
 import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
@@ -13,7 +13,8 @@ import { buildPersonalizePrompt } from '@/windows/main/modules/personalize'
 import { useAiAgentStore, useSettingSkillStore } from '@/windows/main/store'
 import { buildToolCatalogPrompt } from '@/windows/main/modules/tool/components/collectionLoader'
 import { toAgentRequestMessages } from './agentContext'
-import { collectVisionBlocks } from './visionBlocks'
+import { buildToolCallCompactPlan } from './agentContextCompact'
+import { collectToolCallVisionBlocks, collectVisionBlocks } from './visionBlocks'
 import { buildTodoPrompt } from './todo'
 
 /**
@@ -264,12 +265,23 @@ export const buildAgentRequestMessages = async (
   const vision = params.support?.includes('image')
     ? await collectVisionBlocks(ctx.messages.value)
     : undefined
+  // 识图模型：重建历史 image_read 工具引用的图片（紧凑化已过期 / 已剔除的调用跳过读盘，
+  // 用户附件已注入的同路径图片去重）
+  let imagesByToolCallId: Map<string, AiImageBlock[]> | undefined
+  if (vision) {
+    const compact = buildToolCallCompactPlan(ctx.messages.value, assistantMessageId)
+    imagesByToolCallId = await collectToolCallVisionBlocks(ctx.messages.value, {
+      excludePaths: vision.attachedUrls,
+      skipToolCallIds: new Set([...compact.expiredToolCallIds, ...compact.droppedToolCallIds])
+    })
+  }
   const messages = toAgentRequestMessages(
     ctx.messages.value,
     assistantMessageId,
     buildReferenceContextBody(ctx.messages.value, vision?.attachedUrls),
     vision?.blocksByMessageId,
-    params.message.thinking !== false
+    params.message.thinking !== false,
+    imagesByToolCallId
   )
   return {
     apiMessages: [...systemMessages, ...messages],
