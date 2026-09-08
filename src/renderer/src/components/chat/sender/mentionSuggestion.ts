@@ -4,7 +4,7 @@ import type { Ref } from 'vue'
 import type { ChatFileRef, WorkspaceEntryRef } from '@/utils/chatSender'
 import { listWorkspaceEntries } from '@/utils/chatSender'
 import { makeSuggestionRenderer, type SuggestionRendererOptions } from '@/utils/suggestionRenderer'
-import type { LocalSkill } from '@/windows/main/modules/skill'
+import { LocalSkill, skillList } from '@/windows/main/modules/skill'
 import { useSettingSkillStore } from '@/windows/main/store'
 import { toolOptions } from '@/windows/main/modules/tool'
 
@@ -21,18 +21,17 @@ export interface SkillSuggestionItem {
 }
 
 export const buildSkillSuggestion = (
-  skills: Ref<LocalSkill[]>,
   options?: SuggestionRendererOptions
 ): Partial<SuggestionOptions<SkillSuggestionItem>> => ({
   char: '/',
   pluginKey: skillMentionPluginKey,
   items: ({ query }) =>
-    skills.value
-      .filter((s) =>
+    skillList.value
+      ?.filter((s) =>
         `${s.name} ${s.dirName} ${s.description}`.toLowerCase().includes(query.toLowerCase())
       )
       .slice(0, 8)
-      .map<SkillSuggestionItem>((s) => ({ id: s.path, label: s.name, data: s })),
+      .map<SkillSuggestionItem>((s) => ({ id: s.path, label: s.name, data: s })) || [],
   command: ({ editor, range, props }) => {
     editor
       .chain()
@@ -43,15 +42,12 @@ export const buildSkillSuggestion = (
       ])
       .run()
   },
-  render: makeSuggestionRenderer(
-    (item) => {
-      const s = item as SkillSuggestionItem
-      // 被禁用的 skill 仍可显式指定（不默认注入目录），标注状态让用户知情
-      const prefix = useSettingSkillStore().isSkillEnabled(s.data) ? '' : '已禁用 · '
-      return { title: s.label, desc: `${prefix}${s.data.description}` }
-    },
-    options
-  )
+  render: makeSuggestionRenderer((item) => {
+    const s = item as SkillSuggestionItem
+    // 被禁用的 skill 仍可显式指定（不默认注入目录），标注状态让用户知情
+    const prefix = useSettingSkillStore().isSkillEnabled(s.data) ? '' : '已禁用 · '
+    return { title: s.label, desc: `${prefix}${s.data.description}` }
+  }, options)
 })
 
 export interface FileSuggestionItem {
@@ -131,14 +127,11 @@ export const buildFileSuggestion = (
       ])
       .run()
   },
-  render: makeSuggestionRenderer(
-    (item) => {
-      const f = item as FileSuggestionItem
-      if (f.data.isDirectory) return { title: `${f.label}/`, desc: '目录' }
-      return { title: f.label, desc: f.data.path }
-    },
-    options
-  )
+  render: makeSuggestionRenderer((item) => {
+    const f = item as FileSuggestionItem
+    if (f.data.isDirectory) return { title: `${f.label}/`, desc: '目录' }
+    return { title: f.label, desc: f.data.path }
+  }, options)
 })
 
 export interface ToolSuggestionItem {
@@ -177,11 +170,8 @@ export const buildToolSuggestion = (
       ])
       .run()
   },
-  render: makeSuggestionRenderer(
-    (item) => {
-      const tool = item as ToolSuggestionItem
-      return { title: tool.label, desc: `${tool.group} · ${tool.id}` }
-    },
-    options
-  )
+  render: makeSuggestionRenderer((item) => {
+    const tool = item as ToolSuggestionItem
+    return { title: tool.label, desc: `${tool.group} · ${tool.id}` }
+  }, options)
 })

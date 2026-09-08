@@ -137,7 +137,7 @@ import Mention from '@tiptap/extension-mention'
 import { mergeAttributes, Node as TiptapNode } from '@tiptap/core'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { localSkillList, type LocalSkill } from '@/windows/main/modules/skill'
+import { type LocalSkill } from '@/windows/main/modules/skill'
 import {
   useSettingAiStore,
   useSettingDefaultStore,
@@ -209,7 +209,6 @@ const emit = defineEmits<{
   stop: []
 }>()
 
-const skills = ref<LocalSkill[]>([])
 const sandboxFiles = ref<ChatFileRef[]>([])
 const modelKey = ref(props.initial.model || useSettingDefaultStore().state.defaultAssistantModel)
 const thinking = ref(props.initial.thinking ?? true)
@@ -321,7 +320,7 @@ const buildUserMessage = (): ChatRequestParams | null => {
 const SkillMention = Mention.extend({ name: 'skillMention' }).configure({
   // 退格一次即整体删除标签，避免残留触发字符（默认 false 会把节点替换成 "/"）
   deleteTriggerWithBackspace: true,
-  suggestion: buildSkillSuggestion(skills),
+  suggestion: buildSkillSuggestion(),
   renderHTML: ({ options, node }) => [
     'span',
     mergeAttributes(options.HTMLAttributes, {
@@ -723,7 +722,6 @@ watch(
 
 onMounted(async () => {
   setText(props.initial.input || '')
-  skills.value = await localSkillList()
   await useSettingAiStore().initPromise
 })
 

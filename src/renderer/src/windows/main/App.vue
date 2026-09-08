@@ -84,8 +84,6 @@ onMounted(() => {
     flex-direction: column;
     gap: var(--td-comp-margin-s);
     flex-shrink: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
     height: calc(100vh - 16px);
     padding-top: 8px;
     padding-bottom: 8px;

@@ -2,7 +2,7 @@
   <t-aside
     style="z-index: 50"
     :width="collapsed ? '0px' : '220px'"
-    :class="['sidebar', 'shrink-0']"
+    :class="['sidebar', 'shrink-0', 'h-100vh', 'overflow-x-hidden']"
   >
     <div class="h-32px pl-40px"></div>
 
