@@ -41,6 +41,7 @@ declare global {
       db: DbApi
       image: ImageApi
       auth: AuthApi
+      updater: UpdaterApi
       relay: RelayApi
       serial: SerialApi
       /** 红绿灯配置桥：仅伙伴窗口独立 preload（out/preload/buddy.js）注入，主窗口运行时不存在 */

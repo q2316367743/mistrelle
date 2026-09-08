@@ -15,6 +15,7 @@
 | [04-ffmpeg-ppt-removal.md](./app/04-ffmpeg-ppt-removal.md) | ffmpeg 与 PPT 专家功能移除记录（2026-09-04）：删除范围（基础设施/AI 工具/视频导出链/PPT 聊天类型）、保留项（画布动画字段、'ppt' 通用附件识别）、勿再引用符号清单 |
 | [05-mac-dock.md](./app/05-mac-dock.md) | macOS Dock 跟随窗口可见性（2026-09-04）：任一窗口可见才显示 Dock、全隐即隐藏（纯托盘形态、托盘为唯一唤醒入口）、Dock 点击按可见性分流（仅伙伴可见→伙伴，否则→AI）、macDock.ts 注册表契约、accessory 焦点陷阱（ensure-before-show）、最小化不算隐藏 |
 | [06-aihot-removal.md](./app/06-aihot-removal.md) | AIHOT 资讯功能整体移除记录（2026-09-05）：删除范围（页面 13 文件 / API 客户端 / 本地镜像服务 / 4 个 AI 工具 / DB 表 DROP 迁移 0010）、共享文件修改点、保留项（webview 能力与 LinkPreviewDrawer、存量白名单 id 不清理） |
+| [07-auto-update.md](./app/07-auto-update.md) | 客户端自动更新：electron-updater generic feed、系统设置检查/下载/重启安装、未打包环境跳过 |
 
 ### server/ —— 本地事件服务
 

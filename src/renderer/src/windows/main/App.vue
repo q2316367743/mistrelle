@@ -34,6 +34,7 @@ import { collapsed, toggleCollapsed } from '@/global/BeanFactory'
 import { appData, dataFolder } from '@/global/Constant'
 import { useTitlePadding } from '@/hooks'
 import { initMemorySystem } from '@/windows/main/modules/memory'
+import { startAppUpdater } from '@/windows/main/modules/updater/startAppUpdater'
 import AppSide from '@/windows/main/pages/app/AppSide.vue'
 import AsideLeftIcon from '@/assets/icons/AsideLeftIcon.vue'
 import { ChatAddIcon } from 'tdesign-icons-vue-next'
@@ -64,6 +65,7 @@ onMounted(() => {
 数据目录：${dataFolder}`)
   // 记忆系统：长期记忆合并的启动检查 + 每小时跨天检查（会话提取钩子在 ChatSessionManager 内）
   initMemorySystem()
+  void startAppUpdater()
 })
 </script>
 <style scoped lang="less">

@@ -28,7 +28,7 @@
 | `@zumer/snapdom` | dependencies | devDependencies | 仅 renderer 动态 `import()`（NoteCardRenderer.vue / designHtmlRender.ts） |
 | `jszip` | dependencies | devDependencies | 仅 renderer 动态 `import()`（extend/card/index.vue） |
 | `lucide-vue-next` | dependencies | **删除** | src 全量零引用（工具面板实际用 Iconify 聚合图标集，非本 npm 包） |
-| `electron-updater` | dependencies | **保留不动** | src 零引用，但 dev-app-update.yml + electron-builder `publish` 已预留自动更新，暂不擅动 |
+| `electron-updater` | dependencies | **保留** | main 已接入 `UpdaterService`；必须 externalize 随包，见 `docs/app/07-auto-update.md` |
 
 main/preload 纯 JS 运行库（axios / adm-zip / iconv-lite / turndown / ejs 等）本次**未动**，仍走 external；若想进一步压缩可参照 `docs/migration/01:106` 改走 bundle，但需另行 build 验证。
 

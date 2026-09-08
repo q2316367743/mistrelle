@@ -9,6 +9,8 @@ export interface SettingGlobal {
   bgChatLight: BgConfig
   bgNewDark: BgConfig
   bgChatDark: BgConfig
+  /** 启动后自动检查客户端更新 */
+  autoCheckUpdate: boolean
 }
 
 export function buildSettingGlobal(): SettingGlobal {
@@ -17,6 +19,7 @@ export function buildSettingGlobal(): SettingGlobal {
     bgNewLight: { ...def },
     bgChatLight: { ...def },
     bgNewDark: { ...def },
-    bgChatDark: { ...def }
+    bgChatDark: { ...def },
+    autoCheckUpdate: true,
   }
 }

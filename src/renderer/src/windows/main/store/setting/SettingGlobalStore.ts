@@ -7,10 +7,14 @@ import { useLog } from '@/hooks/UseLog'
 export const useSettingGlobalStore = defineStore('setting:global', () => {
   const logger = useLog({ name: 'store:setting-global' })
   const state = ref<SettingGlobal>(buildSettingGlobal())
+  let resolveReady: () => void = () => {}
+  const ready = new Promise<void>((resolve) => {
+    resolveReady = resolve
+  })
 
   ;(async () => {
     const global = await readJsonFile<SettingGlobal>(getSettingGlobalPath())
-    if (global) state.value = global
+    if (global) state.value = { ...buildSettingGlobal(), ...global }
 
     watch(
       state,
@@ -20,10 +24,17 @@ export const useSettingGlobalStore = defineStore('setting:global', () => {
       { deep: true }
     )
   })()
-    .then(() => logger.debug('设置-全局 初始化成功'))
-    .catch((e) => logger.error('设置-全局 初始化失败', e))
+    .then(() => {
+      resolveReady()
+      logger.debug('设置-全局 初始化成功')
+    })
+    .catch((e) => {
+      resolveReady()
+      logger.error('设置-全局 初始化失败', e)
+    })
 
   return {
-    state
+    state,
+    ready,
   }
 })

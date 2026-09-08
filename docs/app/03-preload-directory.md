@@ -20,6 +20,7 @@ src/preload/
     │   ├── sharp/           # sharpChannels.ts + sharp.ts
     │   ├── browser/         # browserChannels.ts + browser.ts（runBrowser）
     │   ├── shell/           # shellExecChannels.ts + shellExec.ts
+    │   ├── updater/         # updaterChannels.ts + updater.ts（electron-updater）
     │   └── platform/        # Electron/OS 能力域（与 main platform 域对称）：
     │                        #   platformChannels.ts（shell/dialog/clipboard/os/display/notification 六组）
     │                        #   + platform.ts（六桥）+ fsChannels.ts + fs.ts

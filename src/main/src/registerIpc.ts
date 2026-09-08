@@ -23,6 +23,7 @@ import { registerEsp32LcdIpc } from './buddy/esp32-lcd/esp32LcdIpc'
 import { initEsp32Lcd } from './buddy/esp32-lcd/esp32LcdService'
 import { registerQuotaIpc } from './buddy/quota/quotaIpc'
 import { initQuota } from './buddy/quota/quotaService'
+import { registerUpdaterIpc } from './modules/updater/updaterIpc'
 
 export function registerIpc(): void {
   registerShellIpc()
@@ -47,6 +48,7 @@ export function registerIpc(): void {
   registerIntegrationsIpc()
   registerEsp32LcdIpc()
   registerQuotaIpc()
+  registerUpdaterIpc()
   // 事件协议层监听器①白名单过滤：原始事件 → 校验后总线（设备域消费）
   void initBuddyEventFilter()
   // 监听器②集成调试事件流：全量采集广播渲染层（纯内存；registerIpc 先于事件服务启动，不漏收）
