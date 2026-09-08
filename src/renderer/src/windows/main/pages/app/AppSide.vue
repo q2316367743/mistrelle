@@ -166,7 +166,7 @@ const handleBack = () => router.push('/new')
 
 .user-menu {
   position: absolute;
-  left: 8px;
+  left: 0;
   right: 0;
   bottom: 0;
   padding: 0 8px 6px;

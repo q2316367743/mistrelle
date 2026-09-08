@@ -2,6 +2,7 @@
  * 串口通信域（main 进程）：serialport 原生模块的薄封装。
  * 按 path 管理多个已开端口（buddy 各硬件域各自独立连接，域服务自行编排），模块不感知业务；
  * 意外断开经 onPortClosed 回调通知订阅方（各域服务据此维护自己的连接运行态并推送渲染层），
+ * 输入型设备可经 subscribePortData 订阅原始数据（utf8 文本块，分帧/协议由订阅方解析），
  * 不直接面向渲染层——渲染层一律走各业务域 IPC。
  */
 import { SerialPort } from 'serialport'
@@ -38,6 +39,31 @@ export function onPortClosed(listener: (path: string) => void): void {
   closeListeners.add(listener)
 }
 
+/** 数据监听注册表（path → 数据回调集合） */
+const dataListeners = new Map<string, Set<(chunk: string) => void>>()
+
+/**
+ * 订阅端口的原始数据（utf8 文本块原样分发；分帧/协议解析由订阅方自理——
+ * 设备可能不带任何行尾分隔符，模块不做 \n 假设）。
+ * 返回退订函数；端口关闭（主动/意外）时清空该端口的监听，重连后需重新订阅。
+ */
+export function subscribePortData(path: string, listener: (chunk: string) => void): () => void {
+  let set = dataListeners.get(path)
+  if (!set) {
+    set = new Set()
+    dataListeners.set(path, set)
+  }
+  set.add(listener)
+  return () => {
+    set.delete(listener)
+  }
+}
+
+/** 清理指定端口的数据监听（关闭端口时调用，防止悬挂回调） */
+function cleanupDataListeners(path: string): void {
+  dataListeners.delete(path)
+}
+
 /** 串口列表（精简字段） */
 export async function listPorts(): Promise<SerialPortItem[]> {
   const infos = await SerialPort.list()
@@ -72,11 +98,19 @@ export async function openPort(path: string, baudRate: number = DEFAULT_BAUD_RAT
     const current = opened.get(path)
     if (current?.port === next) {
       opened.delete(path)
+      cleanupDataListeners(path)
       for (const listener of closeListeners) listener(path)
     }
   })
   next.on('error', (err) => {
     console.error('[serial] 端口错误', err.message)
+  })
+  // 数据读取：utf8 文本块原样分发给订阅方（分帧由订阅方解析，模块不感知协议）
+  next.on('data', (chunk: Buffer) => {
+    const listeners = dataListeners.get(path)
+    if (!listeners?.size) return
+    const text = chunk.toString('utf8')
+    for (const listener of listeners) listener(text)
   })
 
   opened.set(path, { port: next, baudRate })
@@ -96,6 +130,7 @@ export async function closePort(path: string): Promise<void> {
   const current = opened.get(path)
   if (!current) return
   opened.delete(path)
+  cleanupDataListeners(path)
   if (!current.port.isOpen) return
   await new Promise<void>((resolve) => current.port.close(() => resolve()))
 }

@@ -18,6 +18,11 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/windows/buddy/pages/hardware/esp32-lcd/Esp32Lcd.vue')
   },
   {
+    name: '硬件控制/小键盘',
+    path: '/hardware/keypad',
+    component: () => import('@/windows/buddy/pages/hardware/keypad/Keypad.vue')
+  },
+  {
     name: '设置/应用集成',
     path: '/settings/integrations',
     component: () => import('@/windows/buddy/pages/settings/integrations/IntegrationsPage.vue')

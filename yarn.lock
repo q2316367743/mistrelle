@@ -1256,6 +1256,96 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
+"@koromix/koffi-android-arm64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-android-arm64/-/koffi-android-arm64-3.2.1.tgz#2dce798d3669d2b7b56e9c02a8a6a274abd6c7c6"
+  integrity sha512-1pJQ4jnZlUJduK9u9DC5CGy3aOgDUPvIXpNb6syV3+Dh5Q/ugezAIGCqvY+w+1mgXsve0pd0NVvJRjdZNHQ6MA==
+
+"@koromix/koffi-android-x64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-android-x64/-/koffi-android-x64-3.2.1.tgz#4d0afcbaf66042310ac1b3acf2c58c6ffe973743"
+  integrity sha512-HH40xGh3gVQifjOBnhwT2tECC0lL1lYe+nxHvWNSzxDIyQNcVPXg38ta7vuONRFpD+uIrw7fqGYLzbZIagkVcg==
+
+"@koromix/koffi-darwin-arm64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-darwin-arm64/-/koffi-darwin-arm64-3.2.1.tgz#20fd5166f0466eb9f59699506cb78af1c5207d09"
+  integrity sha512-Vj4h+xcjc5+Cn0DhPHjgRX4omKAv96Kehtcd+1YgYuY2W7FvQn9vS+3SmzVwhC5Qmg9bIwUZObYQ8T/4hBqQqA==
+
+"@koromix/koffi-darwin-x64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-darwin-x64/-/koffi-darwin-x64-3.2.1.tgz#03e4ccb41a05579f1a29c281e4826213317cf6ca"
+  integrity sha512-gFCWxNBTZIvxo1p+PURWfsy2Ctj5FGnVVs1f03lTLhBvmxEto70pdIiFztdFLDFkAJ1pmtQmruRKapeK+E8YPA==
+
+"@koromix/koffi-freebsd-arm64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-freebsd-arm64/-/koffi-freebsd-arm64-3.2.1.tgz#d3e4e9f2219329c86f37bc285685eb895a5281bd"
+  integrity sha512-qj+f1s2e6vULaUG1cdlTcCXmunCq2t+rjxku1+esaMIqVnHpOwj0QzPuInG0AFdXjwBNQhyVR/HpDj8daEwwsQ==
+
+"@koromix/koffi-freebsd-ia32@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-freebsd-ia32/-/koffi-freebsd-ia32-3.2.1.tgz#8698603b8fd027c1ecf6dc3aad7df4dc16efdfdf"
+  integrity sha512-6olHb1Qfgai0jjs6ddlDDD0ZfsCxy7SPi8rMRpuYQWH0qhgtyQu82hw5b1p7z+TJ0zZP3ZeQQ6l+U/MlM1ICHQ==
+
+"@koromix/koffi-freebsd-x64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-freebsd-x64/-/koffi-freebsd-x64-3.2.1.tgz#8513b2af457e26d97e80d34f63cbf00638730586"
+  integrity sha512-Dikhw1ySYNVMkmeFvFVjnU5Wdk6mffNoOjJxm9bTG96vg7OlemylxqdEven47R1YJ3yzNVJn/MlQ207ORWfi2w==
+
+"@koromix/koffi-linux-arm64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-linux-arm64/-/koffi-linux-arm64-3.2.1.tgz#75d4a53ee0d061fa159cc1be7ae80b04d100920f"
+  integrity sha512-K+cGUL5iBcDqxmsocrjmlASqDf24gc7artbVW3PewG2c9AqwC63lezgwvB85Nx4lZAQjB6zIFHh9A7t1yGbwhw==
+
+"@koromix/koffi-linux-arm@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-linux-arm/-/koffi-linux-arm-3.2.1.tgz#53c90d9d5f9a893941f3ad828af487b3795e8ee1"
+  integrity sha512-OfwUwZylidq95wQKp6ClInULrfB2giu7dqM6Rhe0zAe6lES5I2SXNw15T9+GnRHk3/9hKT2XZ37OZLaKSyWNLA==
+
+"@koromix/koffi-linux-ia32@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-linux-ia32/-/koffi-linux-ia32-3.2.1.tgz#4efba1b898e73b618d22a9e0c9f3e9d11d7ddab4"
+  integrity sha512-rxj6UYjU1qd98gxNQOSCdLpc5cPRi5Giq9rNd3jnGuSNIyMkwa6Dxw4cUjmhIBCYESMJtmNt5NWnJp5u9wTfYQ==
+
+"@koromix/koffi-linux-loong64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-linux-loong64/-/koffi-linux-loong64-3.2.1.tgz#2a0d8d0af7f66e95e257111e5f54ec2108d8b3b8"
+  integrity sha512-aHhnHzkPRmT/IHDlGvESJ/Bs32m8N6UE6Ab6kMeJzgk74IN8af2m/81/wZJtybR1M2UxCV4NmlVNUYQQvSAO3Q==
+
+"@koromix/koffi-linux-riscv64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-linux-riscv64/-/koffi-linux-riscv64-3.2.1.tgz#d555a20ec36f7c190cf16fef1055a42ad9183d4d"
+  integrity sha512-qtQBsjbm3LiirLJvajWmKkNb7ARk7fvJVXdftJ7NtAnF3Xw8EbDvrtvmvtNI1yLPlYcBmlzCCD71hwhWYk0SIA==
+
+"@koromix/koffi-linux-x64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-linux-x64/-/koffi-linux-x64-3.2.1.tgz#237b4640d73803eb67cbba437b512ed87933803d"
+  integrity sha512-c7hw7Qs/r5gnFRTQLcbifBwRU7wiocj+2pVuDQ5Ahb3r36SZmupmgYbTWcLvTW+hul1jd7SKRV0d14ZJq/tvSw==
+
+"@koromix/koffi-openbsd-ia32@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-openbsd-ia32/-/koffi-openbsd-ia32-3.2.1.tgz#4337a63b288effd1eac1d3876d794ae2b7ee3d18"
+  integrity sha512-mmY8fY8LQ/CB52+h3yrMYmVyoxzW3x08S0yI6VNfHWdfU6yJtZkKCbhjmQCYMrWbYKC4gMvwZwCywIGPAkLyeA==
+
+"@koromix/koffi-openbsd-x64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-openbsd-x64/-/koffi-openbsd-x64-3.2.1.tgz#c59c9c7e40953ffb7e32f8d8fbcb19ff38a8ef03"
+  integrity sha512-k4ig6aAPbFSRATOIIOfdf/KtlOGH4SVls6L9fy0QnTxRJYvY2oSltTsQtBDANgEQldlq8Kl5WnpRa1VSibP4Lw==
+
+"@koromix/koffi-win32-arm64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-win32-arm64/-/koffi-win32-arm64-3.2.1.tgz#915a18cf57472b5e9c6d716813bc399837a4514e"
+  integrity sha512-cTWBJGK//pDMeKQJE/79Aq9MiOAF4H8QyLZHSQ9IWm8czOfwjG4J1AhsQ9DjI9KFOykH77hhnpmQTGVMIubGig==
+
+"@koromix/koffi-win32-ia32@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-win32-ia32/-/koffi-win32-ia32-3.2.1.tgz#9fad23a3132a940726fff308e5b2975517a9a32b"
+  integrity sha512-Z50EM6TAZ7CFyMmyX6thv8eNpJchqe9eenhibSIy2Eq/FQYF76gU2VK/LEoaF46L8hfC7TpTp9b10MvReHEyFA==
+
+"@koromix/koffi-win32-x64@3.2.1":
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/@koromix/koffi-win32-x64/-/koffi-win32-x64-3.2.1.tgz#9d380ab0ea8bcfba16f4feda2c9ea3630ff5620f"
+  integrity sha512-ZmZNiBO6bkOSh3QNzgfvb1cMY0yMobn6ZQrSMqbAce21qyYL8niIbyipz9N/PIRDciGhsV0wUxnZsxIO+yWsHQ==
+
 "@leafer-editor/partner@2.2.9":
   version "2.2.9"
   resolved "https://registry.npmmirror.com/@leafer-editor/partner/-/partner-2.2.9.tgz"
@@ -6337,6 +6427,30 @@ khroma@^2.1.0:
   version "2.1.0"
   resolved "https://registry.npmmirror.com/khroma/-/khroma-2.1.0.tgz"
   integrity sha512-Ls993zuzfayK269Svk9hzpeGUKob/sIgZzyHYdjQoAdQetRKpOLj+k/QQQ/6Qi0Yz65mlROrfd+Ev+1+7dz9Kw==
+
+koffi@^3.2.1:
+  version "3.2.1"
+  resolved "https://registry.npmmirror.com/koffi/-/koffi-3.2.1.tgz#94f9a111db2c513cdd721b1c5d8c24d838c2ce25"
+  integrity sha512-0qE3lZ8jllRqPN4Ob6Ajl7c2bJSJDhQWuKLGP5hIEpHLllJWv1ydHFMhHmHc5p/W9GticKVDbYzZd7TBoQ4CZg==
+  optionalDependencies:
+    "@koromix/koffi-android-arm64" "3.2.1"
+    "@koromix/koffi-android-x64" "3.2.1"
+    "@koromix/koffi-darwin-arm64" "3.2.1"
+    "@koromix/koffi-darwin-x64" "3.2.1"
+    "@koromix/koffi-freebsd-arm64" "3.2.1"
+    "@koromix/koffi-freebsd-ia32" "3.2.1"
+    "@koromix/koffi-freebsd-x64" "3.2.1"
+    "@koromix/koffi-linux-arm" "3.2.1"
+    "@koromix/koffi-linux-arm64" "3.2.1"
+    "@koromix/koffi-linux-ia32" "3.2.1"
+    "@koromix/koffi-linux-loong64" "3.2.1"
+    "@koromix/koffi-linux-riscv64" "3.2.1"
+    "@koromix/koffi-linux-x64" "3.2.1"
+    "@koromix/koffi-openbsd-ia32" "3.2.1"
+    "@koromix/koffi-openbsd-x64" "3.2.1"
+    "@koromix/koffi-win32-arm64" "3.2.1"
+    "@koromix/koffi-win32-ia32" "3.2.1"
+    "@koromix/koffi-win32-x64" "3.2.1"
 
 layout-base@^1.0.0:
   version "1.0.2"

@@ -21,6 +21,8 @@ import { initIntegrationsActivity } from './buddy/integrations/integrationsActiv
 import { initBuddyEventFilter } from './buddy/events/buddyEventFilter'
 import { registerEsp32LcdIpc } from './buddy/esp32-lcd/esp32LcdIpc'
 import { initEsp32Lcd } from './buddy/esp32-lcd/esp32LcdService'
+import { registerKeypadIpc } from './buddy/keypad/keypadIpc'
+import { initKeypad } from './buddy/keypad/keypadService'
 import { registerQuotaIpc } from './buddy/quota/quotaIpc'
 import { initQuota } from './buddy/quota/quotaService'
 import { registerUpdaterIpc } from './modules/updater/updaterIpc'
@@ -47,6 +49,7 @@ export function registerIpc(): void {
   registerTrafficLightIpc()
   registerIntegrationsIpc()
   registerEsp32LcdIpc()
+  registerKeypadIpc()
   registerQuotaIpc()
   registerUpdaterIpc()
   // 事件协议层监听器①白名单过滤：原始事件 → 校验后总线（设备域消费）
@@ -57,6 +60,8 @@ export function registerIpc(): void {
   void initTrafficLight()
   // ESP32 LCD 同理：加载配置自动连接串口 + 订阅事件/额度快照总线
   void initEsp32Lcd()
+  // 小键盘同理：加载配置自动连接串口 + 订阅按键行（解析后驱动系统级模拟按键）
+  void initKeypad()
   // 额度插件公共域：加载配置 + 启动刷新定时器（快照经 quotaBus 分发订阅设备）
   initQuota()
 }

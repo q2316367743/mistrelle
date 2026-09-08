@@ -5,6 +5,7 @@ import { RelayApi } from '@/types/relay'
 import { TrafficLightApi } from '@common/types/trafficLight'
 import { IntegrationApi } from '@common/types/integrations'
 import { Esp32LcdApi } from '@common/types/esp32Lcd'
+import { KeypadApi } from '@common/types/keypad'
 import { QuotaApi } from '@common/types/quota'
 
 declare global {
@@ -50,6 +51,8 @@ declare global {
       integrations: IntegrationApi
       /** ESP32 LCD 配置桥：仅伙伴窗口独立 preload 注入，主窗口运行时不存在 */
       esp32Lcd: Esp32LcdApi
+      /** 小键盘配置桥：仅伙伴窗口独立 preload 注入，主窗口运行时不存在 */
+      keypad: KeypadApi
       /** 额度插件公共域桥：仅伙伴窗口独立 preload 注入，主窗口运行时不存在 */
       quota: QuotaApi
       template: {
