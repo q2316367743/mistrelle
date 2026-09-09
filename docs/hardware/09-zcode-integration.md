@@ -29,7 +29,8 @@ ZCode 不需要客户端 API、不需要 feature-detect、也不需要 `/buddy/p
 
 两个模板脚本（`resources/plugins/zcode/`，纯 Node ≥18 无依赖）：
 
-**forward.mjs**（事件转发，`type:"command"` + `async:true` 防火忘，不阻塞会话）：
+**forward.mjs**（事件转发，`type:"command"` 挂载；钩子一律内联执行，脚本只做一次本地
+fetch 即退，条目 `timeoutMs: 15000` 防挂兜底）：
 
 | ZCode 钩子 | 条件 | Buddy 事件 |
 |---|---|---|
@@ -65,8 +66,17 @@ message.part.updated 这类流式高频钩子，本地 GET 足以承受。
   的旧条目（幂等重装 + 路径变更清理）后追加新条目，**用户自有条目原样保留**，其余键一律不动。
 - **check 三态**：脚本字节与模板不一致 → `outdated`；脚本齐全且 config.json 中 7 个条目逐一
   深相等且 `hooks.enabled === true` → `ready`；否则 `missing`。
-- 钩子条目形状：转发事件 = `{type:'command', command:'node "<dir>/forward.mjs"', async:true}`；
-  PermissionRequest = `{type:'process', command:'node', args:['<dir>/permission.mjs'], timeoutMs:330000}`。
+- **uninstall**：先解析 config.json（失败即中止不碰用户配置）→ 按安装路径标记摘除本方 7 个
+  条目（用户自有条目保留；摘空的事件键删除；events 全空时仅当 hooks 键已无其他遗留才整体
+  还原删除）→ 删除脚本目录 → 回写（写前备份 `.bak`，语义与安装对称）。幂等：未安装也返回成功。
+- **钩子条目形状（⚠️ 官方 schema 的坑）**：`events.<Event>` 数组元素是
+  `{ matcher?, hooks: [ {type, command, ...} ] }` **包装对象**——直接写裸钩子对象不会被
+  注册（静默无效，曾因此新会话零事件）。转发事件 = `{hooks:[{type:'command',
+  command:'node "<dir>/forward.mjs"', timeoutMs:15000}]}`；PermissionRequest =
+  `{hooks:[{type:'process', command:'node', args:['<dir>/permission.mjs'], timeoutMs:330000}]}`。
+- **`async` 字段无运行时效果**（官方 diagnosing-hooks pitfalls #9）：钩子一律内联执行，
+  转发脚本的耗时 ≈ node 启动（百毫秒级）+ 本地 fetch（毫秒级），靠秒退控制开销；
+  勿依赖 async 做后台化，需要后台应让脚本自行 daemonize。
 
 ## 关键文件
 

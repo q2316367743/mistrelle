@@ -4,6 +4,7 @@
  * - opencode = 把内置插件模板复制到其全局插件目录（官方约定启动自动加载，无需注册 opencode.json）
  * - zcode = 钩子脚本复制到 mistrelle 自有目录 + hooks 配置合并写入 ~/.zcode/cli/config.json
  *   （只动 hooks 键、写前备份 .bak、按安装路径标记幂等替换本方条目；新会话生效）
+ * 卸载按各软件语义还原：opencode 删插件文件；zcode 摘本方条目（保留用户自有条目）+ 删脚本目录。
  * 新增软件 = SOFTWARE_NAMES 加成员 + resources/plugins/<软件>/ 放模板 + 此处补一个 adapter。
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -12,10 +13,11 @@ import { app } from 'electron'
 import type { PlatformInstallResult, PlatformStatus } from '@common/types/integrations'
 import { isSoftwareName, type SoftwareName } from '@common/types/trafficLight'
 
-/** 接入 adapter：check 判定三态，install 覆盖安装（均不抛错，结果对象返回） */
+/** 接入 adapter：check 判定三态，install 覆盖安装，uninstall 还原清理（均不抛错，结果对象返回） */
 interface PlatformAdapter {
   check(): PlatformStatus
   install(): PlatformInstallResult
+  uninstall(): PlatformInstallResult
 }
 
 /** 内置插件模板路径（resources 整体 asarUnpack，dev/打包均以 __dirname 相对定位） */
@@ -92,17 +94,30 @@ const ZCODE_HOOK_EVENTS = [
   'PermissionRequest'
 ] as const
 
-/** 单个事件的钩子条目（转发 = command 异步防火忘不阻塞会话；权限 = process 同步阻塞等决定） */
+/**
+ * 单个事件的钩子条目（官方 schema：events 数组元素是 { matcher?, hooks: [...] } 包装，
+ * 裸钩子对象不会被注册——曾因此新会话零事件）。钩子一律内联执行（官方 async 字段
+ * 无运行时效果）：转发 = command 跑一次本地 fetch 即退（timeoutMs 兜底防挂），
+ * 权限 = process 同步阻塞等决定。
+ */
 function zcodeHookEntry(event: string, hookDir: string): Record<string, unknown> {
   if (event === 'PermissionRequest') {
     return {
-      type: 'process',
-      command: 'node',
-      args: [join(hookDir, 'permission.mjs')],
-      timeoutMs: 330000
+      hooks: [
+        {
+          type: 'process',
+          command: 'node',
+          args: [join(hookDir, 'permission.mjs')],
+          timeoutMs: 330000
+        }
+      ]
     }
   }
-  return { type: 'command', command: `node "${join(hookDir, 'forward.mjs')}"`, async: true }
+  return {
+    hooks: [
+      { type: 'command', command: `node "${join(hookDir, 'forward.mjs')}"`, timeoutMs: 15000 }
+    ]
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -187,10 +202,72 @@ function installZcode(): PlatformInstallResult {
   }
 }
 
+/** 卸载 opencode：删除插件文件与改名前旧名残留（幂等，不存在也算成功） */
+function uninstallOpencode(): PlatformInstallResult {
+  const path = opencodePluginFile()
+  try {
+    rmSync(path, { force: true })
+    try {
+      rmSync(join(dirname(path), OPENCODE_LEGACY_PLUGIN_NAME), { force: true })
+    } catch {
+      // 旧文件清理失败不影响卸载结果，下次安装/卸载再清理
+    }
+    return { ok: true, path }
+  } catch (error) {
+    return { ok: false, msg: '插件卸载失败：' + (error as Error).message, path }
+  }
+}
+
+/** 卸载 zcode：摘除本方钩子条目还原 config.json + 删除脚本目录 */
+function uninstallZcode(): PlatformInstallResult {
+  const hookDir = zcodeHookDir()
+  const configFile = zcodeConfigFile()
+  try {
+    // 1) 先解析 config（失败即中止，绝不碰用户配置；本方条目未摘除时可再次卸载）
+    let config: Record<string, unknown> | null = null
+    if (existsSync(configFile)) {
+      const parsed: unknown = JSON.parse(readFileSync(configFile, 'utf-8'))
+      if (!isRecord(parsed)) {
+        return { ok: false, msg: 'ZCode 配置文件不是 JSON 对象，已中止卸载', path: hookDir }
+      }
+      config = parsed
+    }
+    // 2) 按标记摘除本方条目：摘空的事件键删除；events 全空时仅在本方遗留键也清空后整体还原
+    if (config) {
+      const hooks = config['hooks']
+      if (isRecord(hooks) && isRecord(hooks['events'])) {
+        const events = hooks['events']
+        for (const [event, list] of Object.entries(events)) {
+          if (!Array.isArray(list)) continue
+          const kept = list.filter(
+            (entry) => !(isRecord(entry) && JSON.stringify(entry).includes(ZCODE_HOOK_MARKER))
+          )
+          if (kept.length === 0) delete events[event]
+          else events[event] = kept
+        }
+        if (Object.keys(events).length === 0) {
+          delete hooks['events']
+          if (Object.keys(hooks).length === 0) delete config['hooks']
+        }
+      }
+    }
+    // 3) 删脚本目录 + 回写配置（写前备份，语义与安装对称）
+    rmSync(hookDir, { recursive: true, force: true })
+    if (config) {
+      copyFileSync(configFile, `${configFile}.bak`)
+      mkdirSync(dirname(configFile), { recursive: true })
+      writeFileSync(configFile, JSON.stringify(config, null, 2) + '\n', 'utf-8')
+    }
+    return { ok: true, path: hookDir }
+  } catch (error) {
+    return { ok: false, msg: 'ZCode 钩子卸载失败：' + (error as Error).message, path: hookDir }
+  }
+}
+
 /** adapter 注册表：键与 SOFTWARE_NAMES 全集对齐 */
 const ADAPTERS: Record<SoftwareName, PlatformAdapter> = {
-  opencode: { check: checkOpencode, install: installOpencode },
-  zcode: { check: checkZcode, install: installZcode }
+  opencode: { check: checkOpencode, install: installOpencode, uninstall: uninstallOpencode },
+  zcode: { check: checkZcode, install: installZcode, uninstall: uninstallZcode }
 }
 
 /** 检查指定软件的接入配置状态（未知软件按未安装处理） */
@@ -203,4 +280,10 @@ export function checkPlatform(software: string): PlatformStatus {
 export function installPlatform(software: string): PlatformInstallResult {
   if (!isSoftwareName(software)) return { ok: false, msg: '未知软件，无法安装接入配置', path: '' }
   return ADAPTERS[software].install()
+}
+
+/** 卸载指定软件的接入配置（未知软件返回失败，不抛错） */
+export function uninstallPlatform(software: string): PlatformInstallResult {
+  if (!isSoftwareName(software)) return { ok: false, msg: '未知软件，无法卸载接入配置', path: '' }
+  return ADAPTERS[software].uninstall()
 }

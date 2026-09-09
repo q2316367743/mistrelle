@@ -44,11 +44,11 @@
   `INTEGRATION_ACTIVITY_LIMIT`（事件流上限 200）、
   `IntegrationActivityEntry { platform: string; event: string; accepted: boolean; at: number }`
   （/buddy/event 收到的每条请求，白名单外保留原始字符串，accepted=false=已丢弃）、
-  `IntegrationApi { checkPlatform(software), installPlatform(software), getActivity(), clearActivity(),
-  onActivity(cb) }`
+  `IntegrationApi { checkPlatform(software), installPlatform(software), uninstallPlatform(software),
+  getActivity(), clearActivity(), onActivity(cb) }`
   （`window.preload.integrations`，仅伙伴窗口独立 preload 注入，vite-env.d.ts 声明）。
 - **通道** `@common/buddy/integrations/integrationChannels.ts`：`integrations:check` /
-  `integrations:install` / `integrations:getActivity`（渲染层首拉全量缓冲）/
+  `integrations:install` / `integrations:uninstall` / `integrations:getActivity`（渲染层首拉全量缓冲）/
   `integrations:clearActivity`（清空）/ `integrations:activity`（主进程 → 渲染层单条推送）。
 - **登记表** 渲染层 `registry.ts`：`INTEGRATION_REGISTRY: IntegrationItem[]`
   （`{ name: SoftwareName, label, description, devices, events }`），决定集成页卡片与顺序；
@@ -58,6 +58,9 @@
   opencode 实现 = 模板 `resources/plugins/opencode/mistrelle-integration.js` 复制到
   `~/.config/opencode/plugins/mistrelle-integration.js`，install 顺带 `rmSync` 旧名残留
   `mistrelle-traffic-light.js`（防 opencode 双载双投递；清理失败不影响安装结果）。
+  2026-09-09 起每个 adapter 增配 `uninstall()`：opencode = 删插件文件与旧名残留（幂等）；
+  zcode = 摘本方钩子条目还原 config.json（保留用户自有条目，events 全空才整体还原 hooks 键）+ 删脚本目录；
+  集成卡片对已安装（ready/outdated）状态展示「卸载」文字按钮（MessageBoxUtil.confirm 确认）。
 
 ## 关键文件
 

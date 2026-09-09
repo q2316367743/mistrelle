@@ -10,6 +10,8 @@ export const IntegrationChannels = {
   check: 'integrations:check',
   /** 安装/更新指定软件的接入配置（覆盖写入其插件目录） */
   install: 'integrations:install',
+  /** 卸载指定软件的接入配置（opencode 删插件文件；zcode 摘钩子条目并删脚本目录） */
+  uninstall: 'integrations:uninstall',
   /** 拉取调试事件流（全量缓冲，含未命中白名单被丢弃的请求） */
   getActivity: 'integrations:getActivity',
   /** 清空全部调试事件流 */

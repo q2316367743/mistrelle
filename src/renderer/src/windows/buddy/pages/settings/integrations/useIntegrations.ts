@@ -37,6 +37,17 @@ async function install(name: SoftwareName): Promise<void> {
   await check(name)
 }
 
+/** 卸载指定软件的接入配置（opencode 删插件文件；zcode 摘钩子条目并删脚本目录），成功后刷新状态 */
+async function uninstall(name: SoftwareName): Promise<void> {
+  const result = await window.preload.integrations.uninstallPlatform(name)
+  if (!result.ok) {
+    MessageUtil.error(result.msg || '卸载失败')
+    return
+  }
+  MessageUtil.success('已卸载')
+  await check(name)
+}
+
 /** 状态归一（未检测 = 未安装） */
 function statusOf(name: SoftwareName): PlatformConfigStatus {
   return statuses.value[name]?.status ?? 'missing'
@@ -63,5 +74,5 @@ export function useIntegrations() {
       }
     })
   }
-  return { statuses, activity, clearActivity, statusOf, check, install }
+  return { statuses, activity, clearActivity, statusOf, check, install, uninstall }
 }

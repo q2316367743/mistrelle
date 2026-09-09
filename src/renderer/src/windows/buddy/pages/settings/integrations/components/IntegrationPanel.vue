@@ -5,15 +5,27 @@
         <span class="name">{{ item.label }}</span>
         <t-tag :theme="statusTheme" size="small" variant="light">{{ statusLabel }}</t-tag>
       </div>
-      <t-button
-        v-if="status !== 'ready'"
-        size="small"
-        variant="outline"
-        :loading="installing"
-        @click="installNow"
-      >
-        {{ status === 'outdated' ? '更新' : '安装' }}
-      </t-button>
+      <div class="actions">
+        <t-button
+          v-if="status !== 'ready'"
+          size="small"
+          variant="outline"
+          :loading="installing"
+          @click="installNow"
+        >
+          {{ status === 'outdated' ? '更新' : '安装' }}
+        </t-button>
+        <t-button
+          v-if="status !== 'missing'"
+          size="small"
+          variant="text"
+          theme="danger"
+          :loading="uninstalling"
+          @click="uninstallNow"
+        >
+          卸载
+        </t-button>
+      </div>
     </div>
     <div class="desc">{{ item.description }}</div>
     <div class="install-status" :data-status="status">{{ statusText }}</div>
@@ -48,6 +60,7 @@ import {
 } from '@common/types/buddyEvent'
 import type { IntegrationItem } from '../registry'
 import { useIntegrations } from '../useIntegrations'
+import { MessageBoxUtil } from '@/utils/modal'
 import EventFeedPanel from './EventFeedPanel.vue'
 import PermissionRequestPanel from './PermissionRequestPanel.vue'
 
@@ -55,9 +68,10 @@ defineOptions({ name: 'IntegrationPanel' })
 
 const props = defineProps<{ item: IntegrationItem }>()
 
-const { statuses, install } = useIntegrations()
+const { statuses, install, uninstall } = useIntegrations()
 
 const installing = ref(false)
+const uninstalling = ref(false)
 
 /** 接入配置状态（未检测 = 未安装） */
 const status = computed<PlatformConfigStatus>(
@@ -87,6 +101,25 @@ async function installNow(): Promise<void> {
     await install(props.item.name)
   } finally {
     installing.value = false
+  }
+}
+
+/** 卸载接入配置（确认弹窗 → main 按各软件语义还原；取消静默返回） */
+async function uninstallNow(): Promise<void> {
+  try {
+    await MessageBoxUtil.confirm(
+      `卸载后 ${props.item.label} 的事件将不再投递到 mistrelle（红绿灯/圆屏停止响应）。`,
+      '卸载集成',
+      { confirmButtonText: '卸载', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  uninstalling.value = true
+  try {
+    await uninstall(props.item.name)
+  } finally {
+    uninstalling.value = false
   }
 }
 
@@ -122,6 +155,12 @@ function eventLabel(event: BuddyEventName): string {
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .name {

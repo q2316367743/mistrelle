@@ -5,9 +5,10 @@
  * Mistrelle Buddy 事件词汇表后，经本地事件服务 HTTP 投递给桌面端，由其分发给
  * buddy 设备（红绿灯按用户配置映射灯态、ESP32 LCD 屏转发显示）。
  *
- * hooks 配置中以 type:"command" + async:true 挂载（fire-and-forget，不阻塞会话）；
- * 投递失败静默丢弃（灯灭语义，绝不影响 zcode 主流程）。不做节流：每次钩子是独立
- * 进程无共享状态，且 ZCode 无流式高频钩子，本地 GET 足以承受。
+ * hooks 配置中以 type:"command" 挂载（官方 async 字段无运行时效果，钩子一律内联
+ * 执行——本脚本只做一次本地 fetch 即退，开销约等于 node 启动；config 条目带
+ * timeoutMs 防挂兜底）。投递失败静默丢弃（灯灭语义，绝不影响 zcode 主流程）。
+ * 不做节流：每次钩子是独立进程无共享状态，且 ZCode 无流式高频钩子，本地 GET 足以承受。
  * 由 mistrelle「设置-应用集成」页一键安装（脚本装于 ~/.mistrelle/integrations/zcode/，
  * hooks 配置合并写入 ~/.zcode/cli/config.json，新会话生效）。
  */

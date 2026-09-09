@@ -61,6 +61,8 @@ export interface IntegrationApi {
   checkPlatform(software: SoftwareName): Promise<PlatformStatus>
   /** 安装/更新指定软件的接入配置（覆盖写入其插件目录） */
   installPlatform(software: SoftwareName): Promise<PlatformInstallResult>
+  /** 卸载指定软件的接入配置（opencode 删插件文件；zcode 摘钩子条目并删脚本目录） */
+  uninstallPlatform(software: SoftwareName): Promise<PlatformInstallResult>
   /** 拉取调试事件流（纯内存缓冲，重启清空；新事件在后，含被丢弃的请求） */
   getActivity(): Promise<IntegrationActivityEntry[]>
   /** 清空全部调试事件流（调用方在成功后同步复位本地状态） */
