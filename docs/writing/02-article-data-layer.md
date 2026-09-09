@@ -24,6 +24,7 @@ interface ArticleItem {
   status: ArticleStatus
   file: string                    // 相对 articles/ 的正文路径，如 drafts/xxx.md
   summary?: string                // 一句话选题 / 摘要
+  style?: string                  // 写作风格：预设名（ARTICLE_STYLE_PRESETS）或自定义描述，AI 写作须遵循
   outline?: string                // 提纲
   words?: number                  // 字数（article_stats 回写）
   cover?: string                  // 封面相对路径
@@ -50,7 +51,7 @@ interface ArticleProject { schema: 1; title: string; updatedTime: number; articl
 | `article_init` | title? | 初始化项目（幂等），可命名 |
 | `article_list` | — | 列出全部文章（含平台/状态/字数/封面/配图） |
 | `article_create` | title / platform? / summary? / outline? | 新建文章：创建 drafts/{id}.md + 登记，返回 id 与 file |
-| `article_update` | id / title? / platform? / status? / summary? / outline? / cover? / images? | 更新元信息（白名单字段，排除 id/file/words） |
+| `article_update` | id / title? / platform? / status? / style? / summary? / outline? / cover? / images? | 更新元信息（白名单字段，排除 id/file/words） |
 | `article_read` | id | 读取正文 markdown |
 | `article_stats` | id | 统计字数（去空白字符数）并回写 words |
 | `article_remove` | id | 删除登记 + 正文文件 |

@@ -41,7 +41,7 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
     {
       name: 'article_list',
       label: '列出文章',
-      description: '列出项目内全部文章（标题 / 平台 / 状态 / 字数 / 封面 / 配图 / 文件路径），写作前先看现状',
+      description: '列出项目内全部文章（标题 / 平台 / 状态 / 风格 / 字数 / 封面 / 配图 / 文件路径），写作前先看现状',
       parameters: { type: 'object', properties: {} },
       internal: true,
       risk: 'safe',
@@ -64,6 +64,11 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
             description: '目标平台：公众号 / 知乎 / 小红书 / 其他（缺省其他）'
           },
           summary: { type: 'string', description: '一句话选题 / 摘要（可选）' },
+          style: {
+            type: 'string',
+            description:
+              '写作风格（可选）：预设词汇如「种草分享」「深度长文」，或自定义描述；撰写正文时须遵循'
+          },
           outline: { type: 'string', description: '提纲（可选）' }
         },
         required: ['title']
@@ -71,10 +76,11 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const { title, platform, summary, outline } = params[0] as {
+        const { title, platform, summary, style, outline } = params[0] as {
           title?: string
           platform?: string
           summary?: string
+          style?: string
           outline?: string
         }
         if (!title) return { error: 'title 不能为空' }
@@ -82,6 +88,7 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
           title,
           platform: platform && PLATFORMS.has(platform) ? (platform as ArticlePlatform) : '其他',
           summary,
+          style,
           outline
         })
         return { id: item.id, file: item.file, platform: item.platform }
@@ -91,7 +98,7 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
       name: 'article_update',
       label: '更新文章信息',
       description:
-        '更新文章元信息（标题 / 平台 / 状态 / 摘要 / 提纲 / 封面 / 配图）。配图由 design 子 Agent 产出后，用 cover / images 登记相对路径（相对 articles/）',
+        '更新文章元信息（标题 / 平台 / 状态 / 写作风格 / 摘要 / 提纲 / 封面 / 配图）。配图由 design 子 Agent 产出后，用 cover / images 登记相对路径（相对 articles/）',
       parameters: {
         type: 'object',
         properties: {
@@ -99,6 +106,11 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
           title: { type: 'string', description: '标题' },
           platform: { type: 'string', description: '平台：公众号 / 知乎 / 小红书 / 其他' },
           status: { type: 'string', description: '状态：draft（草稿）/ writing（写作中）/ done（已完稿）' },
+          style: {
+            type: 'string',
+            description:
+              '写作风格：预设词汇如「种草分享」「深度长文」，或自定义描述；撰写 / 改写正文时须遵循'
+          },
           summary: { type: 'string', description: '一句话摘要' },
           outline: { type: 'string', description: '提纲' },
           cover: { type: 'string', description: '封面图相对路径（如 assets/cover.png，相对 articles/）' },
@@ -113,11 +125,12 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const { id, title, platform, status, summary, outline, cover, images } = params[0] as {
+        const { id, title, platform, status, style, summary, outline, cover, images } = params[0] as {
           id?: string
           title?: string
           platform?: string
           status?: string
+          style?: string
           summary?: string
           outline?: string
           cover?: string
@@ -128,6 +141,7 @@ export const createArticleTools = (ctx: ChatTypeToolContext): ToolFunction[] => 
         if (str(title)) patch.title = title
         if (platform && PLATFORMS.has(platform)) patch.platform = platform as ArticlePlatform
         if (status && STATUSES.has(status)) patch.status = status as ArticleStatus
+        if (str(style)) patch.style = style
         if (str(summary)) patch.summary = summary
         if (str(outline)) patch.outline = outline
         if (str(cover)) patch.cover = cover

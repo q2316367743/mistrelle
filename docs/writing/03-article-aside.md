@@ -1,6 +1,6 @@
-# 03 文章侧边栏（侧边栏按大小类型拆分）
+# 03 文章侧边栏（长文创作全能面板）
 
-> writing 侧边栏按「大类型（chatType）→ 小类型（writingScene）」两层拆分组件。当前唯一子场景为 article（文章创作），`WritingAside` 直接渲染文章项目管理侧边栏。
+> writing 侧边栏按「大类型（chatType）→ 小类型（writingScene）」两层拆分组件。当前子场景为 article（文章创作）与 novelShort，`WritingAside` 分发。文章侧边栏定位为长文创作工作台：正文 / 封面 / 插图 / 写作风格一体化管理。
 
 ## 组件结构
 
@@ -8,55 +8,71 @@
 src/components/chat/aside/writing/
 ├── WritingAside.vue                 # writingScene 分发壳（article / novelShort）
 └── article/
-    ├── ArticleAside.vue             # 文章项目管理主容器
+    ├── ArticleAside.vue             # 外壳：双布局自适应 + 分段切换 + 面板编排（≤300 行）
+    ├── useArticleDoc.ts             # 数据层 composable：store 共享实例、选择/正文读写/文件操作
+    ├── promptInputBridge.ts         # PROMPT_INPUT_KEY：快捷指令 → 聊天输入框注入桥
     └── components/
-        ├── ArticleEditor.vue        # 内容区：tiptap WYSIWYG（编辑 / 预览 = editable 切换）
-        └── ArticleImage.ts          # 图片节点：相对路径存 src，渲染时解析 file:// 显示
+        ├── ArticleAsideHeader.vue   # header：文章下拉（平台/状态/字数 option）+ 定位/刷新/导出
+        ├── ArticleAsideFooter.vue   # footer：去 AI 味 / AI 检测 禁用占位按钮
+        ├── ArticleEditor.vue        # tiptap WYSIWYG（编辑/预览），expose insertImage、emit image-added
+        ├── ArticleImagePanel.vue    # 配图面板：封面（平台比例预览）+ 插图网格
+        ├── ArticleStylePanel.vue    # 风格面板：平台/风格/状态 + 按当前风格重写按钮
+        ├── ArticleImageGenDialog.tsx + ArticleImageGenContent.vue  # AI 生图命令式弹窗
+        ├── ArticleImage.ts          # 图片节点：相对路径存 src，渲染时解析 file:// 显示
+        └── ArticleSlash.ts          # 斜杠命令
 ```
 
-## 布局（常驻顶部 select）
+## 双布局（随 fullscreen 自适应）
 
-- **header 一行**：文章下拉 select（`flex:1`）→ 在文件夹中显示 / 刷新 / 导出为 ZIP 按钮。
-- **select 下拉选项**：自定义 option 展示标题 + 平台 tag + 状态 tag（草稿 / 写作中 / 已完稿）+ 字数；选中后 select 显示标题。
-- **正文区**：当前选中文章的编辑 / 预览内容；未选中时显示空态提示。
-- 文章由 AI 生成（`article_create` 工具），**不提供手动新建按钮**；「在文件夹中显示」按钮定位当前文章文件（未选中时打开项目根目录）。
-- 编辑 / 预览由**侧边栏全屏状态**驱动（无手动切换）：全屏（`fullscreen`）= 编辑态，非全屏 = 预览态。
+- **窄栏（非全屏，180–640px）**：header → 分段切换（`t-radio-group variant="default-filled"`：正文/配图/风格）→ 当前分段内容 → footer。编辑器 `v-show` 保活（分段切换不丢内容），配图/风格 `v-if` 惰性挂载。
+- **全屏**：左正文编辑器（edit 模式）+ 右侧创作面板常驻（`__side` 300px 滚动列：配图面板 + 风格面板上下排布）→ footer。编辑时插入插图 / 调风格无需切页签。
+- 编辑/预览模式仍由 `fullscreen` 派生：`mode = fullscreen ? 'edit' : 'preview'`（窄栏正文只读预览，配图/风格面板两态均可操作）。
+- 与 NovelAside「全屏分栏 / 窄栏切换」同模式。
 
 ## 数据流
 
-- 场景来源：`ChatSession.writingScene` → `LChatEngine` → `LChatAside`（`:writing-scene`）→ `WritingAside` 分发。
-- 编辑/预览模式：`LChatEngine.fullscreen` → `LChatAside` → `WritingAside` → `ArticleAside` 逐层透传 `:fullscreen`；
-  `ArticleAside` 派生 `mode = fullscreen ? 'edit' : 'preview'` 传给 `ArticleEditor`（`editable` 切换）。
-- 项目定位：`ArticleAside` 内 `buildArticleRoot(workspace, sandbox)` 计算 root；
-  `getArticleStore(root)` 获取共享 store（与 article_* 工具同一响应式实例）。
-- 文章选择：header 下拉 `select`（`:value` + `@change` 手动加载，清空复位），自定义 option 展示平台 / 状态 / 字数；
-  `<article-editor :key="activeId">` 切换文章时重挂载编辑器。
-- 编辑落盘：`ArticleEditor` 变更（`editor.getMarkdown()`）→ `ArticleAside` 防抖 800ms 写回 `{root}/{file}`。
-- 图片落盘：粘贴 / 拖入图片 → 写入 `assetsDir`（`{root}/assets`）→ 插入相对路径节点（`../assets/xxx.png`）。
-- 文章创建：由 AI 通过 `article_create` 工具完成，侧边栏「刷新」后在下拉中可见。
-- 刷新语义：点击「刷新」会先重载项目索引（列表 / 元信息 / 字数），若当前已选中文章，还会从磁盘重新读取该文章正文并写回编辑器——因此 AI 通过 `file_write` 改写 `.md` 正文后，无需叉掉重选，点一次刷新即可看到最新内容。`ArticleEditor` 仅在磁盘内容与编辑器当前内容确有差异时同步（`emitUpdate:false`），不会与用户正在预览 / 编辑的内容冲突。
-- 工作空间切换：watch root → `destroyArticleStore(旧)` + 重载新项目（释放内存、避免失效状态）。
+- 场景来源：`ChatSession.writingScene` → `LChatEngine` → `LChatAside` → `WritingAside` 分发。
+- 项目定位：`useArticleDoc(props)` 内 `buildArticleRoot(workspace, sandbox)` → `getArticleStore(root)` 共享响应式实例（与 article_* 工具同源，AI 变更实时驱动 UI）。
+- 编辑落盘：`ArticleEditor` 变更 → 防抖 800ms 写回正文 md。刷新语义不变：点「刷新」重载索引并从磁盘重读正文（AI 用 `file_write` 改写后点一次刷新可见）。
+- 图片落盘：粘贴/拖入 → 写 `assets/` → 插入相对路径节点，**同时 emit `image-added` 自动登记进 `images[]`**（归一为 `assets/{文件名}` 相对 articles/ 路径，去重）。
+- 面板元数据写回：配图/风格面板 emit（`cover` / `add-images` / `remove-image` / `patch`）→ `ArticleAside.patchArticle` → `store.updateArticle`（每次变更自动落盘 project.json）。
+- 插图插入正文：面板 emit `insert(rel)` → 窄栏先切回正文分段，`nextTick` 后调 `ArticleEditor.insertImage(rel)`（`defineExpose`）。
+
+## 封面与插图（ArticleImagePanel）
+
+- **封面**：按平台比例预览（公众号 900/383、小红书 3/4、知乎与其他 16:9，`object-fit: cover`）；操作 = AI 生成 / 本地上传 / 移除（仅清字段，不删文件）。
+- **插图**：`images[]` 缩略图网格（1:1 三列），悬停操作 = 插入正文 / 设为封面 / 移除（仅取消登记）；来源三渠道统一登记：AI 生成、本地上传（`dialog.open` + `copyImageToAssets`）、正文粘贴/拖入（`image-added`）。
+- 展示 URL：`window.preload.net.pathToHref(join(root, rel))`（本地事件服务 /file 资源面）。
+- 登记路径一律相对 articles/（`assets/xxx.png`）；正文中引用相对 md 目录（`../assets/xxx.png`），两种约定并存（见 02/04 号文档）。
+
+## AI 生图（直出接口，不经 Agent）
+
+- 入口：封面/插图的「生成」按钮 → `openArticleImageGen`（`.tsx` 外壳 + DialogPlugin + `.vue` 内容，标准弹窗约定）。
+- 链路：`window.preload.image.generate({ prompt, model, size, record: false, path })` **工具直出模式**——不建页面记录、不广播，产物落盘 `assets/{cover|image}-{ts}.png` 等终态返回；与 image_generate 工具（Agent 侧）同一 ImageService 通道，积分由服务端扣减。
+- 模型：默认「设置 → 默认生图模型」回退档位列表首项（`ImageModelStore`）；尺寸用与生图页同源的安全值（1024×1024 / 1024×1536 / 1536×1024），封面按平台取向默认横版/竖版，支持 `creatable` 自定义。
+- 门控：`useAuthStore().status === 'signed-in'`，未登录禁用生成按钮 + tooltip 引导；弹窗内 `needLogin` 显示登录入口（`openLogin`）。
+
+## 写作风格（ArticleStylePanel）
+
+- 数据模型：`ArticleItem.style?: string`（预设名或自定义描述），`ARTICLE_STYLE_PRESETS`（articleTypes.ts）按平台给预设：公众号（深度长文/干货科普/情感故事/热点评述）、知乎（专业解析/个人经验/观点辩论/科普长文）、小红书（种草分享/干货教程/经验复盘/测评清单）、其他（通用写作）。
+- UI：平台 select、风格 select（预设 + `creatable` 自定义 + `clearable` 未设置）、状态 select；变更即经 `patch` 写回 store。
+- AI 侧联动：`article_create` / `article_update` 白名单支持 `style`；`ARTICLE_SCENE_PROMPT` 要求撰写/改写前先 `article_list` 确认 platform + style 并严格遵循（style 与平台模板叠加）。
+- 快捷指令：「按当前风格重写正文」按钮 → 组装指令文本 → `PROMPT_INPUT_KEY`（useChatSession provide → LChatSender `addTextPrompt` expose）填入聊天输入框，**不自动发送**；与画布节点 / HTML 元素注入同一 DI 模式。全屏态下输入框被遮挡，发送前需退出全屏（toast 已提示）。
+
+## footer 占位（接口未开放）
+
+- 「去 AI 味」：预留流式接口（输入正文 → 流式输出去 AI 味内容），接入前禁用 + tooltip。
+- 「AI 检测」：腾讯朱雀 AIGC 检测，官方 API 需企业认证，禁用占位。
 
 ## 编辑器（tiptap）
 
-- 依赖：`@tiptap/markdown`（md ↔ 编辑器双向）、`@tiptap/extension-image`、`@tiptap/extension-table`；tiptap 全家桶 `^3.29.2`（markdown 序列化规格在 3.29 才进入各 extension 包，勿回退）。
-- `contentType: 'markdown'` + `content: props.content` 加载；`onUpdate` 用 `editor.getMarkdown()` 输出保存，源文件始终为 md。
-- 图片节点（`ArticleImage.ts`）：`src` 属性存相对路径（源真相），`renderHTML` 渲染时用 `baseDir` 解析成 `file://` 显示，序列化仍输出相对路径。
-- 表格用 `TableKit`（table/row/cell/header 四节点，带 markdown 规格），AI 生成表格可正常往返。
-- 斜杠命令：`ArticleSlash.ts` 基于 `@tiptap/suggestion` 实现，输入 `/` 唤起命令菜单（标题/加粗/列表/引用/代码块/分割线/表格/图片），
-  弹层复用通用渲染器 `@/utils/suggestionRenderer`（`makeSuggestionRenderer`，纯 DOM + tdesign Token）。「图片」命令从本地选图拷入 `assetsDir` 后插入相对路径节点。
-- 预览模式：`editor.setEditable(false)`，同一编辑器只读渲染。
-- 排版样式在 `ArticleEditor.vue` 全局 style 中维护（`.article-editor__pm`），颜色一律 tdesign CSS Token。
+- 依赖：`@tiptap/markdown`（md ↔ 编辑器双向）、`@tiptap/extension-table`；tiptap 全家桶 `^3.29.2`（markdown 序列化规格在 3.29 才进入各 extension 包，勿回退）。
+- `contentType: 'markdown'` 加载，`onUpdate` 用 `editor.getMarkdown()` 输出保存；图片节点（`ArticleImage.ts`）`src` 存相对路径（源真相），渲染时经 `baseDir` 解析。
+- 斜杠命令：`ArticleSlash.ts` 基于 `@tiptap/suggestion`，弹层复用 `@/utils/suggestionRenderer`。
+- 预览模式：`editor.setEditable(false)`；排版样式在 `ArticleEditor.vue` 全局 style（`.article-editor__pm`），颜色一律 tdesign CSS Token。
+- markdown 往返限制：脚注、数学公式、HTML 注释等高级语法可能丢失，正文用标准 markdown。
 
-### markdown 往返限制
+## 待接入（预留）
 
-`@tiptap/markdown` 为官方早期版本，往返有边界：脚注、数学公式、HTML 注释、多子节点单元格等高级语法可能丢失或退化，文章正文应使用标准 markdown。
-
-## 弹窗规范
-
-`ArticleModal.tsx` 遵循弹窗约定：`.tsx` 外壳 + `DialogPlugin`（placement center / destroyOnClose / footer false）+ `.vue` 内容组件
-（`body: () => h(ArticleContent, props)`），提交由内容组件内部完成并经 `onSubmit` 通知外壳落库。
-
-## 待后续模块
-
-- 文章元信息编辑弹窗（复用 ArticleModal 扩展为编辑模式，可选）。
+- 去 AI 味流式接口：接口就绪后在 footer 启用，建议走「输入正文 → 流式输出 → 确认后替换正文」交互。
+- 朱雀 AI 检测：企业认证接入后启用。

@@ -28,6 +28,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'change', value: string): void
+  /** 本地图片粘贴 / 拖入落盘后通知父级登记进插图列表（rel 为相对 md 目录的引用路径） */
+  (e: 'image-added', rel: string): void
 }>()
 
 /** 文件名清洗：去掉路径分隔与非法字符，保留扩展名 */
@@ -53,7 +55,18 @@ const insertLocalImage = async (file: File) => {
     .focus()
     .insertContent({ type: 'image', attrs: { src: rel, alt: '' } })
     .run()
+  emit('image-added', rel)
 }
+
+/** 供配图面板把已登记插图插入光标处（编辑器被分段切换隐藏时也可调用） */
+const insertImage = (rel: string) => {
+  editor.value
+    ?.chain()
+    .focus()
+    .insertContent({ type: 'image', attrs: { src: rel, alt: '' } })
+    .run()
+}
+defineExpose({ insertImage })
 
 const editor = useEditor({
   extensions: [

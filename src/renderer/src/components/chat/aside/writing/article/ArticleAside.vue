@@ -1,267 +1,236 @@
 <template>
   <div class="article-aside">
-    <div class="article-aside__header">
-      <t-select
-        class="article-aside__select"
-        :value="activeId"
-        placeholder="选择文章"
-        :empty="'暂无文章，可让 AI 生成'"
-        :popup-props="{ overlayClassName: 'article-select-overlay' }"
-        clearable
-        @change="handleSelectChange"
-      >
-        <t-option v-for="a in articles" :key="a.id" :value="a.id" :label="a.title">
-          <div class="article-aside__option">
-            <span class="article-aside__option-title">{{ a.title }}</span>
-            <div class="article-aside__option-meta">
-              <t-tag size="small" variant="light" :theme="platformTheme(a.platform)">
-                {{ a.platform }}
-              </t-tag>
-              <t-tag size="small" variant="outline" :theme="statusTheme(a.status)">
-                {{ statusLabel(a.status) }}
-              </t-tag>
-              <span v-if="a.words" class="article-aside__option-words">{{ a.words }} 字</span>
-            </div>
-          </div>
-        </t-option>
-      </t-select>
-      <t-button
-        theme="primary"
-        variant="text"
-        shape="square"
-        title="在文件夹中显示"
-        @click="handleReveal"
-      >
-        <template #icon>
-          <folder-open-icon />
+    <article-aside-header
+      :articles="articles"
+      :active-id="activeId"
+      :export-disabled="!activeArticle || exporting"
+      @select="handleSelectChange"
+      @reveal="handleReveal"
+      @refresh="handleRefresh"
+      @export="handleExport"
+    />
+
+    <!-- 窄栏布局：正文 / 配图 / 风格 分段切换 -->
+    <t-radio-group
+      v-if="!fullscreen"
+      class="article-aside__tabs"
+      variant="default-filled"
+      :value="activeTab"
+      @change="(v: unknown) => typeof v === 'string' && (activeTab = v as ArticleAsideTab)"
+    >
+      <t-radio-button value="content">正文</t-radio-button>
+      <t-radio-button value="image">配图</t-radio-button>
+      <t-radio-button value="style">风格</t-radio-button>
+    </t-radio-group>
+
+    <template v-if="!fullscreen">
+      <div class="article-aside__body">
+        <template v-if="activeArticle">
+          <article-editor
+            v-show="activeTab === 'content'"
+            ref="editorRef"
+            :key="activeId"
+            :content="content"
+            :mode="mode"
+            :base-dir="activeMdDir"
+            :assets-dir="assetsDir"
+            @change="handleContentChange"
+            @image-added="handleImageAdded"
+          />
+          <article-image-panel
+            v-if="activeTab === 'image'"
+            :article="activeArticle"
+            :root="root"
+            :assets-dir="assetsDir"
+            @cover="handleCover"
+            @add-images="handleAddImages"
+            @remove-image="handleRemoveImage"
+            @insert="handleInsertImage"
+          />
+          <article-style-panel
+            v-if="activeTab === 'style'"
+            :article="activeArticle"
+            @patch="patchArticle"
+            @rewrite="handleRewrite"
+          />
         </template>
-      </t-button>
-      <t-button theme="primary" variant="text" shape="square" title="刷新" @click="handleRefresh">
-        <template #icon>
-          <refresh-icon />
+        <div v-else class="article-aside__empty">{{ emptyHint }}</div>
+      </div>
+    </template>
+
+    <!-- 全屏布局：左正文编辑 + 右创作面板常驻 -->
+    <div v-else class="article-aside__split">
+      <div class="article-aside__main">
+        <article-editor
+          v-if="activeArticle"
+          ref="editorRef"
+          :key="activeId"
+          :content="content"
+          :mode="mode"
+          :base-dir="activeMdDir"
+          :assets-dir="assetsDir"
+          @change="handleContentChange"
+          @image-added="handleImageAdded"
+        />
+        <div v-else class="article-aside__empty">{{ emptyHint }}</div>
+      </div>
+      <div class="article-aside__side">
+        <template v-if="activeArticle">
+          <article-image-panel
+            :article="activeArticle"
+            :root="root"
+            :assets-dir="assetsDir"
+            @cover="handleCover"
+            @add-images="handleAddImages"
+            @remove-image="handleRemoveImage"
+            @insert="handleInsertImage"
+          />
+          <article-style-panel
+            :article="activeArticle"
+            @patch="patchArticle"
+            @rewrite="handleRewrite"
+          />
         </template>
-      </t-button>
-      <t-button
-        theme="primary"
-        variant="text"
-        shape="square"
-        title="导出为 ZIP（含图片）"
-        :disabled="!activeArticle || exporting"
-        class="mr-8px"
-        @click="handleExport"
-      >
-        <template #icon>
-          <download-icon />
-        </template>
-      </t-button>
+        <div v-else class="article-aside__empty">{{ emptyHint }}</div>
+      </div>
     </div>
-    <div class="article-aside__body">
-      <article-editor
-        v-if="activeArticle"
-        :key="activeId"
-        :content="content"
-        :mode="mode"
-        :base-dir="activeMdDir"
-        :assets-dir="assetsDir"
-        @change="handleContentChange"
-      />
-      <div v-else class="article-aside__empty">从上方选择文章，或让 AI 生成文章后在此选择</div>
-    </div>
+
+    <article-aside-footer :class="[{ 'mb-8px': fullscreen }]" />
   </div>
 </template>
 <script lang="ts" setup>
-import { debounce } from 'es-toolkit'
-import { DownloadIcon, FolderOpenIcon, RefreshIcon } from 'tdesign-icons-vue-next'
-import {
-  buildArticleRoot,
-  destroyArticleStore,
-  getArticleStore
-} from '@/windows/main/modules/tool/components/article/articleStore'
-import { exportArticleZip } from '@/windows/main/modules/tool/components/article/imageRef'
-import type { ArticlePlatform, ArticleStatus } from '@/windows/main/modules/tool/components/article/articleTypes'
+import type { ArticleUpdatePatch } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { MessageUtil } from '@/utils/modal'
+import { PROMPT_INPUT_KEY } from './promptInputBridge'
+import { useArticleDoc } from './useArticleDoc'
+import ArticleAsideHeader from './components/ArticleAsideHeader.vue'
+import ArticleAsideFooter from './components/ArticleAsideFooter.vue'
 import ArticleEditor from './components/ArticleEditor.vue'
+import ArticleImagePanel from './components/ArticleImagePanel.vue'
+import ArticleStylePanel from './components/ArticleStylePanel.vue'
+
+/** 侧边栏分段（窄栏布局） */
+type ArticleAsideTab = 'content' | 'image' | 'style'
 
 const props = defineProps<{
   sandbox?: string
   workspace?: string
-  /** 侧边栏全屏：全屏可编辑，非全屏仅预览 */
+  /** 侧边栏全屏：全屏=左编辑器+右创作面板分栏；窄栏=分段切换，非全屏仅预览 */
   fullscreen?: boolean
 }>()
 
-/** 项目根：{workspace}/articles/（有工作空间）或 {sandbox}/outputs/articles/ */
-const root = computed(() => buildArticleRoot(props.workspace ?? '', props.sandbox ?? ''))
-const store = computed(() => getArticleStore(root.value))
+const {
+  root,
+  store,
+  articles,
+  mode,
+  activeId,
+  activeArticle,
+  content,
+  exporting,
+  activeMdDir,
+  assetsDir,
+  handleSelectChange,
+  handleContentChange,
+  handleReveal,
+  handleRefresh,
+  handleExport
+} = useArticleDoc(props)
 
-const articles = computed(() => store.value.project.value?.articles ?? [])
-/** 编辑 / 预览由侧边栏全屏状态驱动：全屏可编辑，非全屏仅预览 */
-const mode = computed<'edit' | 'preview'>(() => (props.fullscreen ? 'edit' : 'preview'))
+const activeTab = ref<ArticleAsideTab>('content')
+const editorRef = ref<{ insertImage: (rel: string) => void } | null>(null)
+const promptInput = inject(PROMPT_INPUT_KEY)
 
-const activeId = ref('')
-const activeArticle = computed(() => articles.value.find((a) => a.id === activeId.value))
-const content = ref('')
-const exporting = ref(false)
-
-/** 当前文章 md 所在目录（预览图片解析基准） */
-const activeMdDir = computed(() =>
-  activeArticle.value
-    ? window.preload.path.dirname(window.preload.path.join(root.value, activeArticle.value.file))
-    : ''
-)
-
-/** 配图目录（粘贴 / 拖入图片落盘于此） */
-const assetsDir = computed(() => window.preload.path.join(root.value, 'assets'))
-
-const PLATFORM_THEME: Record<ArticlePlatform, 'primary' | 'warning' | 'danger' | 'default'> = {
-  公众号: 'primary',
-  知乎: 'warning',
-  小红书: 'danger',
-  其他: 'default'
-}
-
-const STATUS_THEME: Record<ArticleStatus, 'default' | 'warning' | 'success'> = {
-  draft: 'default',
-  writing: 'warning',
-  done: 'success'
-}
-
-const STATUS_LABEL: Record<ArticleStatus, string> = {
-  draft: '草稿',
-  writing: '写作中',
-  done: '已完稿'
-}
-
-const platformTheme = (p: ArticlePlatform) => PLATFORM_THEME[p] ?? 'default'
-const statusTheme = (s: ArticleStatus) => STATUS_THEME[s] ?? 'default'
-const statusLabel = (s: ArticleStatus) => STATUS_LABEL[s] ?? s
-
-/** 下拉选择：清空则复位选中，否则加载文章内容 */
-const handleSelectChange = (id: unknown) => {
-  if (typeof id !== 'string' || !id) {
-    activeId.value = ''
-    content.value = ''
-    return
-  }
-  void handleSelect(id)
-}
-
-/** 刷新项目索引；若当前选中文章已被删除则复位选中，否则从磁盘重载正文（反映 AI 改写） */
-const reload = async () => {
-  await store.value.refresh()
-  if (activeId.value && !articles.value.some((a) => a.id === activeId.value)) {
-    activeId.value = ''
-    content.value = ''
-    return
-  }
-  if (activeId.value && activeArticle.value) {
-    try {
-      content.value = await store.value.readArticle(activeId.value)
-    } catch {
-      // 正文读取失败保持内存内容，不阻断刷新
-    }
-  }
-}
-
-onMounted(() => {
-  void reload()
+const emptyHint = computed(() => {
+  if (activeTab.value === 'image') return '先选择文章，再管理封面与插图'
+  if (activeTab.value === 'style') return '先选择文章，再设置写作风格'
+  return '从上方选择文章，或让 AI 生成文章后在此选择'
 })
 
-// 工作空间切换（用户更换目录）→ 释放旧 store，重载新项目
-watch(root, (_val, old) => {
-  if (old) destroyArticleStore(old)
-  activeId.value = ''
-  content.value = ''
-  void reload()
-})
+// =================================== 配图 / 风格面板事件（写回共享 store） ===================================
 
-const handleSelect = async (id: string) => {
-  if (activeId.value === id) return
-  try {
-    content.value = await store.value.readArticle(id)
-    activeId.value = id
-  } catch {
-    // 读取失败不切换
-  }
-}
-
-/** 防抖落盘：编辑内容写回当前文章正文文件 */
-const saveDoc = debounce(async () => {
+const patchArticle = (patch: ArticleUpdatePatch) => {
   if (!activeArticle.value) return
-  try {
-    await window.preload.fs.writeTextFile(
-      window.preload.path.join(root.value, activeArticle.value.file),
-      content.value
-    )
-  } catch {
-    // 落盘失败保持内存内容，不阻断编辑
-  }
-}, 800)
-
-const handleContentChange = (value: string) => {
-  content.value = value
-  void saveDoc()
+  store.value
+    .updateArticle(activeId.value, patch)
+    .catch(() => MessageUtil.error('文章信息保存失败'))
 }
 
-/** 在文件管理器中显示：选中文章定位到文件，否则打开项目根目录 */
-const handleReveal = () => {
-  if (activeArticle.value) {
-    window.preload.inject.shell.showItemInFolder(
-      window.preload.path.join(root.value, activeArticle.value.file)
-    )
-  } else {
-    window.preload.inject.shell.openPath(root.value)
-  }
-}
-
-const handleRefresh = () => {
-  void reload()
-}
-
-/** 导出当前文章（含引用的本地图片）为 zip 压缩包 */
-const handleExport = async () => {
-  if (!activeArticle.value || exporting.value) return
+/** 编辑器粘贴 / 拖入的图片自动登记进插图列表（去重；编辑器内为相对 md 目录路径，登记归一为相对 articles/） */
+const handleImageAdded = (rel: string) => {
   const article = activeArticle.value
-  let zipPath = await window.preload.inject.dialog.save({
-    defaultPath: `${article.title || article.id}.zip`,
-    filters: [{ name: 'ZIP 压缩包', extensions: ['zip'] }]
-  })
-  if (!zipPath) return
-  if (!zipPath.toLowerCase().endsWith('.zip')) zipPath = `${zipPath}.zip`
-  exporting.value = true
-  try {
-    const result = await exportArticleZip({
-      root: root.value,
-      articleFile: article.file,
-      targetZip: zipPath,
-      name: article.title || article.id
-    })
-    MessageUtil.success(`已导出 ${zipPath}${result.assets ? `（含 ${result.assets} 张图片）` : ''}`)
-  } catch (e) {
-    MessageUtil.error('导出失败', e)
-  } finally {
-    exporting.value = false
-  }
+  if (!article) return
+  const target = `assets/${window.preload.path.basename(rel)}`
+  if ((article.images ?? []).includes(target)) return
+  patchArticle({ images: [...(article.images ?? []), target] })
+}
+
+const handleAddImages = (rels: string[]) => {
+  const article = activeArticle.value
+  if (!article) return
+  const merged = [...(article.images ?? [])]
+  for (const rel of rels) if (!merged.includes(rel)) merged.push(rel)
+  patchArticle({ images: merged })
+}
+
+const handleRemoveImage = (rel: string) => {
+  const article = activeArticle.value
+  if (!article) return
+  patchArticle({ images: (article.images ?? []).filter((img) => img !== rel) })
+}
+
+const handleCover = (rel: string | undefined) => patchArticle({ cover: rel })
+
+/** 插图插入正文光标处：窄栏先切回正文分段，等编辑器可见后再插入 */
+const handleInsertImage = (rel: string) => {
+  activeTab.value = 'content'
+  void nextTick(() => editorRef.value?.insertImage(rel))
+}
+
+/** 快捷指令：按当前平台 / 风格重写正文（填入聊天输入框，不自动发送） */
+const handleRewrite = () => {
+  const article = activeArticle.value
+  if (!article) return
+  const styleText = article.style ? `「${article.style}」风格` : '平台惯用风格'
+  promptInput?.(
+    [
+      `请把《${article.title}》正文重写为 ${article.platform} 平台${styleText}：`,
+      '保持选题与核心信息不变，按该平台与风格调整标题、开头、结构与语气；',
+      `完成后覆盖写入正文文件 ${article.file}，并用 article_stats 统计字数。`
+    ].join('')
+  )
+  MessageUtil.success('指令已填入聊天输入框，可修改后发送')
 }
 </script>
 <style scoped lang="less">
 .article-aside {
-  height: 100%;
+  height: calc(100% - 8px);
   display: flex;
   flex-direction: column;
   padding: 8px 0 8px 8px;
 
-  &__header {
+  &__tabs {
+    margin-top: 8px;
+    width: 100%;
     display: flex;
-    align-items: center;
-    gap: 4px;
-  }
 
-  &__select {
-    flex: 1;
-    min-width: 0;
+    :deep(.t-radio-button) {
+      flex: 1;
+    }
   }
 
   &__body {
+    margin-top: 8px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--td-radius-medium);
+    border: 1px solid var(--td-border-level-1-color);
+    overflow: hidden;
+  }
+
+  &__split {
     margin-top: 8px;
     flex: 1;
     min-height: 0;
@@ -271,6 +240,20 @@ const handleExport = async () => {
     overflow: hidden;
   }
 
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+  }
+
+  &__side {
+    width: 300px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--td-border-level-1-color);
+    overflow-y: auto;
+    background: var(--td-bg-color-container);
+  }
+
   &__empty {
     flex: 1;
     display: flex;
@@ -278,30 +261,6 @@ const handleExport = async () => {
     justify-content: center;
     color: var(--td-text-color-placeholder);
     font-size: var(--td-font-size-body-small);
-  }
-
-  &__option {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  &__option-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__option-meta {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  &__option-words {
-    font-size: var(--td-font-size-body-small);
-    color: var(--td-text-color-placeholder);
   }
 }
 </style>

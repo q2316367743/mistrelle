@@ -40,6 +40,22 @@ const relPath = (fromDir: string, target: string): string => {
 export const resolveAssetRel = (mdDir: string, assetPath: string): string =>
   relPath(mdDir, assetPath)
 
+/**
+ * 把本地图片（绝对路径）复制进项目 assets 目录并返回绝对路径，文件名 {prefix}-{时间戳}{原扩展名}。
+ * 供封面 / 插图上传与编辑器粘贴共用，统一命名避免互相覆盖。
+ */
+export const copyImageToAssets = async (
+  assetsDir: string,
+  srcPath: string,
+  prefix: string
+): Promise<string> => {
+  const ext = window.preload.path.extname(srcPath) || '.png'
+  await window.preload.fs.mkdir(assetsDir, true)
+  const target = window.preload.path.join(assetsDir, `${prefix}-${Date.now()}${ext}`)
+  await window.preload.fs.copyFile(srcPath, target)
+  return target
+}
+
 export interface ArticleAssetRef {
   /** md 中写的相对引用（相对 mdDir） */
   relToMd: string

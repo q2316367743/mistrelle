@@ -193,7 +193,7 @@
 |----------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | [01-writing-scene.md](./writing/01-writing-scene.md)           | 写作子场景（WritingScene）：大类型管框架、子场景管能力，场景 article / novelShort      |
 | [02-article-data-layer.md](./writing/02-article-data-layer.md) | 文章数据层与工具：project.json 索引 + drafts 正文 + assets 配图、`article_*` 工具驱动  |
-| [03-article-aside.md](./writing/03-article-aside.md)           | 文章侧边栏：writing 侧边栏按 chatType → writingScene 两层拆分、`ArticleAside` 项目容器 |
+| [03-article-aside.md](./writing/03-article-aside.md)           | 文章侧边栏（长文创作全能面板）：双布局自适应（窄栏分段/全屏分栏）、封面+插图管理、直出生图弹窗、写作风格预设与快捷指令注入输入框 |
 | [04-image-export.md](./writing/04-image-export.md)             | md 图片引用与 zip 导出：相对路径约定、`imageRef.ts` 解析与压缩导出                     |
 | [05-novel-short-scene.md](./writing/05-novel-short-scene.md)   | 短篇小说场景：每篇一个子目录（story/角色/大纲/设定/文风）、`novel_*` 工具、侧边栏双布局 |
 

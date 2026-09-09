@@ -7,6 +7,14 @@
 /** 目标平台（平台差异化模板） */
 export type ArticlePlatform = '公众号' | '知乎' | '小红书' | '其他'
 
+/** 各平台内置写作风格预设（侧边栏风格下拉与 article_* 工具共用同一词汇表；也接受自定义描述） */
+export const ARTICLE_STYLE_PRESETS: Record<ArticlePlatform, string[]> = {
+  公众号: ['深度长文', '干货科普', '情感故事', '热点评述'],
+  知乎: ['专业解析', '个人经验', '观点辩论', '科普长文'],
+  小红书: ['种草分享', '干货教程', '经验复盘', '测评清单'],
+  其他: ['通用写作']
+}
+
 /** 文章状态 */
 export type ArticleStatus = 'draft' | 'writing' | 'done'
 
@@ -20,6 +28,8 @@ export interface ArticleItem {
   file: string
   /** 一句话选题 / 摘要 */
   summary?: string
+  /** 写作风格：预设名（见 ARTICLE_STYLE_PRESETS）或自定义描述，AI 撰写 / 改写正文须遵循 */
+  style?: string
   /** 提纲 */
   outline?: string
   /** 字数（由 article_stats 统计） */
@@ -44,10 +54,14 @@ export interface ArticleCreateInput {
   title: string
   platform: ArticlePlatform
   summary?: string
+  style?: string
   outline?: string
 }
 
 /** 可被模型更新的文章字段（article_update 白名单，排除 id / file / words） */
 export type ArticleUpdatePatch = Partial<
-  Pick<ArticleItem, 'title' | 'platform' | 'status' | 'summary' | 'outline' | 'cover' | 'images'>
+  Pick<
+    ArticleItem,
+    'title' | 'platform' | 'status' | 'summary' | 'style' | 'outline' | 'cover' | 'images'
+  >
 >

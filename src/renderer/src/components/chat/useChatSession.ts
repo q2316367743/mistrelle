@@ -12,6 +12,7 @@ import {
 import type { AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
 import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
 import { HTML_ELEMENT_PICK_KEY, type HtmlElementRef } from '@/components/chat/design/htmlElementBridge'
+import { PROMPT_INPUT_KEY } from '@/components/chat/aside/writing/article/promptInputBridge'
 import { DEFAULT_CONTEXT_WINDOW } from '@/global/Constant'
 import { useSettingAiStore } from '@/windows/main/store'
 
@@ -62,10 +63,13 @@ export const useChatSession = (options: UseChatSessionOptions) => {
   const senderRef = ref<{
     addCanvasNode: (ref: CanvasNodeRef) => void
     addHtmlElementNode: (ref: HtmlElementRef) => void
+    addTextPrompt: (text: string) => void
   }>()
   provide(CANVAS_NODE_PICK_KEY, (ref) => senderRef.value?.addCanvasNode(ref))
   // HTML 设计稿预览双击元素 → 注入聊天输入框（HtmlDesignAside inject，经本组件转发到 LChatSender.addHtmlElementNode）
   provide(HTML_ELEMENT_PICK_KEY, (ref) => senderRef.value?.addHtmlElementNode(ref))
+  // 写作侧边栏快捷指令 → 注入聊天输入框（ArticleAside inject，经本组件转发到 LChatSender.addTextPrompt）
+  provide(PROMPT_INPUT_KEY, (text) => senderRef.value?.addTextPrompt(text))
 
   watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 

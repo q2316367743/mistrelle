@@ -54,8 +54,8 @@
           </t-button>
         </span>
       </div>
-      <t-button theme="primary" size="large" :disabled="!canSubmit" @click="handleSubmit">
-        <template #icon><AiIcon /></template>
+      <t-button theme="primary" :disabled="!canSubmit" @click="handleSubmit">
+        <template #icon><AiImageIcon /></template>
         生成图片
       </t-button>
     </div>
@@ -66,7 +66,7 @@
 <script lang="ts" setup>
 import { useImageModelStore, useSettingDefaultStore } from '@/windows/main/store'
 import { openLogin } from '@/components/modals/LoginDialog'
-import { AiIcon } from 'tdesign-icons-vue-next'
+import { AiImageIcon } from 'tdesign-icons-vue-next'
 
 /** 常用尺寸（服务端按需透传，全模型安全值默认 1024x1024） */
 const SIZE_OPTIONS = [
