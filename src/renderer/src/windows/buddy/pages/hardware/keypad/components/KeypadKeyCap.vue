@@ -1,7 +1,7 @@
 <template>
   <div
     class="keycap"
-    :class="{ 'keycap--down': down, 'keycap--pressed': isPressed }"
+    :class="{ 'keycap--down': down, 'keycap--pressed': isPressed, 'keycap--selected': selected }"
     @mousedown="mouseDown = true"
     @mouseup="mouseDown = false"
     @mouseleave="mouseDown = false"
@@ -43,6 +43,8 @@ const props = defineProps<{
   keyId: string
   /** 当前绑定动作（未绑定为 null） */
   action: KeypadAction | null
+  /** 配置面板打开中（键位选中高亮） */
+  selected?: boolean
 }>()
 
 const emit = defineEmits<{ select: [] }>()
@@ -139,6 +141,16 @@ watch(
     &--muted {
       color: var(--td-text-color-placeholder);
     }
+  }
+
+  /* 配置面板选中：brand 描边 + 外圈 ring（定义在按下态之后，叠加物理按下发光仍可辨识） */
+  &--selected {
+    border-color: var(--td-brand-color);
+    box-shadow:
+      0 4px 0 0 rgba(0, 0, 0, 22%),
+      0 0 0 2px var(--td-brand-color-3),
+      0 8px 12px 0 rgba(0, 0, 0, 14%),
+      inset 0 1px 0 0 rgba(255, 255, 255, 60%);
   }
 }
 </style>

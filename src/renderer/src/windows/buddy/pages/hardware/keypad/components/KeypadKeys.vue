@@ -10,25 +10,36 @@
         @change="onLayoutChange"
       />
     </div>
-    <div
-      class="keyboard"
-      :style="{ gridTemplateColumns: `repeat(${layout.columns}, var(--key-size))` }"
-    >
-      <div v-for="cell in layout.cells" :key="cell.keyId" class="key-slot" :style="spanStyle(cell)">
-        <t-popup
-          trigger="click"
-          placement="bottom"
-          show-arrow
-          :visible="activeKeyId === cell.keyId"
-          :destroy-on-close="true"
-          @visible-change="(visible: boolean) => onPopupVisible(cell.keyId, visible)"
+    <div class="panel-body">
+      <div class="keyboard-area">
+        <div
+          class="keyboard"
+          :style="{ gridTemplateColumns: `repeat(${layout.columns}, var(--key-size))` }"
         >
-          <keypad-key-cap :key-id="cell.keyId" :action="bindingOf(cell.keyId)" />
-          <template #content>
-            <keypad-binding-panel :key-id="cell.keyId" @close="activeKeyId = null" />
-          </template>
-        </t-popup>
+          <div v-for="cell in layout.cells" :key="cell.keyId" class="key-slot" :style="spanStyle(cell)">
+            <keypad-key-cap
+              :key-id="cell.keyId"
+              :action="bindingOf(cell.keyId)"
+              :selected="activeKeyId === cell.keyId"
+              @select="onKeySelect(cell.keyId)"
+            />
+          </div>
+        </div>
       </div>
+      <aside class="side-panel">
+        <Transition name="panel-fade" mode="out-in">
+          <keypad-binding-panel
+            v-if="activeKeyId"
+            :key="activeKeyId"
+            :key-id="activeKeyId"
+            @close="activeKeyId = null"
+          />
+          <div v-else key="empty" class="side-panel__empty">
+            <gesture-click-icon class="side-panel__empty-icon" />
+            <span>点击左侧键位，配置按键动作</span>
+          </div>
+        </Transition>
+      </aside>
     </div>
   </div>
 </template>
@@ -36,6 +47,7 @@
 <script lang="ts" setup>
 import type { KeypadAction } from '@common/types/keypad'
 import { isKeypadLayoutId } from '@common/types/keypad'
+import { GestureClickIcon } from 'tdesign-icons-vue-next'
 import KeypadKeyCap from './KeypadKeyCap.vue'
 import KeypadBindingPanel from './KeypadBindingPanel.vue'
 import { KEYPAD_LAYOUTS, keypadLayoutOf, type KeypadLayoutCell } from './keypadLayouts'
@@ -67,15 +79,11 @@ function spanStyle(cell: KeypadLayoutCell): Record<string, string> {
   }
 }
 
-/** popup 打开中的键位；visible-change 两段防竞争（新开优先，旧的 false 不覆盖新的 true） */
+/** 配置面板打开中的键位；点其他键切换、再点同一键关闭（X/保存/清除同样关闭） */
 const activeKeyId = ref<string | null>(null)
 
-function onPopupVisible(keyId: string, visible: boolean): void {
-  if (visible) {
-    activeKeyId.value = keyId
-    return
-  }
-  if (activeKeyId.value === keyId) activeKeyId.value = null
+function onKeySelect(keyId: string): void {
+  activeKeyId.value = activeKeyId.value === keyId ? null : keyId
 }
 </script>
 
@@ -107,14 +115,46 @@ function onPopupVisible(keyId: string, visible: boolean): void {
   }
 }
 
-/* 键槽 = grid item（大键位跨行/跨列在这里生效）；popup 包在槽内，不参与网格布局 */
+/* 左键盘右配置面板两栏；键盘在剩余空间内居中 */
+.panel-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.keyboard-area {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+/* 键槽 = grid item（大键位跨行/跨列在这里生效） */
 .key-slot {
   display: flex;
+}
 
-  :deep(.t-popup) {
-    display: block;
-    width: 100%;
-    height: 100%;
+/* 右侧配置面板常驻栏：未选键时显示空态，选中后承载 KeypadBindingPanel */
+.side-panel {
+  flex-shrink: 0;
+  width: 300px;
+  padding: 14px;
+  border: 1px solid var(--td-component-stroke);
+  border-radius: var(--td-radius-extra);
+  background: var(--td-bg-color-container);
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 40px 0;
+    font: var(--td-font-body-small);
+    color: var(--td-text-color-placeholder);
+    text-align: center;
+  }
+
+  &__empty-icon {
+    font-size: 28px;
   }
 }
 
@@ -125,7 +165,6 @@ function onPopupVisible(keyId: string, visible: boolean): void {
   grid-auto-rows: var(--key-size);
   gap: 12px;
   width: fit-content;
-  margin:  auto;
   padding: 16px;
   border: 1px solid var(--td-component-stroke);
   border-radius: var(--td-radius-extra);
@@ -135,5 +174,22 @@ function onPopupVisible(keyId: string, visible: boolean): void {
     0 2px 8px 0 rgba(0, 0, 0, 10%);
 
   --key-size: 88px;
+}
+
+/* 空态/配置面板切换动效 */
+.panel-fade-enter-active,
+.panel-fade-leave-active {
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.panel-fade-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.panel-fade-leave-to {
+  opacity: 0;
 }
 </style>

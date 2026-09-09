@@ -148,17 +148,21 @@
     ellipsis、未绑定 = 灰字）
   - **按下动画**：鼠标 mousedown 下压（translateY + 厚度压缩，0.08s 短促过渡）mouseup 回弹；
     设备物理按下（pressed 推送）键帽同步保持按下态 + 品牌色描边发光
-  - **点击弹 popup 配置**：点击键帽 → t-popup（`trigger="click"` + 受控 visible + 
-    `destroy-on-close`）锚定键帽下方弹出 `KeypadBindingPanel`（Fluent 风格：迷你键帽徽标 +
-    「配置键位 N」标题 + 实时摘要副文本 → **动作类型图标选择卡片**（KEYPAD_ACTION_ICONS 映射 +
+  - **点击键位 → 右侧配置面板**（2026-09-09 重构，替代原 t-popup 弹出——功能增多后 popup
+    空间小且位置随键位漂移）：`.panel-body` 左右两栏（`.keyboard-area` flex:1 内键盘居中 +
+    `.side-panel` 300px 常驻栏）。点击键帽 → 键帽 brand 描边 + 外圈 ring 选中态
+    （`KeypadKeyCap` 新增 `selected` prop）→ 右栏渲染 `KeypadBindingPanel`（Fluent 风格：
+    迷你键帽徽标 + 「配置键位 N」标题 + 实时摘要副文本 + **右上角 X 关闭按钮**
+    （`emit('close')`）→ **动作类型图标选择卡片**（KEYPAD_ACTION_ICONS 映射 +
     KEYPAD_ACTIONS 注册表渲染，选中态品牌色）→ 编辑区（Transition 淡入切换，**不套浅底
     容器**）→ 清除/保存操作行）。编辑器自身也去表单化：**combo = 键帽式 kbd 组合展示**
     （`[Ctrl] + [Shift] + [F13]` 每键一块小键帽，整块虚线区点击录制、录制中品牌色脉冲呼吸）、
-    **app = 选中项大图标 + 名称**（select `valueDisplay` 自定义）；点外部/点其他键自动关，
-    保存/清除成功即关闭。
-    visible-change 防竞争：新开优先，旧 popup 的 false 不覆盖新 popup 的 true。
-    ⚠️ 网格结构：**span 大键作用于自包 `.key-slot`（真 grid item），t-popup 嵌在槽内**
-    （popup 根当 grid item 不可控，跨格会失效）；`.key-slot :deep(.t-popup)` 撑满槽。
+    **app = 选中项大图标 + 名称**（select `valueDisplay` 自定义）。
+    关闭途径：再点同一键（toggle）/ 右上角 X / 保存 / 清除成功；点其他键即切换面板内容
+    （`:key="activeKeyId"` 重挂重建草稿）。未选键时右栏显示空态提示（gesture-click 图标 +
+    「点击左侧键位，配置按键动作」），**常驻不跳动**；面板/空态切换经 `panel-fade` 过渡。
+    外观职责：`.side-panel` 容器持边框/背景/圆角/内边距，`KeypadBindingPanel` 剥离外观
+    （width/padding/background 已删）只留内容布局，宽度撑满容器。
     键盘格子固定正方形 `--key-size`（88px），合并键 = 整数倍格子不变形，外壳内整体居中
 - macOS 未授权时顶部 `t-alert` 引导授权（仅 combo 场景需要；Windows 恒不显示）
 - 未连接显示占位（连接后可配置绑定）

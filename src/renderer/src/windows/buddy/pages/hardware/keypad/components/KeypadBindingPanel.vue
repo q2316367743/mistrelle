@@ -8,6 +8,15 @@
           {{ summaryText }}
         </div>
       </div>
+      <t-button
+        variant="text"
+        shape="square"
+        size="small"
+        class="binding-panel__close"
+        @click="emit('close')"
+      >
+        <close-icon />
+      </t-button>
     </div>
 
     <div class="binding-panel__types">
@@ -51,6 +60,7 @@
 <script lang="ts" setup>
 import type { KeypadAction } from '@common/types/keypad'
 import { isKeypadActionType, keypadActionDefinition, KEYPAD_ACTIONS } from '@common/keypad/actions'
+import { CloseIcon } from 'tdesign-icons-vue-next'
 import { KEYPAD_ACTION_EDITORS, KEYPAD_ACTION_ICONS } from './actionEditors'
 import { comboSummaryText } from './actionText'
 import { appDisplayName } from './iconHref'
@@ -135,16 +145,16 @@ async function clear(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 300px;
-  padding: 14px;
-  border-radius: var(--td-radius-extra);
-  background: var(--td-bg-color-container);
 
-  /* 标题区：迷你键帽徽标 + 名称 + 当前摘要 */
+  /* 标题区：迷你键帽徽标 + 名称 + 当前摘要 + 关闭按钮 */
   &__head {
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  &__close {
+    margin-left: auto;
   }
 
   &__cap {
@@ -222,7 +232,7 @@ async function clear(): Promise<void> {
     }
   }
 
-  /* 编辑区：稳定高度防 popup 跳动；不再套浅底容器，编辑器控件直接落于面板 */
+  /* 编辑区：稳定高度防面板跳动；不再套浅底容器，编辑器控件直接落于面板 */
   &__editor {
     min-height: 104px;
     display: flex;
