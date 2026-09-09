@@ -9,40 +9,43 @@
   >
     <span class="keycap__badge">{{ keyId }}</span>
     <div class="keycap__summary">
-      <template v-if="action?.type === 'app'">
-        <img
-          v-if="!iconFailed"
-          class="keycap__icon"
-          :src="appIconHref(action.path)"
-          alt=""
-          @error="iconFailed = true"
-        />
-        <span class="keycap__text">{{ appDisplayName(action.path) }}</span>
+      <template v-if="binding?.actions.length">
+        <!-- 已命名：名称即摘要（名称代表整个序列） -->
+        <span v-if="name" class="keycap__text">{{ name }}</span>
+        <template v-else>
+          <!-- 未命名：首条动作摘要（app 带图标），多动作时小字标注总数 -->
+          <div class="keycap__line">
+            <img
+              v-if="firstAppPath && !failedIcons[firstAppPath]"
+              class="keycap__icon"
+              :src="appIconHref(firstAppPath)"
+              alt=""
+              @error="markFailed(firstAppPath)"
+            />
+            <span v-if="first" class="keycap__text">{{ keypadActionSummary(first) }}</span>
+          </div>
+          <span v-if="binding.actions.length > 1" class="keycap__more">
+            共 {{ binding.actions.length }} 个动作
+          </span>
+        </template>
       </template>
-      <span v-else-if="action?.type === 'combo'" class="keycap__text">
-        {{ comboSummaryText(action.modifiers, action.key) }}
-      </span>
-      <span v-else-if="action?.type === 'script'" class="keycap__text">{{ action.command }}</span>
-      <span v-else-if="action?.type === 'permission'" class="keycap__text">
-        {{ action.decision === 'allow' ? '允许审批' : '拒绝审批' }}
-      </span>
       <span v-else class="keycap__text keycap__text--muted">未绑定</span>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import type { KeypadAction } from '@common/types/keypad'
-import { appDisplayName, appIconHref } from './iconHref'
-import { comboSummaryText } from './actionText'
+import type { KeypadAction, KeypadBinding } from '@common/types/keypad'
+import { appIconHref } from './iconHref'
+import { keypadActionSummary } from './actionText'
 import { useKeypad } from '../useKeypad'
 
 defineOptions({ name: 'KeypadKeyCap' })
 
 const props = defineProps<{
   keyId: string
-  /** 当前绑定动作（未绑定为 null） */
-  action: KeypadAction | null
+  /** 当前键位的绑定（未绑定为 null） */
+  binding: KeypadBinding | null
   /** 配置面板打开中（键位选中高亮） */
   selected?: boolean
 }>()
@@ -58,14 +61,24 @@ const isPressed = computed(() => pressed.value.includes(props.keyId))
 const mouseDown = ref(false)
 const down = computed(() => mouseDown.value || isPressed.value)
 
-/** 图标加载失败（未缓存且提取失败）→ 只显示名称 */
-const iconFailed = ref(false)
-watch(
-  () => (props.action?.type === 'app' ? props.action.path : ''),
-  () => {
-    iconFailed.value = false
-  }
-)
+/** 显示名称（trim 非空才生效） */
+const name = computed(() => props.binding?.name?.trim() ?? '')
+
+/** 首条动作（未命名回退显示；binding.actions 恒非空，守卫仅类型收窄） */
+const first = computed<KeypadAction | null>(() => props.binding?.actions[0] ?? null)
+
+/** 首条为 app 动作时的图标路径（其他类型/空绑定 = null） */
+const firstAppPath = computed(() => {
+  const action = props.binding?.actions[0]
+  return action?.type === 'app' ? action.path : null
+})
+
+/** 图标加载失败（未缓存且提取失败）→ 该行只显示文本 */
+const failedIcons = reactive<Record<string, boolean>>({})
+
+function markFailed(path: string): void {
+  failedIcons[path] = true
+}
 </script>
 
 <style scoped lang="less">
@@ -118,9 +131,20 @@ watch(
 
   &__summary {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 2px;
+    max-width: 100%;
+    /* 序列过长时纵向截断（键帽高度有限） */
+    overflow: hidden;
+  }
+
+  &__line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
     max-width: 100%;
   }
 
@@ -141,6 +165,13 @@ watch(
     &--muted {
       color: var(--td-text-color-placeholder);
     }
+  }
+
+  /* 未命名多动作：总数小字标注 */
+  &__more {
+    font: var(--td-font-body-small);
+    color: var(--td-text-color-tertiary);
+    white-space: nowrap;
   }
 
   /* 配置面板选中：brand 描边 + 外圈 ring（定义在按下态之后，叠加物理按下发光仍可辨识） */

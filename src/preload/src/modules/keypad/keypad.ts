@@ -7,7 +7,7 @@ import type { IpcRendererEvent } from 'electron'
 import { KeypadChannels } from '@common/buddy/keypad/keypadChannels'
 import type {
   AppCatalogItem,
-  KeypadAction,
+  KeypadBinding,
   KeypadConfig,
   KeypadLayoutId,
   KeypadResult,
@@ -17,8 +17,8 @@ import type {
 export const keypadApi = {
   /** 读取整份配置（含 lastPort / 键位绑定 / 键盘样式） */
   getConfig: (): Promise<KeypadConfig> => ipcRenderer.invoke(KeypadChannels.getConfig),
-  /** 全量保存键位绑定表；main 归一化清洗后落盘 */
-  saveBindings: (bindings: Record<string, KeypadAction>): Promise<KeypadResult> =>
+  /** 全量保存键位绑定表（可选名称 + 动作序列）；main 归一化清洗后落盘 */
+  saveBindings: (bindings: Record<string, KeypadBinding>): Promise<KeypadResult> =>
     ipcRenderer.invoke(KeypadChannels.saveBindings, bindings),
   /** 保存键盘样式布局（main 校验白名单后落盘） */
   saveLayout: (layout: KeypadLayoutId): Promise<KeypadResult> =>

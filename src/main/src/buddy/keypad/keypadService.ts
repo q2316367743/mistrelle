@@ -17,14 +17,14 @@ import { KeypadChannels } from '@common/buddy/keypad/keypadChannels'
 import {
   isKeypadLayoutId,
   type KeypadAction,
+  type KeypadBinding,
   type KeypadConfig,
-  type KeypadKeyAction,
   type KeypadResult,
   type KeypadState
 } from '@common/types/keypad'
 import { KEYPAD_ACTION_EXECUTORS } from './actions'
 import { createKeypadParser, type KeypadKeyEvent } from './keypadProtocol'
-import { defaultConfig, loadConfig, normalizeAction, saveConfigFile } from './keypadConfig'
+import { defaultConfig, loadConfig, normalizeBinding, saveConfigFile } from './keypadConfig'
 import { isAccessibilityGranted, releaseAll } from './keySimulator'
 
 // 声明即给默认值：数据回调在任何时序下都可能被触发
@@ -33,6 +33,8 @@ let config: KeypadConfig = defaultConfig()
 let unsubscribeData: (() => void) | null = null
 /** 当前按下的键位 id（含未绑定键位；设备 on/off 驱动） */
 const pressed = new Set<string>()
+/** 序列执行中的键位（防重入：序列含延时时长于物理按压，执行中忽略该键位的再次触发） */
+const running = new Set<string>()
 
 /** 运行态（配置 lastPort 已开视为已连接；权限状态即查即返回） */
 export function getState(): KeypadState {
@@ -66,34 +68,42 @@ function subscribeData(): void {
 
 /**
  * 按键事件消费：on=按下、off=释放。
- * 按下状态变化即广播；有绑定的键位查执行器注册表分发动作（无绑定仅状态点亮）。
+ * 按下状态变化即广播；有绑定的键位在按下时顺序执行动作序列
+ * （off 仅做状态簿记——序列瞬时执行不依赖物理释放，combo 已是自动抬起的完整击键）。
  */
 function handleEvent(event: KeypadKeyEvent): void {
   const { keyId, action } = event
   if (action === 'on') {
     if (pressed.has(keyId)) return
     pressed.add(keyId)
+    const binding = config.bindings[keyId]
+    if (binding) dispatchSequence(keyId, binding.actions)
   } else {
     if (!pressed.has(keyId)) return
     pressed.delete(keyId)
   }
-  const binding = config.bindings[keyId]
-  if (binding) dispatchAction(binding, action)
   broadcastState()
 }
 
+/** 启动键位的动作序列：执行中再次触发直接忽略（防连按并发重入）；fire-and-forget 不抛出 */
+function dispatchSequence(keyId: string, actions: KeypadAction[]): void {
+  if (running.has(keyId)) return
+  running.add(keyId)
+  void runSequence(actions).finally(() => running.delete(keyId))
+}
+
 /**
- * 查执行器注册表分发动作：on 走 onPress、off 走 onRelease（无 onRelease 的动作仅按下触发）。
- * fire-and-forget，同步异常吞掉只记日志（按键响应不阻塞、不抛出）；
- * 异步失败由各执行器自行记录（cliRun 永不 reject，shell.openPath 返回错误串）。
+ * 顺序执行动作序列：逐条查执行器注册表 await onPress（delay 执行器以 sleep Promise 形成间隔）。
+ * 单条失败记日志继续下一条（按键响应不阻塞、不抛出；
+ * 异步失败由各执行器自行记录，cliRun 永不 reject，shell.openPath 返回错误串）。
  */
-function dispatchAction(binding: KeypadAction, action: KeypadKeyAction): void {
-  try {
-    const executor = KEYPAD_ACTION_EXECUTORS[binding.type]
-    if (action === 'on') void executor.onPress(binding)
-    else executor.onRelease?.(binding)
-  } catch (error) {
-    console.error('[keypad] 动作执行失败', error)
+async function runSequence(actions: KeypadAction[]): Promise<void> {
+  for (const action of actions) {
+    try {
+      await KEYPAD_ACTION_EXECUTORS[action.type].onPress(action)
+    } catch (error) {
+      console.error('[keypad] 动作执行失败', error)
+    }
   }
 }
 
@@ -159,14 +169,14 @@ export async function disconnect(): Promise<void> {
 }
 
 /**
- * 全量保存键位绑定表：逐条归一化清洗后落盘。
+ * 全量保存键位绑定表：逐个键位归一化清洗后落盘。
  * 保存前释放按住中的组合（被移除/改绑的旧组合不残留）；不抛错，结果对象返回。
  */
 export function saveBindings(input: Record<string, unknown>): KeypadResult {
-  const bindings: Record<string, KeypadAction> = {}
+  const bindings: Record<string, KeypadBinding> = {}
   for (const [keyId, raw] of Object.entries(input)) {
-    const action = normalizeAction(raw)
-    if (action) bindings[keyId] = action
+    const binding = normalizeBinding(raw)
+    if (binding) bindings[keyId] = binding
   }
   releaseAll()
   config.bindings = bindings

@@ -116,9 +116,9 @@ export function isKeypadKeyAction(value: string): value is KeypadKeyAction {
 }
 
 /** 键位动作类型（新增动作 = 加联合成员 + 在 @common/keypad/actions 注册定义 + main 执行器 + 渲染层编辑器） */
-export type KeypadActionType = 'combo' | 'app' | 'script' | 'permission'
+export type KeypadActionType = 'combo' | 'app' | 'script' | 'permission' | 'delay'
 
-/** 模拟按键/组合快捷键：修饰键组合 + 主键（可为空组合=只按主键）；按下按住、释放抬起（push-to-talk） */
+/** 模拟按键/组合快捷键：修饰键组合 + 主键（可为空组合=只按主键）；序列执行到该动作时模拟一次完整击键（按下→短暂按住→自动抬起） */
 export interface KeypadComboAction {
   type: 'combo'
   modifiers: KeypadModifier[]
@@ -143,8 +143,27 @@ export interface KeypadPermissionAction {
   decision: PermissionDecision
 }
 
-/** 键位动作（按 type 判别；落盘 keypad.json bindings 的值） */
-export type KeypadAction = KeypadComboAction | KeypadAppAction | KeypadScriptAction | KeypadPermissionAction
+/** 延时等待：序列执行到该动作时暂停指定毫秒再继续（50–60000ms，上限防误配置长时间卡住序列） */
+export interface KeypadDelayAction {
+  type: 'delay'
+  ms: number
+}
+
+/** 键位动作（按 type 判别；落盘 keypad.json bindings 值 actions 字段的元素） */
+export type KeypadAction =
+  | KeypadComboAction
+  | KeypadAppAction
+  | KeypadScriptAction
+  | KeypadPermissionAction
+  | KeypadDelayAction
+
+/** 键位绑定：动作序列 + 可选显示名称（键帽优先显示名称，未命名回退首条动作摘要） */
+export interface KeypadBinding {
+  /** 显示名称（可选；trim 非空才落盘） */
+  name?: string
+  /** 动作序列（按下按顺序执行；恒非空） */
+  actions: KeypadAction[]
+}
 
 /**
  * 键盘样式布局 id（纯展示概念，落盘到 config.layout 供下次进入还原）。
@@ -173,8 +192,8 @@ export interface AppCatalogItem {
 export interface KeypadConfig {
   /** 上次使用的串口路径；未记录为空串 */
   lastPort: string
-  /** 键位绑定表：键为设备行协议里的键位 id（如 '1'..'6'），缺省 = 未绑定仅状态展示 */
-  bindings: Record<string, KeypadAction>
+  /** 键位绑定表：键为设备行协议里的键位 id（如 '1'..'6'），值为绑定（可选名称 + 动作序列），缺省 = 未绑定仅状态展示 */
+  bindings: Record<string, KeypadBinding>
   /** 键盘样式布局 id（纯展示偏好；非法/缺省归一化为首个布局） */
   layout: KeypadLayoutId
 }
@@ -200,7 +219,7 @@ export interface KeypadApi {
   /** 读取整份配置（含 lastPort 与键位绑定） */
   getConfig(): Promise<KeypadConfig>
   /** 全量保存键位绑定表；main 归一化清洗后落盘 */
-  saveBindings(bindings: Record<string, KeypadAction>): Promise<KeypadResult>
+  saveBindings(bindings: Record<string, KeypadBinding>): Promise<KeypadResult>
   /** 保存键盘样式布局（main 校验白名单后落盘） */
   saveLayout(layout: KeypadLayoutId): Promise<KeypadResult>
   /** 本机应用目录（应用下拉选项源；main 扫描系统应用清单） */

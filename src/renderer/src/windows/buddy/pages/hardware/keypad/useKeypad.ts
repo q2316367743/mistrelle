@@ -3,7 +3,7 @@
  * 绑定即改即存，保存后以 main 回读为准（失败自动回滚 UI）。
  * 连接编排/按键解析/动作执行都在 main（keypadService），渲染层只发指令与展示运行态。
  */
-import type { AppCatalogItem, KeypadAction, KeypadConfig, KeypadLayoutId } from '@common/types/keypad'
+import type { AppCatalogItem, KeypadBinding, KeypadConfig, KeypadLayoutId } from '@common/types/keypad'
 import { MessageUtil } from '@/utils/modal'
 
 const config = ref<KeypadConfig | null>(null)
@@ -24,10 +24,10 @@ async function reload(): Promise<void> {
 }
 
 /** 全量保存键位绑定（无论成败都回读，UI 始终与 main 对齐） */
-async function saveBindings(bindings: Record<string, KeypadAction>): Promise<void> {
+async function saveBindings(bindings: Record<string, KeypadBinding>): Promise<void> {
   try {
     // config 来自 ref（深层 reactive）：浅展开后的嵌套动作对象仍是 Proxy，跨桥会克隆失败，须深拷贝
-    const plain = JSON.parse(JSON.stringify(bindings)) as Record<string, KeypadAction>
+    const plain = JSON.parse(JSON.stringify(bindings)) as Record<string, KeypadBinding>
     const result = await window.preload.keypad.saveBindings(plain)
     if (!result.ok) MessageUtil.error(result.msg || '保存失败')
   } catch (e) {
@@ -37,12 +37,12 @@ async function saveBindings(bindings: Record<string, KeypadAction>): Promise<voi
   }
 }
 
-/** 绑定单个键位（即改即存；action=null 解除绑定） */
-async function bindKey(keyId: string, action: KeypadAction | null): Promise<void> {
+/** 绑定单个键位（即改即存；binding 为 null/空序列 = 解除绑定） */
+async function bindKey(keyId: string, binding: KeypadBinding | null): Promise<void> {
   const current = config.value
   if (!current) return
   const bindings = { ...current.bindings }
-  if (action) bindings[keyId] = action
+  if (binding && binding.actions.length) bindings[keyId] = binding
   else delete bindings[keyId]
   await saveBindings(bindings)
 }

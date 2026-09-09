@@ -16,10 +16,15 @@
           class="keyboard"
           :style="{ gridTemplateColumns: `repeat(${layout.columns}, var(--key-size))` }"
         >
-          <div v-for="cell in layout.cells" :key="cell.keyId" class="key-slot" :style="spanStyle(cell)">
+          <div
+            v-for="cell in layout.cells"
+            :key="cell.keyId"
+            class="key-slot"
+            :style="spanStyle(cell)"
+          >
             <keypad-key-cap
               :key-id="cell.keyId"
-              :action="bindingOf(cell.keyId)"
+              :binding="bindingOf(cell.keyId)"
               :selected="activeKeyId === cell.keyId"
               @select="onKeySelect(cell.keyId)"
             />
@@ -45,7 +50,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { KeypadAction } from '@common/types/keypad'
+import type { KeypadBinding } from '@common/types/keypad'
 import { isKeypadLayoutId } from '@common/types/keypad'
 import { GestureClickIcon } from 'tdesign-icons-vue-next'
 import KeypadKeyCap from './KeypadKeyCap.vue'
@@ -67,7 +72,7 @@ function onLayoutChange(value: unknown): void {
   void saveLayout(value)
 }
 
-function bindingOf(keyId: string): KeypadAction | null {
+function bindingOf(keyId: string): KeypadBinding | null {
   return config.value?.bindings[keyId] ?? null
 }
 
