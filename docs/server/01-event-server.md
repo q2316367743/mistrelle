@@ -22,6 +22,7 @@
 | 探活 | `GET /ping` → 204 | 外部进程判断应用是否在跑 |
 | 资源 | `GET /file/<encodeURIComponent(绝对路径)>` | 读盘返回，`Content-Type` 按扩展名映射 + `Access-Control-Allow-Origin: *` |
 | 事件 | `GET\|POST /buddy/event?platform=<软件>&event=<Buddy 事件>` | **零校验纯转发**：完整原始事件 `publishRawBuddyEvent` 发布到原始事件总线（`buddyEventBus.ts` raw 段），监听器各取所需——白名单过滤（`buddyEventFilter`，命中发布校验后总线供设备消费）与集成调试事件流（`integrationsActivity`，全量转发伙伴窗口）；对外始终 204，未知路由 404 |
+| 权限 | `POST /buddy/permission/ask\|replied\|decide`（JSON body） | 接入适配层，thin 转调权限审批基座（`buddy/permission/permissionService`）：ask 挂起等决定、replied 撤下原生侧已答项、decide 供外部脚本回传允许/拒绝；契约与语义见 hardware/08 |
 
 - 地址事实源：`src/common/server/eventServer.ts` 的 `EVENT_SERVER_ORIGIN`（main 与 preload 共享；
   插件模板为独立文件无法 import，端口常量注释互指）。
@@ -32,7 +33,8 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/main/src/server/index.ts` | `startEventServer()`：express 装配（/ping、/file 资源面、事件路由）、Origin 守卫、生命周期 |
+| `src/main/src/server/index.ts` | `startEventServer()`：express 装配（/ping、/file 资源面、事件路由、权限面）、Origin 守卫、生命周期 |
+| `src/main/src/buddy/permission/permissionService.ts` | 权限审批基座（注册表/广播/决定回传，见 hardware/08） |
 | `src/main/src/buddy/events/buddyEventBus.ts` | 原始事件总线（raw）+ 校验后事件总线（typed） |
 | `src/main/src/buddy/events/buddyEventFilter.ts` | 事件面白名单过滤监听器（校验收口） |
 | `src/main/src/buddy/integrations/integrationsActivity.ts` | 集成调试事件流全量采集（见 hardware/06） |

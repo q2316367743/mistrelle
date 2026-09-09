@@ -8,6 +8,7 @@
  * window 挂载由渲染层 vite-env.d.ts 声明（仅伙伴窗口独立 preload 注入）。
  */
 import { CommonSelect } from './CommonSelect'
+import type { PermissionDecision } from './permissionRequest'
 
 /** 修饰键（meta 在 macOS 为 Command、Windows 为 Win 键） */
 export type KeypadModifier = 'ctrl' | 'alt' | 'shift' | 'meta'
@@ -115,7 +116,7 @@ export function isKeypadKeyAction(value: string): value is KeypadKeyAction {
 }
 
 /** 键位动作类型（新增动作 = 加联合成员 + 在 @common/keypad/actions 注册定义 + main 执行器 + 渲染层编辑器） */
-export type KeypadActionType = 'combo' | 'app' | 'script'
+export type KeypadActionType = 'combo' | 'app' | 'script' | 'permission'
 
 /** 模拟按键/组合快捷键：修饰键组合 + 主键（可为空组合=只按主键）；按下按住、释放抬起（push-to-talk） */
 export interface KeypadComboAction {
@@ -136,8 +137,14 @@ export interface KeypadScriptAction {
   command: string
 }
 
+/** 权限审批：对最近一条待审批权限请求回传允许/拒绝（权限审批基座，无待审请求时空操作） */
+export interface KeypadPermissionAction {
+  type: 'permission'
+  decision: PermissionDecision
+}
+
 /** 键位动作（按 type 判别；落盘 keypad.json bindings 的值） */
-export type KeypadAction = KeypadComboAction | KeypadAppAction | KeypadScriptAction
+export type KeypadAction = KeypadComboAction | KeypadAppAction | KeypadScriptAction | KeypadPermissionAction
 
 /**
  * 键盘样式布局 id（纯展示概念，落盘到 config.layout 供下次进入还原）。

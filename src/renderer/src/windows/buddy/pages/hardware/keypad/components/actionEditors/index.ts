@@ -7,22 +7,25 @@
  * 对应 @common 动作定义与 main 执行器同步登记，卡片框架零改动。
  */
 import type { Component } from 'vue'
-import { ApplicationIcon, CodeIcon, KeyboardIcon } from 'tdesign-icons-vue-next'
+import { ApplicationIcon, CodeIcon, KeyboardIcon, SecuredIcon } from 'tdesign-icons-vue-next'
 import type { KeypadAction, KeypadActionType } from '@common/types/keypad'
 import AppEditor from './AppEditor.vue'
 import ComboEditor from './ComboEditor.vue'
 import ScriptEditor from './ScriptEditor.vue'
+import PermissionEditor from './PermissionEditor.vue'
 
 /** 编辑器注册表：键 = 动作类型判别 */
 export const KEYPAD_ACTION_EDITORS: { [D in KeypadAction as D['type']]: Component } = {
   combo: ComboEditor,
   app: AppEditor,
-  script: ScriptEditor
+  script: ScriptEditor,
+  permission: PermissionEditor
 }
 
 /** 动作类型图标（类型选择卡片等 UI 用；新增动作类型漏配此处编译报错） */
 export const KEYPAD_ACTION_ICONS: Record<KeypadActionType, Component> = {
   combo: KeyboardIcon,
   app: ApplicationIcon,
-  script: CodeIcon
+  script: CodeIcon,
+  permission: SecuredIcon
 }

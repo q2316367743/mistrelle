@@ -8,6 +8,7 @@ import type { KeypadAction, KeypadActionType } from '@common/types/keypad'
 import { appExecutor } from './appExecutor'
 import { comboExecutor } from './comboExecutor'
 import { scriptExecutor } from './scriptExecutor'
+import { permissionExecutor } from './permissionExecutor'
 
 /** 单个动作类型的执行器：onPress 在设备按下时触发；onRelease 可选（不支持释放语义的动作省略） */
 export interface KeypadActionExecutor<T extends KeypadAction = KeypadAction> {
@@ -23,5 +24,6 @@ export interface KeypadActionExecutor<T extends KeypadAction = KeypadAction> {
 export const KEYPAD_ACTION_EXECUTORS: Record<KeypadActionType, KeypadActionExecutor<KeypadAction>> = {
   combo: comboExecutor,
   app: appExecutor,
-  script: scriptExecutor
+  script: scriptExecutor,
+  permission: permissionExecutor
 }

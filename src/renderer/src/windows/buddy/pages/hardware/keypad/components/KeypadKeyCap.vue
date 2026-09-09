@@ -23,6 +23,9 @@
         {{ comboSummaryText(action.modifiers, action.key) }}
       </span>
       <span v-else-if="action?.type === 'script'" class="keycap__text">{{ action.command }}</span>
+      <span v-else-if="action?.type === 'permission'" class="keycap__text">
+        {{ action.decision === 'allow' ? '允许审批' : '拒绝审批' }}
+      </span>
       <span v-else class="keycap__text keycap__text--muted">未绑定</span>
     </div>
   </div>

@@ -89,6 +89,8 @@ const summaryText = computed(() => {
   if (!action) return '未绑定 · 按键仅点亮状态'
   if (action.type === 'combo') return comboSummaryText(action.modifiers, action.key)
   if (action.type === 'app') return appDisplayName(action.path) || '未选择应用'
+  if (action.type === 'permission')
+    return action.decision === 'allow' ? '允许最近待审请求' : '拒绝最近待审请求'
   return action.command.trim() || '未填写命令'
 })
 
@@ -179,10 +181,10 @@ async function clear(): Promise<void> {
     }
   }
 
-  /* 动作类型：图标选择卡片（Fluent 选择卡片，选中态品牌色） */
+  /* 动作类型：图标选择卡片（Fluent 选择卡片，选中态品牌色）；四种动作 2×2 排布 */
   &__types {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 6px;
   }
 

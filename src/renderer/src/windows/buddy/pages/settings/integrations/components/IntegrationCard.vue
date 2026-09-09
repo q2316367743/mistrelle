@@ -18,10 +18,6 @@
     <div class="desc">{{ item.description }}</div>
     <div class="install-status" :data-status="status">{{ statusText }}</div>
     <div class="meta">
-      <span class="meta-label">可驱动设备</span>
-      <span class="meta-value">{{ item.devices }}</span>
-    </div>
-    <div class="meta">
       <span class="meta-label">插件位置</span>
       <span class="meta-value mono">{{ statusDetail?.path || '—' }}</span>
     </div>
@@ -36,6 +32,7 @@
         </div>
       </div>
     </div>
+    <permission-request-panel :source="item.name" />
     <event-feed-panel :platform="item.name" />
     <div class="hint">安装 / 更新插件后需重启对应软件才能加载生效。</div>
   </div>
@@ -52,6 +49,7 @@ import {
 import type { IntegrationItem } from '../registry'
 import { useIntegrations } from '../useIntegrations'
 import EventFeedPanel from './EventFeedPanel.vue'
+import PermissionRequestPanel from './PermissionRequestPanel.vue'
 
 defineOptions({ name: 'IntegrationCard' })
 

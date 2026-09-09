@@ -18,6 +18,7 @@ import { registerTrafficLightIpc } from './buddy/traffic-light/trafficLightIpc'
 import { initTrafficLight } from './buddy/traffic-light/TrafficLightService'
 import { registerIntegrationsIpc } from './buddy/integrations/integrationsIpc'
 import { initIntegrationsActivity } from './buddy/integrations/integrationsActivity'
+import { registerPermissionIpc } from './buddy/permission/permissionIpc'
 import { initBuddyEventFilter } from './buddy/events/buddyEventFilter'
 import { registerEsp32LcdIpc } from './buddy/esp32-lcd/esp32LcdIpc'
 import { initEsp32Lcd } from './buddy/esp32-lcd/esp32LcdService'
@@ -48,6 +49,7 @@ export function registerIpc(): void {
   registerSerialIpc()
   registerTrafficLightIpc()
   registerIntegrationsIpc()
+  registerPermissionIpc()
   registerEsp32LcdIpc()
   registerKeypadIpc()
   registerQuotaIpc()

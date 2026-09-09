@@ -10,6 +10,7 @@ import type { KeypadAction, KeypadActionType } from '../../types/keypad'
 import { appAction } from './app'
 import { comboAction } from './combo'
 import { scriptAction } from './script'
+import { permissionAction } from './permission'
 
 /** 单个动作类型的定义 */
 export interface KeypadActionDefinition<T extends KeypadAction = KeypadAction> {
@@ -23,7 +24,7 @@ export interface KeypadActionDefinition<T extends KeypadAction = KeypadAction> {
 }
 
 /** 动作注册表（as const 保字面量，供类型派生与穷尽校验） */
-export const KEYPAD_ACTIONS = [comboAction, appAction, scriptAction] as const
+export const KEYPAD_ACTIONS = [comboAction, appAction, scriptAction, permissionAction] as const
 
 /** 动作类型下拉选项源（从注册表派生防失同步） */
 export const KeypadActionTypeOptions: Array<{ value: KeypadActionType; label: string }> =
