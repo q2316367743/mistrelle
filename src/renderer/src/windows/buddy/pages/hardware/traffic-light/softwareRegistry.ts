@@ -12,5 +12,6 @@ export interface SoftwareTabItem {
 }
 
 export const SOFTWARE_REGISTRY: readonly SoftwareTabItem[] = [
-  { name: 'opencode', label: 'Opencode' }
+  { name: 'opencode', label: 'Opencode' },
+  { name: 'zcode', label: 'ZCode' }
 ]

@@ -1,5 +1,5 @@
 <template>
-  <div class="integration-card">
+  <div class="integration-panel">
     <div class="head">
       <div class="title-area">
         <span class="name">{{ item.label }}</span>
@@ -12,13 +12,13 @@
         :loading="installing"
         @click="installNow"
       >
-        {{ status === 'outdated' ? '更新插件' : '安装插件' }}
+        {{ status === 'outdated' ? '更新' : '安装' }}
       </t-button>
     </div>
     <div class="desc">{{ item.description }}</div>
     <div class="install-status" :data-status="status">{{ statusText }}</div>
     <div class="meta">
-      <span class="meta-label">插件位置</span>
+      <span class="meta-label">安装位置</span>
       <span class="meta-value mono">{{ statusDetail?.path || '—' }}</span>
     </div>
     <div class="events">
@@ -34,7 +34,7 @@
     </div>
     <permission-request-panel :source="item.name" />
     <event-feed-panel :platform="item.name" />
-    <div class="hint">安装 / 更新插件后需重启对应软件才能加载生效。</div>
+    <div class="hint">{{ item.effectHint }}</div>
   </div>
 </template>
 
@@ -51,7 +51,7 @@ import { useIntegrations } from '../useIntegrations'
 import EventFeedPanel from './EventFeedPanel.vue'
 import PermissionRequestPanel from './PermissionRequestPanel.vue'
 
-defineOptions({ name: 'IntegrationCard' })
+defineOptions({ name: 'IntegrationPanel' })
 
 const props = defineProps<{ item: IntegrationItem }>()
 
@@ -74,9 +74,9 @@ const statusTheme = computed(() =>
 
 /** 各安装态的说明文案 */
 const STATUS_TEXT: Record<PlatformConfigStatus, string> = {
-  missing: '接入插件未安装，安装后事件才会投递到 mistrelle',
-  outdated: '接入插件有更新，建议更新以保持事件上报正常',
-  ready: '接入插件已安装，事件正常投递'
+  missing: '接入配置未安装，安装后事件才会投递到 mistrelle',
+  outdated: '接入配置有更新，建议更新以保持事件上报正常',
+  ready: '接入配置已安装，事件正常投递'
 }
 const statusText = computed(() => STATUS_TEXT[status.value])
 
@@ -104,11 +104,12 @@ function eventLabel(event: BuddyEventName): string {
 </script>
 
 <style scoped lang="less">
-.integration-card {
+.integration-panel {
   padding: 16px;
   border: 1px solid var(--td-component-stroke);
   border-radius: var(--td-radius-medium);
   background: var(--td-bg-color-container);
+  margin-top: 16px;
 }
 
 .head {

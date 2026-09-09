@@ -25,15 +25,26 @@ const DEFAULT_OPENCODE_BINDINGS: Partial<Record<BuddyEventName, LightState>> = {
   'session.error': 'rs'
 }
 
+/** ZCode 首次使用时的默认绑定（仅 hooks 能上报的事件子集，全集见 resources/plugins/zcode） */
+const DEFAULT_ZCODE_BINDINGS: Partial<Record<BuddyEventName, LightState>> = {
+  'message.updated': 'gs',
+  'tool.execute.before': 'yo',
+  'session.idle': 'go',
+  'permission.asked': 'ys'
+}
+
 function configFilePath(): string {
   return join(app.getPath('home'), '.mistrelle', 'buddy', 'traffic-light.json')
 }
 
-/** 默认配置（文件缺失/损坏时回退，不回写磁盘） */
+/** 默认配置（文件缺失/损坏时回退，不回写磁盘；zcode 默认停用——软件互斥，opencode 为既有主软件） */
 export function defaultConfig(): TrafficLightConfig {
   return {
     lastPort: '',
-    config: { opencode: { enabled: true, bindings: { ...DEFAULT_OPENCODE_BINDINGS } } }
+    config: {
+      opencode: { enabled: true, bindings: { ...DEFAULT_OPENCODE_BINDINGS } },
+      zcode: { enabled: false, bindings: { ...DEFAULT_ZCODE_BINDINGS } }
+    }
   }
 }
 

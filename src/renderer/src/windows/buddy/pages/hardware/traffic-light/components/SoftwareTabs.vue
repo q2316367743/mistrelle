@@ -22,6 +22,7 @@ import type { Component } from 'vue'
 import type { SoftwareName } from '@common/types/trafficLight'
 import { SOFTWARE_REGISTRY } from '../softwareRegistry'
 import OpencodePanel from './software/OpencodePanel.vue'
+import ZcodePanel from './software/ZcodePanel.vue'
 
 defineOptions({ name: 'SoftwareTabs' })
 
@@ -30,7 +31,8 @@ defineOptions({ name: 'SoftwareTabs' })
  * 一律独立组件（不做通用面板），新增软件时在此登记自己的面板。
  */
 const PANELS: Record<SoftwareName, Component> = {
-  opencode: OpencodePanel
+  opencode: OpencodePanel,
+  zcode: ZcodePanel
 }
 </script>
 
