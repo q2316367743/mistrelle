@@ -5,7 +5,9 @@
  * 2. 事件面：外部进程（如 opencode 接入插件）GET|POST /buddy/event?platform=…&event=… 投递事件，
  *    零校验纯转发——完整原始事件发布到原始事件总线（publishRawBuddyEvent），监听器各取所需：
  *    白名单过滤（buddyEventFilter，命中发布校验后总线供设备消费）与集成调试事件流
- *    （integrationsActivity，全量转发伙伴窗口）。本模块零校验、零业务依赖。
+ *    （integrationsActivity，全量转发伙伴窗口）。
+ * 3. 图标面：GET /icon/app?path=<enc 应用路径> 返回应用图标 PNG（appIcon 提取落缓存），
+ *    供「打开应用」下拉渲染（渲染层无法直接读盘取图标）。
  * 处理逻辑单份、参数方案单份（platform/event query）；不经系统唤起、结构性不抢焦点。
  * 详见 docs/server/01-event-server.md 与 docs/hardware/05。
  */
@@ -16,6 +18,7 @@ import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { EVENT_SERVER_ORIGIN } from '@common/server/eventServer'
 import { publishRawBuddyEvent } from '$/buddy/events/buddyEventBus'
+import { iconPngForApp } from '$/modules/appIcon'
 
 const HOST = '127.0.0.1'
 const PORT = Number(new URL(EVENT_SERVER_ORIGIN).port)
@@ -74,6 +77,28 @@ const sendFile = async (req: Request, res: Response): Promise<void> => {
   }
 }
 
+/** 图标面：/icon/app?path=<enc 绝对路径> 返回应用图标 PNG（提取落缓存，失败 404 前端回退占位） */
+const sendAppIcon = async (req: Request, res: Response): Promise<void> => {
+  if (!allowedOrigin(req.headers.origin)) {
+    res.status(403).end()
+    return
+  }
+  try {
+    const appPath = String(req.query.path ?? '')
+    const png = appPath ? await iconPngForApp(appPath) : null
+    if (!png) {
+      res.status(404).end()
+      return
+    }
+    res.set('Content-Type', 'image/png')
+    res.set('Access-Control-Allow-Origin', '*')
+    res.set('Cache-Control', 'public, max-age=86400')
+    res.status(200).send(png)
+  } catch {
+    res.status(404).end()
+  }
+}
+
 /** 事件面：/buddy/event?platform=<软件>&event=<Buddy 事件>；零校验纯转发，对外静默 204，未知路由 404 */
 const dispatchEvent = (req: Request, res: Response): void => {
   if (req.path === '/buddy/event') {
@@ -94,6 +119,9 @@ export const startEventServer = (): void => {
   server.get('/ping', (_req: Request, res: Response) => res.status(204).end())
   server.get('/file/*splat', (req: Request, res: Response) => {
     void sendFile(req, res)
+  })
+  server.get('/icon/app', (req: Request, res: Response) => {
+    void sendAppIcon(req, res)
   })
   server.use((req: Request, res: Response) => dispatchEvent(req, res))
 

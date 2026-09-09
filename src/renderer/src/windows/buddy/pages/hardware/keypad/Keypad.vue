@@ -1,10 +1,14 @@
 <template>
   <page-layout title="小键盘">
     <div class="keypad">
-      <t-alert v-if="showPermissionAlert" theme="warning" :closeBtn="true" @close="ignorePermission = true">
+      <t-alert
+        v-if="showPermissionAlert"
+        theme="warning"
+        :close-btn="true"
+        @close="ignorePermission = true"
+      >
         <template #message>
-          系统级模拟按键需要「辅助功能」权限：请在
-          系统设置 → 隐私与安全性 → 辅助功能
+          系统级模拟按键需要「辅助功能」权限：请在 系统设置 → 隐私与安全性 → 辅助功能
           中勾选本应用，授权后重新触发按键即可生效
         </template>
       </t-alert>

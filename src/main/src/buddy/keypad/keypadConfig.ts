@@ -1,18 +1,16 @@
 /**
  * 小键盘配置（main 进程）：~/.mistrelle/buddy/keypad.json 的读写与归一化。
- * 结构：lastPort 记忆串口 + bindings（键位 id → 模拟按键绑定）。
+ * 结构：lastPort 记忆串口 + bindings（键位 id → 动作，按 type 判别）。
+ * 动作归一化查 @common 动作注册表分发（新增动作零改动）；
+ * 存量无 type 的旧格式（{modifiers, key}）回退 combo 兼容，无需迁移脚本。
  * 配置由 main 持有，保存全量覆写；目录不存在时惰性创建；缺失/损坏回退默认不回写。
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { app } from 'electron'
-import {
-  isKeypadKeyName,
-  isKeypadModifier,
-  type KeypadBinding,
-  type KeypadConfig,
-  type KeypadModifier
-} from '@common/types/keypad'
+import { keypadActionDefinition } from '@common/keypad/actions'
+import { comboAction } from '@common/keypad/actions/combo'
+import type { KeypadAction, KeypadConfig } from '@common/types/keypad'
 
 function configFilePath(): string {
   return join(app.getPath('home'), '.mistrelle', 'buddy', 'keypad.json')
@@ -27,30 +25,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-/** 归一化单条绑定：主键白名单校验，修饰键白名单去重（非法返回 null 由调用方丢弃） */
-export function normalizeBinding(raw: unknown): KeypadBinding | null {
-  if (!isRecord(raw) || typeof raw.key !== 'string' || !isKeypadKeyName(raw.key)) return null
-  const modifiers: KeypadModifier[] = []
-  if (Array.isArray(raw.modifiers)) {
-    for (const item of raw.modifiers) {
-      if (typeof item === 'string' && isKeypadModifier(item) && !modifiers.includes(item)) {
-        modifiers.push(item)
-      }
-    }
+/** 归一化单条动作：查动作注册表分发清洗；无 type 的存量 combo 旧格式兼容；非法返回 null 丢弃 */
+export function normalizeAction(raw: unknown): KeypadAction | null {
+  if (!isRecord(raw)) return null
+  if (typeof raw.type === 'string') {
+    const definition = keypadActionDefinition(raw.type)
+    return definition ? definition.normalize(raw) : null
   }
-  return { modifiers, key: raw.key }
+  return comboAction.normalize(raw)
 }
 
-/** 归一化整份配置：键位绑定逐条白名单清洗（磁盘文件与 IPC 入参共用） */
+/** 归一化整份配置：键位动作逐条白名单清洗（磁盘文件与 IPC 入参共用） */
 export function normalizeConfig(raw: unknown): KeypadConfig {
   const config = defaultConfig()
   if (!isRecord(raw)) return config
   if (typeof raw.lastPort === 'string') config.lastPort = raw.lastPort
   if (!isRecord(raw.bindings)) return config
-  const bindings: Record<string, KeypadBinding> = {}
+  const bindings: Record<string, KeypadAction> = {}
   for (const [keyId, rawBinding] of Object.entries(raw.bindings)) {
-    const binding = normalizeBinding(rawBinding)
-    if (binding) bindings[keyId] = binding
+    const action = normalizeAction(rawBinding)
+    if (action) bindings[keyId] = action
   }
   config.bindings = bindings
   return config

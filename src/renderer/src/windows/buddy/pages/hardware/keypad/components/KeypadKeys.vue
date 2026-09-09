@@ -2,7 +2,7 @@
   <div class="panel">
     <div class="panel-head">
       <div class="panel-title">按键绑定</div>
-      <t-tag theme="default" variant="light" size="small">模拟为系统级组合键</t-tag>
+      <t-tag theme="default" variant="light" size="small">模拟按键 / 打开应用 / 执行脚本</t-tag>
     </div>
     <div class="keys">
       <keypad-key-card v-for="id in KEY_IDS" :key="id" :key-id="id" />

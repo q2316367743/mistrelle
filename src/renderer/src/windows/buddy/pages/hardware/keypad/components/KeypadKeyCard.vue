@@ -5,19 +5,17 @@
       <t-tag v-if="isPressed" theme="success" variant="light" size="small">按下</t-tag>
       <t-tag v-else theme="default" variant="light" size="small">未按下</t-tag>
     </div>
-    <div class="key-card__combo">{{ comboText }}</div>
-    <div class="key-card__actions">
-      <t-button
-        v-if="recording"
-        variant="outline"
-        theme="warning"
-        size="small"
-        @click="stopRecording"
-      >
-        按下组合键…（Esc 取消）
-      </t-button>
-      <t-button v-else variant="outline" size="small" @click="startRecording">录制快捷键</t-button>
-      <t-button v-if="binding" variant="text" theme="danger" size="small" @click="unbind">
+    <t-select
+      :value="draft?.type ?? undefined"
+      :options="KeypadActionTypeOptions"
+      placeholder="未绑定：选择动作类型"
+      size="small"
+      @change="onTypeChange"
+    />
+    <component :is="editor" v-if="draft" :action="draft" @change="onDraftChange" />
+    <div v-if="draft" class="key-card__actions">
+      <t-button size="small" :disabled="!valid || saving" @click="save">保存</t-button>
+      <t-button variant="text" theme="danger" size="small" :disabled="saving" @click="clear">
         清除
       </t-button>
     </div>
@@ -25,8 +23,13 @@
 </template>
 
 <script lang="ts" setup>
-import type { KeypadKeyName, KeypadModifier } from '@common/types/keypad'
-import { KeypadModifierOptions, isKeypadKeyName } from '@common/types/keypad'
+import type { KeypadAction } from '@common/types/keypad'
+import {
+  isKeypadActionType,
+  keypadActionDefinition,
+  KeypadActionTypeOptions
+} from '@common/keypad/actions'
+import { KEYPAD_ACTION_EDITORS } from './actionEditors'
 import { useKeypad } from '../useKeypad'
 
 const props = defineProps<{ keyId: string }>()
@@ -37,83 +40,56 @@ const { config, pressed, bindKey } = useKeypad()
 
 const isPressed = computed(() => pressed.value.includes(props.keyId))
 
-/** 当前绑定（main 配置为准；保存回读后同步） */
-const binding = computed(() => config.value?.bindings[props.keyId] ?? null)
+/** 绑定草稿（本地编辑态；main 配置回读后同步），null = 未绑定仅状态点亮 */
+const draft = ref<KeypadAction | null>(null)
+const saving = ref(false)
 
-/** 绑定摘要（组合键预览，如 Ctrl+Shift+F13） */
-const comboText = computed(() => {
-  const next = binding.value
-  if (!next) return '未绑定：按键仅点亮状态'
-  return '模拟：' + [...next.modifiers.map(labelOf), next.key.toUpperCase()].join(' + ')
+// 配置回读（保存成功/清除/外部变更）即同步草稿；编辑中的本地值只在本卡片保存时写回
+watch(
+  () => config.value?.bindings[props.keyId],
+  (next) => {
+    draft.value = cloneAction(next ?? null)
+  },
+  { immediate: true }
+)
+
+function cloneAction(action: KeypadAction | null): KeypadAction | null {
+  if (!action) return null
+  const cloned: KeypadAction = JSON.parse(JSON.stringify(action))
+  return cloned
+}
+
+/** 切动作类型：查注册表建空白草稿（空白值不合法，保存按钮由预校验禁用） */
+function onTypeChange(value: unknown): void {
+  if (typeof value !== 'string' || !isKeypadActionType(value)) return
+  draft.value = keypadActionDefinition(value)?.createDefault() ?? null
+}
+
+function onDraftChange(action: KeypadAction): void {
+  draft.value = action
+}
+
+const editor = computed(() => (draft.value ? KEYPAD_ACTION_EDITORS[draft.value.type] : null))
+
+/** 保存预校验：查动作注册表 normalize 清洗，不合法（如未选应用/空命令）禁用保存 */
+const valid = computed(() => {
+  if (!draft.value) return false
+  const raw: Record<string, unknown> = JSON.parse(JSON.stringify(draft.value))
+  return keypadActionDefinition(draft.value.type)?.normalize(raw) != null
 })
 
-function labelOf(mod: KeypadModifier): string {
-  return KeypadModifierOptions.find((opt) => opt.value === mod)?.label ?? mod
-}
-
-/** 录制态（全局同时仅一张卡片在录制，新录制顶掉旧录制） */
-const recording = ref(false)
-let activeCancel: (() => void) | null = null
-
-function startRecording(): void {
-  activeCancel?.()
-  recording.value = true
-  // capture 阶段监听，先于页面其他快捷处理拿到按键
-  window.addEventListener('keydown', onRecordKeydown, true)
-  window.addEventListener('blur', cancelRecording)
-  activeCancel = cancelRecording
-}
-
-function stopRecording(): void {
-  if (!recording.value) return
-  recording.value = false
-  window.removeEventListener('keydown', onRecordKeydown, true)
-  window.removeEventListener('blur', cancelRecording)
-  if (activeCancel === cancelRecording) activeCancel = null
-}
-
-function cancelRecording(): void {
-  stopRecording()
-}
-
-onUnmounted(() => {
-  if (recording.value) stopRecording()
-})
-
-/** 录制用 keydown：Esc 取消，纯修饰键继续等待，其余按 code 映射主键 + 修饰 flags 即存 */
-function onRecordKeydown(e: KeyboardEvent): void {
-  e.preventDefault()
-  e.stopPropagation()
-  if (e.key === 'Escape') {
-    stopRecording()
-    return
+async function save(): Promise<void> {
+  if (!draft.value || !valid.value) return
+  saving.value = true
+  try {
+    await bindKey(props.keyId, draft.value)
+  } finally {
+    saving.value = false
   }
-  if (MODIFIER_ONLY_KEYS.includes(e.key)) return
-  const key = codeToKeyName(e.code)
-  if (!key) return
-  stopRecording()
-  const modifiers: KeypadModifier[] = []
-  if (e.ctrlKey) modifiers.push('ctrl')
-  if (e.altKey) modifiers.push('alt')
-  if (e.shiftKey) modifiers.push('shift')
-  if (e.metaKey) modifiers.push('meta')
-  void bindKey(props.keyId, { modifiers, key })
 }
 
-const MODIFIER_ONLY_KEYS = ['Control', 'Shift', 'Alt', 'Meta']
-
-/** event.code → 白名单主键名（字母/数字/F 键；其余键不支持，忽略继续等待） */
-function codeToKeyName(code: string): KeypadKeyName | null {
-  let name = ''
-  if (/^Key[A-Z]$/.test(code)) name = code.slice(3).toLowerCase()
-  else if (/^Digit[0-9]$/.test(code)) name = code.slice(5)
-  else if (/^F([1-9]|1[0-9])$/.test(code)) name = code.toLowerCase()
-  else return null
-  return isKeypadKeyName(name) ? name : null
-}
-
-function unbind(): void {
-  void bindKey(props.keyId, null)
+async function clear(): Promise<void> {
+  await bindKey(props.keyId, null)
 }
 </script>
 
@@ -156,11 +132,6 @@ function unbind(): void {
 
   &--pressed &__badge {
     background: var(--td-success-color);
-  }
-
-  &__combo {
-    font: var(--td-font-body-medium);
-    color: var(--td-text-color-primary);
   }
 
   &__actions {

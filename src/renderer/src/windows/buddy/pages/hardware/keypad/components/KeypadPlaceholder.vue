@@ -10,8 +10,8 @@
       </div>
       <div class="placeholder__title">连接串口后即可配置按键绑定</div>
       <div class="placeholder__desc">
-        小键盘按键（1,on / 1,off 行协议）可模拟为系统级组合键（如 Ctrl+Shift+F13），
-        其他应用与系统快捷键均可响应；未绑定的按键仅点亮状态
+        小键盘按键（1,on / 1,off 行协议）可绑定模拟系统级组合键（如 Ctrl+Shift+F13）、
+        打开指定应用或执行脚本；未绑定的按键仅点亮状态
       </div>
     </div>
   </div>

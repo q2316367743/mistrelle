@@ -7,7 +7,7 @@
  * 断开/拔线/退出经 releaseAll 兜底，防修饰键卡死。
  */
 import koffi from 'koffi'
-import type { KeypadBinding, KeypadKeyName, KeypadModifier } from '@common/types/keypad'
+import type { KeypadComboAction, KeypadKeyName, KeypadModifier } from '@common/types/keypad'
 
 /** macOS 虚拟键码（kVK_ANSI_* / kVK_F*，Apple Events.h） */
 const MAC_KEY_CODES: Record<KeypadKeyName, number> = {
@@ -82,14 +82,14 @@ function loadPoster(): KeyPoster {
 }
 
 /** 当前按住中的组合（id → 绑定 + 引用计数），防同组合多键位场景下提前抬起 */
-const heldCombos = new Map<string, { binding: KeypadBinding; count: number }>()
+const heldCombos = new Map<string, { binding: KeypadComboAction; count: number }>()
 
-function comboId(binding: KeypadBinding): string {
+function comboId(binding: KeypadComboAction): string {
   return `${[...binding.modifiers].sort().join('+')}|${binding.key}`
 }
 
 /** 投递一次组合的按下/抬起：修饰键先下后上（逆序），主键事件在 macOS 带修饰 flag */
-function postCombo(binding: KeypadBinding, down: boolean): void {
+function postCombo(binding: KeypadComboAction, down: boolean): void {
   const mac = process.platform === 'darwin'
   const post = loadPoster().post
   let flags = 0
@@ -106,7 +106,7 @@ function postCombo(binding: KeypadBinding, down: boolean): void {
 }
 
 /** 组合按下（引用计数 >1 时不再重复投递） */
-export function pressCombo(binding: KeypadBinding): void {
+export function pressCombo(binding: KeypadComboAction): void {
   const id = comboId(binding)
   const held = heldCombos.get(id)
   if (held) {
@@ -118,7 +118,7 @@ export function pressCombo(binding: KeypadBinding): void {
 }
 
 /** 组合释放（计数归零才投递；未按住时幂等跳过） */
-export function releaseCombo(binding: KeypadBinding): void {
+export function releaseCombo(binding: KeypadComboAction): void {
   const id = comboId(binding)
   const held = heldCombos.get(id)
   if (!held) return

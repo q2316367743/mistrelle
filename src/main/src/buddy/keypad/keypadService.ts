@@ -14,15 +14,17 @@ import {
   subscribePortData
 } from '$/modules/serial/SerialService'
 import { KeypadChannels } from '@common/buddy/keypad/keypadChannels'
-import type { KeypadBinding, KeypadConfig, KeypadResult, KeypadState } from '@common/types/keypad'
+import type {
+  KeypadAction,
+  KeypadConfig,
+  KeypadKeyAction,
+  KeypadResult,
+  KeypadState
+} from '@common/types/keypad'
+import { KEYPAD_ACTION_EXECUTORS } from './actions'
 import { createKeypadParser, type KeypadKeyEvent } from './keypadProtocol'
-import {
-  defaultConfig,
-  loadConfig,
-  normalizeBinding,
-  saveConfigFile
-} from './keypadConfig'
-import { pressCombo, releaseAll, releaseCombo, isAccessibilityGranted } from './keySimulator'
+import { defaultConfig, loadConfig, normalizeAction, saveConfigFile } from './keypadConfig'
+import { isAccessibilityGranted, releaseAll } from './keySimulator'
 
 // 声明即给默认值：数据回调在任何时序下都可能被触发
 let config: KeypadConfig = defaultConfig()
@@ -63,7 +65,7 @@ function subscribeData(): void {
 
 /**
  * 按键事件消费：on=按下、off=释放。
- * 按下状态变化即广播；有绑定的键位驱动模拟按键（无绑定仅状态点亮）。
+ * 按下状态变化即广播；有绑定的键位查执行器注册表分发动作（无绑定仅状态点亮）。
  */
 function handleEvent(event: KeypadKeyEvent): void {
   const { keyId, action } = event
@@ -75,15 +77,23 @@ function handleEvent(event: KeypadKeyEvent): void {
     pressed.delete(keyId)
   }
   const binding = config.bindings[keyId]
-  if (binding) {
-    try {
-      if (action === 'on') pressCombo(binding)
-      else releaseCombo(binding)
-    } catch (error) {
-      console.error('[keypad] 模拟按键失败', error)
-    }
-  }
+  if (binding) dispatchAction(binding, action)
   broadcastState()
+}
+
+/**
+ * 查执行器注册表分发动作：on 走 onPress、off 走 onRelease（无 onRelease 的动作仅按下触发）。
+ * fire-and-forget，同步异常吞掉只记日志（按键响应不阻塞、不抛出）；
+ * 异步失败由各执行器自行记录（cliRun 永不 reject，shell.openPath 返回错误串）。
+ */
+function dispatchAction(binding: KeypadAction, action: KeypadKeyAction): void {
+  try {
+    const executor = KEYPAD_ACTION_EXECUTORS[binding.type]
+    if (action === 'on') void executor.onPress(binding)
+    else executor.onRelease?.(binding)
+  } catch (error) {
+    console.error('[keypad] 动作执行失败', error)
+  }
 }
 
 /** 启动初始化（main 启动即执行，不依赖渲染层）：加载配置、订阅意外断开、按 lastPort 自动连接 */
@@ -152,10 +162,10 @@ export async function disconnect(): Promise<void> {
  * 保存前释放按住中的组合（被移除/改绑的旧组合不残留）；不抛错，结果对象返回。
  */
 export function saveBindings(input: Record<string, unknown>): KeypadResult {
-  const bindings: Record<string, KeypadBinding> = {}
+  const bindings: Record<string, KeypadAction> = {}
   for (const [keyId, raw] of Object.entries(input)) {
-    const binding = normalizeBinding(raw)
-    if (binding) bindings[keyId] = binding
+    const action = normalizeAction(raw)
+    if (action) bindings[keyId] = action
   }
   releaseAll()
   config.bindings = bindings

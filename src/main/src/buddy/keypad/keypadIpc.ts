@@ -6,6 +6,7 @@
 import { ipcMain } from 'electron'
 import { KeypadChannels } from '@common/buddy/keypad/keypadChannels'
 import type { KeypadConfig, KeypadResult, KeypadState } from '@common/types/keypad'
+import { listInstalledApps } from '$/modules/appCatalog'
 import { connect, disconnect, getConfig, getState, saveBindings } from './keypadService'
 
 export function registerKeypadIpc(): void {
@@ -14,6 +15,7 @@ export function registerKeypadIpc(): void {
     KeypadChannels.saveBindings,
     (_event, input: Record<string, unknown>): KeypadResult => saveBindings(input)
   )
+  ipcMain.handle(KeypadChannels.listApps, () => listInstalledApps())
   ipcMain.handle(KeypadChannels.connect, (_event, path: string): Promise<KeypadResult> =>
     connect(path)
   )

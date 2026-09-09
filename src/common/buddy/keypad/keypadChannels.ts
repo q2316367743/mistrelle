@@ -9,6 +9,8 @@ export const KeypadChannels = {
   getConfig: 'keypad:getConfig',
   /** 全量保存键位绑定表（main 归一化清洗后落盘） */
   saveBindings: 'keypad:saveBindings',
+  /** 本机应用目录（应用下拉选项源；main 扫描系统应用清单） */
+  listApps: 'keypad:listApps',
   /** 连接串口（9600；成功即记忆 lastPort 并广播运行态） */
   connect: 'keypad:connect',
   /** 断开当前连接（同时释放按住中的组合键） */

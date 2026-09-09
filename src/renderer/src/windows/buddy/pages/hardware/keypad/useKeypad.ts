@@ -1,9 +1,9 @@
 /**
  * 小键盘配置状态（模块级单例）：配置经 IPC 读写（main 持有文件并归一化），
  * 绑定即改即存，保存后以 main 回读为准（失败自动回滚 UI）。
- * 连接编排/按键解析/模拟按键都在 main（keypadService），渲染层只发指令与展示运行态。
+ * 连接编排/按键解析/动作执行都在 main（keypadService），渲染层只发指令与展示运行态。
  */
-import type { KeypadBinding, KeypadConfig } from '@common/types/keypad'
+import type { AppCatalogItem, KeypadAction, KeypadConfig } from '@common/types/keypad'
 import { MessageUtil } from '@/utils/modal'
 
 const config = ref<KeypadConfig | null>(null)
@@ -12,8 +12,11 @@ const connectedPath = ref<string | null>(null)
 const pressed = ref<string[]>([])
 /** 系统级模拟按键权限（macOS 辅助功能授权；Windows 恒 true） */
 const accessibilityGranted = ref(true)
+/** 本机应用目录（应用编辑器下拉选项源；首次加载后模块级缓存） */
+const apps = ref<AppCatalogItem[]>([])
 
 let initialized = false
+let appsLoaded = false
 
 /** 以 main 为准回读整份配置 */
 async function reload(): Promise<void> {
@@ -21,10 +24,10 @@ async function reload(): Promise<void> {
 }
 
 /** 全量保存键位绑定（无论成败都回读，UI 始终与 main 对齐） */
-async function saveBindings(bindings: Record<string, KeypadBinding>): Promise<void> {
+async function saveBindings(bindings: Record<string, KeypadAction>): Promise<void> {
   try {
-    // config 来自 ref（深层 reactive）：浅展开后的嵌套绑定对象仍是 Proxy，跨桥会克隆失败，须深拷贝
-    const plain = JSON.parse(JSON.stringify(bindings)) as Record<string, KeypadBinding>
+    // config 来自 ref（深层 reactive）：浅展开后的嵌套动作对象仍是 Proxy，跨桥会克隆失败，须深拷贝
+    const plain = JSON.parse(JSON.stringify(bindings)) as Record<string, KeypadAction>
     const result = await window.preload.keypad.saveBindings(plain)
     if (!result.ok) MessageUtil.error(result.msg || '保存失败')
   } catch (e) {
@@ -34,14 +37,26 @@ async function saveBindings(bindings: Record<string, KeypadBinding>): Promise<vo
   }
 }
 
-/** 绑定单个键位（即改即存；binding=null 解除绑定） */
-async function bindKey(keyId: string, binding: KeypadBinding | null): Promise<void> {
+/** 绑定单个键位（即改即存；action=null 解除绑定） */
+async function bindKey(keyId: string, action: KeypadAction | null): Promise<void> {
   const current = config.value
   if (!current) return
   const bindings = { ...current.bindings }
-  if (binding) bindings[keyId] = binding
+  if (action) bindings[keyId] = action
   else delete bindings[keyId]
   await saveBindings(bindings)
+}
+
+/** 加载本机应用目录（模块级缓存只拉一次；编辑器挂载时按需调用） */
+async function loadApps(): Promise<void> {
+  if (appsLoaded) return
+  appsLoaded = true
+  try {
+    apps.value = await window.preload.keypad.listApps()
+  } catch (e) {
+    appsLoaded = false
+    MessageUtil.error('应用列表加载失败：' + (e as Error).message)
+  }
 }
 
 /** 连接串口（指令发往 main；成功即记忆 lastPort，失败 toast 原因） */
@@ -79,7 +94,9 @@ export function useKeypad() {
     connectedPath,
     pressed,
     accessibilityGranted,
+    apps,
     bindKey,
+    loadApps,
     connect,
     disconnect,
     reload

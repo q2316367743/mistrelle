@@ -1,7 +1,8 @@
 /**
  * 小键盘（keypad）域类型契约：main / preload / renderer 跨端共享。
  * 设备为串口输入设备（9600 波特率，行协议 `<键位>,<on|off>`），main 收到按键后
- * 可按绑定驱动系统级模拟按键（koffi 直调平台 API）。
+ * 按键位绑定驱动动作。动作类型注册表化：类型联合在此（纯数据），
+ * 动作定义（label/normalize）在 @common/keypad/actions，main 执行器与渲染层编辑器各有注册表。
  * 约定：联合 type 独立命名一次、Options 名称映射紧跟；主键全集从 KEY_CODES 元组派生防失同步；
  * 通道常量在 @common/buddy/keypad/keypadChannels，
  * window 挂载由渲染层 vite-env.d.ts 声明（仅伙伴窗口独立 preload 注入）。
@@ -62,18 +63,45 @@ export function isKeypadKeyAction(value: string): value is KeypadKeyAction {
   return value === 'on' || value === 'off'
 }
 
-/** 单个键位的模拟按键绑定：修饰键组合 + 主键（可为空组合=只按主键） */
-export interface KeypadBinding {
+/** 键位动作类型（新增动作 = 加联合成员 + 在 @common/keypad/actions 注册定义 + main 执行器 + 渲染层编辑器） */
+export type KeypadActionType = 'combo' | 'app' | 'script'
+
+/** 模拟按键/组合快捷键：修饰键组合 + 主键（可为空组合=只按主键）；按下按住、释放抬起（push-to-talk） */
+export interface KeypadComboAction {
+  type: 'combo'
   modifiers: KeypadModifier[]
   key: KeypadKeyName
 }
 
-/** 小键盘配置（落盘结构）：lastPort 记忆串口 + bindings（键位 id → 绑定，键位支持任意数量） */
+/** 打开指定应用：应用绝对路径（本机应用目录选择或自定义路径） */
+export interface KeypadAppAction {
+  type: 'app'
+  path: string
+}
+
+/** 执行指定脚本：任意 shell 命令串（主进程 cliRun 执行） */
+export interface KeypadScriptAction {
+  type: 'script'
+  command: string
+}
+
+/** 键位动作（按 type 判别；落盘 keypad.json bindings 的值） */
+export type KeypadAction = KeypadComboAction | KeypadAppAction | KeypadScriptAction
+
+/** 本机应用目录条目（应用下拉选项源；path 为可打开的绝对路径） */
+export interface AppCatalogItem {
+  /** 展示名（mac 为 .app 目录名去后缀；win 为 .lnk 文件名去后缀） */
+  name: string
+  /** 绝对路径（mac 为 *.app 目录；win 为 *.lnk 快捷方式） */
+  path: string
+}
+
+/** 小键盘配置（落盘结构）：lastPort 记忆串口 + bindings（键位 id → 动作，键位支持任意数量） */
 export interface KeypadConfig {
   /** 上次使用的串口路径；未记录为空串 */
   lastPort: string
-  /** 键位绑定表：键为设备行协议里的键位 id（如 '1'..'6'），缺省 = 不模拟仅状态展示 */
-  bindings: Record<string, KeypadBinding>
+  /** 键位绑定表：键为设备行协议里的键位 id（如 '1'..'6'），缺省 = 未绑定仅状态展示 */
+  bindings: Record<string, KeypadAction>
 }
 
 /** 保存/连接操作结果（失败时 msg 为中文原因，不抛错） */
@@ -82,7 +110,7 @@ export interface KeypadResult {
   msg?: string
 }
 
-/** 小键盘运行态（渲染层纯展示用；连接编排/按键解析/模拟都在 main） */
+/** 小键盘运行态（渲染层纯展示用；连接编排/按键解析/动作执行都在 main） */
 export interface KeypadState {
   /** 当前已连接的串口路径（= 配置 lastPort 已开时）；未连接为 null */
   connectedPath: string | null
@@ -97,7 +125,9 @@ export interface KeypadApi {
   /** 读取整份配置（含 lastPort 与键位绑定） */
   getConfig(): Promise<KeypadConfig>
   /** 全量保存键位绑定表；main 归一化清洗后落盘 */
-  saveBindings(bindings: Record<string, KeypadBinding>): Promise<KeypadResult>
+  saveBindings(bindings: Record<string, KeypadAction>): Promise<KeypadResult>
+  /** 本机应用目录（应用下拉选项源；main 扫描系统应用清单） */
+  listApps(): Promise<AppCatalogItem[]>
   /** 连接串口（9600 固定波特率；成功即记忆 lastPort 并广播运行态） */
   connect(path: string): Promise<KeypadResult>
   /** 断开当前连接（同时释放所有按住中的组合键） */
