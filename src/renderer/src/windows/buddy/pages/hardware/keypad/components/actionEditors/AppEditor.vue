@@ -6,15 +6,26 @@
     clearable
     placeholder="选择应用，或输入路径回车"
     :loading="loading"
-    size="small"
     @change="onPathChange"
   >
+    <template #valueDisplay="{ value }">
+      <span v-if="typeof value === 'string' && value" class="app-value">
+        <img
+          v-if="!failedIcons[value]"
+          class="app-value__icon"
+          :src="appIconHref(value)"
+          alt=""
+          @error="markFailed(value)"
+        />
+        <span class="app-value__name">{{ appDisplayName(value) }}</span>
+      </span>
+    </template>
     <t-option v-for="item in apps" :key="item.path" :value="item.path" :label="item.name">
       <div class="app-option">
         <img
           v-if="!failedIcons[item.path]"
           class="app-option__icon"
-          :src="iconHref(item.path)"
+          :src="appIconHref(item.path)"
           alt=""
           @error="markFailed(item.path)"
         />
@@ -26,8 +37,8 @@
 </template>
 
 <script lang="ts" setup>
-import { EVENT_SERVER_ORIGIN } from '@common/server/eventServer'
 import type { KeypadAction, KeypadAppAction } from '@common/types/keypad'
+import { appDisplayName, appIconHref } from '../iconHref'
 import { useKeypad } from '../../useKeypad'
 
 defineOptions({ name: 'KeypadAppEditor' })
@@ -50,12 +61,8 @@ onMounted(async () => {
   loading.value = false
 })
 
-/** 图标经本地事件服务的图标面取 PNG；失败回退首字母占位 */
+/** 图标加载失败（未缓存且提取失败）→ 下拉项回退首字母、选中项只显示名称 */
 const failedIcons = reactive<Record<string, boolean>>({})
-
-function iconHref(path: string): string {
-  return `${EVENT_SERVER_ORIGIN}/icon/app?path=${encodeURIComponent(path)}`
-}
 
 function markFailed(path: string): void {
   failedIcons[path] = true
@@ -69,6 +76,29 @@ function onPathChange(value: unknown): void {
 </script>
 
 <style scoped lang="less">
+/* 选中项：应用图标 + 名称（替代裸路径文本） */
+.app-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  &__icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  &__name {
+    font: var(--td-font-body-medium);
+    color: var(--td-text-color-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .app-option {
   display: flex;
   align-items: center;

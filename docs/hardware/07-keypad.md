@@ -95,6 +95,7 @@
 ```jsonc
 {
   "lastPort": "/dev/tty.usbmodemXXX",
+  "layout": "grid4x2",
   "bindings": {
     "1": { "type": "combo", "modifiers": ["shift"], "key": "f13" },
     "2": { "type": "app", "path": "/Applications/WeChat.app" },
@@ -104,9 +105,11 @@
 ```
 
 - `bindings` 键 = 设备行协议键位 id（字符串），缺省 = 未绑定仅状态点亮
+- `layout` = 键盘样式布局 id（纯展示偏好，`keypad:saveLayout` 保存，白名单
+  `KEYPAD_LAYOUT_IDS` 校验，非法/缺省归一化回退 `'grid4x2'`）
 - **存量兼容**：无 `type` 的旧条目（`{modifiers, key}`）归一化时回退 combo，无需迁移脚本
-- 模拟按键主键白名单 `KEYPAD_KEY_CODES` 元组（F1–F19 + 字母 + 数字），从元组派生类型/选项/校验；
-  修饰键 `ctrl | alt | shift | meta`（meta = macOS Cmd / Windows Win）
+- 模拟按键主键白名单 `KEYPAD_KEY_CODES` 元组（**Enter** + F1–F19 + 字母 + 数字），从元组派生
+  类型/选项/校验；修饰键 `ctrl | alt | shift | meta`（meta = macOS Cmd / Windows Win）
 - 归一化：`normalizeAction` 查 `KEYPAD_ACTIONS` 注册表按 type 分发清洗，未注册类型/非法条目丢弃
 
 ## 关键文件
@@ -126,21 +129,37 @@
 | `src/main/src/modules/appIcon.ts` | 应用图标提取（mac qlmanage / win PowerShell）+ PNG 磁盘缓存 |
 | `src/main/src/server/index.ts` | 本地事件服务：新增 `/icon/app` 图标面（Origin 守卫 + 缓存 + 404 回退） |
 | `src/preload/src/modules/keypad/keypad.ts` | 渲染层桥（buddy.ts 注入 `keypad`） |
-| `src/renderer/src/windows/buddy/pages/hardware/keypad/` | 页面：`Keypad.vue` + `useKeypad.ts` + SerialPanel/KeypadKeys/KeypadKeyCard/KeypadPlaceholder + `actionEditors/`（编辑器注册表 + comboRecorder 单例录制） |
+| `src/renderer/src/windows/buddy/pages/hardware/keypad/` | 页面：`Keypad.vue` + `useKeypad.ts` + SerialPanel/KeypadKeys/KeypadKeyCap/KeypadBindingPanel/KeypadPlaceholder + `keypadLayouts.ts`（布局注册表）+ `iconHref.ts`（图标 URL/应用名工具）+ `actionEditors/`（编辑器注册表 + comboRecorder 单例录制） |
 
 ## 页面交互
 
 - 顶部串口面板（照红绿灯精简：下拉 + 刷新 + 连接/断开 + 状态 tag，无调试模式）
-- 已连接显示 6 张键位卡片：键号徽标 + 按下点亮（success 描边）+ **草稿式内联编辑**——
-  动作类型 t-select（未绑定时选择即建空白草稿；options 从动作注册表派生）+
-  `<component :is>` 按 `KEYPAD_ACTION_EDITORS` 动态渲染编辑器：
-  - **combo**：录制快捷键（页面级 keydown 捕获，Esc/失焦取消，录到即回填草稿）+ 组合预览；
-    录制器 `comboRecorder.ts` 模块级单例，全局同时仅一处录制、新录制顶掉旧录制（旧侧只复位 UI）
-  - **app**：t-select `filterable + creatable + clearable`，选项渲染图标 + 名称（图标走
-    `/icon/app`，失败回退首字母占位）；手输路径回车经 creatable 生成自定义路径
-  - **script**：t-textarea 命令框（2~5 行自适应）
-- 「保存」前用动作定义 normalize 预校验（空白草稿/未选应用/空命令时禁用），写回后以 main
-  回读为准同步草稿；「清除」解绑。配置回读（保存/清除/外部变更）驱动草稿同步
+- 已连接显示**实体键盘外观**（2026-09-09 增强）：
+  - **键盘样式**：面板头部 t-select 切换（`config.layout` 持久化，`keypad:saveLayout`）；
+    布局定义在渲染层 `keypadLayouts.ts` 注册表（`{ id, label, columns, cells }`，cells 带
+    `cols/rows` 跨格数经 grid auto-placement 排布）。样式一（4×2）：键位 1 左侧竖跨 2 行、
+    键位 6 底部横跨 2 列，2/3/4/5 普通键。新增样式 = @common 加联合成员 + IDS 登记 +
+    渲染层注册表加布局定义
+  - **外壳与键帽**（拟物风，只参考实物布局不参考颜色）：格子固定正方形 `--key-size: 88px`
+    （合并键 = 整数倍格子不变形），外壳 `--td-bg-color-secondarycontainer` + 内外阴影整体
+    居中；键帽 = 白面（`--td-bg-color-container`）+ 灰色厚度层/阴影（半透明黑随主题自适应）+
+    顶部白高光 + 大圆角，键帽上显示键位号 + 动作摘要（**app = 图标 + 名称**（`/icon/app`
+    图标 + basename 去后缀）、combo = 组合键文本（`actionText.ts` 共享）、script = 命令
+    ellipsis、未绑定 = 灰字）
+  - **按下动画**：鼠标 mousedown 下压（translateY + 厚度压缩，0.08s 短促过渡）mouseup 回弹；
+    设备物理按下（pressed 推送）键帽同步保持按下态 + 品牌色描边发光
+  - **点击弹 popup 配置**：点击键帽 → t-popup（`trigger="click"` + 受控 visible + 
+    `destroy-on-close`）锚定键帽下方弹出 `KeypadBindingPanel`（Fluent 风格：迷你键帽徽标 +
+    「配置键位 N」标题 + 实时摘要副文本 → **动作类型图标选择卡片**（KEYPAD_ACTION_ICONS 映射 +
+    KEYPAD_ACTIONS 注册表渲染，选中态品牌色）→ 编辑区（Transition 淡入切换，**不套浅底
+    容器**）→ 清除/保存操作行）。编辑器自身也去表单化：**combo = 键帽式 kbd 组合展示**
+    （`[Ctrl] + [Shift] + [F13]` 每键一块小键帽，整块虚线区点击录制、录制中品牌色脉冲呼吸）、
+    **app = 选中项大图标 + 名称**（select `valueDisplay` 自定义）；点外部/点其他键自动关，
+    保存/清除成功即关闭。
+    visible-change 防竞争：新开优先，旧 popup 的 false 不覆盖新 popup 的 true。
+    ⚠️ 网格结构：**span 大键作用于自包 `.key-slot`（真 grid item），t-popup 嵌在槽内**
+    （popup 根当 grid item 不可控，跨格会失效）；`.key-slot :deep(.t-popup)` 撑满槽。
+    键盘格子固定正方形 `--key-size`（88px），合并键 = 整数倍格子不变形，外壳内整体居中
 - macOS 未授权时顶部 `t-alert` 引导授权（仅 combo 场景需要；Windows 恒不显示）
 - 未连接显示占位（连接后可配置绑定）
 
@@ -149,7 +168,8 @@
 - **koffi 为原生依赖**（dependencies，externalizeDeps 外部化），与 better-sqlite3 同由
   electron-builder smartUnpack 处理 .node 产物，无需额外 asarUnpack 配置
 - macOS 虚拟键码为 ANSI 布局位置码（`kVK_ANSI_*`），非字符值；新增主键需同时补
-  `MAC_KEY_CODES`（Windows 侧为公式计算无需补表）与 `KEYPAD_KEY_CODES` 元组
+  `MAC_KEY_CODES`（`enter` = kVK_Return 0x4c）与 Windows 侧 `winKeyCode` 特判
+  （`enter` = VK_RETURN 0x0D，**漏特判会被字母公式误算成 E 键**）；`KEYPAD_KEY_CODES` 元组同步
 - 模拟按键针对「快捷键触发」场景；捕获原始输入的游戏（Raw Input）不响应注入事件
 - 流式解析宽容：动作大小写宽容、容忍 \r\n/空白分隔；失步（乱码）丢字符重同步
 - 按键无反应的排查顺序：确认应用已连接且串口选对（macOS 会同时列出 `tty.*`/`cu.*` 变体）→

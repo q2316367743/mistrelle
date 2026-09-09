@@ -35,11 +35,62 @@ export function isKeypadModifier(value: string): value is KeypadModifier {
  * 后续拓展键位直接往元组追加，类型/选项/校验自动同步）。
  */
 const KEYPAD_KEY_CODES = [
-  'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
-  'f13', 'f14', 'f15', 'f16', 'f17', 'f18', 'f19',
-  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-  'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+  'enter',
+  'f1',
+  'f2',
+  'f3',
+  'f4',
+  'f5',
+  'f6',
+  'f7',
+  'f8',
+  'f9',
+  'f10',
+  'f11',
+  'f12',
+  'f13',
+  'f14',
+  'f15',
+  'f16',
+  'f17',
+  'f18',
+  'f19',
+  'a',
+  'b',
+  'c',
+  'd',
+  'e',
+  'f',
+  'g',
+  'h',
+  'i',
+  'j',
+  'k',
+  'l',
+  'm',
+  'n',
+  'o',
+  'p',
+  'q',
+  'r',
+  's',
+  't',
+  'u',
+  'v',
+  'w',
+  'x',
+  'y',
+  'z',
+  '0',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9'
 ] as const
 
 /** 模拟按键主键名（小写；展示层转大写） */
@@ -88,6 +139,21 @@ export interface KeypadScriptAction {
 /** 键位动作（按 type 判别；落盘 keypad.json bindings 的值） */
 export type KeypadAction = KeypadComboAction | KeypadAppAction | KeypadScriptAction
 
+/**
+ * 键盘样式布局 id（纯展示概念，落盘到 config.layout 供下次进入还原）。
+ * 布局定义（跨行跨列排布）在渲染层 keypadLayouts 注册表，
+ * 新增样式 = 加联合成员 + IDS 登记一行 + 渲染层注册表加布局定义。
+ */
+export type KeypadLayoutId = 'grid4x2'
+
+/** 布局 id 全集（归一化白名单；与渲染层布局注册表保持同步） */
+export const KEYPAD_LAYOUT_IDS: readonly KeypadLayoutId[] = ['grid4x2']
+
+/** 布局 id 白名单校验（配置归一化用） */
+export function isKeypadLayoutId(value: string): value is KeypadLayoutId {
+  return (KEYPAD_LAYOUT_IDS as readonly string[]).includes(value)
+}
+
 /** 本机应用目录条目（应用下拉选项源；path 为可打开的绝对路径） */
 export interface AppCatalogItem {
   /** 展示名（mac 为 .app 目录名去后缀；win 为 .lnk 文件名去后缀） */
@@ -96,12 +162,14 @@ export interface AppCatalogItem {
   path: string
 }
 
-/** 小键盘配置（落盘结构）：lastPort 记忆串口 + bindings（键位 id → 动作，键位支持任意数量） */
+/** 小键盘配置（落盘结构）：lastPort 记忆串口 + bindings（键位 id → 动作）+ layout 键盘样式 */
 export interface KeypadConfig {
   /** 上次使用的串口路径；未记录为空串 */
   lastPort: string
   /** 键位绑定表：键为设备行协议里的键位 id（如 '1'..'6'），缺省 = 未绑定仅状态展示 */
   bindings: Record<string, KeypadAction>
+  /** 键盘样式布局 id（纯展示偏好；非法/缺省归一化为首个布局） */
+  layout: KeypadLayoutId
 }
 
 /** 保存/连接操作结果（失败时 msg 为中文原因，不抛错） */
@@ -126,6 +194,8 @@ export interface KeypadApi {
   getConfig(): Promise<KeypadConfig>
   /** 全量保存键位绑定表；main 归一化清洗后落盘 */
   saveBindings(bindings: Record<string, KeypadAction>): Promise<KeypadResult>
+  /** 保存键盘样式布局（main 校验白名单后落盘） */
+  saveLayout(layout: KeypadLayoutId): Promise<KeypadResult>
   /** 本机应用目录（应用下拉选项源；main 扫描系统应用清单） */
   listApps(): Promise<AppCatalogItem[]>
   /** 连接串口（9600 固定波特率；成功即记忆 lastPort 并广播运行态） */

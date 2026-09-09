@@ -61,10 +61,11 @@ export function stopComboRecording(): void {
   active?.()
 }
 
-/** event.code → 白名单主键名（字母/数字/F 键；其余键不支持，忽略继续等待） */
+/** event.code → 白名单主键名（Enter/字母/数字/F 键；其余键不支持，忽略继续等待） */
 function codeToKeyName(code: string): KeypadKeyName | null {
   let name = ''
-  if (/^Key[A-Z]$/.test(code)) name = code.slice(3).toLowerCase()
+  if (code === 'Enter') name = 'enter'
+  else if (/^Key[A-Z]$/.test(code)) name = code.slice(3).toLowerCase()
   else if (/^Digit[0-9]$/.test(code)) name = code.slice(5)
   else if (/^F([1-9]|1[0-9])$/.test(code)) name = code.toLowerCase()
   else return null

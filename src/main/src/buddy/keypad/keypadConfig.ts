@@ -10,7 +10,7 @@ import { dirname, join } from 'path'
 import { app } from 'electron'
 import { keypadActionDefinition } from '@common/keypad/actions'
 import { comboAction } from '@common/keypad/actions/combo'
-import type { KeypadAction, KeypadConfig } from '@common/types/keypad'
+import { isKeypadLayoutId, type KeypadAction, type KeypadConfig } from '@common/types/keypad'
 
 function configFilePath(): string {
   return join(app.getPath('home'), '.mistrelle', 'buddy', 'keypad.json')
@@ -18,7 +18,7 @@ function configFilePath(): string {
 
 /** 默认配置（文件缺失/损坏时回退，不回写磁盘） */
 export function defaultConfig(): KeypadConfig {
-  return { lastPort: '', bindings: {} }
+  return { lastPort: '', bindings: {}, layout: 'grid4x2' }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -35,11 +35,14 @@ export function normalizeAction(raw: unknown): KeypadAction | null {
   return comboAction.normalize(raw)
 }
 
-/** 归一化整份配置：键位动作逐条白名单清洗（磁盘文件与 IPC 入参共用） */
+/** 归一化整份配置：键位动作逐条清洗 + 布局白名单校验（磁盘文件与 IPC 入参共用） */
 export function normalizeConfig(raw: unknown): KeypadConfig {
   const config = defaultConfig()
   if (!isRecord(raw)) return config
   if (typeof raw.lastPort === 'string') config.lastPort = raw.lastPort
+  if (typeof raw.layout === 'string' && isKeypadLayoutId(raw.layout)) {
+    config.layout = raw.layout
+  }
   if (!isRecord(raw.bindings)) return config
   const bindings: Record<string, KeypadAction> = {}
   for (const [keyId, rawBinding] of Object.entries(raw.bindings)) {

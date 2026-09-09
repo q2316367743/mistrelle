@@ -9,16 +9,20 @@ import type {
   AppCatalogItem,
   KeypadAction,
   KeypadConfig,
+  KeypadLayoutId,
   KeypadResult,
   KeypadState
 } from '@common/types/keypad'
 
 export const keypadApi = {
-  /** 读取整份配置（含 lastPort 与键位绑定） */
+  /** 读取整份配置（含 lastPort / 键位绑定 / 键盘样式） */
   getConfig: (): Promise<KeypadConfig> => ipcRenderer.invoke(KeypadChannels.getConfig),
   /** 全量保存键位绑定表；main 归一化清洗后落盘 */
   saveBindings: (bindings: Record<string, KeypadAction>): Promise<KeypadResult> =>
     ipcRenderer.invoke(KeypadChannels.saveBindings, bindings),
+  /** 保存键盘样式布局（main 校验白名单后落盘） */
+  saveLayout: (layout: KeypadLayoutId): Promise<KeypadResult> =>
+    ipcRenderer.invoke(KeypadChannels.saveLayout, layout),
   /** 本机应用目录（应用下拉选项源；main 扫描系统应用清单） */
   listApps: (): Promise<AppCatalogItem[]> => ipcRenderer.invoke(KeypadChannels.listApps),
   /** 连接串口（9600 固定波特率；成功即记忆 lastPort 并广播运行态） */

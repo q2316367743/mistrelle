@@ -14,12 +14,13 @@ import {
   subscribePortData
 } from '$/modules/serial/SerialService'
 import { KeypadChannels } from '@common/buddy/keypad/keypadChannels'
-import type {
-  KeypadAction,
-  KeypadConfig,
-  KeypadKeyAction,
-  KeypadResult,
-  KeypadState
+import {
+  isKeypadLayoutId,
+  type KeypadAction,
+  type KeypadConfig,
+  type KeypadKeyAction,
+  type KeypadResult,
+  type KeypadState
 } from '@common/types/keypad'
 import { KEYPAD_ACTION_EXECUTORS } from './actions'
 import { createKeypadParser, type KeypadKeyEvent } from './keypadProtocol'
@@ -169,6 +170,14 @@ export function saveBindings(input: Record<string, unknown>): KeypadResult {
   }
   releaseAll()
   config.bindings = bindings
+  saveConfigFile(config)
+  return { ok: true }
+}
+
+/** 保存键盘样式布局：白名单校验后落盘（非法 id 拒绝，不抛错） */
+export function saveLayout(layout: string): KeypadResult {
+  if (!isKeypadLayoutId(layout)) return { ok: false, msg: '未知的键盘样式' }
+  config.layout = layout
   saveConfigFile(config)
   return { ok: true }
 }

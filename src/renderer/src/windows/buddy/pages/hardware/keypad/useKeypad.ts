@@ -3,7 +3,7 @@
  * 绑定即改即存，保存后以 main 回读为准（失败自动回滚 UI）。
  * 连接编排/按键解析/动作执行都在 main（keypadService），渲染层只发指令与展示运行态。
  */
-import type { AppCatalogItem, KeypadAction, KeypadConfig } from '@common/types/keypad'
+import type { AppCatalogItem, KeypadAction, KeypadConfig, KeypadLayoutId } from '@common/types/keypad'
 import { MessageUtil } from '@/utils/modal'
 
 const config = ref<KeypadConfig | null>(null)
@@ -45,6 +45,18 @@ async function bindKey(keyId: string, action: KeypadAction | null): Promise<void
   if (action) bindings[keyId] = action
   else delete bindings[keyId]
   await saveBindings(bindings)
+}
+
+/** 保存键盘样式布局（即改即存，失败 toast，回读对齐） */
+async function saveLayout(layout: KeypadLayoutId): Promise<void> {
+  try {
+    const result = await window.preload.keypad.saveLayout(layout)
+    if (!result.ok) MessageUtil.error(result.msg || '保存失败')
+  } catch (e) {
+    MessageUtil.error('保存失败：' + (e as Error).message)
+  } finally {
+    await reload()
+  }
 }
 
 /** 加载本机应用目录（模块级缓存只拉一次；编辑器挂载时按需调用） */
@@ -96,6 +108,7 @@ export function useKeypad() {
     accessibilityGranted,
     apps,
     bindKey,
+    saveLayout,
     loadApps,
     connect,
     disconnect,

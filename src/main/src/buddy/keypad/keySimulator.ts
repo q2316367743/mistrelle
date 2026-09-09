@@ -11,6 +11,7 @@ import type { KeypadComboAction, KeypadKeyName, KeypadModifier } from '@common/t
 
 /** macOS 虚拟键码（kVK_ANSI_* / kVK_F*，Apple Events.h） */
 const MAC_KEY_CODES: Record<KeypadKeyName, number> = {
+  enter: 0x4c,
   f1: 0x7a, f2: 0x78, f3: 0x63, f4: 0x76, f5: 0x60, f6: 0x61, f7: 0x62,
   f8: 0x64, f9: 0x65, f10: 0x6d, f11: 0x67, f12: 0x6f, f13: 0x69, f14: 0x6b,
   f15: 0x71, f16: 0x6a, f17: 0x40, f18: 0x4f, f19: 0x50,
@@ -35,8 +36,9 @@ const WIN_MODIFIER_CODES: Record<KeypadModifier, number> = {
   shift: 0x10, ctrl: 0x11, alt: 0x12, meta: 0x5b
 }
 
-/** Windows 主键虚拟键码：字母 0x41+、数字 0x30+、F 键 0x70+(n-1) */
+/** Windows 主键虚拟键码：Enter 0x0D、字母 0x41+、数字 0x30+、F 键 0x70+(n-1) */
 function winKeyCode(name: KeypadKeyName): number {
+  if (name === 'enter') return 0x0d
   const first = name.charCodeAt(0)
   if (first >= 97 && first <= 122) return 0x41 + first - 97
   if (first >= 48 && first <= 57) return 0x30 + first - 48
