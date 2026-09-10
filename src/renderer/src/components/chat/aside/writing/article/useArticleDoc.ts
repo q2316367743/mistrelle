@@ -23,6 +23,9 @@ export const useArticleDoc = (props: { sandbox?: string; workspace?: string; ful
 
   const activeId = ref('')
   const activeArticle = computed(() => articles.value.find((a) => a.id === activeId.value))
+  /** 版本维度：当前文章的版本列表与激活版本 id（item.file 恒等于激活版本的 file） */
+  const versions = computed(() => activeArticle.value?.versions ?? [])
+  const activeVersionId = computed(() => activeArticle.value?.activeVersionId ?? '')
   const content = ref('')
   const exporting = ref(false)
 
@@ -126,6 +129,29 @@ export const useArticleDoc = (props: { sandbox?: string; workspace?: string; ful
     void saveDoc()
   }
 
+  /** 切换版本：先冲刷未落盘的编辑（防旧内容经防抖写进新版本文件），再切换并重读正文 */
+  const handleSwitchVersion = async (versionId: string) => {
+    if (!activeArticle.value || versionId === activeVersionId.value) return
+    saveDoc.flush()
+    try {
+      await store.value.switchVersion(activeId.value, versionId)
+      content.value = await store.value.readArticle(activeId.value)
+    } catch {
+      // 切换失败保持当前版本不动
+    }
+  }
+
+  /** 删除版本：激活版本被删时 store 回落到最后一个版本，重读正文 */
+  const handleRemoveVersion = async (versionId: string) => {
+    if (!activeArticle.value) return
+    try {
+      await store.value.removeVersion(activeId.value, versionId)
+      content.value = await store.value.readArticle(activeId.value)
+    } catch (e) {
+      MessageUtil.error('版本删除失败', e)
+    }
+  }
+
   /** 在文件管理器中显示：选中文章定位到文件，否则打开项目根目录 */
   const handleReveal = () => {
     if (activeArticle.value) {
@@ -170,6 +196,8 @@ export const useArticleDoc = (props: { sandbox?: string; workspace?: string; ful
     mode,
     activeId,
     activeArticle,
+    versions,
+    activeVersionId,
     content,
     exporting,
     activeMdDir,
@@ -179,6 +207,8 @@ export const useArticleDoc = (props: { sandbox?: string; workspace?: string; ful
     statusLabel,
     handleSelectChange,
     handleContentChange,
+    handleSwitchVersion,
+    handleRemoveVersion,
     handleReveal,
     handleRefresh: () => void reload(),
     handleExport

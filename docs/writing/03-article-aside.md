@@ -9,11 +9,15 @@ src/components/chat/aside/writing/
 ├── WritingAside.vue                 # writingScene 分发壳（article / novelShort）
 └── article/
     ├── ArticleAside.vue             # 外壳：双布局自适应 + 分段切换 + 面板编排（≤300 行）
-    ├── useArticleDoc.ts             # 数据层 composable：store 共享实例、选择/正文读写/文件操作
+    ├── useArticleDoc.ts             # 数据层 composable：store 共享实例、选择/正文读写/版本切换/文件操作
+    ├── useArticleAssist.ts          # 去 AI 味 / 朱雀检测动作编排（产出新版本 / 结果落版本）
+    ├── useArticleImageEvents.ts     # 配图 / 风格面板元数据事件写回（cover/images 文章级）
+    ├── humanizeApi.ts               # 去 AI 味流式 + 朱雀检测预留接口（开关常量 + request stub）
     ├── promptInputBridge.ts         # PROMPT_INPUT_KEY：快捷指令 → 聊天输入框注入桥
     └── components/
         ├── ArticleAsideHeader.vue   # header：文章下拉（平台/状态/字数 option）+ 定位/刷新/导出
-        ├── ArticleAsideFooter.vue   # footer：去 AI 味 / AI 检测 禁用占位按钮
+        ├── ArticleVersionBar.vue    # 版本条：版本 chips（源/时间/检测环/删除）+ 去 AI 味 + AI 检测
+        ├── ZhuquePie.vue            # 朱雀三色环形饼图（conic-gradient，AI 红/疑似黄/人工绿）
         ├── ArticleEditor.vue        # tiptap WYSIWYG（编辑/预览），expose insertImage、emit image-added
         ├── ArticleImagePanel.vue    # 配图面板：封面（平台比例预览）+ 插图网格
         ├── ArticleStylePanel.vue    # 风格面板：平台/风格/状态 + 按当前风格重写按钮
@@ -22,10 +26,17 @@ src/components/chat/aside/writing/
         └── ArticleSlash.ts          # 斜杠命令
 ```
 
+## 版本模型（一篇文章的多个版本）
+
+- 右侧主维度是**同一篇文章的版本迭代**（原稿 / 去 AI 味 / 重写…），顶部文章下拉仅作跨文章切换入口；数据模型见 02 号文档「版本契约」。
+- **归属分层**：朱雀检测结果（`zhuque`）跟版本走；封面 / 插图（`cover` / `images`）与平台 / 风格 / 状态是文章级，跨版本共享 —— 版本条只在「正文」维度出现，配图 / 风格面板无版本概念。
+- `ArticleItem.file` 恒等于激活版本的 file：AI 工具（`article_read` / `file_write` / `article_stats`）与导出 zip 永远作用于激活版本。
+- 编辑器 `:key = activeId:activeVersionId`：切文章 / 切版本都重挂编辑器（tiptap 内容只在挂载时初始化）。
+
 ## 双布局（随 fullscreen 自适应）
 
-- **窄栏（非全屏，180–640px）**：header → 分段切换（`t-radio-group variant="default-filled"`：正文/配图/风格）→ 当前分段内容 → footer。编辑器 `v-show` 保活（分段切换不丢内容），配图/风格 `v-if` 惰性挂载。
-- **全屏**：左正文编辑器（edit 模式）+ 右侧创作面板常驻（`__side` 300px 滚动列：配图面板 + 风格面板上下排布）→ footer。编辑时插入插图 / 调风格无需切页签。
+- **窄栏（非全屏，180–640px）**：header → 分段切换（`t-radio-group variant="default-filled"`：正文/配图/风格）→ 当前分段内容。正文分段 = 版本条 + 编辑器（`v-show` 保活，分段切换不丢内容），配图/风格 `v-if` 惰性挂载。
+- **全屏**：左正文（版本条 + 编辑器，edit 模式）+ 右侧创作面板常驻（`__side` 300px 滚动列：配图面板 + 风格面板上下排布）。编辑时插入插图 / 调风格无需切页签。
 - 编辑/预览模式仍由 `fullscreen` 派生：`mode = fullscreen ? 'edit' : 'preview'`（窄栏正文只读预览，配图/风格面板两态均可操作）。
 - 与 NovelAside「全屏分栏 / 窄栏切换」同模式。
 
@@ -33,9 +44,10 @@ src/components/chat/aside/writing/
 
 - 场景来源：`ChatSession.writingScene` → `LChatEngine` → `LChatAside` → `WritingAside` 分发。
 - 项目定位：`useArticleDoc(props)` 内 `buildArticleRoot(workspace, sandbox)` → `getArticleStore(root)` 共享响应式实例（与 article_* 工具同源，AI 变更实时驱动 UI）。
-- 编辑落盘：`ArticleEditor` 变更 → 防抖 800ms 写回正文 md。刷新语义不变：点「刷新」重载索引并从磁盘重读正文（AI 用 `file_write` 改写后点一次刷新可见）。
-- 图片落盘：粘贴/拖入 → 写 `assets/` → 插入相对路径节点，**同时 emit `image-added` 自动登记进 `images[]`**（归一为 `assets/{文件名}` 相对 articles/ 路径，去重）。
-- 面板元数据写回：配图/风格面板 emit（`cover` / `add-images` / `remove-image` / `patch`）→ `ArticleAside.patchArticle` → `store.updateArticle`（每次变更自动落盘 project.json）。
+- 编辑落盘：`ArticleEditor` 变更 → 防抖 800ms 写回**激活版本**的正文 md。刷新语义不变：点「刷新」重载索引并从磁盘重读正文（AI 用 `file_write` 改写后点一次刷新可见）。
+- **版本切换**：版本条 emit `select` → `handleSwitchVersion`（useArticleDoc）——先 `saveDoc.flush()` 冲刷未落盘编辑（防旧内容经防抖写进新版本文件），再 `store.switchVersion`（`file` 同步）并重读正文；删除版本同路径，激活版本被删时 store 回落到最后一个版本。
+- 图片落盘：粘贴/拖入 → 写 `assets/` → 插入相对路径节点，**同时 emit `image-added` 自动登记进 `images[]`**（归一为 `assets/{文件名}` 相对 articles/ 路径，去重；`useArticleImageEvents`）。
+- 面板元数据写回：配图/风格面板 emit（`cover` / `add-images` / `remove-image` / `patch`）→ `patchArticle` → `store.updateArticle`（每次变更自动落盘 project.json）。
 - 插图插入正文：面板 emit `insert(rel)` → 窄栏先切回正文分段，`nextTick` 后调 `ArticleEditor.insertImage(rel)`（`defineExpose`）。
 
 ## 封面与插图（ArticleImagePanel）
@@ -59,10 +71,12 @@ src/components/chat/aside/writing/
 - AI 侧联动：`article_create` / `article_update` 白名单支持 `style`；`ARTICLE_SCENE_PROMPT` 要求撰写/改写前先 `article_list` 确认 platform + style 并严格遵循（style 与平台模板叠加）。
 - 快捷指令：「按当前风格重写正文」按钮 → 组装指令文本 → `PROMPT_INPUT_KEY`（useChatSession provide → LChatSender `addTextPrompt` expose）填入聊天输入框，**不自动发送**；与画布节点 / HTML 元素注入同一 DI 模式。全屏态下输入框被遮挡，发送前需退出全屏（toast 已提示）。
 
-## footer 占位（接口未开放）
+## 版本条与外部接口预留（ArticleVersionBar / humanizeApi.ts）
 
-- 「去 AI 味」：预留流式接口（输入正文 → 流式输出去 AI 味内容），接入前禁用 + tooltip。
-- 「AI 检测」：腾讯朱雀 AIGC 检测，官方 API 需企业认证，禁用占位。
+footer 两个占位按钮已删除，动作收进正文维度顶部的版本条（`ArticleVersionBar.vue`）。两个外部接口集中预留于 `humanizeApi.ts`，各由开关常量控制，**接入时只需实现 request 函数并把开关置 true，UI 编排已就绪**：
+
+- **去 AI 味**（`HUMANIZE_ENABLED = false`）：未接入时按钮禁用 + tooltip；编排见 `useArticleAssist.handleHumanize` —— 读当前正文 → `requestHumanizeStream({ text, onDelta })` 流式增量实时写入 `content`（编辑器 watch 跟随渲染）→ 完成后 `store.createVersion({ source: 'humanize' })` 产生**新版本**并自动激活（原版本内容不动），失败回滚显示原文。
+- **AI 检测 / 朱雀**（`ZHUQUE_ENABLED = false`）：未接入且无结果时按钮禁用 + tooltip；检测结果跟版本走（`patchVersion` 写入激活版本的 `zhuque`）。版本已有结果时按钮常亮 + 版本 chip 带迷你圆环，点击弹 `t-popup` 展示 `ZhuquePie` 饼图（conic-gradient 三色：AI=`--td-error-color` 红、疑似=`--td-warning-color` 黄、人工=`--td-success-color` 绿，环心显 AI 占比 + 右侧图例）与检测时间、重新检测入口。
 
 ## 编辑器（tiptap）
 
@@ -74,5 +88,5 @@ src/components/chat/aside/writing/
 
 ## 待接入（预留）
 
-- 去 AI 味流式接口：接口就绪后在 footer 启用，建议走「输入正文 → 流式输出 → 确认后替换正文」交互。
-- 朱雀 AI 检测：企业认证接入后启用。
+- 去 AI 味流式接口：实现 `humanizeApi.ts` 的 `requestHumanizeStream`（增量经 `onDelta`、resolve 完整文本）并置 `HUMANIZE_ENABLED = true`；可再接 AbortSignal 到中止按钮。
+- 朱雀 AI 检测：实现 `requestZhuqueDetect(text)` 返回三占比并置 `ZHUQUE_ENABLED = true`；注意「重新检测 / 开始检测」按钮的禁用态也由该开关驱动。

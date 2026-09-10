@@ -13,14 +13,24 @@
         <div class="article-aside-header__option">
           <span class="option-title">{{ a.title }}</span>
           <div class="option-meta">
-            <t-tag size="small" variant="light" :theme="platformTheme(a.platform)">{{ a.platform }}</t-tag>
-            <t-tag size="small" variant="outline" :theme="statusTheme(a.status)">{{ statusLabel(a.status) }}</t-tag>
+            <t-tag size="small" variant="light" :theme="platformTheme(a.platform)">{{
+              a.platform
+            }}</t-tag>
+            <t-tag size="small" variant="outline" :theme="statusTheme(a.status)">{{
+              statusLabel(a.status)
+            }}</t-tag>
             <span v-if="a.words" class="option-words">{{ a.words }} 字</span>
           </div>
         </div>
       </t-option>
     </t-select>
-    <t-button theme="primary" variant="text" shape="square" title="在文件夹中显示" @click="emit('reveal')">
+    <t-button
+      theme="primary"
+      variant="text"
+      shape="square"
+      title="在文件夹中显示"
+      @click="emit('reveal')"
+    >
       <template #icon><folder-open-icon /></template>
     </t-button>
     <t-button theme="primary" variant="text" shape="square" title="刷新" @click="emit('refresh')">
@@ -41,7 +51,11 @@
 </template>
 <script lang="ts" setup>
 import { DownloadIcon, FolderOpenIcon, RefreshIcon } from 'tdesign-icons-vue-next'
-import type { ArticleItem, ArticlePlatform, ArticleStatus } from '@/windows/main/modules/tool/components/article/articleTypes'
+import type {
+  ArticleItem,
+  ArticlePlatform,
+  ArticleStatus
+} from '@/windows/main/modules/tool/components/article/articleTypes'
 
 defineProps<{
   articles: ArticleItem[]

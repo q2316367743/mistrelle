@@ -4,6 +4,8 @@
  * project.json 为项目管理索引（结构化），正文为 drafts/ 下的 .md，配图为 assets/ 下的图片。
  */
 
+import { CommonSelect } from '@common/types/CommonSelect'
+
 /** 目标平台（平台差异化模板） */
 export type ArticlePlatform = '公众号' | '知乎' | '小红书' | '其他'
 
@@ -17,6 +19,44 @@ export const ARTICLE_STYLE_PRESETS: Record<ArticlePlatform, string[]> = {
 
 /** 文章状态 */
 export type ArticleStatus = 'draft' | 'writing' | 'done'
+
+/** 版本来源：original=创建初稿 humanize=去 AI 味 rewrite=风格重写 manual=手动 */
+export type ArticleVersionSource = 'original' | 'humanize' | 'rewrite' | 'manual'
+
+export const ARTICLE_VERSION_SOURCE_OPTIONS: Array<CommonSelect<ArticleVersionSource>> = [
+  { value: 'original', label: '原稿' },
+  { value: 'humanize', label: '去 AI 味' },
+  { value: 'rewrite', label: '重写' },
+  { value: 'manual', label: '手动' }
+]
+
+/** 朱雀 AIGC 检测结果（跟版本走；三占比 0-100，和为 100） */
+export interface ZhuqueDetectResult {
+  /** AI 生成占比 */
+  ai: number
+  /** 疑似 AI 占比 */
+  suspect: number
+  /** 人工创作占比 */
+  human: number
+  /** 检测时间戳 */
+  time: number
+}
+
+/** 文章版本（正文迭代快照；检测结果跟版本走，封面/插图跟文章走） */
+export interface ArticleVersion {
+  id: string
+  /** 正文文件相对 articles/ 的路径，如 drafts/{articleId}-{vid}.md */
+  file: string
+  source: ArticleVersionSource
+  /** 自定义版本名（缺省按 source 显示） */
+  label?: string
+  /** 创建时间戳 */
+  createdTime: number
+  /** 字数（去空白字符数） */
+  words?: number
+  /** 朱雀检测结果 */
+  zhuque?: ZhuqueDetectResult
+}
 
 /** 文章条目（登记在 project.json） */
 export interface ArticleItem {
@@ -38,6 +78,10 @@ export interface ArticleItem {
   cover?: string
   /** 配图相对 articles/ 的路径列表 */
   images?: string[]
+  /** 正文版本列表（读时归一化兜底：存量无版本文章自动合成 V1） */
+  versions?: ArticleVersion[]
+  /** 当前激活版本 id（缺省取最后一个版本）；item.file 恒等于激活版本的 file */
+  activeVersionId?: string
 }
 
 /** 文章项目管理索引文件结构（project.json） */

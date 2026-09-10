@@ -18,25 +18,36 @@
       :value="activeTab"
       @change="(v: unknown) => typeof v === 'string' && (activeTab = v as ArticleAsideTab)"
     >
-      <t-radio-button value="content">正文</t-radio-button>
-      <t-radio-button value="image">配图</t-radio-button>
-      <t-radio-button value="style">风格</t-radio-button>
+      <t-radio-button value="content" class="justify-center">正文</t-radio-button>
+      <t-radio-button value="image" class="justify-center">配图</t-radio-button>
+      <t-radio-button value="style" class="justify-center">风格</t-radio-button>
     </t-radio-group>
 
     <template v-if="!fullscreen">
       <div class="article-aside__body">
         <template v-if="activeArticle">
-          <article-editor
-            v-show="activeTab === 'content'"
-            ref="editorRef"
-            :key="activeId"
-            :content="content"
-            :mode="mode"
-            :base-dir="activeMdDir"
-            :assets-dir="assetsDir"
-            @change="handleContentChange"
-            @image-added="handleImageAdded"
-          />
+          <div v-show="activeTab === 'content'" class="article-aside__pane">
+            <article-version-bar
+              :versions="versions"
+              :active-version-id="activeVersionId"
+              :humanizing="humanizing"
+              :detecting="detecting"
+              @select="handleSwitchVersion"
+              @remove="handleRemoveVersion"
+              @humanize="handleHumanize"
+              @detect="handleDetect"
+            />
+            <article-editor
+              ref="editorRef"
+              :key="editorKey"
+              :content="content"
+              :mode="mode"
+              :base-dir="activeMdDir"
+              :assets-dir="assetsDir"
+              @change="handleContentChange"
+              @image-added="handleImageAdded"
+            />
+          </div>
           <article-image-panel
             v-if="activeTab === 'image'"
             :article="activeArticle"
@@ -58,20 +69,31 @@
       </div>
     </template>
 
-    <!-- 全屏布局：左正文编辑 + 右创作面板常驻 -->
+    <!-- 全屏布局：左正文（版本条 + 编辑器）+ 右创作面板常驻 -->
     <div v-else class="article-aside__split">
       <div class="article-aside__main">
-        <article-editor
-          v-if="activeArticle"
-          ref="editorRef"
-          :key="activeId"
-          :content="content"
-          :mode="mode"
-          :base-dir="activeMdDir"
-          :assets-dir="assetsDir"
-          @change="handleContentChange"
-          @image-added="handleImageAdded"
-        />
+        <template v-if="activeArticle">
+          <article-version-bar
+            :versions="versions"
+            :active-version-id="activeVersionId"
+            :humanizing="humanizing"
+            :detecting="detecting"
+            @select="handleSwitchVersion"
+            @remove="handleRemoveVersion"
+            @humanize="handleHumanize"
+            @detect="handleDetect"
+          />
+          <article-editor
+            ref="editorRef"
+            :key="editorKey"
+            :content="content"
+            :mode="mode"
+            :base-dir="activeMdDir"
+            :assets-dir="assetsDir"
+            @change="handleContentChange"
+            @image-added="handleImageAdded"
+          />
+        </template>
         <div v-else class="article-aside__empty">{{ emptyHint }}</div>
       </div>
       <div class="article-aside__side">
@@ -94,17 +116,16 @@
         <div v-else class="article-aside__empty">{{ emptyHint }}</div>
       </div>
     </div>
-
-    <article-aside-footer :class="[{ 'mb-8px': fullscreen }]" />
   </div>
 </template>
 <script lang="ts" setup>
-import type { ArticleUpdatePatch } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { MessageUtil } from '@/utils/modal'
 import { PROMPT_INPUT_KEY } from './promptInputBridge'
 import { useArticleDoc } from './useArticleDoc'
+import { useArticleAssist } from './useArticleAssist'
+import { useArticleImageEvents } from './useArticleImageEvents'
 import ArticleAsideHeader from './components/ArticleAsideHeader.vue'
-import ArticleAsideFooter from './components/ArticleAsideFooter.vue'
+import ArticleVersionBar from './components/ArticleVersionBar.vue'
 import ArticleEditor from './components/ArticleEditor.vue'
 import ArticleImagePanel from './components/ArticleImagePanel.vue'
 import ArticleStylePanel from './components/ArticleStylePanel.vue'
@@ -126,60 +147,46 @@ const {
   mode,
   activeId,
   activeArticle,
+  versions,
+  activeVersionId,
   content,
   exporting,
   activeMdDir,
   assetsDir,
   handleSelectChange,
   handleContentChange,
+  handleSwitchVersion,
+  handleRemoveVersion,
   handleReveal,
   handleRefresh,
   handleExport
 } = useArticleDoc(props)
 
+/** 去 AI 味 / 朱雀检测编排（接口未接入时按钮禁用，见 humanizeApi.ts） */
+const { humanizing, detecting, handleHumanize, handleDetect } = useArticleAssist({
+  store,
+  activeId,
+  activeArticle,
+  content
+})
+
 const activeTab = ref<ArticleAsideTab>('content')
 const editorRef = ref<{ insertImage: (rel: string) => void } | null>(null)
 const promptInput = inject(PROMPT_INPUT_KEY)
 
+/** 切文章 / 切版本都重挂编辑器（tiptap 内容初始化只在挂载时取 prop） */
+const editorKey = computed(() => `${activeId.value}:${activeVersionId.value}`)
+
 const emptyHint = computed(() => {
   if (activeTab.value === 'image') return '先选择文章，再管理封面与插图'
   if (activeTab.value === 'style') return '先选择文章，再设置写作风格'
-  return '从上方选择文章，或让 AI 生成文章后在此选择'
+  return '从上方选择文章，或让 AI 生成文章后在此查看'
 })
 
 // =================================== 配图 / 风格面板事件（写回共享 store） ===================================
 
-const patchArticle = (patch: ArticleUpdatePatch) => {
-  if (!activeArticle.value) return
-  store.value
-    .updateArticle(activeId.value, patch)
-    .catch(() => MessageUtil.error('文章信息保存失败'))
-}
-
-/** 编辑器粘贴 / 拖入的图片自动登记进插图列表（去重；编辑器内为相对 md 目录路径，登记归一为相对 articles/） */
-const handleImageAdded = (rel: string) => {
-  const article = activeArticle.value
-  if (!article) return
-  const target = `assets/${window.preload.path.basename(rel)}`
-  if ((article.images ?? []).includes(target)) return
-  patchArticle({ images: [...(article.images ?? []), target] })
-}
-
-const handleAddImages = (rels: string[]) => {
-  const article = activeArticle.value
-  if (!article) return
-  const merged = [...(article.images ?? [])]
-  for (const rel of rels) if (!merged.includes(rel)) merged.push(rel)
-  patchArticle({ images: merged })
-}
-
-const handleRemoveImage = (rel: string) => {
-  const article = activeArticle.value
-  if (!article) return
-  patchArticle({ images: (article.images ?? []).filter((img) => img !== rel) })
-}
-
-const handleCover = (rel: string | undefined) => patchArticle({ cover: rel })
+const { patchArticle, handleImageAdded, handleAddImages, handleRemoveImage, handleCover } =
+  useArticleImageEvents({ store, activeId, activeArticle })
 
 /** 插图插入正文光标处：窄栏先切回正文分段，等编辑器可见后再插入 */
 const handleInsertImage = (rel: string) => {
@@ -230,6 +237,14 @@ const handleRewrite = () => {
     overflow: hidden;
   }
 
+  /* 正文分段容器：版本条 + 编辑器纵向排布 */
+  &__pane {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
   &__split {
     margin-top: 8px;
     flex: 1;
@@ -244,6 +259,7 @@ const handleRewrite = () => {
     flex: 1;
     min-width: 0;
     display: flex;
+    flex-direction: column;
   }
 
   &__side {

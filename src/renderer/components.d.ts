@@ -11,12 +11,12 @@ declare module 'vue' {
     AiModelSelect: typeof import('./src/components/chat/AiModelSelect.vue')['default']
     AiWorkspace: typeof import('./src/components/chat/AiWorkspace.vue')['default']
     ArticleAside: typeof import('./src/components/chat/aside/writing/article/ArticleAside.vue')['default']
-    ArticleAsideFooter: typeof import('./src/components/chat/aside/writing/article/components/ArticleAsideFooter.vue')['default']
     ArticleAsideHeader: typeof import('./src/components/chat/aside/writing/article/components/ArticleAsideHeader.vue')['default']
     ArticleEditor: typeof import('./src/components/chat/aside/writing/article/components/ArticleEditor.vue')['default']
     ArticleImageGenContent: typeof import('./src/components/chat/aside/writing/article/components/ArticleImageGenContent.vue')['default']
     ArticleImagePanel: typeof import('./src/components/chat/aside/writing/article/components/ArticleImagePanel.vue')['default']
     ArticleStylePanel: typeof import('./src/components/chat/aside/writing/article/components/ArticleStylePanel.vue')['default']
+    ArticleVersionBar: typeof import('./src/components/chat/aside/writing/article/components/ArticleVersionBar.vue')['default']
     AskChatQuestion: typeof import('./src/components/chat/chat-assistant/tool/AskChatQuestion.vue')['default']
     AskChatTool: typeof import('./src/components/chat/chat-assistant/tool/AskChatTool.vue')['default']
     BgResult: typeof import('./src/components/Result/BgResult.vue')['default']
@@ -134,5 +134,6 @@ declare module 'vue' {
     TTree: typeof import('tdesign-vue-next')['Tree']
     VerifyEmailContent: typeof import('./src/components/modals/VerifyEmailContent.vue')['default']
     WritingAside: typeof import('./src/components/chat/aside/writing/WritingAside.vue')['default']
+    ZhuquePie: typeof import('./src/components/chat/aside/writing/article/components/ZhuquePie.vue')['default']
   }
 }
