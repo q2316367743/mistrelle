@@ -52,6 +52,14 @@ declare interface ChatDbApi {
 /** 生成任务状态：pending=生成中，success=成功，failed=失败 */
 declare type ImageGenerateStatus = 'pending' | 'success' | 'failed'
 
+/** 单张产物图片（images 列元素；n>1 一次任务出多张） */
+declare interface ImageItem {
+  /** 图片文件绝对路径（pending 时即为预定路径） */
+  path: string
+  width: number | null
+  height: number | null
+}
+
 /** image_generate 表行载荷（upsert 全量列 / list 行返回，两用） */
 declare interface ImageRecordInput {
   id: string
@@ -60,10 +68,13 @@ declare interface ImageRecordInput {
   /** 生成时的设计风格名快照；未选风格为空 */
   styleName: string | null
   size: string | null
-  /** 图片文件绝对路径（pending 时即为预定路径） */
+  /** 第一张产物路径（pending 时即为预定路径；与 images[0].path 一致，兼容旧消费方） */
   path: string | null
+  /** 第一张产物尺寸（与 images[0] 一致） */
   width: number | null
   height: number | null
+  /** 全部产物（读取时归一化：旧数据由 path 兜底单元素，可当必有数组用） */
+  images: ImageItem[]
   status: ImageGenerateStatus
   error: string | null
   /** 异步任务型（中转站返回 task_id 需轮询）的远端任务标识；同步模式 / 提交即失败为空 */

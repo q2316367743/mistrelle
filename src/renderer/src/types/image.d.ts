@@ -16,11 +16,12 @@ declare interface ImageGenerateError {
   pollMaxAt?: number
 }
 
-/** 生图成功结果 */
+/** 生图成功结果（path/width/height 为第一张；n>1 时 images 含全部产物） */
 declare interface ImageGenerateSuccess {
   path: string
   width?: number
   height?: number
+  images?: ImageItem[]
 }
 
 /** 单次生成的终态结果（成功 / 失败判别联合） */
@@ -30,18 +31,37 @@ declare type ImageTaskOutcome = ImageGenerateSuccess | ImageGenerateError
 declare interface ImageGenerateParams {
   prompt: string
   model?: string
+  /** 输出尺寸（宽x高 或 比例，如 1024x1024 / 16:9）；缺省由服务端 / 上游决定 */
   size?: string
+  /** 输出像素档位（1k / 2k / 4k），与 size 共同决定实际尺寸 */
+  resolution?: string
+  /** 单次生成张数（1-4 整数，main 侧 clamp）；缺省 1 */
+  n?: number
+  /** 质量档位（如 auto / high / medium / low），原样透传上游 */
+  quality?: string
+  /** 背景（auto / transparent / opaque） */
+  background?: string
+  /** 输出格式（png / jpeg / webp）；非 png 时落盘扩展名跟随 */
+  outputFormat?: string
+  /** 输出压缩率 0-100（jpeg / webp 有效） */
+  outputCompression?: number
+  /** 内容审核档位（auto / low） */
+  moderation?: string
+  /** 提交前 NSFW 审核（上游 moderation） */
+  nsfwCheck?: boolean
+  /** 参考图：本地绝对路径 / http URL / data URI（main 归一化后透传）；非空触发图生图，≤15 张 */
+  imageUrls?: string[]
   styleName?: string | null
   /** 是否建记录（默认 true）；false = 工具直出：不建记录不广播，产物落盘 path 并返回终态 */
   record?: boolean
+  /** record=false 时必填：输出图片文件绝对路径（n>1 时第 2 张起追加 -2/-3/-4 序号） */
   path?: string
   wait?: boolean
 }
 
 /** generate 返回：started=已建记录（进展经广播）；finished=终态（工具直出 / wait 模式） */
 declare type ImageGenerateInvokeResult =
-  | { phase: 'started'; record: ImageRecordInput }
-  | { phase: 'finished'; result: ImageTaskOutcome }
+  { phase: 'started'; record: ImageRecordInput } | { phase: 'finished'; result: ImageTaskOutcome }
 
 /** 生图模型档位选项（服务端档位；t-select options 可绑定；priced 含 pointsPerImage） */
 declare interface ImageModelOption {

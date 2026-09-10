@@ -1,5 +1,31 @@
 /** 文生图页面纯函数工具 */
 
+/** 生成表单提交载荷（n/分辨率/高级参数未设置的字段不传，由 main 决定是否透传服务端） */
+export interface ImageFormSubmit {
+  prompt: string
+  size?: string
+  model?: string
+  styleId?: string
+  /** 单次生成张数（1-4） */
+  n?: number
+  /** 像素档位（1k / 2k / 4k） */
+  resolution?: string
+  quality?: string
+  background?: string
+  outputFormat?: string
+  outputCompression?: number
+  moderation?: string
+  nsfwCheck?: boolean
+  /** 参考图本地绝对路径（main 归一化为 data URI 透传） */
+  imageUrls?: string[]
+}
+
+/** 高级参数子集（折叠面板编辑的字段，父级持有状态） */
+export type ImageAdvancedState = Pick<
+  ImageFormSubmit,
+  'quality' | 'background' | 'outputFormat' | 'outputCompression' | 'moderation' | 'nsfwCheck'
+>
+
 /** 时间戳 → 本地时间字符串（YYYY-MM-DD HH:mm） */
 export const formatDateTime = (ts: number): string => {
   const d = new Date(ts)

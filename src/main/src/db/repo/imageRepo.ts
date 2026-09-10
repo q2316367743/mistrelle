@@ -9,7 +9,32 @@ import { db } from '../client'
 import { and, count, desc, eq, like, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { imageGenerations } from '../schema/image'
-import type { ImageListFilter, ImageListResult, ImageRecordInput } from '~/modules/db/dbChannels'
+import type {
+  ImageItem,
+  ImageListFilter,
+  ImageListResult,
+  ImageRecordInput
+} from '~/modules/db/dbChannels'
+
+const isImageItem = (value: unknown): value is ImageItem =>
+  typeof value === 'object' && value !== null && typeof (value as { path?: unknown }).path === 'string'
+
+/** 行 → 载荷：images JSON 还原为数组；旧数据 / 脏数据由 path 兜底单元素 */
+function toRecord(row: typeof imageGenerations.$inferSelect): ImageRecordInput {
+  let images: ImageItem[] = []
+  if (row.images) {
+    try {
+      const parsed: unknown = JSON.parse(row.images)
+      if (Array.isArray(parsed)) images = parsed.filter(isImageItem)
+    } catch {
+      // JSON 损坏时走 path 兜底
+    }
+  }
+  if (!images.length && row.path) {
+    images = [{ path: row.path, width: row.width, height: row.height }]
+  }
+  return { ...row, images }
+}
 
 export function imageList(filter: ImageListFilter, limit: number, offset: number): ImageListResult {
   const conds: Array<SQL | undefined> = []
@@ -19,7 +44,7 @@ export function imageList(filter: ImageListFilter, limit: number, offset: number
   }
   const where = conds.length ? and(...conds) : undefined
 
-  const items = db()
+  const rows = db()
     .select()
     .from(imageGenerations)
     .where(where)
@@ -28,7 +53,7 @@ export function imageList(filter: ImageListFilter, limit: number, offset: number
     .offset(offset)
     .all()
   const total = db().select({ c: count() }).from(imageGenerations).where(where).get()?.c ?? 0
-  return { items, total }
+  return { items: rows.map(toRecord), total }
 }
 
 const upsertSet = {
@@ -39,6 +64,7 @@ const upsertSet = {
   path: sql`excluded.path`,
   width: sql`excluded.width`,
   height: sql`excluded.height`,
+  images: sql`excluded.images`,
   status: sql`excluded.status`,
   error: sql`excluded.error`,
   taskId: sql`excluded.task_id`,
@@ -49,13 +75,13 @@ const upsertSet = {
 
 export function imageGet(id: string): ImageRecordInput | null {
   const row = db().select().from(imageGenerations).where(eq(imageGenerations.id, id)).get()
-  return row ?? null
+  return row ? toRecord(row) : null
 }
 
 export function imageUpsert(record: ImageRecordInput): void {
   db()
     .insert(imageGenerations)
-    .values(record)
+    .values({ ...record, images: JSON.stringify(record.images ?? []) })
     .onConflictDoUpdate({ target: imageGenerations.id, set: upsertSet })
     .run()
 }

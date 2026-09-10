@@ -1,0 +1,1 @@
+ALTER TABLE `image_generate` ADD `images` text;

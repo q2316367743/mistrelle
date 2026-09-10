@@ -3,7 +3,9 @@
  *
  * 约定：
  * - 一行 = 一次生成任务，状态机 pending → success / failed（渲染侧驱动）。
- * - path 为图片文件绝对路径（按月分桶 ~/.mistrelle/image/generate/{yyyy-MM}/{id}.png），
+ * - path / width / height 为第一张产物快照；全部产物在 images（ImageItem[] 的 JSON 文本，
+ *   仓储层读写时序列化 / 归一化，旧数据无 images 时由 path 兜底单元素）。
+ * - 产物按月分桶 ~/.mistrelle/image/generate/{yyyy-MM}/{id}[-n].{ext}，
  *   pending 时即为预定路径；删除记录时由渲染侧联动删文件。
  * - model 为生成时的模型名快照（设置中的默认生图模型后期变化不影响历史记录展示）。
  * - style_name 为生成时的设计风格名快照（同 model，仅记录出处，风格后期改名 / 删除不影响历史）。
@@ -23,6 +25,8 @@ export const imageGenerations = sqliteTable(
     path: text('path'),
     width: integer('width'),
     height: integer('height'),
+    /** 全部产物图片（ImageItem[] 的 JSON 文本；path/width/height 为第一张快照） */
+    images: text('images'),
     /** 任务状态：pending / success / failed */
     status: text('status').$type<ImageGenerateStatus>().notNull(),
     /** 失败原因（status=failed 时存在） */

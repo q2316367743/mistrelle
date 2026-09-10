@@ -23,6 +23,7 @@
 <script lang="ts" setup>
 import { useImageGenerations } from './useImageGenerations'
 import { openImageDetail } from './components/ImageDetailDrawer'
+import type { ImageFormSubmit } from './image-page-utils'
 import ImageGenerateForm from './components/ImageGenerateForm.vue'
 import ImageRecordGrid from './components/ImageRecordGrid.vue'
 
@@ -45,8 +46,7 @@ onMounted(() => init())
 
 watchDebounced(keyword, () => refresh(), { debounce: 400 })
 
-const handleSubmit = (prompt: string, size?: string, model?: string, styleId?: string) =>
-  generate(prompt, size, model, styleId)
+const handleSubmit = (form: ImageFormSubmit) => generate(form)
 
 // eslint-disable-next-line no-undef
 const handleOpen = (record: ImageRecordInput) => {

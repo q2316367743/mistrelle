@@ -8,6 +8,7 @@
 import { useDesignStyleStore, useSettingDefaultStore } from '@/windows/main/store'
 import { buildDesignStylePrompt } from '@/windows/main/modules/design'
 import { MessageUtil } from '@/utils/modal'
+import type { ImageFormSubmit } from './image-page-utils'
 
 /** 每页条数 */
 const PAGE_SIZE = 24
@@ -61,18 +62,14 @@ const createImageGenerations = () => {
    * 发起一次生成：主进程建 pending 记录（经广播/返回值上屏），后续状态由广播推进。
    * model 为服务端生图档位 code，缺省回退默认生图模型；styleId 选中时把风格名快照
    * 随参数落库（styleName），风格提示词拼进实际请求（记录保留用户原始 prompt）。
+   * 其余参数（n / 分辨率 / 高级项 / 参考图）原样透传主进程，未设置的不传。
    * 同一时刻可并行多个任务（主进程独立推进，互不阻塞）。
    */
-  const generate = async (
-    promptText: string,
-    size?: string,
-    model?: string,
-    styleId?: string
-  ): Promise<void> => {
-    const prompt = promptText.trim()
+  const generate = async (form: ImageFormSubmit): Promise<void> => {
+    const prompt = form.prompt.trim()
     if (!prompt) return
 
-    const modelKey = model?.trim() || useSettingDefaultStore().state.defaultImageModel
+    const modelKey = form.model?.trim() || useSettingDefaultStore().state.defaultImageModel
     if (!modelKey) {
       MessageUtil.warning('请先选择生图模型')
       return
@@ -81,7 +78,7 @@ const createImageGenerations = () => {
     // 设计风格解析前置：name 快照随记录落库（记录出处），提示词只拼进实际请求
     let requestPrompt = prompt
     let styleName: string | null = null
-    const styleKey = styleId?.trim()
+    const styleKey = form.styleId?.trim()
     if (styleKey) {
       try {
         const style = await useDesignStyleStore().getDetail(styleKey)
@@ -97,7 +94,16 @@ const createImageGenerations = () => {
     const res = await window.preload.image.generate({
       prompt: requestPrompt,
       model: modelKey,
-      size,
+      size: form.size,
+      n: form.n,
+      resolution: form.resolution,
+      quality: form.quality,
+      background: form.background,
+      outputFormat: form.outputFormat,
+      outputCompression: form.outputCompression,
+      moderation: form.moderation,
+      nsfwCheck: form.nsfwCheck,
+      imageUrls: form.imageUrls,
       styleName,
       record: true
     })

@@ -8,39 +8,54 @@
       @keydown.ctrl.enter.prevent="handleSubmit"
       @keydown.meta.enter.prevent="handleSubmit"
     />
+    <div class="params-row">
+      <t-select
+        v-model="modelKey"
+        class="model-select"
+        :loading="imageModelStore.loading"
+        clearable
+        placeholder="生图模型"
+      >
+        <t-option
+          v-for="item in imageModelStore.items"
+          :key="item.value"
+          :value="item.value"
+          :label="item.label"
+        >
+          <div class="model-option">
+            <span class="model-option-name">{{ modelName(item) }}</span>
+            <span v-if="item.pointsPerImage != null" class="model-option-points">
+              {{ item.pointsPerImage }} 积分/张
+            </span>
+          </div>
+        </t-option>
+      </t-select>
+      <style-select v-model="styleId" class="style-select" />
+      <t-select
+        v-model="size"
+        class="size-select"
+        :options="SIZE_OPTIONS"
+        filterable
+        creatable
+        placeholder="尺寸"
+      />
+      <t-select
+        v-model="resolution"
+        class="resolution-select"
+        :options="RESOLUTION_OPTIONS"
+        placeholder="分辨率"
+      />
+      <t-select v-model="n" class="n-select" :options="N_OPTIONS" placeholder="张数" />
+    </div>
     <div class="form-actions">
       <div class="action-left">
-        <t-select
-          v-model="modelKey"
-          class="model-select"
-          :loading="imageModelStore.loading"
-          clearable
-          placeholder="生图模型"
-        >
-          <t-option
-            v-for="item in imageModelStore.items"
-            :key="item.value"
-            :value="item.value"
-            :label="item.label"
-          >
-            <div class="model-option">
-              <span class="model-option-name">{{ modelName(item) }}</span>
-              <span v-if="item.pointsPerImage != null" class="model-option-points">
-                {{ item.pointsPerImage }} 积分/张
-              </span>
-            </div>
-          </t-option>
-        </t-select>
-        <style-select v-model="styleId" class="style-select" />
-        <t-select
-          v-model="size"
-          class="size-select"
-          :options="SIZE_OPTIONS"
-          filterable
-          creatable
-          placeholder="尺寸"
-        >
-        </t-select>
+        <image-reference-picker v-model="imagePaths" />
+        <t-button variant="text" size="small" @click="showAdvanced = !showAdvanced">
+          高级参数
+          <template #icon>
+            <ChevronDownIcon class="chevron" :class="{ open: showAdvanced }" />
+          </template>
+        </t-button>
         <span v-if="modelTip" class="model-tip">
           <span class="tip-text">{{ modelTip }}</span>
           <t-button
@@ -59,6 +74,7 @@
         生成图片
       </t-button>
     </div>
+    <image-advanced-options v-if="showAdvanced" v-model="advanced" class="advanced-panel" />
     <t-alert v-if="sizeError" theme="warning" class="size-error">{{ sizeError }}</t-alert>
   </div>
 </template>
@@ -66,18 +82,39 @@
 <script lang="ts" setup>
 import { useImageModelStore, useSettingDefaultStore } from '@/windows/main/store'
 import { openLogin } from '@/components/modals/LoginDialog'
-import { AiImageIcon } from 'tdesign-icons-vue-next'
+import { AiImageIcon, ChevronDownIcon } from 'tdesign-icons-vue-next'
+import ImageAdvancedOptions from './ImageAdvancedOptions.vue'
+import ImageReferencePicker from './ImageReferencePicker.vue'
+import type { ImageAdvancedState, ImageFormSubmit } from '../image-page-utils'
 
-/** 常用尺寸（服务端按需透传，全模型安全值默认 1024x1024） */
+/** 「自动」哨兵值：提交时不传该参数，由服务端 / 上游决定 */
+const AUTO = 'auto'
+
+/** 尺寸选项：自动 + 常用比例（配合分辨率档位）+ 常用像素；可手动输入比例或宽x高 */
 const SIZE_OPTIONS = [
+  { label: '自动（跟随模型 / 参考图）', value: AUTO },
+  { label: '1:1 方形', value: '1:1' },
+  { label: '16:9 横版', value: '16:9' },
+  { label: '9:16 竖版', value: '9:16' },
+  { label: '4:3 横版', value: '4:3' },
+  { label: '3:4 竖版', value: '3:4' },
+  { label: '3:2 横版', value: '3:2' },
+  { label: '2:3 竖版', value: '2:3' },
   { label: '方形 1024×1024', value: '1024x1024' },
   { label: '竖版 1024×1536', value: '1024x1536' },
   { label: '横版 1536×1024', value: '1536x1024' }
 ]
+/** 像素档位（与 size 共同决定实际输出尺寸） */
+const RESOLUTION_OPTIONS = [
+  { label: '自动', value: AUTO },
+  { label: '1K', value: '1k' },
+  { label: '2K', value: '2k' },
+  { label: '4K', value: '4k' }
+]
+/** 单次生成张数（1-4） */
+const N_OPTIONS = [1, 2, 3, 4].map((value) => ({ label: `${value} 张`, value }))
 
-const emit = defineEmits<{
-  submit: [prompt: string, size?: string, model?: string, styleId?: string]
-}>()
+const emit = defineEmits<{ submit: [form: ImageFormSubmit] }>()
 
 const imageModelStore = useImageModelStore()
 const settingDefaultStore = useSettingDefaultStore()
@@ -87,7 +124,13 @@ const prompt = ref('')
 const modelKey = ref('')
 /** 选中的设计风格 id；空 = 不注入风格提示词 */
 const styleId = ref('')
-const size = ref('1024x1024')
+const size = ref(AUTO)
+const resolution = ref(AUTO)
+const n = ref(1)
+const imagePaths = ref<string[]>([])
+/** 高级参数（未设置的键提交时原样为空，main 侧不透传） */
+const advanced = ref<ImageAdvancedState>({})
+const showAdvanced = ref(false)
 const sizeError = ref('')
 
 /** 下拉展示用档位名（去掉 label 里的积分后缀） */
@@ -131,9 +174,11 @@ const modelTip = computed(() => {
 })
 
 const validateSize = () => {
-  const value = size.value?.trim() ?? ''
+  const value = size.value === AUTO ? '' : size.value.trim()
   sizeError.value =
-    value && !/^\d{3,4}[xX]\d{3,4}$/.test(value) ? '尺寸格式应为 宽x高（如 1024x1024）' : ''
+    value && !/^\d{3,4}[xX]\d{3,4}$|^\d{1,2}:\d{1,2}$/.test(value)
+      ? '尺寸支持 宽x高（如 1024x1024）或 比例（如 16:9）'
+      : ''
 }
 
 watch(size, validateSize)
@@ -141,13 +186,16 @@ watch(size, validateSize)
 const handleSubmit = () => {
   validateSize()
   if (!canSubmit.value) return
-  emit(
-    'submit',
-    prompt.value.trim(),
-    size.value?.trim() || undefined,
-    modelKey.value?.trim() || undefined,
-    styleId.value?.trim() || undefined
-  )
+  emit('submit', {
+    prompt: prompt.value.trim(),
+    size: size.value === AUTO ? undefined : (size.value.trim() || undefined),
+    model: modelKey.value?.trim() || undefined,
+    styleId: styleId.value?.trim() || undefined,
+    n: n.value > 1 ? n.value : undefined,
+    resolution: resolution.value === AUTO ? undefined : resolution.value,
+    ...advanced.value,
+    imageUrls: imagePaths.value.length ? [...imagePaths.value] : undefined
+  })
   // 任务已提交（失败可从记录卡「重试」找回 prompt），清空输入框供连续生成
   prompt.value = ''
 }
@@ -160,6 +208,13 @@ const handleSubmit = () => {
   gap: 12px;
 }
 
+.params-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .form-actions {
   display: flex;
   align-items: center;
@@ -169,6 +224,7 @@ const handleSubmit = () => {
 
 .action-left {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -184,6 +240,14 @@ const handleSubmit = () => {
 
 .size-select {
   width: 160px;
+}
+
+.resolution-select {
+  width: 96px;
+}
+
+.n-select {
+  width: 84px;
 }
 
 .model-option {
@@ -216,6 +280,18 @@ const handleSubmit = () => {
 
 .tip-text {
   font-size: 13px;
+}
+
+.chevron {
+  transition: transform 0.2s ease;
+
+  &.open {
+    transform: rotate(180deg);
+  }
+}
+
+.advanced-panel {
+  margin: 0;
 }
 
 .size-error {

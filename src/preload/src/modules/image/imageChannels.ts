@@ -8,7 +8,7 @@
  * - 记录行与列表查询类型沿用 dbChannels（image_generate 表形状单一来源）。
  * - 提交 / 轮询的 HTTP 细节在 main RelayService（/api/images/*，注入 Bearer），凭证不下发。
  */
-import type { ImageRecordInput } from '../db/dbChannels'
+import type { ImageItem, ImageRecordInput } from '../db/dbChannels'
 
 export const ImageChannels = {
   /** 生图模型列表（服务端档位 code；未登录返回公开列表，已登录含积分） */
@@ -45,11 +45,12 @@ export interface ImageGenerateError {
   pollMaxAt?: number
 }
 
-/** 生图成功结果 */
+/** 生图成功结果（path/width/height 为第一张；n>1 时 images 含全部产物） */
 export interface ImageGenerateSuccess {
   path: string
   width?: number
   height?: number
+  images?: ImageItem[]
 }
 
 /** 单次生成的终态结果（成功 / 失败判别联合） */
@@ -60,8 +61,26 @@ export interface ImageGenerateParams {
   prompt: string
   /** 服务端生图档位 code；缺省由调用方先回退默认生图模型，本侧为空直接报错 */
   model?: string
-  /** 输出尺寸（宽x高，如 1024x1024）；缺省 1024x1024 */
+  /** 输出尺寸（宽x高 或 比例，如 1024x1024 / 16:9）；缺省由服务端 / 上游决定 */
   size?: string
+  /** 输出像素档位（1k / 2k / 4k），与 size 共同决定实际尺寸 */
+  resolution?: string
+  /** 单次生成张数（1-4 整数，main 侧 clamp）；缺省 1 */
+  n?: number
+  /** 质量档位（如 auto / high / medium / low），原样透传上游 */
+  quality?: string
+  /** 背景（auto / transparent / opaque） */
+  background?: string
+  /** 输出格式（png / jpeg / webp）；非 png 时落盘扩展名跟随 */
+  outputFormat?: string
+  /** 输出压缩率 0-100（jpeg / webp 有效） */
+  outputCompression?: number
+  /** 内容审核档位（auto / low） */
+  moderation?: string
+  /** 提交前 NSFW 审核（上游 moderation） */
+  nsfwCheck?: boolean
+  /** 参考图：本地绝对路径 / http URL / data URI（main 归一化为 data URI 透传）；非空触发图生图，≤15 张 */
+  imageUrls?: string[]
   /** 设计风格名快照（仅建记录模式落库展示；风格提示词已由渲染层拼进 prompt） */
   styleName?: string | null
   /**
@@ -69,7 +88,7 @@ export interface ImageGenerateParams {
    * 工具直出模式（false）不建记录不广播，产物落盘 path 并等待终态返回
    */
   record?: boolean
-  /** record=false 时必填：输出图片文件绝对路径 */
+  /** record=false 时必填：输出图片文件绝对路径（n>1 时第 2 张起追加 -2/-3/-4 序号） */
   path?: string
   /** 等待终态再返回（默认 false）；record=false 恒为等待终态 */
   wait?: boolean

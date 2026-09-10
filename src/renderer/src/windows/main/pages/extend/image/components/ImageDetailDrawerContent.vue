@@ -1,21 +1,12 @@
 <template>
   <div class="detail-content">
-    <!-- 大图区 -->
-    <div class="detail-media">
-      <t-image
-        v-if="record.status === 'success' && record.path"
-        :src="href"
-        :alt="record.prompt"
-        fit="contain"
-        class="detail-image"
-        @click="previewVisible = true"
-      />
-      <div v-else class="detail-fallback">
-        <t-loading v-if="record.status === 'pending'" size="small" />
-        <ErrorCircleFilledIcon v-else class="fallback-icon" />
-        <span>{{ record.status === 'pending' ? '生成中…' : '生成失败，无图片' }}</span>
-      </div>
-    </div>
+    <!-- 大图区（多图时带缩略条，点击进全屏预览） -->
+    <image-detail-gallery
+      v-model="activeIndex"
+      :images="record.images"
+      :status="record.status"
+      @preview="previewVisible = true"
+    />
 
     <!-- 操作（紧贴图片下方，主内容优先） -->
     <div class="detail-actions">
@@ -55,9 +46,7 @@
       </div>
       <div class="info-item">
         <span class="info-label">尺寸</span>
-        <span class="info-value">{{
-          record.width && record.height ? `${record.width}×${record.height}` : (record.size ?? '—')
-        }}</span>
+        <span class="info-value">{{ activeSizeText }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">模型</span>
@@ -71,10 +60,10 @@
         <span class="info-label">时间</span>
         <span class="info-value">{{ formatDateTime(record.createdAt) }}</span>
       </div>
-      <div v-if="record.path" class="info-item info-item-wide">
+      <div v-if="activePath" class="info-item info-item-wide">
         <span class="info-label">文件</span>
         <t-link theme="primary" class="info-path" @click="showInFolder">
-          {{ record.path }}
+          {{ activePath }}
         </t-link>
       </div>
     </div>
@@ -95,8 +84,13 @@
       {{ record.error }}
     </t-alert>
 
-    <!-- 全屏预览 -->
-    <t-image-viewer v-model:visible="previewVisible" :images="[href]" :title="record.prompt" />
+    <!-- 全屏预览（多图与画廊共享下标，可左右翻页） -->
+    <t-image-viewer
+      v-model:visible="previewVisible"
+      v-model:index="activeIndex"
+      :images="hrefs"
+      :title="record.prompt"
+    />
   </div>
 </template>
 
@@ -106,11 +100,11 @@ import { copyText } from '@/utils/native'
 import {
   CopyIcon,
   DeleteIcon,
-  ErrorCircleFilledIcon,
   Fullscreen1Icon,
   RefreshIcon
 } from 'tdesign-icons-vue-next'
 import { formatDateTime, isRetryableFailed, pathToHref } from '../image-page-utils'
+import ImageDetailGallery from './ImageDetailGallery.vue'
 
 const props = defineProps<{
   record: ImageRecordInput
@@ -128,7 +122,19 @@ const STATUS_TEXT: Record<ImageGenerateStatus, string> = {
   failed: '失败'
 }
 
-const href = computed(() => (props.record.path ? pathToHref(props.record.path) : ''))
+/** 全部产物 href（画廊缩略条与全屏预览器共用） */
+const hrefs = computed(() => props.record.images.map((item) => pathToHref(item.path)))
+/** 当前主图下标（画廊与预览器 v-model:index 共享） */
+const activeIndex = ref(0)
+const activeImage = computed(
+  () => props.record.images[activeIndex.value] ?? props.record.images[0] ?? null
+)
+const activePath = computed(() => activeImage.value?.path ?? props.record.path ?? '')
+const activeSizeText = computed(() => {
+  const image = activeImage.value
+  if (image?.width && image?.height) return `${image.width}×${image.height}`
+  return props.record.size ?? '—'
+})
 const previewVisible = ref(false)
 
 const copyPrompt = async () => {
@@ -138,9 +144,9 @@ const copyPrompt = async () => {
 
 /** 按图片文件路径复制到系统剪贴板（main 侧 nativeImage 读盘） */
 const copyImage = async () => {
-  if (!props.record.path) return
+  if (!activePath.value) return
   try {
-    const ok = await window.preload.inject.clipboard.copyImageByPath(props.record.path)
+    const ok = await window.preload.inject.clipboard.copyImageByPath(activePath.value)
     if (ok) MessageUtil.success('图片已复制，可直接粘贴')
     else MessageUtil.error('复制图片失败：文件不存在或不是有效图片')
   } catch {
@@ -150,7 +156,7 @@ const copyImage = async () => {
 
 /** 在系统文件管理器中定位该图片文件（Finder / 资源管理器） */
 const showInFolder = () => {
-  if (props.record.path) window.preload.inject.shell.showItemInFolder(props.record.path)
+  if (activePath.value) window.preload.inject.shell.showItemInFolder(activePath.value)
 }
 
 const handleDelete = async () => {
@@ -173,34 +179,6 @@ const handleDelete = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.detail-media {
-  aspect-ratio: 1 / 1;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--td-bg-color-component);
-  cursor: zoom-in;
-
-  .detail-image {
-    width: 100%;
-    height: 100%;
-  }
-}
-
-.detail-fallback {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 100%;
-  color: var(--td-text-color-placeholder);
-}
-
-.fallback-icon {
-  font-size: 32px;
-  color: var(--td-error-color);
 }
 
 .info-grid {

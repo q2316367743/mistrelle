@@ -95,12 +95,23 @@ export interface RelayImageTask {
   images?: Array<{ url?: string; b64Json?: string }>
 }
 
-/** 生图提交请求体 */
+/**
+ * 生图提交请求体（服务端原样透传上游渠道；n 上限 10 由服务端校验）。
+ * 与 ImageGenerateParams 的差异：本侧字段均已归一化（size 去空白、imageUrls 转 data URI）。
+ */
 export interface RelayImageGenerateBody {
   model: string
   prompt: string
   n?: number
   size?: string
+  quality?: string
+  resolution?: string
+  background?: string
+  outputFormat?: string
+  outputCompression?: number
+  moderation?: string
+  nsfwCheck?: boolean
+  imageUrls?: string[]
 }
 
 /** 生图模型档位选项（映射为 t-select options；priced 含 pointsPerImage） */

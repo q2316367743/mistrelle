@@ -78,6 +78,13 @@
       "when": 1788596863695,
       "tag": "0010_shocking_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1789007250371,
+      "tag": "0011_lush_vampiro",
+      "breakpoints": true
     }
   ]
 }

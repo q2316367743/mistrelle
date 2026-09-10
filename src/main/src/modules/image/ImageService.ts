@@ -4,7 +4,8 @@
  * 职责（渲染层只剩视图与 IPC 薄代理，详见 docs/attachment/03）：
  * - startGeneration：建记录（pending）→ RelayService.imageGenerate 提交 /api/images/generations →
  *   拿到 taskId 先落库（生成中中断也能跨重启续轮询）→ 轮询 /api/images/tasks/{id} →
- *   下载 / b64 落盘 → 收尾 upsert → 广播 image:recordChanged。
+ *   下载 / b64 逐张落盘 → 收尾 upsert → 广播 image:recordChanged。
+ *   一次任务可出多张（n 1-4）：第 1 张快照进 path/width/height，全部进 images。
  * - 工具直出模式（record=false）：不建记录不广播，产物落盘指定 path 并等待终态返回
  *   （image_generate 工具用，不在页面历史留记录）。
  * - resume / remove：对同一远端任务续轮询（不重新提交、不重复扣费）；删除含 pending 取消集合语义
@@ -16,7 +17,7 @@
 import { app, BrowserWindow } from 'electron'
 import axios from 'axios'
 import { existsSync } from 'fs'
-import { mkdir, rm, writeFile } from 'fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { randomUUID } from 'crypto'
 import {
@@ -25,9 +26,14 @@ import {
   type ImageGenerateParams,
   type ImageTaskOutcome
 } from '~/modules/image/imageChannels'
-import type { ImageRecordInput } from '~/modules/db/dbChannels'
+import type { ImageItem, ImageRecordInput } from '~/modules/db/dbChannels'
 import { imageDelete, imageGet, imageList, imageUpsert } from '$/db/repo/imageRepo'
-import { imageGenerate, imageTask, type RelayImageTask } from '../relay/RelayService'
+import {
+  imageGenerate,
+  imageTask,
+  type RelayImageGenerateBody,
+  type RelayImageTask
+} from '../relay/RelayService'
 import { sharpMetadata } from '../sharp/image'
 
 /** 异步任务轮询间隔（毫秒） */
@@ -36,15 +42,18 @@ const POLL_INTERVAL_MS = 3000
 const POLL_MAX_TIMES = 100
 /** 连续失败容忍次数：达到该阈值才判定轮询失败（中途有效响应即清零） */
 const POLL_MAX_CONSECUTIVE_FAILURES = 5
-/** 缺省输出尺寸 */
-const DEFAULT_SIZE = '1024x1024'
+/** 单次生成张数上下限（与表单 / 工具约束一致） */
+const N_MIN = 1
+const N_MAX = 4
+/** 参考图允许的本地扩展名 */
+const REFERENCE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 
 /** 单个进行中任务的运行态 */
 interface RunningTask {
   /** 关联记录（工具直出模式为 null） */
   record: ImageRecordInput | null
-  /** 产物落盘路径（建记录模式为预定的 {月桶}/{id}.png） */
-  path: string
+  /** 各张产物落盘路径（第 1 张与 record.path 一致；工具直出模式可能为空串） */
+  paths: string[]
   size?: string
   /** 远端任务标识与查询窗口绝对截止时间（确认异步任务后回填） */
   taskId: string | null
@@ -99,13 +108,16 @@ function finish(task: RunningTask, key: string, outcome: ImageTaskOutcome): Imag
             ...record,
             status: 'success',
             width: outcome.width ?? null,
-            height: outcome.height ?? null
+            height: outcome.height ?? null,
+            images: outcome.images ?? record.images
           }
     task.record = next
     persist(next)
   }
-  if (task.cancelled && record?.path && existsSync(record.path)) {
-    rm(record.path).catch(() => {})
+  if (task.cancelled) {
+    for (const path of task.paths) {
+      if (path && existsSync(path)) rm(path).catch(() => {})
+    }
   }
   return outcome
 }
@@ -139,13 +151,15 @@ async function readSize(path: string, size?: string): Promise<{ width?: number; 
   return width > 0 && height > 0 ? { width, height } : {}
 }
 
-/** 从任务响应提取第一张图（url 或 b64Json） */
-function extractImage(resp: RelayImageTask): { url?: string; b64?: string } {
+/** 从任务响应提取全部图片（b64 优先；上限 n，部分出图按实际张数收） */
+function extractImages(resp: RelayImageTask, n: number): Array<{ url?: string; b64?: string }> {
+  const out: Array<{ url?: string; b64?: string }> = []
   for (const image of resp.images ?? []) {
-    if (image.b64Json) return { b64: image.b64Json }
-    if (image.url) return { url: image.url }
+    if (out.length >= n) break
+    if (image.b64Json) out.push({ b64: image.b64Json })
+    else if (image.url) out.push({ url: image.url })
   }
-  return {}
+  return out
 }
 
 // ── 执行链（提交 → 轮询 → 落盘 → 收尾；execute 不抛异常，终态一律经 finish 返回） ──
@@ -155,8 +169,8 @@ async function finishWithImages(
   key: string,
   resp: RelayImageTask
 ): Promise<ImageTaskOutcome> {
-  const image = extractImage(resp)
-  if (!image.url && !image.b64) {
+  const images = extractImages(resp, task.paths.length)
+  if (!images.length) {
     return finish(task, key, {
       error: '生图任务已完成，但未返回图片数据',
       kind: 'terminal',
@@ -164,9 +178,21 @@ async function finishWithImages(
     })
   }
   try {
-    await mkdir(dirname(task.path), { recursive: true })
-    if (image.b64) await saveImageFromB64(image.b64, task.path)
-    else await saveImageFromUrl(image.url ?? '', task.path)
+    await mkdir(dirname(task.paths[0]), { recursive: true })
+    const saved: ImageItem[] = []
+    for (let i = 0; i < images.length; i++) {
+      const path = task.paths[i]
+      if (images[i].b64) await saveImageFromB64(images[i].b64 ?? '', path)
+      else await saveImageFromUrl(images[i].url ?? '', path)
+      const { width, height } = await readSize(path, task.size)
+      saved.push({ path, width: width ?? null, height: height ?? null })
+    }
+    return finish(task, key, {
+      path: saved[0].path,
+      width: saved[0].width ?? undefined,
+      height: saved[0].height ?? undefined,
+      images: saved
+    })
   } catch (error) {
     return finish(task, key, {
       error: `图片保存失败：${errorMessage(error)}`,
@@ -174,8 +200,6 @@ async function finishWithImages(
       taskId: task.taskId ?? undefined
     })
   }
-  const { width, height } = await readSize(task.path, task.size)
-  return finish(task, key, { path: task.path, width, height })
 }
 
 /**
@@ -228,6 +252,56 @@ async function pollTask(
   })
 }
 
+/** n 夹紧为 1-4 整数（表单 / 工具 schema 已约束，此处兜底防御） */
+function clampN(n: number | undefined): number {
+  const value = n == null || !Number.isFinite(n) ? 1 : Math.round(n)
+  return Math.min(N_MAX, Math.max(N_MIN, value))
+}
+
+/** 参考图归一化：本地绝对路径读为 data URI；http(s) / data URI 原样透传 */
+async function normalizeReferences(urls: string[]): Promise<string[]> {
+  return Promise.all(
+    urls.map(async (raw) => {
+      const url = raw.trim()
+      if (!url || /^(https?|data):/i.test(url)) return url
+      const ext = url.split('.').pop()?.toLowerCase() ?? ''
+      if (!REFERENCE_EXTS.includes(ext)) throw new Error(`不支持的参考图格式：${url}`)
+      const buffer = await readFile(url)
+      return `data:image/${ext === 'jpg' ? 'jpeg' : ext};base64,${buffer.toString('base64')}`
+    })
+  )
+}
+
+/** 组装服务端请求体：n 恒传（clamp 1-4）；其余可选参数定义了才透传（避免不支持该参数的上游报错） */
+async function buildBody(
+  params: ImageGenerateParams,
+  model: string,
+  prompt: string
+): Promise<RelayImageGenerateBody> {
+  const body: RelayImageGenerateBody = { model, prompt, n: clampN(params.n) }
+  const size = params.size?.trim()
+  if (size) body.size = size
+  const resolution = params.resolution?.trim()
+  if (resolution) body.resolution = resolution
+  const quality = params.quality?.trim()
+  if (quality) body.quality = quality
+  const background = params.background?.trim()
+  if (background) body.background = background
+  const outputFormat = params.outputFormat?.trim()
+  if (outputFormat) body.outputFormat = outputFormat
+  const moderation = params.moderation?.trim()
+  if (moderation) body.moderation = moderation
+  if (typeof params.outputCompression === 'number' && Number.isFinite(params.outputCompression)) {
+    body.outputCompression = Math.min(100, Math.max(0, Math.round(params.outputCompression)))
+  }
+  if (params.nsfwCheck != null) body.nsfwCheck = params.nsfwCheck
+  if (params.imageUrls?.length) {
+    const refs = (await normalizeReferences(params.imageUrls)).filter(Boolean)
+    if (refs.length) body.imageUrls = refs
+  }
+  return body
+}
+
 /** 单次生成的完整执行链（不抛异常） */
 async function execute(
   task: RunningTask,
@@ -243,14 +317,19 @@ async function execute(
     })
   }
 
+  let body: RelayImageGenerateBody
+  try {
+    body = await buildBody(params, model, prompt)
+  } catch (error) {
+    return finish(task, key, {
+      error: `参考图处理失败：${errorMessage(error)}`,
+      kind: 'terminal'
+    })
+  }
+
   let resp: RelayImageTask
   try {
-    resp = await imageGenerate({
-      model,
-      prompt,
-      n: 1,
-      size: params.size?.trim() || DEFAULT_SIZE
-    })
+    resp = await imageGenerate(body)
   } catch (error) {
     return finish(task, key, {
       error: `生图请求失败：${errorMessage(error)}`,
@@ -282,6 +361,22 @@ async function execute(
 
 // ── 对外入口（imageIpc 调用） ──
 
+/** 落盘扩展名：跟随 outputFormat（png 缺省；jpeg 归一为 jpg） */
+function imageExt(outputFormat?: string): string {
+  const format = outputFormat?.trim().toLowerCase()
+  if (format === 'jpeg' || format === 'jpg') return 'jpg'
+  if (format === 'webp') return 'webp'
+  return 'png'
+}
+
+/** 第 2 张起的路径派生：在扩展名前插入 -2/-3/-4 序号 */
+function withIndexSuffix(path: string, index: number): string {
+  const dot = path.lastIndexOf('.')
+  const stem = dot > 0 ? path.slice(0, dot) : path
+  const ext = dot > 0 ? path.slice(dot) : ''
+  return `${stem}-${index}${ext}`
+}
+
 /**
  * 发起一次生成：
  * - 页面模式（record 缺省 true）：建 pending 记录落库并广播，立即返回；进展经广播推进。
@@ -290,9 +385,12 @@ async function execute(
 export function startGeneration(params: ImageGenerateParams): Promise<ImageGenerateInvokeResult> {
   const key = randomUUID()
   const toolMode = params.record === false
-  const path = toolMode
+  const base = toolMode
     ? (params.path ?? '')
-    : join(imageGenerateDir(), currentMonth(), `${key}.png`)
+    : join(imageGenerateDir(), currentMonth(), `${key}.${imageExt(params.outputFormat)}`)
+  const paths = Array.from({ length: clampN(params.n) }, (_, i) =>
+    i === 0 ? base : withIndexSuffix(base, i + 1)
+  )
   const record: ImageRecordInput | null = toolMode
     ? null
     : {
@@ -301,9 +399,10 @@ export function startGeneration(params: ImageGenerateParams): Promise<ImageGener
         model: params.model ?? null,
         styleName: params.styleName ?? null,
         size: params.size ?? null,
-        path,
+        path: paths[0],
         width: null,
         height: null,
+        images: paths.map((path) => ({ path, width: null, height: null })),
         status: 'pending',
         error: null,
         taskId: null,
@@ -313,7 +412,7 @@ export function startGeneration(params: ImageGenerateParams): Promise<ImageGener
       }
   const task: RunningTask = {
     record,
-    path,
+    paths,
     size: params.size,
     taskId: null,
     pollMaxAt: null,
@@ -347,9 +446,12 @@ export async function resumeGeneration(id: string): Promise<void> {
   if (record.taskTerminal === true) return
   const pollMaxAt = Date.now() + POLL_MAX_TIMES * POLL_INTERVAL_MS
   const pending: ImageRecordInput = { ...record, status: 'pending', error: null, pollMaxAt }
+  const paths = record.images?.length
+    ? record.images.map((item) => item.path)
+    : [record.path ?? '']
   const task: RunningTask = {
     record: pending,
-    path: record.path ?? '',
+    paths,
     size: record.size ?? undefined,
     taskId: record.taskId,
     pollMaxAt,
@@ -361,13 +463,18 @@ export async function resumeGeneration(id: string): Promise<void> {
   void pollTask(task, id, record.taskId, POLL_MAX_TIMES)
 }
 
-/** 删除记录：联动取消 pending 任务（完成时丢弃结果）与删除落盘文件 */
+/** 删除记录：联动取消 pending 任务（完成时丢弃结果）与删除全部落盘文件 */
 export function removeGeneration(id: string): void {
   const task = running.get(id)
   if (task) task.cancelled = true
   imageDelete(id)
-  const path = task?.record?.path ?? imageGet(id)?.path ?? null
-  if (path && existsSync(path)) rm(path).catch(() => {})
+  const record = task?.record ?? imageGet(id)
+  const paths = new Set<string>()
+  if (record?.path) paths.add(record.path)
+  for (const item of record?.images ?? []) paths.add(item.path)
+  for (const path of paths) {
+    if (path && existsSync(path)) rm(path).catch(() => {})
+  }
 }
 
 /** 启动收尾：不在运行中的遗留 pending（上次会话中断）批量标 failed */
