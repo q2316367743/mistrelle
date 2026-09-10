@@ -23,6 +23,8 @@ import type { SoftwareName } from '@common/types/trafficLight'
 import { SOFTWARE_REGISTRY } from '../softwareRegistry'
 import OpencodePanel from './software/OpencodePanel.vue'
 import ZcodePanel from './software/ZcodePanel.vue'
+import ClaudePanel from './software/ClaudePanel.vue'
+import CodexPanel from './software/CodexPanel.vue'
 
 defineOptions({ name: 'SoftwareTabs' })
 
@@ -32,7 +34,9 @@ defineOptions({ name: 'SoftwareTabs' })
  */
 const PANELS: Record<SoftwareName, Component> = {
   opencode: OpencodePanel,
-  zcode: ZcodePanel
+  zcode: ZcodePanel,
+  claude: ClaudePanel,
+  codex: CodexPanel
 }
 </script>
 

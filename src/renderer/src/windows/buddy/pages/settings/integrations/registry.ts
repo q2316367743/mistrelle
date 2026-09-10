@@ -19,8 +19,11 @@ export interface IntegrationItem {
   effectHint: string
 }
 
-/** ZCode hooks 实际能上报的事件子集（其余 Buddy 事件 ZCode 无对应钩子，不投递） */
-export const ZCODE_HOOK_EVENTS: readonly BuddyEventName[] = [
+/**
+ * hooks 系平台（zcode / claude / codex）hooks 实际能上报的 Buddy 事件子集
+ * （三家钩子机制同源，映射脚本共用；其余 Buddy 事件无对应钩子，不投递）
+ */
+export const HOOK_PLATFORM_EVENTS: readonly BuddyEventName[] = [
   'session.created',
   'session.compacted',
   'message.updated',
@@ -45,9 +48,28 @@ export const INTEGRATION_REGISTRY: readonly IntegrationItem[] = [
     name: 'zcode',
     label: 'ZCode',
     description:
-      'AI 编程 agent（终端）。一键写入 hooks 配置后，其会话/工具/权限等事件经本地事件服务上报给 mistrelle，工具审批可由 mistrelle 面板/小键盘代答；仅上报 ZCode hooks 覆盖的事件。',
+      'AI 编程 agent（终端）。一键写入 hooks 配置后，其会话/工具/权限等事件经本地事件服务上报给 mistrelle，工具审批可由 mistrelle 面板/小键盘代答；仅上报 hooks 覆盖的事件。',
     devices: '红绿灯（事件→灯态绑定）、ESP32-S3-LCD-1.28（事件→屏幕状态心跳）',
-    events: ZCODE_HOOK_EVENTS,
+    events: HOOK_PLATFORM_EVENTS,
     effectHint: '安装 / 更新后新开 zcode 会话即可生效（运行中的会话不热加载）。'
+  },
+  {
+    name: 'claude',
+    label: 'Claude Code',
+    description:
+      'AI 编程 agent（终端）。一键写入 hooks 配置后，其会话/工具/权限等事件经本地事件服务上报给 mistrelle，工具审批可由 mistrelle 面板/小键盘代答；仅上报 hooks 覆盖的事件。',
+    devices: '红绿灯（事件→灯态绑定）、ESP32-S3-LCD-1.28（事件→屏幕状态心跳）',
+    events: HOOK_PLATFORM_EVENTS,
+    effectHint: '安装 / 更新后新开 Claude Code 会话生效；若 Claude Code 提示审查 hooks 变更，确认即可。'
+  },
+  {
+    name: 'codex',
+    label: 'Codex',
+    description:
+      'AI 编程 agent（终端）。一键写入 hooks 配置后，其会话/工具/权限等事件经本地事件服务上报给 mistrelle，工具审批可由 mistrelle 面板/小键盘代答；仅上报 hooks 覆盖的事件。',
+    devices: '红绿灯（事件→灯态绑定）、ESP32-S3-LCD-1.28（事件→屏幕状态心跳）',
+    events: HOOK_PLATFORM_EVENTS,
+    effectHint:
+      '安装 / 更新后新开 Codex 会话；首次须在 Codex 内运行 /hooks 审查并信任新钩子（未信任会被跳过）。'
   }
 ]

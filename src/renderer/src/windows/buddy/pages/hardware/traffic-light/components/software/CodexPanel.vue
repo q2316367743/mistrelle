@@ -1,5 +1,5 @@
 <template>
-  <div class="zcode-panel">
+  <div class="codex-panel">
     <t-alert v-if="status !== 'ready'" theme="warning" class="gate-alert" :message="gateText">
       <template #operation>
         <t-link theme="primary" @click="goIntegrations">
@@ -12,10 +12,13 @@
       <t-switch
         :value="enabled"
         :disabled="notInstalled || !config || saving"
-        @change="(value) => setEnabled('zcode', value === true)"
+        @change="(value) => setEnabled('codex', value === true)"
       />
     </div>
-    <div class="hint">仅 ZCode hooks 覆盖的事件会上报；一种灯态只能被一个事件绑定，修改即时生效。</div>
+    <div class="hint">
+      仅 Codex hooks 覆盖的事件会上报；一种灯态只能被一个事件绑定，修改即时生效。安装后首次须在 Codex 内
+      /hooks 信任新钩子。
+    </div>
     <div v-for="group in HOOK_GROUPS" :key="group.title" class="binding-group">
       <div class="group-title">{{ group.title }}</div>
       <div v-for="item in eventOptions(group.events)" :key="item.value" class="binding-row">
@@ -28,7 +31,7 @@
           :value="currentValue(item.value)"
           :options="stateOptions(item.value)"
           :disabled="notInstalled || !enabled || saving"
-          @change="(value) => bindEvent('zcode', item.value, toState(value))"
+          @change="(value) => bindEvent('codex', item.value, toState(value))"
         />
       </div>
     </div>
@@ -49,7 +52,7 @@ import { useTrafficLight } from '../../useTrafficLight'
 import { useIntegrations } from '@/windows/buddy/pages/settings/integrations/useIntegrations'
 import { HOOK_PLATFORM_EVENTS } from '@/windows/buddy/pages/settings/integrations/registry'
 
-defineOptions({ name: 'ZcodePanel' })
+defineOptions({ name: 'CodexPanel' })
 
 /** 事件分组过滤到 hooks 系平台能上报的子集（其余事件不投递，不提供绑定） */
 const HOOK_GROUPS = BUDDY_EVENT_GROUPS.map((group) => ({
@@ -61,17 +64,17 @@ const router = useRouter()
 const { config, saving, bindEvent, setEnabled } = useTrafficLight()
 const { statusOf } = useIntegrations()
 
-const softwareConfig = computed(() => config.value?.config.zcode)
+const softwareConfig = computed(() => config.value?.config.codex)
 const enabled = computed(() => softwareConfig.value?.enabled ?? false)
 
 /** 接入状态：未安装置灰启用与绑定，待更新仅提醒不置灰（旧版钩子功能仍正常） */
-const status = computed(() => statusOf('zcode'))
+const status = computed(() => statusOf('codex'))
 const notInstalled = computed(() => status.value === 'missing')
 
 const gateText = computed(() =>
   status.value === 'missing'
-    ? 'ZCode 钩子配置未安装，事件无法点亮信号灯；安装后新开 zcode 会话生效。'
-    : 'ZCode 钩子脚本有更新，建议更新以保持事件上报正常。'
+    ? 'Codex 钩子配置未安装，事件无法点亮信号灯；安装后新开会话，首次须在 Codex 内 /hooks 审查信任新钩子。'
+    : 'Codex 钩子脚本有更新，建议更新以保持事件上报正常。'
 )
 
 /** 前往「设置-应用集成」安装/更新钩子配置 */

@@ -30,7 +30,7 @@
 </template>
 
 <script lang="ts" setup>
-import { CodeIcon, TerminalIcon, UsbIcon } from 'tdesign-icons-vue-next'
+import { CodeIcon, StarIcon, RobotIcon, TerminalIcon, UsbIcon } from 'tdesign-icons-vue-next'
 import type { Component } from 'vue'
 import type { SoftwareName } from '@common/types/trafficLight'
 import { SOFTWARE_REGISTRY } from '../softwareRegistry'
@@ -40,7 +40,9 @@ defineOptions({ name: 'SoftwarePlaceholder' })
 /** 各软件的默认图标（占位 chips 用，与软件面板组件一一对应） */
 const SOFTWARE_ICONS: Record<SoftwareName, Component> = {
   opencode: CodeIcon,
-  zcode: TerminalIcon
+  zcode: TerminalIcon,
+  claude: StarIcon,
+  codex: RobotIcon
 }
 </script>
 

@@ -29,12 +29,14 @@ export const LightStateOptions: Array<CommonSelect<LightState>> = [
 export const LIGHT_STATE_CODES: readonly LightState[] = LightStateOptions.map((opt) => opt.value)
 
 /** 已接入的软件（互斥启用：同一时间只允许一个软件 enabled） */
-export type SoftwareName = 'opencode' | 'zcode'
+export type SoftwareName = 'opencode' | 'zcode' | 'claude' | 'codex'
 
 /** 软件名称映射 */
 export const SoftwareNameOptions: Array<CommonSelect<SoftwareName>> = [
   { value: 'opencode', label: 'Opencode' },
-  { value: 'zcode', label: 'ZCode' }
+  { value: 'zcode', label: 'ZCode' },
+  { value: 'claude', label: 'Claude Code' },
+  { value: 'codex', label: 'Codex' }
 ]
 
 /** 软件全集（运行时校验用，派生自 SoftwareNameOptions） */
