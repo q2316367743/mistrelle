@@ -1,6 +1,6 @@
 <template>
   <div class="seq-editor">
-    <div v-if="!actions.length" class="seq-editor__empty">未绑定 · 添加动作组成执行序列</div>
+    <div v-if="!actions.length" class="seq-editor__empty">{{ emptyText ?? '未绑定 · 添加动作组成执行序列' }}</div>
 
     <div v-for="(action, index) in actions" :key="index" class="seq-item">
       <div
@@ -78,7 +78,7 @@ import { keypadActionSummary } from './actionText'
 defineOptions({ name: 'KeypadSequenceEditor' })
 
 /** 动作序列草稿（只读），变更经 emit('change') 回传，草稿由 KeypadBindingPanel 持有 */
-const props = defineProps<{ actions: KeypadAction[] }>()
+const props = defineProps<{ actions: KeypadAction[]; emptyText?: string }>()
 const emit = defineEmits<{ change: [actions: KeypadAction[]] }>()
 
 /** 展开编辑的动作下标（手风琴单开；null = 全部收起） */

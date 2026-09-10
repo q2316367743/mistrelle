@@ -30,7 +30,19 @@
       placeholder="显示名称（可选），留空显示动作摘要"
     />
 
-    <keypad-sequence-editor :actions="draft.actions" @change="draft.actions = $event" />
+    <div class="binding-panel__section">
+      <div class="binding-panel__label">短按 · 点击触发</div>
+      <keypad-sequence-editor :actions="draft.actions" @change="draft.actions = $event" />
+    </div>
+
+    <div class="binding-panel__section">
+      <div class="binding-panel__label">长按 · 按住 {{ KEYPAD_HOLD_MS }}ms 触发</div>
+      <keypad-sequence-editor
+        :actions="draft.holdActions"
+        empty-text="未配置长按 · 键位按下立即执行短按序列"
+        @change="draft.holdActions = $event"
+      />
+    </div>
 
     <div class="binding-panel__actions">
       <t-button variant="text" theme="danger" size="small" :disabled="saving" @click="clear">
@@ -45,6 +57,7 @@
 
 <script lang="ts" setup>
 import type { KeypadAction, KeypadBinding } from '@common/types/keypad'
+import { KEYPAD_HOLD_MS } from '@common/types/keypad'
 import { keypadActionDefinition } from '@common/keypad/actions'
 import { CloseIcon } from 'tdesign-icons-vue-next'
 import KeypadSequenceEditor from './KeypadSequenceEditor.vue'
@@ -59,15 +72,23 @@ const emit = defineEmits<{ close: [] }>()
 
 const { config, bindKey } = useKeypad()
 
-/** 绑定草稿（本地编辑态；main 配置回读后同步），name 空串 = 未命名、actions 空 = 未绑定仅状态点亮 */
-const draft = ref<{ name: string; actions: KeypadAction[] }>({ name: '', actions: [] })
+/** 绑定草稿（本地编辑态；main 配置回读后同步），name 空串 = 未命名、actions 空 = 未绑定仅状态点亮、holdActions 空 = 未配置长按 */
+const draft = ref<{ name: string; actions: KeypadAction[]; holdActions: KeypadAction[] }>({
+  name: '',
+  actions: [],
+  holdActions: []
+})
 const saving = ref(false)
 
 // 配置回读（保存成功/清除/外部变更）即同步草稿；编辑中的本地值只在本面板保存时写回
 watch(
   () => config.value?.bindings[props.keyId],
   (next) => {
-    draft.value = { name: next?.name ?? '', actions: cloneActions(next?.actions ?? []) }
+    draft.value = {
+      name: next?.name ?? '',
+      actions: cloneActions(next?.actions ?? []),
+      holdActions: cloneActions(next?.holdActions ?? [])
+    }
   },
   { immediate: true }
 )
@@ -77,19 +98,24 @@ function cloneActions(actions: KeypadAction[]): KeypadAction[] {
   return cloned
 }
 
-/** 副标题摘要：动作序列一览（草稿编辑中实时跟随；名称在输入框内可见，不重复展示） */
+/** 副标题摘要：短按序列一览 + 长按序列（配置时追加，草稿编辑中实时跟随） */
 const summaryText = computed(() => {
   if (!draft.value.actions.length) return '未绑定 · 按键仅点亮状态'
-  return draft.value.actions.map(keypadActionSummary).join(' → ')
+  const short = draft.value.actions.map(keypadActionSummary).join(' → ')
+  if (!draft.value.holdActions.length) return short
+  const hold = draft.value.holdActions.map(keypadActionSummary).join(' → ')
+  return `${short}｜长按：${hold}`
 })
 
-/** 保存预校验：逐条查动作注册表 normalize 清洗，任一不合法（如未选应用/空命令）禁用保存 */
+/** 保存预校验：短按与长按逐条查动作注册表 normalize 清洗，任一不合法（如未选应用/空命令）禁用保存 */
 const valid = computed(() => {
   if (!draft.value.actions.length) return false
-  return draft.value.actions.every((action) => {
-    const raw: Record<string, unknown> = JSON.parse(JSON.stringify(action))
-    return keypadActionDefinition(action.type)?.normalize(raw) != null
-  })
+  const check = (actions: KeypadAction[]): boolean =>
+    actions.every((action) => {
+      const raw: Record<string, unknown> = JSON.parse(JSON.stringify(action))
+      return keypadActionDefinition(action.type)?.normalize(raw) != null
+    })
+  return check(draft.value.actions) && check(draft.value.holdActions)
 })
 
 async function save(): Promise<void> {
@@ -100,6 +126,7 @@ async function save(): Promise<void> {
     const binding: KeypadBinding = name
       ? { name, actions: draft.value.actions }
       : { actions: draft.value.actions }
+    if (draft.value.holdActions.length) binding.holdActions = draft.value.holdActions
     await bindKey(props.keyId, binding)
     emit('close')
   } finally {
@@ -162,6 +189,19 @@ async function clear(): Promise<void> {
     &--muted {
       color: var(--td-text-color-placeholder);
     }
+  }
+
+  /* 短按/长按编辑区块：小节标题 + 序列编辑器 */
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__label {
+    font: var(--td-font-body-small);
+    font-weight: 600;
+    color: var(--td-text-color-secondary);
   }
 
   &__actions {

@@ -7,13 +7,21 @@
  * 对应 @common 动作定义与 main 执行器同步登记，序列编辑器框架零改动。
  */
 import type { Component } from 'vue'
-import { ApplicationIcon, CodeIcon, KeyboardIcon, SecuredIcon, TimeIcon } from 'tdesign-icons-vue-next'
+import {
+  ApplicationIcon,
+  CodeIcon,
+  KeyboardIcon,
+  LinkIcon,
+  SecuredIcon,
+  TimeIcon
+} from 'tdesign-icons-vue-next'
 import type { KeypadAction, KeypadActionType } from '@common/types/keypad'
 import AppEditor from './AppEditor.vue'
 import ComboEditor from './ComboEditor.vue'
 import DelayEditor from './DelayEditor.vue'
 import ScriptEditor from './ScriptEditor.vue'
 import PermissionEditor from './PermissionEditor.vue'
+import UrlEditor from './UrlEditor.vue'
 
 /** 编辑器注册表：键 = 动作类型判别 */
 export const KEYPAD_ACTION_EDITORS: { [D in KeypadAction as D['type']]: Component } = {
@@ -21,7 +29,8 @@ export const KEYPAD_ACTION_EDITORS: { [D in KeypadAction as D['type']]: Componen
   app: AppEditor,
   script: ScriptEditor,
   permission: PermissionEditor,
-  delay: DelayEditor
+  delay: DelayEditor,
+  url: UrlEditor
 }
 
 /** 动作类型图标（类型选择卡片等 UI 用；新增动作类型漏配此处编译报错） */
@@ -30,5 +39,6 @@ export const KEYPAD_ACTION_ICONS: Record<KeypadActionType, Component> = {
   app: ApplicationIcon,
   script: CodeIcon,
   permission: SecuredIcon,
-  delay: TimeIcon
+  delay: TimeIcon,
+  url: LinkIcon
 }

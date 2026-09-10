@@ -16,6 +16,7 @@ import {
 import { KeypadChannels } from '@common/buddy/keypad/keypadChannels'
 import {
   isKeypadLayoutId,
+  KEYPAD_HOLD_MS,
   type KeypadAction,
   type KeypadBinding,
   type KeypadConfig,
@@ -35,6 +36,11 @@ let unsubscribeData: (() => void) | null = null
 const pressed = new Set<string>()
 /** 序列执行中的键位（防重入：序列含延时时长于物理按压，执行中忽略该键位的再次触发） */
 const running = new Set<string>()
+/**
+ * 挂起的长按判定计时器：keyId → timer（仅配置了 holdActions 的键位在 on 时启动）。
+ * 到时仍按住 → 长按序列；阈值内 off → 取消计时并触发短按序列（互斥分流）。
+ */
+const holdTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 /** 运行态（配置 lastPort 已开视为已连接；权限状态即查即返回） */
 export function getState(): KeypadState {
@@ -54,8 +60,10 @@ function broadcastState(): void {
   }
 }
 
-/** 释放模拟侧残留并清空按下状态（断开/拔线/换连接共用） */
+/** 释放模拟侧残留并清空按下状态与挂起的长按计时（断开/拔线/换连接共用） */
 function resetPressed(): void {
+  for (const timer of holdTimers.values()) clearTimeout(timer)
+  holdTimers.clear()
   pressed.clear()
   releaseAll()
 }
@@ -68,8 +76,9 @@ function subscribeData(): void {
 
 /**
  * 按键事件消费：on=按下、off=释放。
- * 按下状态变化即广播；有绑定的键位在按下时顺序执行动作序列
- * （off 仅做状态簿记——序列瞬时执行不依赖物理释放，combo 已是自动抬起的完整击键）。
+ * 按下状态变化即广播；未配置长按的键位在按下时顺序执行动作序列（现状行为）。
+ * 配置了 holdActions 的键位启用短按/长按互斥判定：
+ * 按下启动 KEYPAD_HOLD_MS 计时，到时仍按住执行长按序列；阈值内松手（off）执行短按序列。
  */
 function handleEvent(event: KeypadKeyEvent): void {
   const { keyId, action } = event
@@ -77,10 +86,29 @@ function handleEvent(event: KeypadKeyEvent): void {
     if (pressed.has(keyId)) return
     pressed.add(keyId)
     const binding = config.bindings[keyId]
-    if (binding) dispatchSequence(keyId, binding.actions)
+    const holdActions = binding?.holdActions
+    if (holdActions?.length) {
+      holdTimers.set(
+        keyId,
+        setTimeout(() => {
+          holdTimers.delete(keyId)
+          dispatchSequence(keyId, holdActions)
+        }, KEYPAD_HOLD_MS)
+      )
+    } else if (binding) {
+      dispatchSequence(keyId, binding.actions)
+    }
   } else {
     if (!pressed.has(keyId)) return
     pressed.delete(keyId)
+    const timer = holdTimers.get(keyId)
+    if (timer) {
+      // 未达长按阈值的释放 → 取消计时并触发短按（已达阈值时计时器已被回调移除，此处不触发）
+      clearTimeout(timer)
+      holdTimers.delete(keyId)
+      const binding = config.bindings[keyId]
+      if (binding?.actions.length) dispatchSequence(keyId, binding.actions)
+    }
   }
   broadcastState()
 }

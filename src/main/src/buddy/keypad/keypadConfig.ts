@@ -46,7 +46,8 @@ function normalizeActions(raw: unknown): KeypadAction[] | null {
 }
 
 /**
- * 归一化单个键位的绑定：新格式 {name?, actions}（name trim 非空才保留）；
+ * 归一化单个键位的绑定：新格式 {name?, actions, holdActions?}（name trim 非空才保留；
+ * holdActions 长按序列可选，空/全非法不落盘）；
  * 纯数组 = 上一代无名序列；对象 = 更早的单动作（含最老 combo 格式）。非法返回 null 丢弃。
  */
 export function normalizeBinding(raw: unknown): KeypadBinding | null {
@@ -54,7 +55,10 @@ export function normalizeBinding(raw: unknown): KeypadBinding | null {
     const actions = normalizeActions(raw.actions)
     if (!actions) return null
     const name = typeof raw.name === 'string' ? raw.name.trim() : ''
-    return name ? { name, actions } : { actions }
+    const holdActions = Array.isArray(raw.holdActions) ? normalizeActions(raw.holdActions) : null
+    const binding: KeypadBinding = name ? { name, actions } : { actions }
+    if (holdActions) binding.holdActions = holdActions
+    return binding
   }
   const actions = normalizeActions(raw)
   return actions ? { actions } : null

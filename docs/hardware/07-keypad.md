@@ -1,19 +1,21 @@
-# 07 小键盘（keypad）：串口按键 + 动作序列（模拟按键 / 打开应用 / 执行脚本 / 权限审批 / 延时等待）
+# 07 小键盘（keypad）：串口按键 + 动作序列（模拟按键 / 打开应用 / 执行脚本 / 权限审批 / 延时等待 / 打开网页）
 
 > 伙伴窗口硬件页面（菜单「小键盘」）：6 键小键盘设备（支持任意键数）经串口（**9600 波特率**）
 > 上报按键消息，main 解析行协议后按键位绑定**顺序执行动作序列**。每键绑定一个动作数组
-> （2026-09-09 晚由单动作升级为序列），动作类型注册表化，当前五种：
+> （2026-09-09 晚由单动作升级为序列），动作类型注册表化，当前六种：
 > **模拟按键**（系统级组合键，模拟一次完整击键）、**打开应用**（本机应用列表下拉 + 自定义
 > 路径）、**执行脚本**（任意 shell 命令）、**权限审批**（待审请求允许/拒绝）、**延时等待**
-> （序列间隔 50–60000ms）。页面结构：上方串口连接控制、下方键位卡片（草稿式序列编辑）。
+> （序列间隔 50–60000ms）、**打开网页**（http/https 网址，系统默认浏览器，2026-09-10）。
+> 键位可选配置**长按动作序列**（2026-09-10：短按/长按互斥判定，见下）。页面结构：上方串口
+> 连接控制、下方键位卡片（草稿式序列编辑）。
 
 ## 行协议（设备 → main）
 
 - 9600 波特率，ASCII 文本 `<键位>,<动作>`，如 `1,on`、`2,off`
 - **设备不带任何行尾/分隔符**（实测 `1,on` 后无换行无回车），不能按行分帧；
   main 用文法流式解析（`数字 + , + on/off` 逐段匹配，见 keypadProtocol）
-- `on`=按下（顺序执行绑定的动作序列）、`off`=释放（**仅状态簿记不分发动作**——序列瞬时
-  执行不依赖物理释放）；`on` 重复上报去重不重复触发
+- `on`=按下（触发动作，见短按/长按判定）、`off`=释放（未配置长按的键位仅状态簿记；
+  配置了长按的键位参与短按分流）；`on` 重复上报去重不重复触发
 - 键位 id 支持任意数量；页面当前展示 1–6，超出页面的键位仍会点亮/触发
 
 ## 动作模型（注册表驱动，2026-09-09 重构 + 序列化）
@@ -39,17 +41,38 @@
   - combo 在序列中 = **模拟一次完整击键**（按下 → 按住 60ms（`COMBO_TAP_HOLD_MS`）→
     自动抬起），物理松开键位不再参与抬起时机（原 push-to-talk 语义随序列化移除）；
     断开/拔线/保存绑定的 `releaseAll()` 兜底不变
-  - `off` 只做 pressed 集合簿记与广播（pressed 去重天然防长按重复触发）
+  - `off` 只做 pressed 集合簿记与广播（pressed 去重天然防长按重复触发）；
+    **例外**：配置了长按的键位见下节
 
-### 新增动作类型指南（以「打开网址」为例）
+### 短按/长按互斥判定（2026-09-10）
+
+- `KeypadBinding.holdActions?`（可选长按动作序列）配置后该键启用判定；阈值全局常量
+  `KEYPAD_HOLD_MS = 600`（common 类型事实源，暂不做每键可配）
+- **判定逻辑**（keypadService，`holdTimers Map<keyId, timer>`）：
+  - `on`：有 `holdActions` → 启动 600ms 计时器；到时仍按住 → 执行长按序列（timer 回调
+    自删，后续 `off` 回到纯簿记）；无 `holdActions` → 照旧按下立即执行短按序列
+  - `off`：若计时器仍在挂起（未达阈值）→ 取消计时并执行**短按序列**；否则仅簿记
+  - 两者互斥：快速点击零感知延迟（off 即触发短按），长按无需等松手
+- **零回归**：未配置 `holdActions` 的键位行为与旧版完全一致（按下立即执行）
+- **边界**：拔线/断开 `resetPressed` 遍历清空挂起计时器；长按序列执行中松手再按，
+  `running` 重入守卫与 `pressed` 去重照常兜底
+- 配置归一化：`normalizeBinding` 对 `holdActions` 复用 `normalizeActions` 逐条清洗，
+  空/全非法不落盘（无该字段 = 旧版行为）
+- UI：绑定面板分「短按 · 点击触发」「长按 · 按住 600ms 触发」两区块，各复用
+  `KeypadSequenceEditor`（新增可选 `emptyText` prop 定制空态文案）；保存时空序列不写
+  `holdActions`；键帽摘要只展示短按序列（长按不上键帽）
+
+### 新增动作类型指南（2026-09-10「打开网页」已按此落地）
 
 1. `src/common/types/keypad.ts`：加 `KeypadUrlAction` 接口并入 `KeypadAction` 联合、
    `KeypadActionType` 加 `'url'`
-2. `src/common/keypad/actions/url.ts`：定义 `{ type:'url', label:'打开网址', normalize,
-   createDefault }`，在 `actions/index.ts` 的 `KEYPAD_ACTIONS` 登记一行
-3. `src/main/src/buddy/keypad/actions/urlExecutor.ts`：`onPress` 里 `shell.openExternal(...)`，
-   在执行器注册表登记一行
-4. 渲染层 `actionEditors/UrlEditor.vue`（URL 输入框，emit change），在编辑器注册表登记一行
+2. `src/common/keypad/actions/url.ts`：定义 `{ type:'url', label:'打开网页', normalize,
+   createDefault }`（normalize 校验 http/https 协议，`isValidKeypadUrl` 经 index.ts
+   再导出供渲染层实时提示共用），在 `actions/index.ts` 的 `KEYPAD_ACTIONS` 登记一行
+3. `src/main/src/buddy/keypad/actions/urlExecutor.ts`：`onPress` 里 `shell.openExternal(...)`
+   （无效网址 reject 由 runSequence 统一捕获），在执行器注册表登记一行
+4. 渲染层 `actionEditors/UrlEditor.vue`（URL 输入框，协议不合法标红提示，emit change），
+   在编辑器注册表（EDITORS + ICONS 的 `LinkIcon`）登记
 
 归一化（normalizeBinding 逐条查表）、添加动作卡片、序列行动态编辑器、执行分发全部自动生效。
 
@@ -75,10 +98,13 @@
   超时 kill、Promise 必 resolve；fire-and-forget，`result.error` 记日志。
 - **延时等待（delayExecutor）**：onPress 返回 `setTimeout(ms)` 包装的 Promise，序列
   `await` 它形成动作间隔；定义（含 50–60000ms 边界）在 `@common/keypad/actions/delay.ts`。
+- **打开网页（urlExecutor）**：`shell.openExternal(url)` 交系统默认浏览器；仅接受
+  http/https 协议（定义侧 `isValidKeypadUrl` 白名单，防 file: 等非网页协议误配）。
 - **启动即初始化**：`initKeypad()` 随 registerIpc 在 app ready 执行：加载配置 → 订阅
   `onPortClosed` → lastPort 存在于串口列表才 `openPort` 自动连接并重挂行订阅。
 - **按下状态**：main 维护 `pressed` 集合（含未绑定键位），变化即 `keypad:state` 广播全部窗口；
-  连接/断开时清空（设备状态未知）。序列执行中另有 `running` 集合做每键重入守卫。
+  连接/断开时清空（设备状态未知）。序列执行中另有 `running` 集合做每键重入守卫；
+  配置了长按的键位另有 `holdTimers` 挂起判定计时（见短按/长按判定节）。
 
 ## 本机应用目录与图标（app 动作支撑）
 
@@ -117,20 +143,25 @@
         { "type": "delay", "ms": 500 },
         { "type": "combo", "modifiers": ["meta"], "key": "v" }
       ]
+    },
+    "4": {
+      "actions": [{ "type": "url", "url": "https://github.com" }],
+      "holdActions": [{ "type": "app", "path": "/Applications/Safari.app" }]
     }
   }
 }
 ```
 
-- `bindings` 键 = 设备行协议键位 id（字符串），值 = **绑定对象 `{name?, actions}`**
+- `bindings` 键 = 设备行协议键位 id（字符串），值 = **绑定对象 `{name?, actions, holdActions?}`**
   （`name` 可选显示名称——键帽优先显示名称，未命名回退首条动作摘要 +「共 N 个动作」小字；
-  `actions` = 动作序列数组，按下按顺序执行），缺省/空序列 = 未绑定仅状态点亮
+  `actions` = 短按动作序列；`holdActions` = 可选长按动作序列，见短按/长按判定节），
+  缺省/空序列 = 未绑定仅状态点亮
 - `layout` = 键盘样式布局 id（纯展示偏好，`keypad:saveLayout` 保存，白名单
   `KEYPAD_LAYOUT_IDS` 校验，非法/缺省归一化回退 `'grid4x2'`）
-- **存量兼容**：`normalizeBinding`——`{name?, actions}` 新格式 / 上一代纯数组序列（无名）/
-  最早的单动作对象（含无 `type` 的最老 combo 格式 `{modifiers, key}`）三代全兼容，
+- **存量兼容**：`normalizeBinding`——`{name?, actions, holdActions?}` 新格式 / 上一代纯数组
+  序列（无名）/ 最早的单动作对象（含无 `type` 的最老 combo 格式 `{modifiers, key}`）多代全兼容，
   自动包装归一，无需迁移脚本；序列内非法条目逐条丢弃，清空的序列整个丢弃；
-  `name` trim 非空才落盘
+  `name` trim 非空才落盘，`holdActions` 空/全非法不落盘
 - 模拟按键主键白名单 `KEYPAD_KEY_CODES` 元组（**Enter** + F1–F19 + 字母 + 数字），从元组派生
   类型/选项/校验；修饰键 `ctrl | alt | shift | meta`（meta = macOS Cmd / Windows Win）
 - 归一化：`normalizeBinding` 逐条走 `normalizeAction` 查 `KEYPAD_ACTIONS` 注册表按 type
@@ -140,13 +171,13 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/common/types/keypad.ts` | 类型契约：`KeypadAction*` 判别联合 / `KeypadConfig/State/Api` / `AppCatalogItem` + 主键/修饰键白名单守卫 |
-| `src/common/keypad/actions/` | **动作定义注册表**：combo/app/script/permission/delay（label/normalize/createDefault）+ `KEYPAD_ACTIONS` 聚合 + 穷尽校验 + `KeypadActionTypeOptions` |
+| `src/common/types/keypad.ts` | 类型契约：`KeypadAction*` 判别联合 / `KeypadBinding`（含 `holdActions?` + `KEYPAD_HOLD_MS`）/ `KeypadConfig/State/Api` / `AppCatalogItem` + 主键/修饰键白名单守卫 |
+| `src/common/keypad/actions/` | **动作定义注册表**：combo/app/script/permission/delay/url（label/normalize/createDefault）+ `KEYPAD_ACTIONS` 聚合 + 穷尽校验 + `KeypadActionTypeOptions` |
 | `src/common/buddy/keypad/keypadChannels.ts` | IPC 通道常量（getConfig/saveBindings/listApps/connect/disconnect/getState/state） |
-| `src/main/src/buddy/keypad/actions/` | **动作执行器注册表**：onPress（可异步）+ 映射类型聚合（combo=击键模拟、app=shell.openPath/`open -a`、script=cliRun、permission=审批回传、delay=sleep Promise） |
+| `src/main/src/buddy/keypad/actions/` | **动作执行器注册表**：onPress（可异步）+ 映射类型聚合（combo=击键模拟、app=shell.openPath/`open -a`、script=cliRun、permission=审批回传、delay=sleep Promise、url=shell.openExternal） |
 | `src/main/src/buddy/keypad/keySimulator.ts` | koffi 模拟按键：平台键码表、pressCombo/releaseCombo/releaseAll、AXIsProcessTrusted |
-| `src/main/src/buddy/keypad/keypadConfig.ts` | keypad.json 读写与归一化（normalizeBinding 三代格式兼容归一 {name?,actions}/纯数组/单动作 + normalizeAction 查表） |
-| `src/main/src/buddy/keypad/keypadService.ts` | 单例服务：init/connect/disconnect/行解析/handleEvent/dispatchSequence+runSequence（顺序执行+重入守卫）/saveBindings/broadcastState |
+| `src/main/src/buddy/keypad/keypadConfig.ts` | keypad.json 读写与归一化（normalizeBinding 多代格式兼容归一 {name?,actions,holdActions?}/纯数组/单动作 + normalizeAction 查表） |
+| `src/main/src/buddy/keypad/keypadService.ts` | 单例服务：init/connect/disconnect/行解析/handleEvent（含短按/长按互斥判定 holdTimers）/dispatchSequence+runSequence（顺序执行+重入守卫）/saveBindings/broadcastState |
 | `src/main/src/buddy/keypad/keypadIpc.ts` | IPC handler 注册（含 listApps） |
 | `src/main/src/buddy/keypad/keypadProtocol.ts` | 无分隔符流式解析器：`数字,on/off` 文法匹配 + 不完整前缀等待 + 失步丢字符重同步 |
 | `src/main/src/modules/appCatalog.ts` | 本机应用枚举（mac .app 扫描 / win 开始菜单 .lnk） |
@@ -178,8 +209,10 @@
     （`KeypadKeyCap` 新增 `selected` prop）→ 右栏渲染 `KeypadBindingPanel`（Fluent 风格：
     迷你键帽徽标 + 「配置键位 N」标题 + 实时摘要副文本（各动作摘要 `→` 连接）+ **右上角 X
     关闭按钮**（`emit('close')`）→ **显示名称输入框**（可选，maxlength 20，留空显示动作
-    摘要）→ **动作序列编辑器 `KeypadSequenceEditor`**（草稿 `{name, actions}` 面板持有、
-    props 只读 + emit change 单向流）→ 清除/保存操作行）。
+    摘要）→ **短按/长按两区块**（2026-09-10：「短按 · 点击触发」恒显 + 「长按 · 按住
+    600ms 触发」空态文案「未配置长按 · 键位按下立即执行短按序列」；各渲染一个**动作序列
+    编辑器 `KeypadSequenceEditor`**——草稿 `{name, actions, holdActions}` 面板持有、
+    props 只读 + emit change 单向流、新增可选 `emptyText` prop 定制空态）→ 清除/保存操作行）。
     序列编辑器：每条动作一行（**序号徽标 + 类型图标 + 摘要文本 + 上移/下移/删除**），点行
     手风琴展开该条编辑器（单开、Transition 淡入、不套浅底容器）；底部「＋ 添加动作」虚线
     按钮展开**类型图标选择卡片**（KEYPAD_ACTION_ICONS 映射 + KEYPAD_ACTIONS 注册表渲染，
@@ -191,7 +224,7 @@
     关闭途径：再点同一键（toggle）/ 右上角 X / 保存 / 清除成功；点其他键即切换面板内容
     （`:key="activeKeyId"` 重挂重建草稿）。未选键时右栏显示空态提示（gesture-click 图标 +
     「点击左侧键位，配置按键动作」），**常驻不跳动**；面板/空态切换经 `panel-fade` 过渡。
-    保存预校验 = 序列非空且逐条 normalize 通过（逐条异步展开校验失败即禁用保存）；
+    保存预校验 = 短按序列非空且短按/长按逐条 normalize 通过（逐条异步展开校验失败即禁用保存）；
     序列全部删除后保存等价清除。外观职责：`.side-panel` 容器持边框/背景/圆角/内边距，
     `KeypadBindingPanel` 剥离外观（width/padding/background 已删）只留内容布局，宽度撑满
     容器。键盘格子固定正方形 `--key-size`（88px），合并键 = 整数倍格子不变形，外壳内整体居中
@@ -203,6 +236,9 @@
 - **combo 已无 push-to-talk**：序列中的模拟按键是一次完整击键（按住 60ms 自动抬起），
   「按住期间保持组合」的旧用法不再支持；heldCombos 引用计数与 releaseAll 兜底仍保留
   （覆盖连按/保存绑定/断开等竞态窗口）
+- **长按判定边界**：仅配置了 `holdActions` 的键位生效；阈值全局 600ms 不做每键可配；
+  长按触发后（按住达阈值）松手不再触发短按（互斥）；拔线/断开清空挂起计时器；
+  长按序列执行中该键位的后续触发被 `running` 守卫忽略（与短按一致）
 - **序列重入守卫**：同键位序列执行中（含延时）再次触发被忽略——快速连按不会并发跑两条
   序列；要重新触发需等当前序列跑完
 - **koffi 为原生依赖**（dependencies，externalizeDeps 外部化），与 better-sqlite3 同由

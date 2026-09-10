@@ -20,5 +20,6 @@ export function keypadActionSummary(action: KeypadAction): string {
   if (action.type === 'permission')
     return action.decision === 'allow' ? '允许最近待审请求' : '拒绝最近待审请求'
   if (action.type === 'delay') return `延时 ${action.ms}ms`
+  if (action.type === 'url') return action.url.trim() || '未填写网址'
   return action.command.trim() || '未填写命令'
 }

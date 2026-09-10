@@ -10,6 +10,7 @@ import { comboExecutor } from './comboExecutor'
 import { delayExecutor } from './delayExecutor'
 import { scriptExecutor } from './scriptExecutor'
 import { permissionExecutor } from './permissionExecutor'
+import { urlExecutor } from './urlExecutor'
 
 /** 单个动作类型的执行器：onPress 在序列执行到该动作时触发，可异步（如延时的 sleep Promise） */
 export interface KeypadActionExecutor<T extends KeypadAction = KeypadAction> {
@@ -26,5 +27,6 @@ export const KEYPAD_ACTION_EXECUTORS: Record<KeypadActionType, KeypadActionExecu
   app: appExecutor,
   script: scriptExecutor,
   permission: permissionExecutor,
-  delay: delayExecutor
+  delay: delayExecutor,
+  url: urlExecutor
 }

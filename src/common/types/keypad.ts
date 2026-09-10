@@ -116,7 +116,7 @@ export function isKeypadKeyAction(value: string): value is KeypadKeyAction {
 }
 
 /** 键位动作类型（新增动作 = 加联合成员 + 在 @common/keypad/actions 注册定义 + main 执行器 + 渲染层编辑器） */
-export type KeypadActionType = 'combo' | 'app' | 'script' | 'permission' | 'delay'
+export type KeypadActionType = 'combo' | 'app' | 'script' | 'permission' | 'delay' | 'url'
 
 /** 模拟按键/组合快捷键：修饰键组合 + 主键（可为空组合=只按主键）；序列执行到该动作时模拟一次完整击键（按下→短暂按住→自动抬起） */
 export interface KeypadComboAction {
@@ -149,6 +149,12 @@ export interface KeypadDelayAction {
   ms: number
 }
 
+/** 打开网页：http/https 网址，系统默认浏览器打开（main 侧 shell.openExternal） */
+export interface KeypadUrlAction {
+  type: 'url'
+  url: string
+}
+
 /** 键位动作（按 type 判别；落盘 keypad.json bindings 值 actions 字段的元素） */
 export type KeypadAction =
   | KeypadComboAction
@@ -156,13 +162,23 @@ export type KeypadAction =
   | KeypadScriptAction
   | KeypadPermissionAction
   | KeypadDelayAction
+  | KeypadUrlAction
+
+/** 长按判定阈值（全局）：按住达到该时长触发 holdActions；阈值内松手触发短按 actions */
+export const KEYPAD_HOLD_MS = 600
 
 /** 键位绑定：动作序列 + 可选显示名称（键帽优先显示名称，未命名回退首条动作摘要） */
 export interface KeypadBinding {
   /** 显示名称（可选；trim 非空才落盘） */
   name?: string
-  /** 动作序列（按下按顺序执行；恒非空） */
+  /** 动作序列（短按触发；未配置 holdActions 时按下立即执行） */
   actions: KeypadAction[]
+  /**
+   * 长按动作序列（可选；配置后该键启用短按/长按互斥判定：
+   * 按下启动 KEYPAD_HOLD_MS 计时，到时仍按住执行本序列，阈值内松手执行 actions）。
+   * 空/全非法不落盘（归一化清洗），无此字段 = 键位保持按下立即执行，存量行为不变。
+   */
+  holdActions?: KeypadAction[]
 }
 
 /**
