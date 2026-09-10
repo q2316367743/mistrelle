@@ -5,15 +5,24 @@
         v-for="v in versions"
         :key="v.id"
         class="version-chip"
-        :class="{ 'is-active': v.id === activeVersionId }"
-        @click="emit('select', v.id)"
+        :class="{
+          'is-active': v.id === activeVersionId,
+          'is-streaming': v.id === streamingVersionId,
+          'is-locked': humanizing && v.id !== streamingVersionId
+        }"
+        @click="onSelect(v.id)"
       >
         <span v-if="v.zhuque" class="chip-ring" title="已检测">
           <zhuque-pie :result="v.zhuque" :size="12" :legend="false" :center-label="false" />
         </span>
         <span class="chip-label">{{ versionLabel(v) }}</span>
         <span class="chip-time">{{ dayjs(v.createdTime).format('MM-DD HH:mm') }}</span>
-        <t-popconfirm v-if="versions.length > 1" content="确认删除该版本？" theme="danger" @confirm="emit('remove', v.id)">
+        <t-popconfirm
+          v-if="versions.length > 1 && !humanizing"
+          content="确认删除该版本？"
+          theme="danger"
+          @confirm="emit('remove', v.id)"
+        >
           <span class="chip-remove" title="删除版本" @click.stop>
             <close-icon />
           </span>
@@ -22,18 +31,28 @@
     </div>
 
     <div class="article-version-bar__actions">
-      <!-- 去 AI 味：流式接口接入后启用，产出新版本（开关见 humanizeApi.ts） -->
-      <t-tooltip :disabled="HUMANIZE_ENABLED" content="流式接口暂未开放，敬请期待">
+      <!-- 去 AI 味：未登录禁用；生成中改为停止 -->
+      <t-tooltip :content="humanizeTooltip" :disabled="!humanizeTooltip">
         <span class="action-item">
           <t-button
+            v-if="humanizing"
             size="small"
             variant="outline"
-            :disabled="!HUMANIZE_ENABLED"
-            :loading="humanizing"
+            theme="warning"
+            @click="emit('abort')"
+          >
+            <template #icon><stop-circle-icon /></template>
+            停止
+          </t-button>
+          <t-button
+            v-else
+            size="small"
+            variant="outline"
+            :disabled="!canHumanize"
             @click="emit('humanize')"
           >
             <template #icon><ai-edit-icon /></template>
-            {{ humanizing ? '生成中' : '去 AI 味' }}
+            去 AI 味
           </t-button>
         </span>
       </t-tooltip>
@@ -49,7 +68,7 @@
       </t-tooltip>
       <t-tooltip v-else-if="!activeZhuque && ZHUQUE_ENABLED" content="检测当前版本的 AI 占比">
         <span class="action-item">
-          <t-button size="small" variant="outline" :loading="detecting" @click="emit('detect')">
+          <t-button size="small" variant="outline" :loading="detecting" :disabled="humanizing" @click="emit('detect')">
             <template #icon><fact-check-icon /></template>
             AI 检测
           </t-button>
@@ -57,7 +76,7 @@
       </t-tooltip>
       <t-popup v-else trigger="click" placement="bottom-right" destroy-on-close>
         <span class="action-item">
-          <t-button size="small" variant="outline" :loading="detecting">
+          <t-button size="small" variant="outline" :loading="detecting" :disabled="humanizing">
             <template #icon><fact-check-icon /></template>
             AI 检测
           </t-button>
@@ -74,6 +93,7 @@
               variant="outline"
               block
               :loading="detecting"
+              :disabled="humanizing"
               @click="emit('detect')"
             >
               重新检测
@@ -86,9 +106,10 @@
 </template>
 <script lang="ts" setup>
 import dayjs from 'dayjs'
-import { AiEditIcon, CloseIcon, FactCheckIcon } from 'tdesign-icons-vue-next'
+import { AiEditIcon, CloseIcon, FactCheckIcon, StopCircleIcon } from 'tdesign-icons-vue-next'
 import type { ArticleVersion } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { ARTICLE_VERSION_SOURCE_OPTIONS } from '@/windows/main/modules/tool/components/article/articleTypes'
+import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { HUMANIZE_ENABLED, ZHUQUE_ENABLED } from '../humanizeApi'
 import ZhuquePie from './ZhuquePie.vue'
 
@@ -97,6 +118,8 @@ const props = defineProps<{
   activeVersionId: string
   /** 去 AI 味进行中 */
   humanizing?: boolean
+  /** 正在流式生成的版本 id */
+  streamingVersionId?: string | null
   /** AI 检测进行中 */
   detecting?: boolean
 }>()
@@ -105,8 +128,20 @@ const emit = defineEmits<{
   (e: 'select', versionId: string): void
   (e: 'remove', versionId: string): void
   (e: 'humanize'): void
+  (e: 'abort'): void
   (e: 'detect'): void
 }>()
+
+const auth = useAuthStore()
+const signedIn = computed(() => auth.status === 'signed-in')
+const canHumanize = computed(() => HUMANIZE_ENABLED && signedIn.value)
+
+const humanizeTooltip = computed(() => {
+  if (props.humanizing) return ''
+  if (!HUMANIZE_ENABLED) return '流式接口暂未开放，敬请期待'
+  if (!signedIn.value) return '请先登录'
+  return ''
+})
 
 /** 当前激活版本的检测结果（驱动检测按钮三态：禁用 / 可检测 / 可查看） */
 const activeZhuque = computed(
@@ -115,6 +150,11 @@ const activeZhuque = computed(
 
 const versionLabel = (v: ArticleVersion): string =>
   v.label ?? ARTICLE_VERSION_SOURCE_OPTIONS.find((o) => o.value === v.source)?.label ?? '版本'
+
+const onSelect = (versionId: string): void => {
+  if (props.humanizing) return
+  emit('select', versionId)
+}
 </script>
 <style scoped lang="less">
 .article-version-bar {
@@ -135,7 +175,7 @@ const versionLabel = (v: ArticleVersion): string =>
   overflow-x: auto;
   scrollbar-width: none;
 
-    &::-webkit-scrollbar {
+  &::-webkit-scrollbar {
     display: none;
   }
 }
@@ -167,6 +207,28 @@ const versionLabel = (v: ArticleVersion): string =>
       color: var(--td-brand-color);
       font-weight: 600;
     }
+  }
+
+  &.is-streaming {
+    border-color: var(--td-brand-color);
+    box-shadow: 0 0 0 1px var(--td-brand-color-focus);
+    animation: streaming-pulse 1.2s ease-in-out infinite;
+  }
+
+  &.is-locked {
+    cursor: not-allowed;
+    opacity: 0.55;
+    pointer-events: none;
+  }
+}
+
+@keyframes streaming-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
   }
 }
 

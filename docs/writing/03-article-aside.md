@@ -71,11 +71,11 @@ src/components/chat/aside/writing/
 - AI 侧联动：`article_create` / `article_update` 白名单支持 `style`；`ARTICLE_SCENE_PROMPT` 要求撰写/改写前先 `article_list` 确认 platform + style 并严格遵循（style 与平台模板叠加）。
 - 快捷指令：「按当前风格重写正文」按钮 → 组装指令文本 → `PROMPT_INPUT_KEY`（useChatSession provide → LChatSender `addTextPrompt` expose）填入聊天输入框，**不自动发送**；与画布节点 / HTML 元素注入同一 DI 模式。全屏态下输入框被遮挡，发送前需退出全屏（toast 已提示）。
 
-## 版本条与外部接口预留（ArticleVersionBar / humanizeApi.ts）
+## 版本条与去 AI 味（ArticleVersionBar / humanizeApi.ts）
 
-footer 两个占位按钮已删除，动作收进正文维度顶部的版本条（`ArticleVersionBar.vue`）。两个外部接口集中预留于 `humanizeApi.ts`，各由开关常量控制，**接入时只需实现 request 函数并把开关置 true，UI 编排已就绪**：
+footer 两个占位按钮已删除，动作收进正文维度顶部的版本条（`ArticleVersionBar.vue`）。
 
-- **去 AI 味**（`HUMANIZE_ENABLED = false`）：未接入时按钮禁用 + tooltip；编排见 `useArticleAssist.handleHumanize` —— 读当前正文 → `requestHumanizeStream({ text, onDelta })` 流式增量实时写入 `content`（编辑器 watch 跟随渲染）→ 完成后 `store.createVersion({ source: 'humanize' })` 产生**新版本**并自动激活（原版本内容不动），失败回滚显示原文。
+- **去 AI 味**（`HUMANIZE_ENABLED = true`）：需登录；点击后立刻 `createVersion({ source: 'humanize', content: '' })` 并激活 → `requestHumanizeStream`（经 `window.preload.relay.rewriteStream` → 服务端 `/api/rewrite` SSE）流式增量写入 `content` → 完成落盘并 `patchVersion` 字数。生成中按钮变为「停止」（`AbortController` → `streamAbort`）；**改写期间页面其它操作全部锁定**（header / 分段 / 版本切换删除 / AI 检测 / 配图与风格面板），仅「停止」可用；编辑器强制 preview；失败且无增量则删空版本回滚原稿，有增量则保留部分成果。
 - **AI 检测 / 朱雀**（`ZHUQUE_ENABLED = false`）：未接入且无结果时按钮禁用 + tooltip；检测结果跟版本走（`patchVersion` 写入激活版本的 `zhuque`）。版本已有结果时按钮常亮 + 版本 chip 带迷你圆环，点击弹 `t-popup` 展示 `ZhuquePie` 饼图（conic-gradient 三色：AI=`--td-error-color` 红、疑似=`--td-warning-color` 黄、人工=`--td-success-color` 绿，环心显 AI 占比 + 右侧图例）与检测时间、重新检测入口。
 
 ## 编辑器（tiptap）
@@ -88,5 +88,4 @@ footer 两个占位按钮已删除，动作收进正文维度顶部的版本条�
 
 ## 待接入（预留）
 
-- 去 AI 味流式接口：实现 `humanizeApi.ts` 的 `requestHumanizeStream`（增量经 `onDelta`、resolve 完整文本）并置 `HUMANIZE_ENABLED = true`；可再接 AbortSignal 到中止按钮。
 - 朱雀 AI 检测：实现 `requestZhuqueDetect(text)` 返回三占比并置 `ZHUQUE_ENABLED = true`；注意「重新检测 / 开始检测」按钮的禁用态也由该开关驱动。

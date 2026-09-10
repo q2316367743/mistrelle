@@ -6,6 +6,7 @@
       placeholder="选择文章"
       :empty="'暂无文章，可让 AI 生成'"
       :popup-props="{ overlayClassName: 'article-select-overlay' }"
+      :disabled="locked"
       clearable
       @change="(v: unknown) => emit('select', v)"
     >
@@ -29,11 +30,19 @@
       variant="text"
       shape="square"
       title="在文件夹中显示"
+      :disabled="locked"
       @click="emit('reveal')"
     >
       <template #icon><folder-open-icon /></template>
     </t-button>
-    <t-button theme="primary" variant="text" shape="square" title="刷新" @click="emit('refresh')">
+    <t-button
+      theme="primary"
+      variant="text"
+      shape="square"
+      title="刷新"
+      :disabled="locked"
+      @click="emit('refresh')"
+    >
       <template #icon><refresh-icon /></template>
     </t-button>
     <t-button
@@ -41,7 +50,7 @@
       variant="text"
       shape="square"
       title="导出为 ZIP（含图片）"
-      :disabled="exportDisabled"
+      :disabled="exportDisabled || locked"
       class="mr-8px"
       @click="emit('export')"
     >
@@ -62,6 +71,8 @@ defineProps<{
   activeId: string
   /** 导出按钮禁用：未选文章或导出进行中 */
   exportDisabled: boolean
+  /** 去 AI 味进行中：锁定全部操作 */
+  locked?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -128,5 +139,12 @@ const statusLabel = (s: ArticleStatus) => STATUS_LABEL[s] ?? s
     font-size: var(--td-font-size-body-small);
     color: var(--td-text-color-placeholder);
   }
+}
+</style>
+<style lang="less">
+/* teleport 到 body，需全局样式 */
+.article-select-overlay .t-select-option {
+  height: 100%;
+  padding: 8px;
 }
 </style>

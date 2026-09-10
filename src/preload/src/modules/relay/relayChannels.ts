@@ -6,7 +6,8 @@
  * - 鉴权依赖登录凭证（长期 API Key），凭证只存在于主进程 AuthService，渲染层不可达；
  *   因此中转请求统一走本域 IPC：main 注入 `Authorization: Bearer <apiKey>` 后转发。
  * - listModels：GET {server}/v1/models（模型列表，OpenAI list 形状）；
- *   chatStream：POST {server}/v1/chat/completions（OpenAI 兼容流式 SSE，按积分记账）。
+ *   chatStream：POST {server}/v1/chat/completions（OpenAI 兼容流式 SSE，按积分记账）；
+ *   rewriteStream：POST {server}/api/rewrite（去 AI 味 SSE，按字符计费）。
  * - 流式回调不能作为 invoke 参数：Electron structured clone 无法克隆函数
  *   （会报 An object could not be cloned）。preload 本地保留 handlers，
  *   main 经 start/chunk/end 事件回推字节；invoke 只传可克隆的 params + requestId。
@@ -24,7 +25,12 @@ export const RelayChannels = {
   chatStreamChunk: 'relay:chatStreamChunk',
   /** 流结束（成功 aborted / 失败 error） */
   chatStreamEnd: 'relay:chatStreamEnd',
-  /** 取消进行中的中转对话流 */
+  /** 去 AI 味流式改写（POST {server}/api/rewrite） */
+  rewriteStream: 'relay:rewriteStream',
+  rewriteStreamStart: 'relay:rewriteStreamStart',
+  rewriteStreamChunk: 'relay:rewriteStreamChunk',
+  rewriteStreamEnd: 'relay:rewriteStreamEnd',
+  /** 取消进行中的中转对话流 / 去 AI 味流（共用 AbortController Map） */
   abortStream: 'relay:abortStream'
 } as const
 
@@ -44,6 +50,12 @@ export interface RelayChatParams {
   sessionId?: string
   /** 单次 completions 记录 id（透传 request_id，只作对账，不参与选渠） */
   requestId?: string
+}
+
+/** 去 AI 味改写参数（POST /api/rewrite） */
+export interface RelayRewriteParams {
+  content: string
+  depth?: number
 }
 
 /** 中转流式回调（只做字节转发，协议解析在渲染层 modules/ai；仅 preload 本地调用） */

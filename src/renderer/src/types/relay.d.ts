@@ -1,6 +1,6 @@
 /**
  * 服务端中转桥类型（window.preload.relay）。
- * 与 preload/src/ipc/relayChannels.ts 对应：只做字节转发，协议解析在渲染层 modules/ai。
+ * 与 preload/src/modules/relay/relayChannels.ts 对应：只做字节转发，协议解析在渲染层。
  */
 
 /** 内置模型（GET /v1/models 的 OpenAI list 形状项） */
@@ -13,6 +13,12 @@ export interface RelayChatParams {
   body: Record<string, unknown>
   sessionId?: string
   requestId?: string
+}
+
+/** 去 AI 味改写参数（POST /api/rewrite） */
+export interface RelayRewriteParams {
+  content: string
+  depth?: number
 }
 
 export interface RelayStreamInfo {
@@ -37,6 +43,14 @@ export interface RelayApi {
    * 取消：streamAbort(requestId)（requestId 经 onStart 回传）。
    */
   chatStream(params: RelayChatParams, handlers: RelayStreamHandlers): Promise<{ aborted: boolean }>
-  /** 取消进行中的中转对话流 */
+  /**
+   * 去 AI 味流式改写（POST {server}/api/rewrite）。
+   * 取消同样走 streamAbort(requestId)。
+   */
+  rewriteStream(
+    params: RelayRewriteParams,
+    handlers: RelayStreamHandlers
+  ): Promise<{ aborted: boolean }>
+  /** 取消进行中的中转对话流 / 去 AI 味流 */
   streamAbort(requestId: string): void
 }

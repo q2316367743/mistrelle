@@ -9,12 +9,66 @@ import { ipcRenderer, type IpcRendererEvent } from 'electron'
 import {
   RelayChannels,
   type RelayChatParams,
+  type RelayRewriteParams,
   type RelayStreamEndPayload,
   type RelayStreamHandlers
 } from './relayChannels'
 
 let seq = 0
 const nextRequestId = (): string => `relay-stream-${Date.now()}-${seq++}`
+
+/** 通用流式 invoke：chat / rewrite 共用 abort 通道 */
+function openStream(
+  invokeChannel: string,
+  startChannel: string,
+  chunkChannel: string,
+  endChannel: string,
+  params: RelayChatParams | RelayRewriteParams,
+  handlers: RelayStreamHandlers
+): Promise<{ aborted: boolean }> {
+  const requestId = nextRequestId()
+  const { onStart, onChunk } = handlers
+
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const finish = (error?: unknown, result?: { aborted: boolean }): void => {
+      if (settled) return
+      settled = true
+      ipcRenderer.removeListener(startChannel, onStartEvent)
+      ipcRenderer.removeListener(chunkChannel, onChunkEvent)
+      ipcRenderer.removeListener(endChannel, onEndEvent)
+      if (error !== undefined) {
+        reject(error instanceof Error ? error : new Error(String(error)))
+        return
+      }
+      resolve(result ?? { aborted: false })
+    }
+
+    const onStartEvent = (
+      _event: IpcRendererEvent,
+      info: { requestId: string; status: number; headers: Record<string, string> }
+    ): void => {
+      if (info.requestId !== requestId) return
+      onStart?.(info)
+    }
+    const onChunkEvent = (_event: IpcRendererEvent, id: string, chunk: ArrayBuffer): void => {
+      if (id !== requestId) return
+      onChunk?.(chunk)
+    }
+    const onEndEvent = (_event: IpcRendererEvent, payload: RelayStreamEndPayload): void => {
+      if (payload.requestId !== requestId) return
+      if (payload.error) finish(new Error(payload.error))
+      else finish(undefined, { aborted: !!payload.aborted })
+    }
+
+    ipcRenderer.on(startChannel, onStartEvent)
+    ipcRenderer.on(chunkChannel, onChunkEvent)
+    ipcRenderer.on(endChannel, onEndEvent)
+    ipcRenderer.invoke(invokeChannel, params, requestId).catch((error: unknown) => {
+      finish(error)
+    })
+  })
+}
 
 export const relayApi = {
   /** 拉取内置模型列表（GET {server}/v1/models；未登录抛错） */
@@ -28,56 +82,34 @@ export const relayApi = {
   chatStream: (
     params: RelayChatParams,
     handlers: RelayStreamHandlers
-  ): Promise<{ aborted: boolean }> => {
-    const requestId = nextRequestId()
-    const { onStart, onChunk } = handlers
+  ): Promise<{ aborted: boolean }> =>
+    openStream(
+      RelayChannels.chatStream,
+      RelayChannels.chatStreamStart,
+      RelayChannels.chatStreamChunk,
+      RelayChannels.chatStreamEnd,
+      params,
+      handlers
+    ),
 
-    return new Promise((resolve, reject) => {
-      let settled = false
-      const finish = (error?: unknown, result?: { aborted: boolean }): void => {
-        if (settled) return
-        settled = true
-        ipcRenderer.removeListener(RelayChannels.chatStreamStart, onStartEvent)
-        ipcRenderer.removeListener(RelayChannels.chatStreamChunk, onChunkEvent)
-        ipcRenderer.removeListener(RelayChannels.chatStreamEnd, onEndEvent)
-        if (error !== undefined) {
-          reject(error instanceof Error ? error : new Error(String(error)))
-          return
-        }
-        resolve(result ?? { aborted: false })
-      }
+  /**
+   * 去 AI 味流式改写（POST {server}/api/rewrite）。
+   * 取消同样走 streamAbort(requestId)。
+   */
+  rewriteStream: (
+    params: RelayRewriteParams,
+    handlers: RelayStreamHandlers
+  ): Promise<{ aborted: boolean }> =>
+    openStream(
+      RelayChannels.rewriteStream,
+      RelayChannels.rewriteStreamStart,
+      RelayChannels.rewriteStreamChunk,
+      RelayChannels.rewriteStreamEnd,
+      params,
+      handlers
+    ),
 
-      const onStartEvent = (
-        _event: IpcRendererEvent,
-        info: { requestId: string; status: number; headers: Record<string, string> }
-      ): void => {
-        if (info.requestId !== requestId) return
-        onStart?.(info)
-      }
-      const onChunkEvent = (
-        _event: IpcRendererEvent,
-        id: string,
-        chunk: ArrayBuffer
-      ): void => {
-        if (id !== requestId) return
-        onChunk?.(chunk)
-      }
-      const onEndEvent = (_event: IpcRendererEvent, payload: RelayStreamEndPayload): void => {
-        if (payload.requestId !== requestId) return
-        if (payload.error) finish(new Error(payload.error))
-        else finish(undefined, { aborted: !!payload.aborted })
-      }
-
-      ipcRenderer.on(RelayChannels.chatStreamStart, onStartEvent)
-      ipcRenderer.on(RelayChannels.chatStreamChunk, onChunkEvent)
-      ipcRenderer.on(RelayChannels.chatStreamEnd, onEndEvent)
-      ipcRenderer.invoke(RelayChannels.chatStream, params, requestId).catch((error: unknown) => {
-        finish(error)
-      })
-    })
-  },
-
-  /** 取消进行中的中转对话流 */
+  /** 取消进行中的中转对话流 / 去 AI 味流 */
   streamAbort: (requestId: string): void => {
     ipcRenderer.send(RelayChannels.abortStream, requestId)
   }

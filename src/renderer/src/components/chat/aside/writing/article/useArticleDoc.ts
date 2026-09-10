@@ -211,6 +211,7 @@ export const useArticleDoc = (props: { sandbox?: string; workspace?: string; ful
     handleRemoveVersion,
     handleReveal,
     handleRefresh: () => void reload(),
-    handleExport
+    handleExport,
+    flushSave: () => saveDoc.flush()
   }
 }

@@ -54,7 +54,7 @@ export class ArticleStore {
   /** 当前项目管理索引（deep reactive） */
   readonly project = ref<ArticleProject | null>(null)
 
-  constructor(private readonly root: string) {}
+  constructor(readonly root: string) {}
 
   /**
    * 刷新项目索引：project.json 不存在时自动创建空项目并落盘（幂等）。

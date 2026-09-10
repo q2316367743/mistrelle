@@ -2,45 +2,128 @@ import type { ComputedRef, Ref } from 'vue'
 import type { ArticleItem } from '@/windows/main/modules/tool/components/article/articleTypes'
 import type { ArticleStore } from '@/windows/main/modules/tool/components/article/articleStore'
 import { MessageUtil } from '@/utils/modal'
-import { HUMANIZE_ENABLED, ZHUQUE_ENABLED, requestHumanizeStream, requestZhuqueDetect } from './humanizeApi'
+import { useAuthStore } from '@/windows/main/store/AuthStore'
+import {
+  HUMANIZE_ENABLED,
+  ZHUQUE_ENABLED,
+  requestHumanizeStream,
+  requestZhuqueDetect
+} from './humanizeApi'
 
 /**
- * 版本条动作编排：去 AI 味（流式 → 新版本）与朱雀检测（结果落当前激活版本）。
- * 接口未接入时按钮禁用；接入后仅需实现 humanizeApi.ts 中的 request 并打开开关。
+ * 版本条动作编排：去 AI 味（立刻建版本 → 流式写入）与朱雀检测（结果落当前激活版本）。
  */
 export const useArticleAssist = (ctx: {
   store: ComputedRef<ArticleStore>
   activeId: Ref<string>
   activeArticle: ComputedRef<ArticleItem | undefined>
   content: Ref<string>
+  /** 冲刷未落盘编辑，避免原稿被防抖写脏 */
+  flushSave?: () => void
+  /** 编辑/预览模式（流式期间会强制 preview） */
+  mode?: ComputedRef<'edit' | 'preview'>
+  switchVersion?: (versionId: string) => void | Promise<void>
+  removeVersion?: (versionId: string) => void | Promise<void>
 }) => {
   const humanizing = ref(false)
   const detecting = ref(false)
+  /** 正在流式生成的版本 id（驱动 chip 高亮与禁止切换） */
+  const streamingVersionId = ref<string | null>(null)
+  let abortController: AbortController | null = null
 
-  /** 去 AI 味：当前正文流式改写，完成后登记为新版本并激活（原版本内容不动；每次产生一个新版本） */
+  const handleAbortHumanize = (): void => {
+    abortController?.abort()
+  }
+
+  /** 去 AI 味：立刻建空版本并激活，流式写入；失败无增量则删版本回滚 */
   const handleHumanize = async (): Promise<void> => {
     const article = ctx.activeArticle.value
+    const auth = useAuthStore()
     if (!HUMANIZE_ENABLED || !article || humanizing.value) return
+    if (auth.status !== 'signed-in') {
+      MessageUtil.warning('请先登录后再使用去 AI 味')
+      return
+    }
     const original = ctx.content.value
-    let streamed = ''
+    if (!original.trim()) {
+      MessageUtil.warning('正文为空，无法去 AI 味')
+      return
+    }
+
+    ctx.flushSave?.()
     humanizing.value = true
+    abortController = new AbortController()
+    let versionId: string | null = null
+    let streamed = ''
+
     try {
+      const version = await ctx.store.value.createVersion(article.id, {
+        source: 'humanize',
+        content: ''
+      })
+      versionId = version.id
+      streamingVersionId.value = version.id
+      ctx.content.value = ''
+
       const full = await requestHumanizeStream({
         text: original,
+        signal: abortController.signal,
         onDelta: (delta) => {
           streamed += delta
-          // 编辑器 watch content 实时跟随渲染
           ctx.content.value = streamed
         }
       })
-      await ctx.store.value.createVersion(article.id, { source: 'humanize', content: full })
-      ctx.content.value = full
+
+      const finalText = full || streamed
+      const filePath = window.preload.path.join(ctx.store.value.root, version.file)
+      await window.preload.fs.writeTextFile(filePath, finalText)
+      await ctx.store.value.patchVersion(article.id, version.id, {
+        words: finalText.replace(/\s+/g, '').length
+      })
+      ctx.content.value = finalText
       MessageUtil.success('去 AI 味完成，已生成新版本')
     } catch (e) {
-      ctx.content.value = original
-      MessageUtil.error('去 AI 味失败', e)
+      const aborted =
+        (e instanceof DOMException && e.name === 'AbortError') ||
+        (e instanceof Error && e.name === 'AbortError')
+      if (versionId && streamed) {
+        const filePath = window.preload.path.join(
+          ctx.store.value.root,
+          ctx.activeArticle.value?.file ?? ''
+        )
+        if (filePath && ctx.activeArticle.value) {
+          try {
+            await window.preload.fs.writeTextFile(filePath, streamed)
+            await ctx.store.value.patchVersion(article.id, versionId, {
+              words: streamed.replace(/\s+/g, '').length
+            })
+          } catch {
+            // 保留内存内容
+          }
+        }
+        ctx.content.value = streamed
+        if (aborted) {
+          MessageUtil.warning('已停止，保留当前进度为新版本')
+        } else {
+          MessageUtil.success('去 AI 味未完成，已保留当前进度')
+        }
+      } else if (versionId) {
+        try {
+          await ctx.store.value.removeVersion(article.id, versionId)
+          ctx.content.value = original
+        } catch {
+          ctx.content.value = original
+        }
+        if (!aborted) MessageUtil.error('去 AI 味失败', e)
+        else MessageUtil.info('已取消去 AI 味')
+      } else {
+        ctx.content.value = original
+        if (!aborted) MessageUtil.error('去 AI 味失败', e)
+      }
     } finally {
       humanizing.value = false
+      streamingVersionId.value = null
+      abortController = null
     }
   }
 
@@ -61,5 +144,29 @@ export const useArticleAssist = (ctx: {
     }
   }
 
-  return { humanizing, detecting, handleHumanize, handleDetect }
+  return {
+    humanizing,
+    detecting,
+    streamingVersionId,
+    /** 流式改写期间强制预览 */
+    editorMode: computed<'edit' | 'preview'>(() =>
+      humanizing.value ? 'preview' : (ctx.mode?.value ?? 'preview')
+    ),
+    handleHumanize,
+    handleAbortHumanize,
+    handleDetect,
+    onSwitchVersion: (versionId: string) => {
+      if (humanizing.value || !ctx.switchVersion) return
+      void ctx.switchVersion(versionId)
+    },
+    onRemoveVersion: (versionId: string) => {
+      if (humanizing.value || !ctx.removeVersion) return
+      void ctx.removeVersion(versionId)
+    },
+    /** header / 其它入口在改写中一律吞掉 */
+    guardAction: <T extends unknown[]>(fn: (...args: T) => void, ...args: T): void => {
+      if (humanizing.value) return
+      fn(...args)
+    }
+  }
 }

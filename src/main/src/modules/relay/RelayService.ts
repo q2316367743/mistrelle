@@ -255,3 +255,58 @@ export async function chatStream(
     throw error
   }
 }
+
+export interface RelayRewriteParams {
+  content: string
+  depth?: number
+}
+
+/**
+ * 去 AI 味流式改写（POST {server}/api/rewrite）。
+ * Promise 在流结束 / 中止后 resolve（{ aborted }）；非 2xx 或网络失败 reject。
+ */
+export async function rewriteStream(
+  params: RelayRewriteParams,
+  signal: AbortSignal,
+  callbacks: RelayStreamCallbacks
+): Promise<{ aborted: boolean }> {
+  const ctx = getRelayContext()
+  if (!ctx) throw new Error('未登录，无法使用去 AI 味')
+
+  let response
+  try {
+    response = await http.post(
+      `${ctx.baseUrl}/api/rewrite`,
+      { content: params.content, depth: params.depth },
+      {
+        headers: { Authorization: `Bearer ${ctx.apiKey}`, 'Content-Type': 'application/json' },
+        responseType: 'stream',
+        signal
+      }
+    )
+  } catch (error) {
+    if (signal.aborted) return { aborted: true }
+    throw new Error(`无法连接服务端（${error instanceof Error ? error.message : '未知网络错误'}）`)
+  }
+  callbacks.onStart?.({
+    status: response.status,
+    headers: Object.fromEntries(
+      Object.entries(response.headers as Record<string, unknown>)
+    ) as Record<string, string>
+  })
+
+  const stream = response.data as Readable
+  try {
+    for await (const chunk of stream) {
+      if (signal.aborted) break
+      const buffer = chunk as Buffer
+      const ab = new ArrayBuffer(buffer.byteLength)
+      new Uint8Array(ab).set(buffer)
+      callbacks.onChunk?.(ab)
+    }
+    return { aborted: signal.aborted }
+  } catch (error) {
+    if (signal.aborted) return { aborted: true }
+    throw error
+  }
+}
