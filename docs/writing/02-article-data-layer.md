@@ -18,10 +18,7 @@ type ArticlePlatform = '公众号' | '知乎' | '小红书' | '其他'
 type ArticleStatus = 'draft' | 'writing' | 'done'
 type ArticleVersionSource = 'original' | 'humanize' | 'rewrite' | 'manual'  // 附 ARTICLE_VERSION_SOURCE_OPTIONS 中文映射
 
-/** 朱雀检测结果（跟版本走；三占比 0-100，和为 100） */
-interface ZhuqueDetectResult { ai: number; suspect: number; human: number; time: number }
-
-/** 文章版本（正文迭代快照；检测结果跟版本，封面/插图跟文章） */
+/** 文章版本（正文迭代快照；封面/插图跟文章） */
 interface ArticleVersion {
   id: string                    // 初稿版本确定性 id：{articleId}-base；迭代版本 nanoid
   file: string                  // 相对 articles/，迭代版本为 drafts/{articleId}-{nanoid}.md
@@ -29,7 +26,6 @@ interface ArticleVersion {
   label?: string                // 自定义名（缺省按 source 显示：原稿/去 AI 味/重写/手动）
   createdTime: number
   words?: number
-  zhuque?: ZhuqueDetectResult
 }
 
 interface ArticleItem {
@@ -54,7 +50,7 @@ interface ArticleProject { schema: 1; title: string; updatedTime: number; articl
 **版本契约（重要）**：
 
 - `ArticleItem.file` **恒等于当前激活版本的 file** —— `article_read` / `article_stats` / `file_write` / 导出 zip 全部沿 `file` 走，AI 工具与导出永远作用于激活版本，工具契约不变。
-- 去 AI 味等迭代**每次产生新版本**（新 md 文件），原版本内容不动；检测结果 `zhuque` 挂在版本上，`cover` / `images` 留在文章级。
+- 去 AI 味等迭代**每次产生新版本**（新 md 文件），原版本内容不动；`cover` / `images` 留在文章级。
 - 读时归一化：存量无 `versions` 的文章在 `refresh()` 自动合成 V1 原稿（`{articleId}-base`），仅真正变化时落盘一次（迁移后时间戳稳定），无需磁盘迁移脚本。
 
 ## Store（articleStore.ts）
@@ -63,7 +59,7 @@ interface ArticleProject { schema: 1; title: string; updatedTime: number; articl
 - `refresh()` 幂等：project.json 不存在时自动创建空项目落盘，侧边栏挂载即可用；解析后执行读时归一化（见版本契约）。
 - 每次变更自动落盘 project.json，重启聊天可恢复。
 - 文章方法：`init` / `createArticle`（自带 V1 原稿版本）/ `updateArticle` / `removeArticle`（删除登记 + **全部版本** md 文件）/ `readArticle` / `countWords`。
-- 版本方法：`createVersion`（写新 md + 登记激活，回传含 `words` 的版本）/ `switchVersion`（切激活 + `file` 同步）/ `removeVersion`（至少保留 1 个；删激活版本回落到最后一个）/ `patchVersion`（label / words / zhuque 白名单）。
+- 版本方法：`createVersion`（写新 md + 登记激活，回传含 `words` 的版本）/ `switchVersion`（切激活 + `file` 同步）/ `removeVersion`（至少保留 1 个；删激活版本回落到最后一个）/ `patchVersion`（label / words 白名单）。
 - `buildArticleRoot(workspace, sandboxDir)`：项目根定位（有 workspace 用 workspace，否则沙盒 outputs/），供工具与侧边栏复用。
 
 ## 工具契约（articleTools.ts）

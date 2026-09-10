@@ -137,6 +137,5 @@ declare module 'vue' {
     TUpload: typeof import('tdesign-vue-next')['Upload']
     VerifyEmailContent: typeof import('./src/components/modals/VerifyEmailContent.vue')['default']
     WritingAside: typeof import('./src/components/chat/aside/writing/WritingAside.vue')['default']
-    ZhuquePie: typeof import('./src/components/chat/aside/writing/article/components/ZhuquePie.vue')['default']
   }
 }

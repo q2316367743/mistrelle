@@ -263,11 +263,11 @@ export class ArticleStore {
     }
   }
 
-  /** 更新版本信息（字数 / 朱雀检测结果 / 自定义名） */
+  /** 更新版本信息（字数 / 自定义名） */
   async patchVersion(
     id: string,
     versionId: string,
-    patch: Partial<Pick<ArticleVersion, 'label' | 'words' | 'zhuque'>>
+    patch: Partial<Pick<ArticleVersion, 'label' | 'words'>>
   ): Promise<ArticleVersion> {
     const project = await this.refresh()
     const item = this.requireArticle(project, id)

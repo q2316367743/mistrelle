@@ -3,19 +3,14 @@ import type { ArticleItem } from '@/windows/main/modules/tool/components/article
 import type { ArticleStore } from '@/windows/main/modules/tool/components/article/articleStore'
 import { MessageUtil } from '@/utils/modal'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
-import {
-  HUMANIZE_ENABLED,
-  ZHUQUE_ENABLED,
-  requestHumanizeStream,
-  requestZhuqueDetect
-} from './humanizeApi'
+import { HUMANIZE_ENABLED, requestHumanizeStream } from './humanizeApi'
 import { openHumanizeDepth } from './components/HumanizeDepthDialog'
 
 /** 记住上次选择的深度，下次打开弹窗作为默认（首次为 5） */
 let lastHumanizeDepth = 5
 
 /**
- * 版本条动作编排：去 AI 味（选深度 → 立刻建版本 → 流式写入）与朱雀检测。
+ * 版本条动作编排：去 AI 味（选深度 → 立刻建版本 → 流式写入）。
  */
 export const useArticleAssist = (ctx: {
   store: ComputedRef<ArticleStore>
@@ -30,7 +25,6 @@ export const useArticleAssist = (ctx: {
   removeVersion?: (versionId: string) => void | Promise<void>
 }) => {
   const humanizing = ref(false)
-  const detecting = ref(false)
   /** 正在流式生成的版本 id（驱动 chip 高亮与禁止切换） */
   const streamingVersionId = ref<string | null>(null)
   let abortController: AbortController | null = null
@@ -142,26 +136,8 @@ export const useArticleAssist = (ctx: {
     })
   }
 
-  /** 朱雀检测：结果写入当前激活版本（跟版本走） */
-  const handleDetect = async (): Promise<void> => {
-    const article = ctx.activeArticle.value
-    const versionId = article?.activeVersionId
-    if (!ZHUQUE_ENABLED || !article || !versionId || detecting.value) return
-    detecting.value = true
-    try {
-      const result = await requestZhuqueDetect(ctx.content.value)
-      await ctx.store.value.patchVersion(article.id, versionId, { zhuque: result })
-      MessageUtil.success('检测完成')
-    } catch (e) {
-      MessageUtil.error('AI 检测失败', e)
-    } finally {
-      detecting.value = false
-    }
-  }
-
   return {
     humanizing,
-    detecting,
     streamingVersionId,
     /** 流式改写期间强制预览 */
     editorMode: computed<'edit' | 'preview'>(() =>
@@ -169,7 +145,6 @@ export const useArticleAssist = (ctx: {
     ),
     handleHumanize,
     handleAbortHumanize,
-    handleDetect,
     onSwitchVersion: (versionId: string) => {
       if (humanizing.value || !ctx.switchVersion) return
       void ctx.switchVersion(versionId)

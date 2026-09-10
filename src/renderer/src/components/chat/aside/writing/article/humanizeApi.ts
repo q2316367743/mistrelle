@@ -1,8 +1,7 @@
-import type { ZhuqueDetectResult } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { SseParser } from '@/windows/main/modules/ai/sse'
 
 /**
- * 长文创作侧边栏的外部接口（去 AI 味流式改写 + 朱雀 AIGC 检测预留）。
+ * 长文创作侧边栏的外部接口（去 AI 味流式改写）。
  * 去 AI 味经 main RelayService → mistrelle-server /api/rewrite SSE。
  */
 
@@ -167,12 +166,4 @@ export async function requestHumanizeStream(req: HumanizeStreamRequest): Promise
   } finally {
     removeAbortListener?.()
   }
-}
-
-/** 朱雀检测是否已接入 */
-export const ZHUQUE_ENABLED = false
-
-/** 朱雀 AIGC 检测：输入正文，返回 ai / 疑似 ai / 人工 三个占比（百分比，和为 100） */
-export async function requestZhuqueDetect(_text: string): Promise<ZhuqueDetectResult> {
-  throw new Error('朱雀检测暂未开放，需企业认证接入')
 }

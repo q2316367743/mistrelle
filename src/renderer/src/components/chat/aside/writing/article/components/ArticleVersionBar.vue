@@ -12,9 +12,6 @@
         }"
         @click="onSelect(v.id)"
       >
-        <span v-if="v.zhuque" class="chip-ring" title="已检测">
-          <zhuque-pie :result="v.zhuque" :size="12" :legend="false" :center-label="false" />
-        </span>
         <span class="chip-label">{{ versionLabel(v) }}</span>
         <span class="chip-time">{{ dayjs(v.createdTime).format('MM-DD HH:mm') }}</span>
         <t-popconfirm
@@ -57,50 +54,15 @@
         </span>
       </t-tooltip>
 
-      <!-- AI 检测：结果跟版本走；有结果时按钮亮环，点击弹饼图 -->
-      <t-tooltip v-if="!activeZhuque && !ZHUQUE_ENABLED" content="朱雀检测需企业认证接入，暂未开放">
+      <!-- AI 检测：朱雀仅面向企业接入，直接跳官网在默认浏览器检测 -->
+      <t-tooltip content="在腾讯朱雀 AI 检测官网检测当前文章">
         <span class="action-item">
-          <t-button size="small" variant="outline" disabled>
+          <t-button size="small" variant="outline" :disabled="humanizing" @click="openZhuqueDetect">
             <template #icon><fact-check-icon /></template>
             AI 检测
           </t-button>
         </span>
       </t-tooltip>
-      <t-tooltip v-else-if="!activeZhuque && ZHUQUE_ENABLED" content="检测当前版本的 AI 占比">
-        <span class="action-item">
-          <t-button size="small" variant="outline" :loading="detecting" :disabled="humanizing" @click="emit('detect')">
-            <template #icon><fact-check-icon /></template>
-            AI 检测
-          </t-button>
-        </span>
-      </t-tooltip>
-      <t-popup v-else trigger="click" placement="bottom-right" destroy-on-close>
-        <span class="action-item">
-          <t-button size="small" variant="outline" :loading="detecting" :disabled="humanizing">
-            <template #icon><fact-check-icon /></template>
-            AI 检测
-          </t-button>
-        </span>
-        <template #content>
-          <div class="detect-panel">
-            <zhuque-pie v-if="activeZhuque" :result="activeZhuque" :size="96" />
-            <div class="detect-panel__meta">
-              检测于 {{ activeZhuque ? dayjs(activeZhuque.time).format('YYYY-MM-DD HH:mm') : '-' }}
-            </div>
-            <t-button
-              v-if="ZHUQUE_ENABLED"
-              size="small"
-              variant="outline"
-              block
-              :loading="detecting"
-              :disabled="humanizing"
-              @click="emit('detect')"
-            >
-              重新检测
-            </t-button>
-          </div>
-        </template>
-      </t-popup>
     </div>
   </div>
 </template>
@@ -110,8 +72,11 @@ import { AiEditIcon, CloseIcon, FactCheckIcon, StopCircleIcon } from 'tdesign-ic
 import type { ArticleVersion } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { ARTICLE_VERSION_SOURCE_OPTIONS } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
-import { HUMANIZE_ENABLED, ZHUQUE_ENABLED } from '../humanizeApi'
-import ZhuquePie from './ZhuquePie.vue'
+import { openUrlByBrowser } from '@/utils/native'
+import { HUMANIZE_ENABLED } from '../humanizeApi'
+
+/** 腾讯朱雀 AI 检测官网（仅企业接入，这里引导用户到官网手动检测） */
+const ZHUQUE_DETECT_URL = 'https://matrix.tencent.com/ai-detect/ai_gen_txt'
 
 const props = defineProps<{
   versions: ArticleVersion[]
@@ -120,8 +85,6 @@ const props = defineProps<{
   humanizing?: boolean
   /** 正在流式生成的版本 id */
   streamingVersionId?: string | null
-  /** AI 检测进行中 */
-  detecting?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -129,7 +92,6 @@ const emit = defineEmits<{
   (e: 'remove', versionId: string): void
   (e: 'humanize'): void
   (e: 'abort'): void
-  (e: 'detect'): void
 }>()
 
 const auth = useAuthStore()
@@ -143,10 +105,10 @@ const humanizeTooltip = computed(() => {
   return ''
 })
 
-/** 当前激活版本的检测结果（驱动检测按钮三态：禁用 / 可检测 / 可查看） */
-const activeZhuque = computed(
-  () => props.versions.find((v) => v.id === props.activeVersionId)?.zhuque
-)
+/** 打开朱雀 AI 检测官网，交由默认浏览器检测 */
+const openZhuqueDetect = (): void => {
+  openUrlByBrowser(ZHUQUE_DETECT_URL)
+}
 
 const versionLabel = (v: ArticleVersion): string =>
   v.label ?? ARTICLE_VERSION_SOURCE_OPTIONS.find((o) => o.value === v.source)?.label ?? '版本'
@@ -232,11 +194,6 @@ const onSelect = (versionId: string): void => {
   }
 }
 
-.chip-ring {
-  display: flex;
-  align-items: center;
-}
-
 .chip-label {
   font-size: var(--td-font-size-body-small);
   color: var(--td-text-color-primary);
@@ -269,18 +226,5 @@ const onSelect = (versionId: string): void => {
 
 .action-item {
   display: flex;
-}
-
-.detect-panel {
-  width: 220px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.detect-panel__meta {
-  font-size: var(--td-font-size-body-small);
-  color: var(--td-text-color-placeholder);
 }
 </style>

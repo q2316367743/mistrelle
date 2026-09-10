@@ -30,19 +30,7 @@ export const ARTICLE_VERSION_SOURCE_OPTIONS: Array<CommonSelect<ArticleVersionSo
   { value: 'manual', label: '手动' }
 ]
 
-/** 朱雀 AIGC 检测结果（跟版本走；三占比 0-100，和为 100） */
-export interface ZhuqueDetectResult {
-  /** AI 生成占比 */
-  ai: number
-  /** 疑似 AI 占比 */
-  suspect: number
-  /** 人工创作占比 */
-  human: number
-  /** 检测时间戳 */
-  time: number
-}
-
-/** 文章版本（正文迭代快照；检测结果跟版本走，封面/插图跟文章走） */
+/** 文章版本（正文迭代快照；封面/插图跟文章走） */
 export interface ArticleVersion {
   id: string
   /** 正文文件相对 articles/ 的路径，如 drafts/{articleId}-{vid}.md */
@@ -54,8 +42,6 @@ export interface ArticleVersion {
   createdTime: number
   /** 字数（去空白字符数） */
   words?: number
-  /** 朱雀检测结果 */
-  zhuque?: ZhuqueDetectResult
 }
 
 /** 文章条目（登记在 project.json） */

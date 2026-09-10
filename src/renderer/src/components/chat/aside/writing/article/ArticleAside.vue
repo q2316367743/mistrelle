@@ -34,12 +34,10 @@
               :active-version-id="activeVersionId"
               :humanizing="humanizing"
               :streaming-version-id="streamingVersionId"
-              :detecting="detecting"
               @select="onSwitchVersion"
               @remove="onRemoveVersion"
               @humanize="handleHumanize"
               @abort="handleAbortHumanize"
-              @detect="handleDetect"
             />
             <article-editor
               ref="editorRef"
@@ -86,12 +84,10 @@
             :active-version-id="activeVersionId"
             :humanizing="humanizing"
             :streaming-version-id="streamingVersionId"
-            :detecting="detecting"
             @select="onSwitchVersion"
             @remove="onRemoveVersion"
             @humanize="handleHumanize"
             @abort="handleAbortHumanize"
-            @detect="handleDetect"
           />
           <article-editor
             ref="editorRef"
@@ -173,15 +169,13 @@ const {
   flushSave
 } = useArticleDoc(props)
 
-/** 去 AI 味 / 朱雀检测编排 */
+/** 去 AI 味动作编排 */
 const {
   humanizing,
-  detecting,
   streamingVersionId,
   editorMode,
   handleHumanize,
   handleAbortHumanize,
-  handleDetect,
   onSwitchVersion,
   onRemoveVersion,
   guardAction

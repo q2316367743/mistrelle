@@ -10,14 +10,13 @@ src/components/chat/aside/writing/
 └── article/
     ├── ArticleAside.vue             # 外壳：双布局自适应 + 分段切换 + 面板编排（≤300 行）
     ├── useArticleDoc.ts             # 数据层 composable：store 共享实例、选择/正文读写/版本切换/文件操作
-    ├── useArticleAssist.ts          # 去 AI 味 / 朱雀检测动作编排（产出新版本 / 结果落版本）
+    ├── useArticleAssist.ts          # 去 AI 味动作编排（产出新版本）
     ├── useArticleImageEvents.ts     # 配图 / 风格面板元数据事件写回（cover/images 文章级）
-    ├── humanizeApi.ts               # 去 AI 味流式 + 朱雀检测预留接口（开关常量 + request stub）
+    ├── humanizeApi.ts               # 去 AI 味流式接口（开关常量 + requestHumanizeStream）
     ├── promptInputBridge.ts         # PROMPT_INPUT_KEY：快捷指令 → 聊天输入框注入桥
     └── components/
         ├── ArticleAsideHeader.vue   # header：文章下拉（平台/状态/字数 option）+ 定位/刷新/导出
-        ├── ArticleVersionBar.vue    # 版本条：版本 chips（源/时间/检测环/删除）+ 去 AI 味 + AI 检测
-        ├── ZhuquePie.vue            # 朱雀三色环形饼图（conic-gradient，AI 红/疑似黄/人工绿）
+        ├── ArticleVersionBar.vue    # 版本条：版本 chips（源/时间/删除）+ 去 AI 味 + AI 检测
         ├── ArticleEditor.vue        # tiptap WYSIWYG（编辑/预览），expose insertImage、emit image-added
         ├── ArticleImagePanel.vue    # 配图面板：封面（平台比例预览）+ 插图网格
         ├── ArticleStylePanel.vue    # 风格面板：平台/风格/状态 + 按当前风格重写按钮
@@ -30,7 +29,7 @@ src/components/chat/aside/writing/
 ## 版本模型（一篇文章的多个版本）
 
 - 右侧主维度是**同一篇文章的版本迭代**（原稿 / 去 AI 味 / 重写…），顶部文章下拉仅作跨文章切换入口；数据模型见 02 号文档「版本契约」。
-- **归属分层**：朱雀检测结果（`zhuque`）跟版本走；封面 / 插图（`cover` / `images`）与平台 / 风格 / 状态是文章级，跨版本共享 —— 版本条只在「正文」维度出现，配图 / 风格面板无版本概念。
+- **归属分层**：封面 / 插图（`cover` / `images`）与平台 / 风格 / 状态是文章级，跨版本共享 —— 版本条只在「正文」维度出现，配图 / 风格面板无版本概念。
 - `ArticleItem.file` 恒等于激活版本的 file：AI 工具（`article_read` / `file_write` / `article_stats`）与导出 zip 永远作用于激活版本。
 - 编辑器 `:key = activeId:activeVersionId`：切文章 / 切版本都重挂编辑器（tiptap 内容只在挂载时初始化）。
 
@@ -77,7 +76,7 @@ src/components/chat/aside/writing/
 footer 两个占位按钮已删除，动作收进正文维度顶部的版本条（`ArticleVersionBar.vue`）。
 
 - **去 AI 味**（`HUMANIZE_ENABLED = true`）：需登录；点击后先弹深度选择（1~10，默认 5，记住上次选择）→ 确认后立刻 `createVersion({ source: 'humanize', content: '' })` 并激活 → `requestHumanizeStream`（经 `window.preload.relay.rewriteStream` → 服务端 `/api/rewrite` SSE，携带 `depth`）流式增量写入 `content` → 完成落盘并 `patchVersion` 字数。生成中按钮变为「停止」（`AbortController` → `streamAbort`）；**改写期间页面其它操作全部锁定**（header / 分段 / 版本切换删除 / AI 检测 / 配图与风格面板），仅「停止」可用；编辑器强制 preview；失败且无增量则删空版本回滚原稿，有增量则保留部分成果。
-- **AI 检测 / 朱雀**（`ZHUQUE_ENABLED = false`）：未接入且无结果时按钮禁用 + tooltip；检测结果跟版本走（`patchVersion` 写入激活版本的 `zhuque`）。版本已有结果时按钮常亮 + 版本 chip 带迷你圆环，点击弹 `t-popup` 展示 `ZhuquePie` 饼图（conic-gradient 三色：AI=`--td-error-color` 红、疑似=`--td-warning-color` 黄、人工=`--td-success-color` 绿，环心显 AI 占比 + 右侧图例）与检测时间、重新检测入口。
+- **AI 检测 / 朱雀**：腾讯朱雀 AIGC 检测仅面向**企业认证接入**，本项目不集成检测接口；点击「AI 检测」经 `openUrlByBrowser`（`window.preload.inject.shell.openExternal`）在系统默认浏览器打开朱雀官网 `https://matrix.tencent.com/ai-detect/ai_gen_txt`，由用户在官网手动检测。按钮仅在去 AI 味改写期间禁用（`humanizing`）。
 
 ## 编辑器（tiptap）
 
@@ -86,7 +85,3 @@ footer 两个占位按钮已删除，动作收进正文维度顶部的版本条�
 - 斜杠命令：`ArticleSlash.ts` 基于 `@tiptap/suggestion`，弹层复用 `@/utils/suggestionRenderer`。
 - 预览模式：`editor.setEditable(false)`；排版样式在 `ArticleEditor.vue` 全局 style（`.article-editor__pm`），颜色一律 tdesign CSS Token。
 - markdown 往返限制：脚注、数学公式、HTML 注释等高级语法可能丢失，正文用标准 markdown。
-
-## 待接入（预留）
-
-- 朱雀 AI 检测：实现 `requestZhuqueDetect(text)` 返回三占比并置 `ZHUQUE_ENABLED = true`；注意「重新检测 / 开始检测」按钮的禁用态也由该开关驱动。
