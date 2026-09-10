@@ -67,6 +67,18 @@ declare type AuthActionResult = { ok: true } | { ok: false; msg: string }
  */
 declare type AuthSignResult = { ok: true } | { ok: false; msg: string; needEmailVerify?: boolean }
 
+/** 会员档位可售规格（绑定的 16688 商品，一个档位可绑多个月数） */
+declare interface AuthTierOffer {
+  /** 开通时长（月），如 1 月卡 / 12 年卡 */
+  months: number
+  /** 平台商品编号 */
+  goodsNo: string
+  /** 平台售价快照（分）；null 表示未同步，展示用档位 price */
+  priceFen: number | null
+  /** 商品购买页地址（系统浏览器打开） */
+  purchaseUrl: string
+}
+
 /** 公开档位信息（无需登录；账户卡片未登录态展示额度） */
 declare interface AuthTierInfo {
   code: string
@@ -84,6 +96,18 @@ declare interface AuthTierInfo {
   extendedDesignStyles: boolean
   /** 自定义卡片风格（默认仅自带） */
   extendedCardStyles: boolean
+  /** 可售规格（付费档已上架时非空；免费档恒空。旧服务端可能无此字段） */
+  offers?: AuthTierOffer[]
+}
+
+/** 积分包可售规格（绑定的 16688 商品） */
+declare interface AuthPackOffer {
+  /** 平台商品编号 */
+  goodsNo: string
+  /** 平台售价快照（分）；null 表示未同步，展示用 SKU price */
+  priceFen: number | null
+  /** 商品购买页地址（系统浏览器打开） */
+  purchaseUrl: string
 }
 
 declare interface AuthPackInfo {
@@ -92,6 +116,8 @@ declare interface AuthPackInfo {
   points: number
   price: number
   sort: number
+  /** 可售规格（已上架时非空。旧服务端可能无此字段） */
+  offers?: AuthPackOffer[]
 }
 
 declare interface AuthPackCatalog {

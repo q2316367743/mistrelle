@@ -28,7 +28,7 @@
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [01-server-auth.md](./auth/01-server-auth.md)                 | 服务端账号接入（better-auth）：主进程 AuthService 单例共享状态 + 状态广播、API Key + 会话双存凭证（safeStorage 落盘）、Bearer 规避 CSRF、`/api/auth/*` 与 `/api/user/*` 契约、公开档位/增量包 SKU、登录弹窗与用户菜单接入；账户页布局见 setting/06 |
-| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播；会员只决定每日赠送，增量包兑永久积分可重复买）、档位页收敛入口选 SKU 结算（无支付，永久有效）、AuthStore.features 门控（UI 可见锁定 + AI 面过滤 + 渲染不拦，内置风格免费 / 自定义不可用于新会话 / 内置「设计风格创建助手」隐藏） |
+| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播；会员只决定每日赠送，增量包兑永久积分可重复买）、**「会员与积分」弹窗（档位/积分包 Tab 同级）行内规格按钮跳转 16688 商品页购买**（purchaseUrl 由服务端 offers 下发，客户端零硬编码域名）、AuthStore.features 门控（UI 可见锁定 + AI 面过滤 + 渲染不拦，内置风格免费 / 自定义不可用于新会话 / 内置「设计风格创建助手」隐藏） |
 
 ### ai/ —— AI 请求
 

@@ -22,13 +22,22 @@
 | main 服务 | `src/main/src/modules/auth/AuthService.ts` | `verifyActivationCode` / `redeemActivationCode`（经 `apiPost` 业务包装；无凭证返回 `{ok:false,msg:'未登录'}`） |
 | main IPC | `src/main/src/modules/auth/authIpc.ts` | 两通道纯透传 |
 | preload 桥 | `src/preload/src/modules/auth/auth.ts` | `verifyCode` / `redeemCode` |
-| 渲染 store + UI | `AuthStore.ts` `verifyCode/redeemCode`；`RedeemCodeDialog` + `MemberTierDialog`（底部「积分增量包」入口，不铺 SKU）+ `PackLotsDialog` / `PackSelectDialog` / `PackCheckoutDialog`（选 SKU → 结算确认永久有效，无支付） |
+| 渲染 store + UI | `AuthStore.ts` `verifyCode/redeemCode`；`RedeemCodeDialog`（激活码验证/兑换）+ `MemberTierDialog`（「会员与积分」弹窗：`t-tabs` 平级切换 `MembershipTierTab` 档位 / `MembershipPackTab` 积分包，行内规格按钮 → 系统浏览器打开 16688 商品页） |
 
 要点：
 
 - **redeem 成功后主进程自动 `refresh()`**：tier / features / 余额经 `auth:changed` 广播，全部 UI（账户卡片、门控开关）自动同步，渲染层无需手动刷新。
 - 激活码错误（不存在/已被使用等）由服务端 `msg` 返回中文原因，弹窗内联展示，不走 MessageUtil。
 - 入口：账户页服务端账号卡片已登录态按钮组「激活码」；未登录态不显示（兑换必须 Bearer 登录）。
+
+## 购买跳转（2026-09-10）
+
+- **档位与积分包同级**：`MemberTierDialog`（header「会员与积分」，640px）内 `t-tabs` 两个 panel — 「会员档位」`MembershipTierTab`（名称/每日赠送/权限勾选/当前标记 + 行内规格按钮）、「积分增量包」`MembershipPackTab`（永久积分余额 + SKU 行 + 购买按钮）；底部「已有激活码？去兑换」→ `RedeemCodeDialog`。
+- **跳转外部平台**：点规格按钮 → `openPurchase(purchaseUrl)`（`modals/offer.ts` → `openUrlByBrowser` → `shell.openExternal`）用系统浏览器打开 16688 商品页。客户端**零硬编码平台域名**——`purchaseUrl` 由服务端 `/api/tiers`、`/api/points-packs` 的 `offers[]` 下发（服务端 `src/lib/market-url.ts` 用 `config.yaml` 的 `market16688.baseUrl` 拼 `{base}/goods/{goods_no}`），换平台/换域名只改服务端配置、无需发客户端版本。
+- **offers 契约**（`AuthTierOffer { months, goodsNo, priceFen, purchaseUrl }` / `AuthPackOffer { goodsNo, priceFen, purchaseUrl }`）：付费档仅在服务端已绑定 16688 商品时下发，免费档恒空；**旧服务端可能无 `offers` 字段**，所有消费点 `?? []` 兜底（显式标 `offers?: AuthTierOffer[]`）。
+- **价格展示**：`priceFen`（平台售价快照，分）有值时按钮显示 `月卡 ¥15.00`；为 null 时不显示价格——档位各规格总价不同（月卡 ≠ 年卡），回落档位月价会误导；积分包单规格可回落 SKU `price`。
+- 规格标签：`1 → 月卡`、`12 → 年卡`、其他 `N 个月`。
+- **已删除**（旧的弹窗叠弹窗链，六级）：`PackLotsDialog/Content`、`PackSelectDialog/Content`、`PackCheckoutDialog/Content`。`RedeemCodeDialog`、`PointsLedgerDrawer` 保留。
 
 ## 功能门控
 
