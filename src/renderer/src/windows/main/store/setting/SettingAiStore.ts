@@ -10,7 +10,7 @@ import { useAuthStore } from '@/windows/main/store/AuthStore'
 export const BUILTIN_PROVIDER_ID = 'builtin'
 
 /** 内置供应商显示名 */
-export const BUILTIN_PROVIDER_NAME = 'Mistrelle 中转'
+export const BUILTIN_PROVIDER_NAME = 'Mistrelle 内置'
 
 export interface AiProvideOption extends AiModel {
   provideId: string
