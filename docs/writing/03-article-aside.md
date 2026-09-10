@@ -22,6 +22,7 @@ src/components/chat/aside/writing/
         ├── ArticleImagePanel.vue    # 配图面板：封面（平台比例预览）+ 插图网格
         ├── ArticleStylePanel.vue    # 风格面板：平台/风格/状态 + 按当前风格重写按钮
         ├── ArticleImageGenDialog.tsx + ArticleImageGenContent.vue  # AI 生图命令式弹窗
+        ├── HumanizeDepthDialog.tsx + HumanizeDepthContent.vue      # 去 AI 味深度选择（1~10，默认 5）
         ├── ArticleImage.ts          # 图片节点：相对路径存 src，渲染时解析 file:// 显示
         └── ArticleSlash.ts          # 斜杠命令
 ```
@@ -75,7 +76,7 @@ src/components/chat/aside/writing/
 
 footer 两个占位按钮已删除，动作收进正文维度顶部的版本条（`ArticleVersionBar.vue`）。
 
-- **去 AI 味**（`HUMANIZE_ENABLED = true`）：需登录；点击后立刻 `createVersion({ source: 'humanize', content: '' })` 并激活 → `requestHumanizeStream`（经 `window.preload.relay.rewriteStream` → 服务端 `/api/rewrite` SSE）流式增量写入 `content` → 完成落盘并 `patchVersion` 字数。生成中按钮变为「停止」（`AbortController` → `streamAbort`）；**改写期间页面其它操作全部锁定**（header / 分段 / 版本切换删除 / AI 检测 / 配图与风格面板），仅「停止」可用；编辑器强制 preview；失败且无增量则删空版本回滚原稿，有增量则保留部分成果。
+- **去 AI 味**（`HUMANIZE_ENABLED = true`）：需登录；点击后先弹深度选择（1~10，默认 5，记住上次选择）→ 确认后立刻 `createVersion({ source: 'humanize', content: '' })` 并激活 → `requestHumanizeStream`（经 `window.preload.relay.rewriteStream` → 服务端 `/api/rewrite` SSE，携带 `depth`）流式增量写入 `content` → 完成落盘并 `patchVersion` 字数。生成中按钮变为「停止」（`AbortController` → `streamAbort`）；**改写期间页面其它操作全部锁定**（header / 分段 / 版本切换删除 / AI 检测 / 配图与风格面板），仅「停止」可用；编辑器强制 preview；失败且无增量则删空版本回滚原稿，有增量则保留部分成果。
 - **AI 检测 / 朱雀**（`ZHUQUE_ENABLED = false`）：未接入且无结果时按钮禁用 + tooltip；检测结果跟版本走（`patchVersion` 写入激活版本的 `zhuque`）。版本已有结果时按钮常亮 + 版本 chip 带迷你圆环，点击弹 `t-popup` 展示 `ZhuquePie` 饼图（conic-gradient 三色：AI=`--td-error-color` 红、疑似=`--td-warning-color` 黄、人工=`--td-success-color` 绿，环心显 AI 占比 + 右侧图例）与检测时间、重新检测入口。
 
 ## 编辑器（tiptap）

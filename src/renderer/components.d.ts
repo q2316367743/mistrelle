@@ -35,6 +35,7 @@ declare module 'vue' {
     HtmlDesignAside: typeof import('./src/components/chat/aside/design/HtmlDesignAside.vue')['default']
     HtmlDesignPreview: typeof import('./src/components/chat/aside/design/HtmlDesignPreview.vue')['default']
     HtmlElementTree: typeof import('./src/components/chat/aside/design/HtmlElementTree.vue')['default']
+    HumanizeDepthContent: typeof import('./src/components/chat/aside/writing/article/components/HumanizeDepthContent.vue')['default']
     InfoResult: typeof import('./src/components/Result/InfoResult.vue')['default']
     LChatAside: typeof import('./src/components/chat/aside/LChatAside.vue')['default']
     LChatAttachment: typeof import('./src/components/chat/sender/LChatAttachment.vue')['default']

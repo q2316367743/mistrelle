@@ -9,9 +9,13 @@ import {
   requestHumanizeStream,
   requestZhuqueDetect
 } from './humanizeApi'
+import { openHumanizeDepth } from './components/HumanizeDepthDialog'
+
+/** 记住上次选择的深度，下次打开弹窗作为默认（首次为 5） */
+let lastHumanizeDepth = 5
 
 /**
- * 版本条动作编排：去 AI 味（立刻建版本 → 流式写入）与朱雀检测（结果落当前激活版本）。
+ * 版本条动作编排：去 AI 味（选深度 → 立刻建版本 → 流式写入）与朱雀检测。
  */
 export const useArticleAssist = (ctx: {
   store: ComputedRef<ArticleStore>
@@ -35,21 +39,12 @@ export const useArticleAssist = (ctx: {
     abortController?.abort()
   }
 
-  /** 去 AI 味：立刻建空版本并激活，流式写入；失败无增量则删版本回滚 */
-  const handleHumanize = async (): Promise<void> => {
+  /** 实际执行流式改写（弹窗确认深度后调用） */
+  const runHumanize = async (depth: number): Promise<void> => {
     const article = ctx.activeArticle.value
-    const auth = useAuthStore()
-    if (!HUMANIZE_ENABLED || !article || humanizing.value) return
-    if (auth.status !== 'signed-in') {
-      MessageUtil.warning('请先登录后再使用去 AI 味')
-      return
-    }
+    if (!article || humanizing.value) return
     const original = ctx.content.value
-    if (!original.trim()) {
-      MessageUtil.warning('正文为空，无法去 AI 味')
-      return
-    }
-
+    lastHumanizeDepth = depth
     ctx.flushSave?.()
     humanizing.value = true
     abortController = new AbortController()
@@ -67,6 +62,7 @@ export const useArticleAssist = (ctx: {
 
       const full = await requestHumanizeStream({
         text: original,
+        depth,
         signal: abortController.signal,
         onDelta: (delta) => {
           streamed += delta
@@ -125,6 +121,25 @@ export const useArticleAssist = (ctx: {
       streamingVersionId.value = null
       abortController = null
     }
+  }
+
+  /** 去 AI 味：先选深度（默认 5），确认后再建版本并流式写入 */
+  const handleHumanize = (): void => {
+    const article = ctx.activeArticle.value
+    const auth = useAuthStore()
+    if (!HUMANIZE_ENABLED || !article || humanizing.value) return
+    if (auth.status !== 'signed-in') {
+      MessageUtil.warning('请先登录后再使用去 AI 味')
+      return
+    }
+    if (!ctx.content.value.trim()) {
+      MessageUtil.warning('正文为空，无法去 AI 味')
+      return
+    }
+    openHumanizeDepth({
+      defaultDepth: lastHumanizeDepth,
+      onConfirm: (depth) => void runHumanize(depth)
+    })
   }
 
   /** 朱雀检测：结果写入当前激活版本（跟版本走） */
