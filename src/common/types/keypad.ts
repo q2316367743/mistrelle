@@ -32,8 +32,9 @@ export function isKeypadModifier(value: string): value is KeypadModifier {
 }
 
 /**
- * 模拟按键主键全集（白名单元组：F1–F19 + 字母 + 数字，跨平台都有虚拟键码对应；
+ * 模拟按键主键白名单（普通键元组：F1–F19 + 字母 + 数字 + Enter，跨平台都有虚拟键码对应；
  * 后续拓展键位直接往元组追加，类型/选项/校验自动同步）。
+ * 媒体/系统功能键见下方 KEYPAD_MEDIA_KEY_CODES（另一条投递路径，不能混入本表）。
  */
 const KEYPAD_KEY_CODES = [
   'enter',
@@ -94,17 +95,71 @@ const KEYPAD_KEY_CODES = [
   '9'
 ] as const
 
-/** 模拟按键主键名（小写；展示层转大写） */
-export type KeypadKeyName = (typeof KEYPAD_KEY_CODES)[number]
+/** 普通模拟按键主键名（小写；展示层转大写） */
+export type KeypadRegularKeyName = (typeof KEYPAD_KEY_CODES)[number]
 
-/** 主键名称映射（绑定编辑下拉选项源，filterable 使用） */
-export const KeypadKeyOptions: Array<CommonSelect<KeypadKeyName>> = KEYPAD_KEY_CODES.map(
-  (code) => ({ value: code, label: code.toUpperCase() })
-)
+/**
+ * 媒体 / 系统功能键（白名单元组）：无修饰键语义。
+ * macOS 走 NX_SYSDEFINED 系统定义事件、Windows 走 VK_* 虚拟键（亮度 Windows 无标准虚拟键，
+ * 见 keySimulator 跳过）；这类键无法用键盘录制捕获（录制只认 event.code），只能在编辑器下拉里选。
+ */
+const KEYPAD_MEDIA_KEY_CODES = [
+  'volume-up',
+  'volume-down',
+  'mute',
+  'brightness-up',
+  'brightness-down',
+  'play-pause',
+  'track-next',
+  'track-prev'
+] as const
 
-/** 主键白名单校验（配置归一化与各端共用） */
-export function isKeypadKeyName(value: string): value is KeypadKeyName {
+/** 媒体 / 系统功能键名 */
+export type KeypadMediaKeyName = (typeof KEYPAD_MEDIA_KEY_CODES)[number]
+
+/** 模拟按键主键名（普通键 + 媒体键） */
+export type KeypadKeyName = KeypadRegularKeyName | KeypadMediaKeyName
+
+/** 媒体键中文名（下拉与摘要展示；普通键仍展示全大写名） */
+const KEYPAD_MEDIA_KEY_LABELS: Record<KeypadMediaKeyName, string> = {
+  'volume-up': '音量 +',
+  'volume-down': '音量 -',
+  mute: '静音',
+  'brightness-up': '亮度 +',
+  'brightness-down': '亮度 -',
+  'play-pause': '播放/暂停',
+  'track-next': '下一曲',
+  'track-prev': '上一曲'
+}
+
+/** 主键名称映射（绑定编辑下拉选项源，filterable 使用；普通键全大写 + 媒体键中文名） */
+export const KeypadKeyOptions: Array<CommonSelect<KeypadKeyName>> = [
+  ...KEYPAD_KEY_CODES.map((code) => ({ value: code, label: code.toUpperCase() })),
+  ...KEYPAD_MEDIA_KEY_CODES.map((code) => ({ value: code, label: KEYPAD_MEDIA_KEY_LABELS[code] }))
+]
+
+/** 媒体键选项（编辑器「功能键」下拉专用；从同一元组派生防失同步） */
+export const KeypadMediaKeyOptions: Array<CommonSelect<KeypadMediaKeyName>> =
+  KEYPAD_MEDIA_KEY_CODES.map((code) => ({ value: code, label: KEYPAD_MEDIA_KEY_LABELS[code] }))
+
+/** 主键展示名（普通键全大写、媒体键中文名；摘要与键帽共用） */
+export function keypadKeyLabel(name: KeypadKeyName): string {
+  return KeypadKeyOptions.find((opt) => opt.value === name)?.label ?? name
+}
+
+/** 普通主键白名单校验（录制映射用） */
+export function isKeypadRegularKeyName(value: string): value is KeypadRegularKeyName {
   return (KEYPAD_KEY_CODES as readonly string[]).includes(value)
+}
+
+/** 媒体键白名单校验（执行侧分发与编辑器收窄用） */
+export function isKeypadMediaKeyName(value: string): value is KeypadMediaKeyName {
+  return (KEYPAD_MEDIA_KEY_CODES as readonly string[]).includes(value)
+}
+
+/** 主键白名单校验（普通键 + 媒体键；配置归一化与各端共用） */
+export function isKeypadKeyName(value: string): value is KeypadKeyName {
+  return isKeypadRegularKeyName(value) || isKeypadMediaKeyName(value)
 }
 
 /** 按键动作（设备行协议 `<键位>,<动作>`：on=按下、off=释放） */
@@ -118,7 +173,11 @@ export function isKeypadKeyAction(value: string): value is KeypadKeyAction {
 /** 键位动作类型（新增动作 = 加联合成员 + 在 @common/keypad/actions 注册定义 + main 执行器 + 渲染层编辑器） */
 export type KeypadActionType = 'combo' | 'app' | 'script' | 'permission' | 'delay' | 'url'
 
-/** 模拟按键/组合快捷键：修饰键组合 + 主键（可为空组合=只按主键）；序列执行到该动作时模拟一次完整击键（按下→短暂按住→自动抬起） */
+/**
+ * 模拟按键/组合快捷键：修饰键组合 + 主键（可为空组合=只按主键）；
+ * 序列执行到该动作时模拟一次完整击键（按下→短暂按住→自动抬起）。
+ * 主键为媒体键（音量/亮度/播放）时修饰键无意义，归一化会强制清空。
+ */
 export interface KeypadComboAction {
   type: 'combo'
   modifiers: KeypadModifier[]
@@ -167,6 +226,46 @@ export type KeypadAction =
 /** 长按判定阈值（全局）：按住达到该时长触发 holdActions；阈值内松手触发短按 actions */
 export const KEYPAD_HOLD_MS = 600
 
+/**
+ * 长按行为（达到 KEYPAD_HOLD_MS 阈值后如何执行 holdActions）——**由队列形状自动推导**，不做配置：
+ * - keep：单条普通「模拟按键」→ 按下保持、松手才抬起（真正的长按该键）
+ * - repeat：多条 → 循环执行整个队列直到松手；单条媒体键 → 循环（媒体键无保持语义，见下）
+ * - once：单条非「模拟按键」（如单条打开应用）→ 只执行一次，避免反复开窗口
+ */
+export type KeypadHoldBehavior = 'once' | 'keep' | 'repeat'
+
+/** 长按行为名称映射（界面展示用） */
+export const KeypadHoldBehaviorOptions: Array<CommonSelect<KeypadHoldBehavior>> = [
+  { value: 'once', label: '执行一次' },
+  { value: 'keep', label: '保持按住' },
+  { value: 'repeat', label: '持续循环' }
+]
+
+/**
+ * 由长按队列形状推导行为：
+ * - 多条 → repeat（循环整个队列直到松手）
+ * - 单条「模拟按键」→ keep（保持按住直到松手）
+ * - 单条媒体键例外走 repeat：音量/亮度这类键由系统直接消费，按下一次只算一步，
+ *   保持按住不会持续生效，只有反复触发才等价于「长按音量键」
+ * - 单条其他类型 → once（单条打开应用只开一次）
+ * 判定收口在此，main 执行与渲染层展示共用，避免两端规则漂移。
+ */
+export function resolveKeypadHoldBehavior(holdActions: KeypadAction[]): KeypadHoldBehavior {
+  if (holdActions.length > 1) return 'repeat'
+  const only = holdActions[0]
+  if (!only || only.type !== 'combo') return 'once'
+  return isKeypadMediaKeyName(only.key) ? 'repeat' : 'keep'
+}
+
+/** 长按循环每轮之间的间隔下限（ms） */
+export const KEYPAD_REPEAT_MS_MIN = 20
+/** 长按循环每轮之间的间隔上限（ms） */
+export const KEYPAD_REPEAT_MS_MAX = 5000
+/** 长按循环每轮之间的间隔缺省值（ms） */
+export const KEYPAD_REPEAT_MS_DEFAULT = 100
+/** 单次按住的循环总时长上限（ms）：防 off 丢失导致无限连发 */
+export const KEYPAD_REPEAT_MAX_MS = 60000
+
 /** 键位绑定：动作序列 + 可选显示名称（键帽优先显示名称，未命名回退首条动作摘要） */
 export interface KeypadBinding {
   /** 显示名称（可选；trim 非空才落盘） */
@@ -176,9 +275,12 @@ export interface KeypadBinding {
   /**
    * 长按动作序列（可选；配置后该键启用短按/长按互斥判定：
    * 按下启动 KEYPAD_HOLD_MS 计时，到时仍按住执行本序列，阈值内松手执行 actions）。
+   * 长按期间做什么由队列形状推导，见 resolveKeypadHoldBehavior。
    * 空/全非法不落盘（归一化清洗），无此字段 = 键位保持按下立即执行，存量行为不变。
    */
   holdActions?: KeypadAction[]
+  /** 长按循环每轮之间的间隔 ms（20–5000；缺省 KEYPAD_REPEAT_MS_DEFAULT；仅推导为 repeat 时生效） */
+  holdRepeatMs?: number
 }
 
 /**

@@ -42,6 +42,12 @@
         empty-text="未配置长按 · 键位按下立即执行短按序列"
         @change="draft.holdActions = $event"
       />
+      <hold-behavior-editor
+        v-if="draft.holdActions.length"
+        :hold-actions="draft.holdActions"
+        :repeat-ms="draft.holdRepeatMs"
+        @change="draft.holdRepeatMs = $event"
+      />
     </div>
 
     <div class="binding-panel__actions">
@@ -57,9 +63,14 @@
 
 <script lang="ts" setup>
 import type { KeypadAction, KeypadBinding } from '@common/types/keypad'
-import { KEYPAD_HOLD_MS } from '@common/types/keypad'
+import {
+  KEYPAD_HOLD_MS,
+  KEYPAD_REPEAT_MS_DEFAULT,
+  resolveKeypadHoldBehavior
+} from '@common/types/keypad'
 import { keypadActionDefinition } from '@common/keypad/actions'
 import { CloseIcon } from 'tdesign-icons-vue-next'
+import HoldBehaviorEditor from './HoldBehaviorEditor.vue'
 import KeypadSequenceEditor from './KeypadSequenceEditor.vue'
 import { keypadActionSummary } from './actionText'
 import { useKeypad } from '../useKeypad'
@@ -73,10 +84,16 @@ const emit = defineEmits<{ close: [] }>()
 const { config, bindKey } = useKeypad()
 
 /** 绑定草稿（本地编辑态；main 配置回读后同步），name 空串 = 未命名、actions 空 = 未绑定仅状态点亮、holdActions 空 = 未配置长按 */
-const draft = ref<{ name: string; actions: KeypadAction[]; holdActions: KeypadAction[] }>({
+const draft = ref<{
+  name: string
+  actions: KeypadAction[]
+  holdActions: KeypadAction[]
+  holdRepeatMs: number
+}>({
   name: '',
   actions: [],
-  holdActions: []
+  holdActions: [],
+  holdRepeatMs: KEYPAD_REPEAT_MS_DEFAULT
 })
 const saving = ref(false)
 
@@ -87,7 +104,8 @@ watch(
     draft.value = {
       name: next?.name ?? '',
       actions: cloneActions(next?.actions ?? []),
-      holdActions: cloneActions(next?.holdActions ?? [])
+      holdActions: cloneActions(next?.holdActions ?? []),
+      holdRepeatMs: next?.holdRepeatMs ?? KEYPAD_REPEAT_MS_DEFAULT
     }
   },
   { immediate: true }
@@ -98,13 +116,20 @@ function cloneActions(actions: KeypadAction[]): KeypadAction[] {
   return cloned
 }
 
-/** 副标题摘要：短按序列一览 + 长按序列（配置时追加，草稿编辑中实时跟随） */
+/** 长按行为（由队列形状推导，与 main 执行侧共用同一函数，界面只做展示） */
+const holdBehaviorLabel = computed(() => {
+  const behavior = resolveKeypadHoldBehavior(draft.value.holdActions)
+  if (behavior === 'once') return '长按'
+  return `长按（${behavior === 'keep' ? '按住' : '循环'}）`
+})
+
+/** 副标题摘要：短按序列一览 + 长按序列（配置时追加并标注推导出的行为，草稿编辑中实时跟随） */
 const summaryText = computed(() => {
   if (!draft.value.actions.length) return '未绑定 · 按键仅点亮状态'
   const short = draft.value.actions.map(keypadActionSummary).join(' → ')
   if (!draft.value.holdActions.length) return short
   const hold = draft.value.holdActions.map(keypadActionSummary).join(' → ')
-  return `${short}｜长按：${hold}`
+  return `${short}｜${holdBehaviorLabel.value}：${hold}`
 })
 
 /** 保存预校验：短按与长按逐条查动作注册表 normalize 清洗，任一不合法（如未选应用/空命令）禁用保存 */
@@ -126,7 +151,13 @@ async function save(): Promise<void> {
     const binding: KeypadBinding = name
       ? { name, actions: draft.value.actions }
       : { actions: draft.value.actions }
-    if (draft.value.holdActions.length) binding.holdActions = draft.value.holdActions
+    if (draft.value.holdActions.length) {
+      binding.holdActions = draft.value.holdActions
+      // holdRepeatMs 仅「持续循环」时有意义
+      if (resolveKeypadHoldBehavior(draft.value.holdActions) === 'repeat') {
+        binding.holdRepeatMs = draft.value.holdRepeatMs
+      }
+    }
     await bindKey(props.keyId, binding)
     emit('close')
   } finally {

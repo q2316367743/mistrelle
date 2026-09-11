@@ -90,7 +90,6 @@ declare module 'vue' {
     TColorPicker: typeof import('tdesign-vue-next')['ColorPicker']
     TColorPickerPanel: typeof import('tdesign-vue-next')['ColorPickerPanel']
     TContent: typeof import('tdesign-vue-next')['Content']
-    TDescriptions: typeof import('tdesign-vue-next')['Descriptions']
     TDivider: typeof import('tdesign-vue-next')['Divider']
     TDropdown: typeof import('tdesign-vue-next')['Dropdown']
     TDropdownItem: typeof import('tdesign-vue-next')['DropdownItem']

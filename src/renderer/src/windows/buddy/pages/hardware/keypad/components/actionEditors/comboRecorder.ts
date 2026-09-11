@@ -4,14 +4,18 @@
  * 纯修饰键继续等待；event.code 映射白名单主键后回调（一次按键即结束录制）。
  * 系统/菜单保留组合（如 macOS Cmd+Q）被先行消费录不到，属预期。
  */
-import { isKeypadKeyName, type KeypadKeyName, type KeypadModifier } from '@common/types/keypad'
+import {
+  isKeypadRegularKeyName,
+  type KeypadRegularKeyName,
+  type KeypadModifier
+} from '@common/types/keypad'
 
 const MODIFIER_ONLY_KEYS = ['Control', 'Shift', 'Alt', 'Meta']
 
-/** 录到的组合键（修饰键 flags + 白名单主键） */
+/** 录到的组合键（修饰键 flags + 白名单普通主键；媒体键无法录制，只能从下拉选择） */
 export interface ComboRecord {
   modifiers: KeypadModifier[]
-  key: KeypadKeyName
+  key: KeypadRegularKeyName
 }
 
 export interface ComboRecorderHandlers {
@@ -61,13 +65,13 @@ export function stopComboRecording(): void {
   active?.()
 }
 
-/** event.code → 白名单主键名（Enter/字母/数字/F 键；其余键不支持，忽略继续等待） */
-function codeToKeyName(code: string): KeypadKeyName | null {
+/** event.code → 白名单普通主键名（Enter/字母/数字/F 键；媒体键与其他键不支持，忽略继续等待） */
+function codeToKeyName(code: string): KeypadRegularKeyName | null {
   let name = ''
   if (code === 'Enter') name = 'enter'
   else if (/^Key[A-Z]$/.test(code)) name = code.slice(3).toLowerCase()
   else if (/^Digit[0-9]$/.test(code)) name = code.slice(5)
   else if (/^F([1-9]|1[0-9])$/.test(code)) name = code.toLowerCase()
   else return null
-  return isKeypadKeyName(name) ? name : null
+  return isKeypadRegularKeyName(name) ? name : null
 }

@@ -2,15 +2,24 @@
  * 动作摘要文本（渲染层共享）：序列编辑器行 / 键帽行 / 配置面板副标题等纯文本场景使用；
  * 键帽的富渲染（app 图标等）在 KeypadKeyCap 自行叠加。
  */
-import type { KeypadAction } from '@common/types/keypad'
-import { KeypadModifierOptions, type KeypadKeyName, type KeypadModifier } from '@common/types/keypad'
+import type { KeypadAction, KeypadKeyName, KeypadModifier } from '@common/types/keypad'
+import { isKeypadMediaKeyName, KeypadModifierOptions, keypadKeyLabel } from '@common/types/keypad'
 import { appDisplayName } from './iconHref'
 
-/** 组合键展示文本：修饰键名称 + 大写主键，如 Ctrl + Shift + F13 */
-export function comboSummaryText(modifiers: KeypadModifier[], key: KeypadKeyName): string {
+/**
+ * 组合键的键帽 token 列表：媒体键是单个 token（中文名本身含空格与加号，不能再按 + 拆）、
+ * 普通组合 = 各修饰键名 + 主键名。摘要文本与键帽展示共用，避免两处规则漂移。
+ */
+export function comboKeyTokens(modifiers: KeypadModifier[], key: KeypadKeyName): string[] {
+  if (isKeypadMediaKeyName(key)) return [keypadKeyLabel(key)]
   const labelOf = (mod: KeypadModifier): string =>
     KeypadModifierOptions.find((opt) => opt.value === mod)?.label ?? mod
-  return [...modifiers.map(labelOf), key.toUpperCase()].join(' + ')
+  return [...modifiers.map(labelOf), keypadKeyLabel(key)]
+}
+
+/** 组合键展示文本：修饰键名称 + 主键，如 Ctrl + Shift + F13 */
+export function comboSummaryText(modifiers: KeypadModifier[], key: KeypadKeyName): string {
+  return comboKeyTokens(modifiers, key).join(' + ')
 }
 
 /** 单条动作摘要文本（按 type 分支；延时带前缀防裸数字歧义） */

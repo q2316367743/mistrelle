@@ -3,25 +3,114 @@
  * - macOS：CoreGraphics CGEventCreateKeyboardEvent + CGEventPost（修饰键发独立按下/抬起事件，
  *   主键事件额外携带修饰 flag 掩码）；模拟按键需系统「辅助功能」授权，经 AXIsProcessTrusted 检测。
  * - Windows：user32 keybd_event 逐键 down/up（KEYEVENTF_KEYUP=2），无需授权。
+ * - 媒体/系统功能键（音量/亮度/播放/切曲）走另一条投递路径：macOS 造 NX_SYSDEFINED 系统定义事件、
+ *   Windows 用 VK_* 虚拟键（见 pressMediaKey 注释）。
  * 组合按下/释放带引用计数：同一组合被多个键位绑定时全部释放才真正抬起；
  * 断开/拔线/退出经 releaseAll 兜底，防修饰键卡死。
  */
 import koffi from 'koffi'
-import type { KeypadComboAction, KeypadKeyName, KeypadModifier } from '@common/types/keypad'
+import {
+  isKeypadMediaKeyName,
+  type KeypadComboAction,
+  type KeypadMediaKeyName,
+  type KeypadModifier,
+  type KeypadRegularKeyName
+} from '@common/types/keypad'
 
 /** macOS 虚拟键码（kVK_ANSI_* / kVK_F*，Apple Events.h） */
-const MAC_KEY_CODES: Record<KeypadKeyName, number> = {
+const MAC_KEY_CODES: Record<KeypadRegularKeyName, number> = {
   enter: 0x4c,
-  f1: 0x7a, f2: 0x78, f3: 0x63, f4: 0x76, f5: 0x60, f6: 0x61, f7: 0x62,
-  f8: 0x64, f9: 0x65, f10: 0x6d, f11: 0x67, f12: 0x6f, f13: 0x69, f14: 0x6b,
-  f15: 0x71, f16: 0x6a, f17: 0x40, f18: 0x4f, f19: 0x50,
-  a: 0x00, b: 0x0b, c: 0x08, d: 0x02, e: 0x0e, f: 0x03, g: 0x05, h: 0x04,
-  i: 0x22, j: 0x26, k: 0x28, l: 0x25, m: 0x2e, n: 0x2d, o: 0x1f, p: 0x23,
-  q: 0x0c, r: 0x0f, s: 0x01, t: 0x11, u: 0x20, v: 0x09, w: 0x0d, x: 0x07,
-  y: 0x10, z: 0x06,
-  '0': 0x1d, '1': 0x12, '2': 0x13, '3': 0x14, '4': 0x15, '5': 0x17,
-  '6': 0x16, '7': 0x1a, '8': 0x1c, '9': 0x19
+  f1: 0x7a,
+  f2: 0x78,
+  f3: 0x63,
+  f4: 0x76,
+  f5: 0x60,
+  f6: 0x61,
+  f7: 0x62,
+  f8: 0x64,
+  f9: 0x65,
+  f10: 0x6d,
+  f11: 0x67,
+  f12: 0x6f,
+  f13: 0x69,
+  f14: 0x6b,
+  f15: 0x71,
+  f16: 0x6a,
+  f17: 0x40,
+  f18: 0x4f,
+  f19: 0x50,
+  a: 0x00,
+  b: 0x0b,
+  c: 0x08,
+  d: 0x02,
+  e: 0x0e,
+  f: 0x03,
+  g: 0x05,
+  h: 0x04,
+  i: 0x22,
+  j: 0x26,
+  k: 0x28,
+  l: 0x25,
+  m: 0x2e,
+  n: 0x2d,
+  o: 0x1f,
+  p: 0x23,
+  q: 0x0c,
+  r: 0x0f,
+  s: 0x01,
+  t: 0x11,
+  u: 0x20,
+  v: 0x09,
+  w: 0x0d,
+  x: 0x07,
+  y: 0x10,
+  z: 0x06,
+  '0': 0x1d,
+  '1': 0x12,
+  '2': 0x13,
+  '3': 0x14,
+  '4': 0x15,
+  '5': 0x17,
+  '6': 0x16,
+  '7': 0x1a,
+  '8': 0x1c,
+  '9': 0x19
 }
+
+/**
+ * macOS 媒体键类型（IOKit/hidsystem/ev_keymap.h 的 NX_KEYTYPE_*），
+ * 不能走键盘事件，须构造 NX_SYSDEFINED（type 14）系统定义事件。
+ */
+const MAC_MEDIA_KEYTYPES: Record<KeypadMediaKeyName, number> = {
+  'volume-up': 0,
+  'volume-down': 1,
+  mute: 7,
+  'brightness-up': 2,
+  'brightness-down': 3,
+  'play-pause': 16,
+  'track-next': 17,
+  'track-prev': 18
+}
+
+/** Windows 媒体键虚拟键码（VK_VOLUME 系列 / VK_MEDIA 系列）；亮度无标准虚拟键 → 缺失即不支持 */
+const WIN_MEDIA_KEYS: Partial<Record<KeypadMediaKeyName, number>> = {
+  'volume-up': 0xaf,
+  'volume-down': 0xae,
+  mute: 0xad,
+  'play-pause': 0xb3,
+  'track-next': 0xb0,
+  'track-prev': 0xb1
+}
+
+/** NX_SYSDEFINED 事件布局（实测 AppKit 产出的系统定义事件字段，见 docs/hardware/07） */
+const SYS_DEFINED_EVENT_TYPE = 14
+const SYS_DEFINED_SUBTYPE_FIELD = 83
+const SYS_DEFINED_DATA1_FIELD = 149
+const SYS_DEFINED_DATA2_FIELD = 150
+const SYS_DEFINED_SUBTYPE_AUX = 8
+/** data1 高低字节里的按下/抬起标记（0x0a=down、0x0b=up） */
+const SYS_DEFINED_DOWN = 0xa
+const SYS_DEFINED_UP = 0xb
 
 /** macOS 修饰键（kVK_* 键码 + CGEvent flag 掩码） */
 const MAC_MODIFIERS: Record<KeypadModifier, { code: number; flag: number }> = {
@@ -33,11 +122,14 @@ const MAC_MODIFIERS: Record<KeypadModifier, { code: number; flag: number }> = {
 
 /** Windows 修饰键虚拟键码（VK_SHIFT / VK_CONTROL / VK_MENU / VK_LWIN） */
 const WIN_MODIFIER_CODES: Record<KeypadModifier, number> = {
-  shift: 0x10, ctrl: 0x11, alt: 0x12, meta: 0x5b
+  shift: 0x10,
+  ctrl: 0x11,
+  alt: 0x12,
+  meta: 0x5b
 }
 
 /** Windows 主键虚拟键码：Enter 0x0D、字母 0x41+、数字 0x30+、F 键 0x70+(n-1) */
-function winKeyCode(name: KeypadKeyName): number {
+function winKeyCode(name: KeypadRegularKeyName): number {
   if (name === 'enter') return 0x0d
   const first = name.charCodeAt(0)
   if (first >= 97 && first <= 122) return 0x41 + first - 97
@@ -48,6 +140,8 @@ function winKeyCode(name: KeypadKeyName): number {
 /** 平台按键投递器（macOS flags 为 CGEvent 修饰掩码；Windows 忽略 flags，修饰键走独立事件） */
 interface KeyPoster {
   post(code: number, down: boolean, flags: number): void
+  /** 投递一次媒体键按下/抬起（平台各自映射；不支持的键静默跳过） */
+  postMedia(key: KeypadMediaKeyName, down: boolean): void
 }
 
 let poster: KeyPoster | null = null
@@ -57,7 +151,14 @@ function loadPoster(): KeyPoster {
   if (process.platform === 'darwin') {
     const cg = koffi.load('/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics')
     const cf = koffi.load('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
-    const createEvent = cg.func('CGEventCreateKeyboardEvent', 'void *', ['void *', 'uint32', 'bool'])
+    const createEvent = cg.func('CGEventCreateKeyboardEvent', 'void *', [
+      'void *',
+      'uint32',
+      'bool'
+    ])
+    const createRaw = cg.func('CGEventCreate', 'void *', ['void *'])
+    const setType = cg.func('CGEventSetType', 'void', ['void *', 'uint32'])
+    const setField = cg.func('CGEventSetIntegerValueField', 'void', ['void *', 'uint32', 'int64'])
     const setFlags = cg.func('CGEventSetFlags', 'void', ['void *', 'uint64'])
     const postEvent = cg.func('CGEventPost', 'void', ['uint32', 'void *'])
     const release = cf.func('CFRelease', 'void', ['void *'])
@@ -69,6 +170,19 @@ function loadPoster(): KeyPoster {
         if (flags) setFlags(event, flags)
         postEvent(0, event)
         release(event)
+      },
+      postMedia(key, down) {
+        const event = createRaw(null)
+        if (!event) return
+        setType(event, SYS_DEFINED_EVENT_TYPE)
+        setField(event, SYS_DEFINED_SUBTYPE_FIELD, SYS_DEFINED_SUBTYPE_AUX)
+        // data1 = (NX_KEYTYPE << 16) | (down ? 0x0a : 0x0b) << 8
+        const data1 =
+          (MAC_MEDIA_KEYTYPES[key] << 16) | ((down ? SYS_DEFINED_DOWN : SYS_DEFINED_UP) << 8)
+        setField(event, SYS_DEFINED_DATA1_FIELD, data1)
+        setField(event, SYS_DEFINED_DATA2_FIELD, -1)
+        postEvent(0, event)
+        release(event)
       }
     }
   } else {
@@ -77,6 +191,12 @@ function loadPoster(): KeyPoster {
     poster = {
       post(code, down) {
         keybdEvent(code, 0, down ? 0 : 2, 0)
+      },
+      postMedia(key, down) {
+        // 亮度等 Windows 无标准虚拟键的媒体键：静默跳过（配置侧仍保留，仅本平台不生效）
+        const vk = WIN_MEDIA_KEYS[key]
+        if (vk == null) return
+        keybdEvent(vk, 0, down ? 0 : 2, 0)
       }
     }
   }
@@ -92,8 +212,14 @@ function comboId(binding: KeypadComboAction): string {
 
 /** 投递一次组合的按下/抬起：修饰键先下后上（逆序），主键事件在 macOS 带修饰 flag */
 function postCombo(binding: KeypadComboAction, down: boolean): void {
+  const platform = loadPoster()
+  // 媒体键（音量/亮度/播放）无组合语义，走系统定义事件/虚拟键路径
+  if (isKeypadMediaKeyName(binding.key)) {
+    platform.postMedia(binding.key, down)
+    return
+  }
   const mac = process.platform === 'darwin'
-  const post = loadPoster().post
+  const post = platform.post
   let flags = 0
   for (const mod of binding.modifiers) {
     if (mac) {
