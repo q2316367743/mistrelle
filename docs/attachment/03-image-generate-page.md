@@ -101,8 +101,8 @@ HTTP 细节在 main `RelayService`（`imageModels / imageGenerate / imageTask`�
 | renderer | `src/renderer/src/types/image.d.ts` | `window.preload.image` 契约（挂载于 `vite-env.d.ts`） |
 | renderer | `src/renderer/src/store/image/ImageModelStore.ts` | 服务端生图档位列表（登录态联动） |
 | renderer | `pages/extend/image/useImageGenerations.ts` | 薄数据源：分页/关键词视图态 + 广播订阅就地替换 + generate/resume/remove 代理 + 风格解析 |
-| renderer | `pages/extend/image/components/ImageGenerateForm.vue` | 参数行（档位含积分展示/风格/尺寸/分辨率/张数）+ 参考图与高级参数入口 + 提示词表单（提交载荷 `ImageFormSubmit` 对象） |
-| renderer | `pages/extend/image/components/ImageReferencePicker.vue` | 参考图选择（t-upload custom 主题只取本地路径，≤15 张，缩略行可删；v-model 出 `string[]`） |
+| renderer | `pages/extend/image/components/ImageGenerateForm.vue` | 参数行（档位含积分展示/风格/尺寸/分辨率/张数）+ 参考图与高级参数入口 + 提示词表单（提交载荷 `ImageFormSubmit` 对象）；提交后清空 prompt 与参考图供连续生成 |
+| renderer | `pages/extend/image/components/ImageReferencePicker.vue` | 参考图选择（t-upload custom 主题只取本地路径，≤15 张，缩略行可删；v-model 出 `string[]`，外部置空时同步清空缩略图） |
 | renderer | `pages/extend/image/components/ImageAdvancedOptions.vue` | 高级参数折叠面板（quality/background/outputFormat/outputCompression/moderation/nsfwCheck，defineModel 编辑父级对象） |
 | renderer | `pages/extend/image/components/ImageRecordCard.vue` | 单张记录卡（首图封面 + ×N 多图角标 + 重试/删除）；`ImageRecordGrid.vue` 只负责工具栏/网格/加载更多 |
 | renderer | `pages/extend/image/components/ImageDetailGallery.vue` / `ImageDetailDrawer.*` | 详情画廊（多图缩略条 + 主图，`v-model` 下标与 `t-image-viewer v-model:index` 联动）与抽屉外壳 |

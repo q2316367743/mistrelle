@@ -196,8 +196,9 @@ const handleSubmit = () => {
     ...advanced.value,
     imageUrls: imagePaths.value.length ? [...imagePaths.value] : undefined
   })
-  // 任务已提交（失败可从记录卡「重试」找回 prompt），清空输入框供连续生成
+  // 任务已提交（失败可从记录卡「重试」找回 prompt），清空输入框与参考图供连续生成
   prompt.value = ''
+  imagePaths.value = []
 }
 </script>
 

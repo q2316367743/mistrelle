@@ -5,7 +5,8 @@
       <t-button
         shape="circle"
         size="small"
-        class="ref-remove"
+        theme="danger"
+        class="ref-remove z-1"
         @click="removeAt(index)"
       >
         <template #icon><CloseIcon /></template>
@@ -58,6 +59,12 @@ watch(
   },
   { deep: true }
 )
+
+// 外部清空（如提交后）时同步清掉缩略图，避免 UI 残留
+watch(paths, (value) => {
+  if (value.length || !files.value.length) return
+  files.value = []
+})
 
 const thumbOf = (file: UploadFile): string => {
   const path = file.raw ? window.preload.webUtils.getPathForFile(file.raw) : ''
