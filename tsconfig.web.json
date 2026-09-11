@@ -4,6 +4,7 @@
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.vue",
+    "src/common/**/*.ts",
     "src/preload/*.d.ts",
     "src/renderer/auto-imports.d.ts",
     "src/renderer/components.d.ts"
