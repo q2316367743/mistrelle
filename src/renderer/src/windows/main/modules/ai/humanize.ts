@@ -1,8 +1,9 @@
-import { SseParser } from '@/windows/main/modules/ai/sse'
+import { SseParser } from './sse'
 
 /**
- * 长文创作侧边栏的外部接口（去 AI 味流式改写）。
- * 去 AI 味经 main RelayService → mistrelle-server /api/rewrite SSE。
+ * 去 AI 味流式改写客户端（服务端 /api/rewrite）。
+ * 经 window.preload.relay.rewriteStream → mistrelle-server SSE，渲染层分帧解析。
+ * 写作侧边栏版本条与设计创意 humanize_text 工具共用，故归 AI 请求域（避免工具层反向依赖组件目录）。
  */
 
 /** 去 AI 味流式接口是否已接入 */
@@ -11,8 +12,8 @@ export const HUMANIZE_ENABLED = true
 export interface HumanizeStreamRequest {
   /** 原文全文 */
   text: string
-  /** 流式增量回调（编辑器经 watch content 实时跟随渲染） */
-  onDelta: (delta: string) => void
+  /** 流式增量回调（编辑器经 watch content 实时跟随渲染）；不需要增量时省略 */
+  onDelta?: (delta: string) => void
   /** 中止信号 */
   signal?: AbortSignal
   /** 改写深度 1~10，默认 5 */
@@ -133,7 +134,7 @@ export async function requestHumanizeStream(req: HumanizeStreamRequest): Promise
         const type = json.type
         if (type === 'delta' && typeof json.content === 'string' && json.content) {
           full += json.content
-          req.onDelta(json.content)
+          req.onDelta?.(json.content)
         } else if (type === 'completed' && typeof json.content === 'string') {
           full = json.content
         } else if (type === 'failed') {

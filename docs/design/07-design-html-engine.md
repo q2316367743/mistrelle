@@ -25,7 +25,7 @@ export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
 ```
 
 - **两份提示词独立成文**：canvas 版 `modules/canvas/canvasPrompt.ts`、HTML 版 `modules/designHtml/designHtmlPrompt.ts`（互不复用段落，各自演化）
-- **设计素材工具两引擎共用**（icon_svg / website_logo / font_list / image_crop / chart_generate / image_generate 门控等）
+- **设计素材工具两引擎共用**（icon_svg / website_logo / font_list / image_crop / chart_generate / image_generate 门控 / humanize_text 登录门控等，见 tool/13）
 - `hasImageGenerate`（是否配置默认生图模型）判断保留在各分支内，与 `createDesignTools` 的 image_generate 注入同源
 
 ### 锁定链（创建时选定，问答中不可切换）

@@ -3,7 +3,7 @@ import type { ArticleItem } from '@/windows/main/modules/tool/components/article
 import type { ArticleStore } from '@/windows/main/modules/tool/components/article/articleStore'
 import { MessageUtil } from '@/utils/modal'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
-import { HUMANIZE_ENABLED, requestHumanizeStream } from './humanizeApi'
+import { HUMANIZE_ENABLED, requestHumanizeStream } from '@/windows/main/modules/ai/humanize'
 import { openHumanizeDepth } from './components/HumanizeDepthDialog'
 
 /** 记住上次选择的深度，下次打开弹窗作为默认（首次为 5） */

@@ -12,7 +12,6 @@ src/components/chat/aside/writing/
     ├── useArticleDoc.ts             # 数据层 composable：store 共享实例、选择/正文读写/版本切换/文件操作
     ├── useArticleAssist.ts          # 去 AI 味动作编排（产出新版本）
     ├── useArticleImageEvents.ts     # 配图 / 风格面板元数据事件写回（cover/images 文章级）
-    ├── humanizeApi.ts               # 去 AI 味流式接口（开关常量 + requestHumanizeStream）
     ├── promptInputBridge.ts         # PROMPT_INPUT_KEY：快捷指令 → 聊天输入框注入桥
     └── components/
         ├── ArticleAsideHeader.vue   # header：文章下拉（平台/状态/字数 option）+ 定位/刷新/导出
@@ -25,6 +24,8 @@ src/components/chat/aside/writing/
         ├── ArticleImage.ts          # 图片节点：相对路径存 src，渲染时解析 file:// 显示
         └── ArticleSlash.ts          # 斜杠命令
 ```
+
+> 去 AI 味流式客户端已下沉到 `@/windows/main/modules/ai/humanize.ts`（`HUMANIZE_ENABLED` + `requestHumanizeStream`），由写作侧边栏与设计创意 `humanize_text` 工具共用，见 tool/13。
 
 ## 版本模型（一篇文章的多个版本）
 
@@ -71,7 +72,7 @@ src/components/chat/aside/writing/
 - AI 侧联动：`article_create` / `article_update` 白名单支持 `style`；`ARTICLE_SCENE_PROMPT` 要求撰写/改写前先 `article_list` 确认 platform + style 并严格遵循（style 与平台模板叠加）。
 - 快捷指令：「按当前风格重写正文」按钮 → 组装指令文本 → `PROMPT_INPUT_KEY`（useChatSession provide → LChatSender `addTextPrompt` expose）填入聊天输入框，**不自动发送**；与画布节点 / HTML 元素注入同一 DI 模式。全屏态下输入框被遮挡，发送前需退出全屏（toast 已提示）。
 
-## 版本条与去 AI 味（ArticleVersionBar / humanizeApi.ts）
+## 版本条与去 AI 味（ArticleVersionBar / modules/ai/humanize.ts）
 
 footer 两个占位按钮已删除，动作收进正文维度顶部的版本条（`ArticleVersionBar.vue`）。
 

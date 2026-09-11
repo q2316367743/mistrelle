@@ -24,6 +24,7 @@ import {
   createImageGenerateTool,
   hasImageGenerateAccess
 } from '@/windows/main/modules/tool/components/design/imageGenerate'
+import { hasHumanizeAccess } from '@/windows/main/modules/tool/components/design/humanize'
 
 export interface ChatTypeConfig {
   /** 具体名字，eg. 设计创意 */
@@ -80,13 +81,21 @@ export interface DesignSceneConfig {
 export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
   canvas: {
     label: '画布引擎',
-    prompt: () => buildDesignCanvasPrompt({ hasImageGenerate: hasImageGenerateAccess() }),
+    prompt: () =>
+      buildDesignCanvasPrompt({
+        hasImageGenerate: hasImageGenerateAccess(),
+        hasHumanize: hasHumanizeAccess()
+      }),
     tools: (ctx) => [...createCanvasTools(ctx), ...createDesignTools(ctx)]
   },
   html: {
     label: 'HTML 引擎',
-    // 与 createDesignTools 同源判断：登录后注入 image_generate 生图增强规则
-    prompt: () => buildDesignHtmlPrompt({ hasImageGenerate: hasImageGenerateAccess() }),
+    // 与 createDesignTools 同源判断：登录后注入 image_generate 生图增强规则 + humanize_text 去 AI 味规则
+    prompt: () =>
+      buildDesignHtmlPrompt({
+        hasImageGenerate: hasImageGenerateAccess(),
+        hasHumanize: hasHumanizeAccess()
+      }),
     tools: (ctx) => [...createDesignHtmlTools(ctx), ...createDesignTools(ctx)]
   }
 }

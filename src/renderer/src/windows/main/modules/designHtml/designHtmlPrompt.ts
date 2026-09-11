@@ -49,6 +49,13 @@ const IMAGE_GENERATE_RULES = [
   '- **生图产物带不透明背景色（多为白底，模型不支持真透明）**：需要透明底素材时，用 image_remove_background(path) 去除背景后，再把去背景后的 path 填进 `<img>`；禁止把带白底的图直接盖在深色 / 彩色背景上。'
 ]
 
+/** 文案去 AI 味规则：仅当用户已登录（humanize_text 工具已注入）时追加 */
+const HUMANIZE_RULES = [
+  '### 文案去 AI 味（已登录可用 humanize_text）',
+  '- 标题 / 副标 / 正文文案写完后自查 AI 腔（空泛对仗、堆砌形容词、"不仅仅是…更是…"、滥用排比 / 破折号）；明显时调用 humanize_text(content) 改写，再把返回的 content 填进对应文字元素（depth 1~10 控制力度，缺省 5）',
+  '- 只改写文案本身，不改变设计结构与排版'
+]
+
 const DESIGN_HTML_AFTER_VISUAL = [
   '### 主视觉来源策略（避免纯文字海报）',
   '- 每个设计必须有主视觉（hero），禁止只靠文字排版 + 色块拼图冒充作品。来源优先级：① 真实素材（logo / 品牌图 / 用户提供的图片）→ website_logo 或用户给的图片；② 生图（已配置时）；③ 几何图形组合（CSS 图形 / 渐变 / 剪影构成的视觉焦点）。',
@@ -73,12 +80,20 @@ const DESIGN_HTML_AFTER_VISUAL = [
 
 /**
  * 组装设计创意 HTML 引擎提示词。
- * @param hasImageGenerate 是否已登录（image_generate 工具已注入）。
+ * @param hasImageGenerate 是否已登录（image_generate 已注入）。
  *   为 true 时追加生图增强规则，否则主视觉来源只用真实素材 + 几何图形。
+ * @param hasHumanize 是否已登录（humanize_text 已注入）；为 true 时追加文案去 AI 味规则。
  */
-export const buildDesignHtmlPrompt = ({ hasImageGenerate }: { hasImageGenerate: boolean }): string => {
+export const buildDesignHtmlPrompt = ({
+  hasImageGenerate,
+  hasHumanize
+}: {
+  hasImageGenerate: boolean
+  hasHumanize: boolean
+}): string => {
   const parts: string[] = [...DESIGN_HTML_MAIN]
   if (hasImageGenerate) parts.push('', ...IMAGE_GENERATE_RULES)
+  if (hasHumanize) parts.push('', ...HUMANIZE_RULES)
   parts.push('', ...DESIGN_HTML_AFTER_VISUAL)
   return parts.join('\n')
 }

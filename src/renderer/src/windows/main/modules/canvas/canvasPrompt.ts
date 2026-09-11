@@ -59,6 +59,13 @@ const IMAGE_GENERATE_RULES = [
   '- **生图产物带不透明背景色（多为白底，模型不支持真透明）**：需要透明底素材时，用 image_remove_background(path) 去除背景（从边缘清除连续白底，产出带 alpha 的 PNG）后，再把去背景后的 path 填进画布；禁止把带白底的图直接盖在深色 / 彩色背景上。'
 ]
 
+/** 文案去 AI 味规则：仅当用户已登录（humanize_text 工具已注入）时追加 */
+const HUMANIZE_RULES = [
+  '### 文案去 AI 味（已登录可用 humanize_text）',
+  '- 标题 / 副标 / 正文文案写完后自查 AI 腔（空泛对仗、堆砌形容词、"不仅仅是…更是…"、滥用排比 / 破折号）；明显时调用 humanize_text(content) 改写，再把返回的 content 填进文字节点（depth 1~10 控制力度，缺省 5）',
+  '- 只改写文案本身，不改变设计结构与排版'
+]
+
 const DESIGN_CANVAS_AFTER_VISUAL = [
   '### 区域分组铁律（最高优先级，先拆区域再画）',
   '- 区域 = 需要互相定位成一体的元素集合：卡片、标签、按钮、徽章、图标底+图标、数字圆点、标题+副标题、角标等；触发信号是「文字要放背景里 / 图标要落底座上 / 多个元素要对齐成一体」',
@@ -144,14 +151,18 @@ const DESIGN_CANVAS_AFTER_VISUAL = [
  * 组装设计创意类型提示词。
  * @param hasImageGenerate 是否已登录（image_generate 工具已注入）。
  *   为 true 时追加生图增强规则（image_generate / sprite / image_crop），否则主视觉来源只用真实素材 + 几何图形。
+ * @param hasHumanize 是否已登录（humanize_text 工具已注入）；为 true 时追加文案去 AI 味规则。
  */
 export const buildDesignCanvasPrompt = ({
-  hasImageGenerate
+  hasImageGenerate,
+  hasHumanize
 }: {
   hasImageGenerate: boolean
+  hasHumanize: boolean
 }): string => {
   const parts: string[] = [...DESIGN_CANVAS_BEFORE_VISUAL, '', ...MAIN_VISUAL_STRATEGY_BASE]
   if (hasImageGenerate) parts.push('', ...IMAGE_GENERATE_RULES)
+  if (hasHumanize) parts.push('', ...HUMANIZE_RULES)
   parts.push('', ...DESIGN_CANVAS_AFTER_VISUAL)
   return parts.join('\n')
 }

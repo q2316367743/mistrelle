@@ -73,7 +73,7 @@ import type { ArticleVersion } from '@/windows/main/modules/tool/components/arti
 import { ARTICLE_VERSION_SOURCE_OPTIONS } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { openUrlByBrowser } from '@/utils/native'
-import { HUMANIZE_ENABLED } from '../humanizeApi'
+import { HUMANIZE_ENABLED } from '@/windows/main/modules/ai/humanize'
 
 /** 腾讯朱雀 AI 检测官网（仅企业接入，这里引导用户到官网手动检测） */
 const ZHUQUE_DETECT_URL = 'https://matrix.tencent.com/ai-detect/ai_gen_txt'

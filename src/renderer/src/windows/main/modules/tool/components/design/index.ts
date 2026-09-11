@@ -9,6 +9,7 @@
  * - image_info：读取本地图片格式与宽高（image 节点按真实尺寸等比缩放）
  * - image_generate：文字生图（仅登录后注入；生成的图片同时展示在对话中；真实实现见 main ImageService，经 image 域 IPC 直出）
  * - chart_generate：echarts 图表渲染为 SVG 落盘（支持 echarts 全部内置图表类型）
+ * - humanize_text：文案去 AI 味改写（仅登录后注入；与写作侧边栏去 AI 味同源，见 modules/ai/humanize.ts）
  * 工具注入：chatType.ts（global/ChatTypeConfig）的 design 配置里与画布工具一起挂载。
  * 注：字体入库 / 元数据修改由用户在资源管理页完成（window.preload.font），不对 AI 暴露注册工具。
  */
@@ -22,6 +23,7 @@ import { createImageInfoTool } from './imageInfo'
 import { createImageGenerateTool, hasImageGenerateAccess } from './imageGenerate'
 import { createImageRemoveBackgroundTool } from './imageRemoveBackground'
 import { createChartGenerateTool } from './chartGenerate'
+import { createHumanizeTool, hasHumanizeAccess } from './humanize'
 
 export type { DesignToolContext }
 export { designStyleTools } from './designStyleTools'
@@ -44,6 +46,10 @@ export const createDesignTools = (ctx: DesignToolContext): ToolFunction[] => {
   // 仅登录后注入 image_generate：积分由服务端校验扣减，生成的图片同时展示在对话中
   if (hasImageGenerateAccess()) {
     tools.push(createImageGenerateTool(ctx))
+  }
+  // 仅登录后注入 humanize_text：服务端去 AI 味接口需登录鉴权
+  if (hasHumanizeAccess()) {
+    tools.push(createHumanizeTool())
   }
   return tools
 }
