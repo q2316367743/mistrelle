@@ -16,6 +16,7 @@
 | [05-mac-dock.md](./app/05-mac-dock.md) | macOS Dock 跟随窗口可见性（2026-09-04）：任一窗口可见才显示 Dock、全隐即隐藏（纯托盘形态、托盘为唯一唤醒入口）、Dock 点击按可见性分流（仅伙伴可见→伙伴，否则→AI）、macDock.ts 注册表契约、accessory 焦点陷阱（ensure-before-show）、最小化不算隐藏 |
 | [06-aihot-removal.md](./app/06-aihot-removal.md) | AIHOT 资讯功能整体移除记录（2026-09-05）：删除范围（页面 13 文件 / API 客户端 / 本地镜像服务 / 4 个 AI 工具 / DB 表 DROP 迁移 0010）、共享文件修改点、保留项（webview 能力与 LinkPreviewDrawer、存量白名单 id 不清理） |
 | [07-auto-update.md](./app/07-auto-update.md) | 客户端自动更新：electron-updater generic feed、系统设置检查/下载/重启安装、未打包环境跳过 |
+| [08-chat-list-project-groups.md](./app/08-chat-list-project-groups.md) | 聊天列表项目分组（2026-09-12）：按聊天绑定的工作目录 `workspace`（创建时锁定）聚合、任务列表置顶+项目分组按最近活跃、分组头可折叠+hover「新建聊天」（`/new?workspace=` 预填，⚠️ 无预填传 undefined 防覆盖手选目录）、useChatGroups composable 拍平 rows 进 VList |
 
 ### server/ —— 本地事件服务
 

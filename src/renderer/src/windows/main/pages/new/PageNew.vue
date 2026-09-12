@@ -22,7 +22,13 @@
       </div>
       <div class="page-new__sender">
         <l-chat-sender
-          :initial="{ model, type, writingScene: scene, designScene: engine }"
+          :initial="{
+            model,
+            type,
+            writingScene: scene,
+            designScene: engine,
+            workspace: prefillWorkspace || undefined
+          }"
           @send="handleSend"
         />
       </div>
@@ -40,6 +46,7 @@ import { toggleCollapsed } from '@/global/BeanFactory'
 defineOptions({ name: 'PageNew' })
 
 const router = useRouter()
+const route = useRoute()
 
 const show = ref(true)
 const model = ref('')
@@ -47,6 +54,17 @@ const type = ref<ChatType>('office')
 const scene = ref<WritingScene>('article')
 const engine = ref<DesignScene>('canvas')
 const designStyleId = ref('')
+
+// 项目分组头「新建聊天」入口经 /new?workspace=<目录> 预填工作目录；
+// 传 undefined（无预填）避免每次切换类型时用空值覆盖用户手动选择的目录
+const prefillWorkspace = ref<string>()
+watch(
+  () => route.query.workspace,
+  (val) => {
+    prefillWorkspace.value = typeof val === 'string' ? val : undefined
+  },
+  { immediate: true }
+)
 
 const typeOptions = CHAT_TYPE_OPTIONS
 const sceneOptions = WRITING_SCENE_OPTIONS
@@ -71,12 +89,13 @@ const handleSend = async (message: ChatRequestParams) => {
   resetPageData()
 }
 
-/** 重置页面全部数据：类型、场景、引擎、设计风格、模型（输入框内容由 LChatSender 发送成功后自行清空） */
+/** 重置页面全部数据：类型、场景、引擎、设计风格、模型、预填工作目录（输入框内容由 LChatSender 发送成功后自行清空） */
 const resetPageData = () => {
   type.value = 'office'
   scene.value = 'article'
   engine.value = 'canvas'
   designStyleId.value = ''
+  prefillWorkspace.value = undefined
   model.value = useSettingDefaultStore().state.defaultAssistantModel
   setTimeout(() => {
     show.value = false

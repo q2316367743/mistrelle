@@ -10,7 +10,7 @@
       <folder-filled-icon />
     </div>
   </div>
-  <t-dropdown v-else trigger="click" min-column-width="180px" placement="top" @click="handleClick">
+  <t-popup v-else v-model="visible" trigger="click" placement="top">
     <t-button theme="default" variant="text" class="ai-workspace">
       <template #icon>
         <div :class="['ai-workspace__icon', { active: active }]">
@@ -22,45 +22,50 @@
         {{ workspace ? renderBasename(workspace) : '选择工作目录' }}
       </div>
     </t-button>
-    <t-dropdown-menu>
-      <t-dropdown-item v-if="active" value="clearWorkspace">
-        <template #prefix-icon>
-          <close-icon />
-        </template>
-        清除工作目录
-      </t-dropdown-item>
-      <t-dropdown-item v-if="active" value="clearAndSelect">
-        <template #prefix-icon>
-          <folder-add1-icon />
-        </template>
-        清空并替换目录
-      </t-dropdown-item>
-      <t-dropdown-item v-else value="selectWorkspace">
-        <template #prefix-icon>
-          <folder-add1-icon />
-        </template>
-        选择目录
-      </t-dropdown-item>
-      <t-dropdown-item value="history">
-        <template #prefix-icon>
-          <history-icon />
-        </template>
-        最近使用的目录
-        <t-dropdown-menu v-if="history && history.length > 0">
-          <t-dropdown-item v-for="item in history" :key="item" :title="item" :value="item">
+    <template #content>
+      <div class="ai-workspace-panel">
+        <t-input v-model="keyword" size="small" clearable placeholder="搜索最近目录">
+          <template #prefix-icon>
+            <search-icon />
+          </template>
+        </t-input>
+        <div class="ai-workspace-list">
+          <div
+            v-for="item in filteredHistory"
+            :key="item"
+            :title="item"
+            :class="['ai-workspace-item', { active: workspace === item }]"
+            @click="handleHistory(item)"
+          >
             {{ renderBasename(item) }}
-          </t-dropdown-item>
-        </t-dropdown-menu>
-      </t-dropdown-item>
-    </t-dropdown-menu>
-  </t-dropdown>
+          </div>
+          <div v-if="filteredHistory.length === 0" class="ai-workspace-empty">
+            {{ history.length === 0 ? '暂无最近目录' : '无匹配目录' }}
+          </div>
+        </div>
+        <template v-if="active">
+          <div class="ai-workspace-action" @click="clearWorkspace">
+            <close-icon size="14px" />
+            <span class="ml-8px">清除工作目录</span>
+          </div>
+          <div class="ai-workspace-action" @click="clearAndSelect">
+            <folder-add1-icon size="14px" />
+            <span class="ml-8px">清空并替换目录</span>
+          </div>
+        </template>
+        <div v-else class="ai-workspace-action" @click="selectWorkspace">
+          <folder-add1-icon size="14px" />
+          <span class="ml-8px">选择目录</span>
+        </div>
+      </div>
+    </template>
+  </t-popup>
 </template>
 <script lang="ts" setup>
-import { CloseIcon, FolderAdd1Icon, FolderFilledIcon, HistoryIcon } from 'tdesign-icons-vue-next'
-import type { DropdownOption } from 'tdesign-vue-next'
+import Fuse from 'fuse.js'
+import { CloseIcon, FolderAdd1Icon, FolderFilledIcon, SearchIcon } from 'tdesign-icons-vue-next'
 import { readJsonFile, writeJsonFile } from '@/utils/native'
 import { getWorkspaceHistoryPath } from '@/global/Constant'
-import { debounce } from 'es-toolkit'
 
 const workspace = defineModel({
   type: String,
@@ -77,10 +82,36 @@ readJsonFile<Array<string>>(getWorkspaceHistoryPath()).then((list) => {
 
 const active = computed(() => !!workspace.value)
 
+const visible = ref(false)
+const keyword = ref('')
+watch(visible, (val) => {
+  if (val) keyword.value = ''
+})
+
+const historyItems = computed(() =>
+  history.value.map((path) => ({ path, basename: renderBasename(path) }))
+)
+const fuse = computed(
+  () =>
+    new Fuse(historyItems.value, {
+      keys: ['basename', 'path'],
+      ignoreLocation: true,
+      threshold: 0.4
+    })
+)
+/** 最近优先倒序展示；有关键词时走 fuse 模糊匹配 */
+const filteredHistory = computed(() => {
+  const query = keyword.value.trim()
+  if (!query) return historyItems.value.map((item) => item.path).reverse()
+  return fuse.value.search(query).map((res) => res.item.path)
+})
+
 const clearWorkspace = () => {
   workspace.value = ''
+  visible.value = false
 }
 const selectWorkspace = async () => {
+  visible.value = false
   const paths = await window.preload.inject.dialog.open({ properties: ['openDirectory'] })
   if (!paths || paths.length === 0) return
   workspace.value = paths[0]
@@ -95,26 +126,7 @@ const clearAndSelect = () => {
 }
 const handleHistory = (path: string) => {
   workspace.value = path
-}
-
-const handleClickDebounced = debounce((val: string) => {
-  switch (val) {
-    case 'clearWorkspace':
-      clearWorkspace()
-      break
-    case 'selectWorkspace':
-      selectWorkspace()
-      break
-    case 'clearAndSelect':
-      clearAndSelect()
-      break
-    default:
-      handleHistory(val)
-  }
-}, 300)
-
-const handleClick = ({ value }: DropdownOption) => {
-  handleClickDebounced(String(value))
+  visible.value = false
 }
 
 const openWorkspace = () => {
@@ -155,6 +167,65 @@ const renderBasename = (path: string) => window.preload.path.basename(path)
   &__text {
     margin-left: 8px;
     padding-top: 2px;
+  }
+}
+
+.ai-workspace-panel {
+  width: 240px;
+  padding: var(--td-pop-padding-m);
+}
+.ai-workspace-list {
+  max-height: 200px;
+  margin: 8px 0;
+  padding-bottom: 4px;
+  overflow: auto;
+  border-bottom: 1px solid var(--td-border-level-1-color);
+}
+.ai-workspace-item {
+  display: flex;
+  align-items: center;
+  border-radius: var(--td-radius-default);
+  height: var(--td-comp-size-s);
+  font: var(--td-font-body-medium);
+  cursor: pointer;
+  padding: 0 var(--td-comp-paddingLR-s);
+  color: var(--td-text-color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.2s cubic-bezier(0.38, 0, 0.24, 1);
+  box-sizing: border-box;
+  margin-top: var(--td-comp-paddingTB-xxs);
+
+  &:hover {
+    background-color: var(--td-bg-color-container-hover);
+  }
+  &:active {
+    background-color: var(--td-brand-color-light-hover);
+  }
+  &.active {
+    background-color: var(--td-brand-color-light-hover);
+    color: var(--td-brand-color);
+    font-weight: bold;
+  }
+}
+.ai-workspace-empty {
+  padding: 8px var(--td-comp-paddingLR-s);
+  font: var(--td-font-body-medium);
+  color: var(--td-text-color-placeholder);
+  text-align: center;
+}
+.ai-workspace-action {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: var(--td-radius-medium);
+  font: var(--td-font-body-medium);
+  color: var(--td-text-color-primary);
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  &:hover {
+    background-color: var(--td-bg-color-component-hover);
   }
 }
 </style>

@@ -79,6 +79,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.39.1",
     "eslint-plugin-vue": "^10.6.2",
+    "fuse.js": "^7.5.0",
     "jszip": "^3.10.1",
     "leafer-editor": "^2.2.9",
     "leafer-ui": "^2.2.9",
