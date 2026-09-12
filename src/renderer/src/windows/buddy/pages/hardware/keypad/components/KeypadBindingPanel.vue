@@ -6,6 +6,7 @@
         <div class="binding-panel__name">配置键位 {{ keyId }}</div>
         <div
           class="binding-panel__desc"
+          :title="summaryText"
           :class="{ 'binding-panel__desc--muted': !draft.actions.length }"
         >
           {{ summaryText }}
@@ -112,8 +113,7 @@ watch(
 )
 
 function cloneActions(actions: KeypadAction[]): KeypadAction[] {
-  const cloned: KeypadAction[] = JSON.parse(JSON.stringify(actions))
-  return cloned
+  return JSON.parse(JSON.stringify(actions))
 }
 
 /** 长按行为（由队列形状推导，与 main 执行侧共用同一函数，界面只做展示） */
@@ -194,6 +194,7 @@ async function clear(): Promise<void> {
     justify-content: center;
     width: 40px;
     height: 40px;
+    flex-shrink: 0;
     border: 1px solid rgba(0, 0, 0, 10%);
     border-radius: var(--td-radius-medium);
     background: var(--td-bg-color-secondarycontainer);
@@ -213,6 +214,7 @@ async function clear(): Promise<void> {
     margin-top: 2px;
     font: var(--td-font-body-small);
     color: var(--td-text-color-secondary);
+    width: 250px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -10,15 +10,20 @@
 import { CommonSelect } from './CommonSelect'
 import type { PermissionDecision } from './permissionRequest'
 
-/** 修饰键（meta 在 macOS 为 Command、Windows 为 Win 键） */
-export type KeypadModifier = 'ctrl' | 'alt' | 'shift' | 'meta'
+/**
+ * 修饰键（meta 在 macOS 为 Command、Windows 为 Win 键）。
+ * fn 仅 macOS 有意义：它是 flagsChanged 标志位（kCGEventFlagMaskSecondaryFn），不是普通按键，
+ * 故归入修饰键而非主键——可单独按住，也可参与组合；Windows 无对应键，投递时静默跳过。
+ */
+export type KeypadModifier = 'ctrl' | 'alt' | 'shift' | 'meta' | 'fn'
 
 /** 修饰键名称映射（绑定编辑的勾选项源） */
 export const KeypadModifierOptions: Array<CommonSelect<KeypadModifier>> = [
   { value: 'ctrl', label: 'Ctrl' },
   { value: 'alt', label: 'Alt' },
   { value: 'shift', label: 'Shift' },
-  { value: 'meta', label: 'Cmd/Win' }
+  { value: 'meta', label: 'Cmd/Win' },
+  { value: 'fn', label: 'Fn' }
 ]
 
 /** 修饰键全集（运行时校验用，派生自 KeypadModifierOptions） */
@@ -174,14 +179,17 @@ export function isKeypadKeyAction(value: string): value is KeypadKeyAction {
 export type KeypadActionType = 'combo' | 'app' | 'script' | 'permission' | 'delay' | 'url'
 
 /**
- * 模拟按键/组合快捷键：修饰键组合 + 主键（可为空组合=只按主键）；
- * 序列执行到该动作时模拟一次完整击键（按下→短暂按住→自动抬起）。
+ * 模拟按键/组合快捷键：修饰键组合 + 可选主键。
+ * 序列执行到该动作时模拟一次完整击键（按下→短暂按住→自动抬起）；
+ * 长按保持档不自动抬起，松手才抬起（见 resolveKeypadHoldBehavior）。
+ * **主键可缺省**——用于「只按住修饰键」的场景（如按住 Fn 触发微信输入法语音输入）；
+ * 此时修饰键不可为空（归一化强制），修饰键先下后上（逆序）投递。
  * 主键为媒体键（音量/亮度/播放）时修饰键无意义，归一化会强制清空。
  */
 export interface KeypadComboAction {
   type: 'combo'
   modifiers: KeypadModifier[]
-  key: KeypadKeyName
+  key?: KeypadKeyName
 }
 
 /** 打开指定应用：应用绝对路径（本机应用目录选择或自定义路径） */
@@ -244,7 +252,7 @@ export const KeypadHoldBehaviorOptions: Array<CommonSelect<KeypadHoldBehavior>> 
 /**
  * 由长按队列形状推导行为：
  * - 多条 → repeat（循环整个队列直到松手）
- * - 单条「模拟按键」→ keep（保持按住直到松手）
+ * - 单条「模拟按键」→ keep（保持按住直到松手）；缺主键（只按住修饰键，如 Fn）同走 keep
  * - 单条媒体键例外走 repeat：音量/亮度这类键由系统直接消费，按下一次只算一步，
  *   保持按住不会持续生效，只有反复触发才等价于「长按音量键」
  * - 单条其他类型 → once（单条打开应用只开一次）
@@ -254,7 +262,8 @@ export function resolveKeypadHoldBehavior(holdActions: KeypadAction[]): KeypadHo
   if (holdActions.length > 1) return 'repeat'
   const only = holdActions[0]
   if (!only || only.type !== 'combo') return 'once'
-  return isKeypadMediaKeyName(only.key) ? 'repeat' : 'keep'
+  if (only.key != null && isKeypadMediaKeyName(only.key)) return 'repeat'
+  return 'keep'
 }
 
 /** 长按循环每轮之间的间隔下限（ms） */

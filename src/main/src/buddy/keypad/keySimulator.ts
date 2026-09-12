@@ -112,16 +112,25 @@ const SYS_DEFINED_SUBTYPE_AUX = 8
 const SYS_DEFINED_DOWN = 0xa
 const SYS_DEFINED_UP = 0xb
 
-/** macOS 修饰键（kVK_* 键码 + CGEvent flag 掩码） */
+/**
+ * macOS 修饰键（kVK_* 键码 + CGEvent flag 掩码）。
+ * fn 是特例：keycode = kVK_Function (0x3F)，CGEventCreateKeyboardEvent 会按键码自动生成
+ * flagsChanged 事件（Apple 头文件 CGEvent.h 明示），标志位 = kCGEventFlagMaskSecondaryFn (1<<23)；
+ * 抬起时须显式 setFlags(0)（见 post），否则 Fn 位会粘连污染后续合成按键。
+ */
 const MAC_MODIFIERS: Record<KeypadModifier, { code: number; flag: number }> = {
   shift: { code: 0x38, flag: 1 << 17 },
   ctrl: { code: 0x3b, flag: 1 << 18 },
   alt: { code: 0x3a, flag: 1 << 19 },
-  meta: { code: 0x37, flag: 1 << 20 }
+  meta: { code: 0x37, flag: 1 << 20 },
+  fn: { code: 0x3f, flag: 1 << 23 }
 }
 
-/** Windows 修饰键虚拟键码（VK_SHIFT / VK_CONTROL / VK_MENU / VK_LWIN） */
-const WIN_MODIFIER_CODES: Record<KeypadModifier, number> = {
+/**
+ * Windows 修饰键虚拟键码（VK_SHIFT / VK_CONTROL / VK_MENU / VK_LWIN）。
+ * fn 无对应虚拟键（Fn 是 macOS 专有的键盘修饰位）→ 缺项，投递时静默跳过（配置保留、该平台不生效）。
+ */
+const WIN_MODIFIER_CODES: Partial<Record<KeypadModifier, number>> = {
   shift: 0x10,
   ctrl: 0x11,
   alt: 0x12,
@@ -167,7 +176,8 @@ function loadPoster(): KeyPoster {
         // kCGHIDEventTap=0：投递到会话 HID 层，前台应用与系统快捷键均可收到
         const event = createEvent(null, code, down)
         if (!event) return
-        if (flags) setFlags(event, flags)
+        // 无条件设置（含 0）：不显式清零会继承全局 flag 状态，Fn 位粘连后普通键会被当成 Fn+键
+        setFlags(event, flags)
         postEvent(0, event)
         release(event)
       },
@@ -207,15 +217,20 @@ function loadPoster(): KeyPoster {
 const heldCombos = new Map<string, { binding: KeypadComboAction; count: number }>()
 
 function comboId(binding: KeypadComboAction): string {
-  return `${[...binding.modifiers].sort().join('+')}|${binding.key}`
+  return `${[...binding.modifiers].sort().join('+')}|${binding.key ?? ''}`
 }
 
-/** 投递一次组合的按下/抬起：修饰键先下后上（逆序），主键事件在 macOS 带修饰 flag */
+/**
+ * 投递一次组合的按下/抬起：修饰键先下后上（逆序），主键事件在 macOS 带修饰 flag。
+ * 主键可缺省（只按住修饰键，如 Fn）——此时只投递修饰键本身。
+ * Windows 无对应虚拟键的修饰键（fn）静默跳过；macOS 上修饰键各发独立按下/抬起事件。
+ */
 function postCombo(binding: KeypadComboAction, down: boolean): void {
   const platform = loadPoster()
+  const key = binding.key
   // 媒体键（音量/亮度/播放）无组合语义，走系统定义事件/虚拟键路径
-  if (isKeypadMediaKeyName(binding.key)) {
-    platform.postMedia(binding.key, down)
+  if (key != null && isKeypadMediaKeyName(key)) {
+    platform.postMedia(key, down)
     return
   }
   const mac = process.platform === 'darwin'
@@ -226,10 +241,14 @@ function postCombo(binding: KeypadComboAction, down: boolean): void {
       flags |= MAC_MODIFIERS[mod].flag
       post(MAC_MODIFIERS[mod].code, down, down ? MAC_MODIFIERS[mod].flag : 0)
     } else {
-      post(WIN_MODIFIER_CODES[mod], down, 0)
+      const code = WIN_MODIFIER_CODES[mod]
+      if (code == null) continue
+      post(code, down, 0)
     }
   }
-  const code = mac ? MAC_KEY_CODES[binding.key] : winKeyCode(binding.key)
+  // 无主键 = 只按住修饰键，到此为止
+  if (key == null) return
+  const code = mac ? MAC_KEY_CODES[key] : winKeyCode(key)
   post(code, down, mac && down ? flags : 0)
 }
 

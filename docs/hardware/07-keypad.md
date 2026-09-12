@@ -134,7 +134,11 @@
   - macOS：CoreGraphics `CGEventCreateKeyboardEvent` + `CGEventSetFlags` + `CGEventPost(kCGHIDEventTap)`，
     修饰键发独立按下/抬起事件、主键事件额外携带修饰 flag；需系统「辅助功能」授权
     （`AXIsProcessTrusted` 检测，未授权时页面顶部 t-alert 引导）。
+    **`setFlags` 无条件调用**（含 0，2026-09-12）——不显式清零会继承全局 flag 状态，
+    Fn 位粘连后普通键会被当成 Fn+键。
   - Windows：user32 `keybd_event` 逐键 down/up（`KEYEVENTF_KEYUP=2`），无需授权。
+  - **Fn 是修饰键**（2026-09-12）：`MAC_MODIFIERS.fn = { code: 0x3F, flag: 1 << 23 }`；
+    `key` 可缺省=只投递修饰键（见「注意事项」Fn 键节）。
   - **媒体键走另一条路径**（2026-09-11）：macOS 不能当普通键盘事件发——须构造
     `NX_SYSDEFINED`（type 14）系统定义事件，`subtype=8`（aux control buttons）、
     `data1 = (NX_KEYTYPE_* << 16) | (down ? 0x0a : 0x0b) << 8`、`data2=-1`；字段号实测为
@@ -299,8 +303,13 @@
     手风琴展开该条编辑器（单开、Transition 淡入、不套浅底容器）；底部「＋ 添加动作」虚线
     按钮展开**类型图标选择卡片**（KEYPAD_ACTION_ICONS 映射 + KEYPAD_ACTIONS 注册表渲染，
     悬停态品牌色），选中即追加 `createDefault()` 到序列尾部并展开。
-    编辑器自身也去表单化：**combo = 键帽式 kbd 组合展示**
-    （`[Ctrl] + [Shift] + [F13]` 每键一块小键帽，整块虚线区点击录制、录制中品牌色脉冲呼吸）、
+    **combo 的 createDefault 不预设主键**（`{modifiers: []}`，2026-09-12）——新增后主键为空，
+    由用户录制主键或勾选修饰键；两者皆空属未完成动作（摘要显示「未选择按键」、归一化拒绝、保存按钮禁用）。
+    旧版曾默认填 F13 占位，导致「Fn 只能勾选、主键却总是存在」的误导，已移除。
+    编辑器自身也去表单化：**combo = 录制区展示主键键帽**（未设置主键时显示「未设置主键 · Fn 请用下方修饰键」，
+    整块虚线区点击录制、录制中品牌色脉冲呼吸；**「修饰键」勾选行**（t-checkbox-group，
+    Ctrl/Alt/Shift/Cmd/Fn）——Fn 录不到只能由此勾选，勾选时显示「Fn 无法录制」提示；
+    **「清除主键」按钮**=只按住修饰键（长按 Fn 的唯一入口，无修饰键时禁用））、
     **app = 选中项大图标 + 名称**（select `valueDisplay` 自定义）、**delay = t-input-number**
     （50–60000ms，步进 100，suffix ms）。
     关闭途径：再点同一键（toggle）/ 右上角 X / 保存 / 清除成功；点其他键即切换面板内容
@@ -342,13 +351,27 @@
 - macOS 虚拟键码为 ANSI 布局位置码（`kVK_ANSI_*`），非字符值；新增主键需同时补
   `MAC_KEY_CODES`（`enter` = kVK_Return 0x4c）与 Windows 侧 `winKeyCode` 特判
   （`enter` = VK_RETURN 0x0D，**漏特判会被字母公式误算成 E 键**）；`KEYPAD_KEY_CODES` 元组同步
-- **Fn / Globe 键无法模拟**（2026-09-11 确认局限）：Fn 不是标准的 USB HID 键盘用量，
-  而是键盘固件层修饰位（macOS 只能通过 `IOHIDManager` 打开设备的 Fn 使用页在**真设备**上读，
-  无法用 CGEvent 合成；Windows 同样没有对应的 VK）。因此「模拟 Fn」「模拟 Fn+F1」不支持。
-  若需要系统级转发（如把键盘 Fn 映射成别的键），属独立功能，不在模拟按键范围内
+- **Fn 键（macOS，2026-09-12）**：Fn 归入**修饰键**而非主键——它在 macOS 是 `flagsChanged`
+  标志位（`kCGEventFlagMaskSecondaryFn` = `1 << 23`），不是普通按键。合成路径 =
+  `CGEventCreateKeyboardEvent(null, kVK_Function 0x3F, down)` + `CGEventSetFlags(...)` + `CGEventPost(0)`；
+  Apple 头文件（CGEvent.h）明示该 API 按键码自动生成 `flagsChanged` 事件，故无需手写 `CGEventSetType`。
+  `NX_KEYTYPE_*` 枚举里**没有** Fn，因此不能走媒体键那条 `NX_SYSDEFINED` 路径。
+  - 建模：`KeypadModifier` 增 `'fn'`；`KeypadComboAction.key` 改**可选**以支持「只按住修饰键」
+    （归一化约束：主键与修饰键不可同时为空）。用法=长按队列放**单条「模拟按键」且仅勾 Fn**
+    （无主键），按住超过 `KEYPAD_HOLD_MS` 即持续按住 Fn、松手释放。原型场景=按住 Fn 触发
+    微信输入法语音输入（**能否触发取决于对方读键方式，只能实机验证**，本仓库不保证）。
+  - **Fn flag 粘连**：`post()` 的 `setFlags` 改为**无条件调用**（原为 `if (flags)`）——
+    不显式清零会继承全局 flag 状态，Fn 位粘连后普通键会被应用当成 Fn+键（已知坑）。
+  - **Windows 无 Fn**（fn 无对应 VK）：`WIN_MODIFIER_CODES` 改 `Partial`，投递时静默跳过；
+    若组合里只有 Fn 则该平台什么都不投递，仅修饰键+Fn 的组合退化为只发主键
+  - 限制（未验证/不可控）：① 合成 Fn 只对**基于 event tap 的软件**可见，若目标程序用
+    `IOHIDManager` 直读真实键盘设备则收不到；② 系统级 Globe 动作（输入法切换/表情面板）由
+    WindowServer 在事件 tap 之前执行，**不保证触发**且可能有副作用；③ 前台若有更高优先级的
+    HID event tap 会吞掉合成 Fn；④ 需先按住达全局 600ms 阈值才发出 Fn
 - **媒体键的三个已知限制**：① 亮度键在 Windows 无标准虚拟键，静默不生效；
   ② 音量/亮度这类键由系统直接消费，部分应用内快捷键场景收不到；
   ③ 媒体键无组合语义，编辑器选了媒体键会自动清空已录制的修饰键（归一化也会强制清空）
+  （**Fn 同理**：macOS 上普通键与 Fn 可共存，但媒体键 + Fn 无意义，归一化丢弃修饰键）
 - 模拟按键针对「快捷键触发」场景；捕获原始输入的游戏（Raw Input）不响应注入事件
 - 流式解析宽容：动作大小写宽容、容忍 \r\n/空白分隔；失步（乱码）丢字符重同步
 - 按键无反应的排查顺序：确认应用已连接且串口选对（macOS 会同时列出 `tty.*`/`cu.*` 变体）→

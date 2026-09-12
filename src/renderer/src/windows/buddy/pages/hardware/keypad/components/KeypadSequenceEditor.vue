@@ -1,6 +1,8 @@
 <template>
   <div class="seq-editor">
-    <div v-if="!actions.length" class="seq-editor__empty">{{ emptyText ?? '未绑定 · 添加动作组成执行序列' }}</div>
+    <div v-if="!actions.length" class="seq-editor__empty">
+      {{ emptyText ?? '未绑定 · 添加动作组成执行序列' }}
+    </div>
 
     <div v-for="(action, index) in actions" :key="index" class="seq-item">
       <div
@@ -30,7 +32,13 @@
           >
             <arrow-down-icon />
           </t-button>
-          <t-button variant="text" shape="square" size="small" theme="danger" @click="remove(index)">
+          <t-button
+            variant="text"
+            shape="square"
+            size="small"
+            theme="danger"
+            @click="remove(index)"
+          >
             <delete-icon />
           </t-button>
         </span>
@@ -71,7 +79,7 @@
 <script lang="ts" setup>
 import type { KeypadAction } from '@common/types/keypad'
 import { KEYPAD_ACTIONS } from '@common/keypad/actions'
-import { ArrowDownIcon, ArrowUpIcon, DeleteIcon } from 'tdesign-icons-vue-next'
+import { AddIcon, ArrowDownIcon, ArrowUpIcon, DeleteIcon } from 'tdesign-icons-vue-next'
 import { KEYPAD_ACTION_EDITORS, KEYPAD_ACTION_ICONS } from './actionEditors'
 import { keypadActionSummary } from './actionText'
 
