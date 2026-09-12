@@ -4,12 +4,10 @@
       <div class="style-hero__left">
         <h1 class="style-hero__title">设计风格</h1>
         <p class="style-hero__subtitle">沉淀统一的设计语言，让 AI 生成始终保持一致的视觉风格</p>
-        <t-badge :count="stylesLocked ? '会员' : 0">
-          <t-button theme="primary" size="large" :disabled="stylesLocked" @click="handleAdd">
-            <template #icon><AddIcon /></template>
-            新建风格
-          </t-button>
-        </t-badge>
+        <t-button theme="primary" size="large" @click="handleAdd">
+          <template #icon><AddIcon /></template>
+          新建风格
+        </t-button>
       </div>
     </section>
 
@@ -20,21 +18,7 @@
       >
         <t-tabs v-model="activeTab" class="style-tabs" @change="onTabChange">
           <t-tab-panel value="local" label="本地" />
-          <t-tab-panel value="online" :disabled="stylesLocked">
-            <template #label>
-              <t-badge :count="stylesLocked ? '会员' : 0" :offset="[0, -2]" size="small">
-                <span
-                  :style="{
-                    color: stylesLocked
-                      ? 'var(--td-text-color-disabled)'
-                      : 'var(--td-text-color-primary)'
-                  }"
-                >
-                  在线
-                </span>
-              </t-badge>
-            </template>
-          </t-tab-panel>
+          <t-tab-panel value="online" label="在线" />
         </t-tabs>
       </div>
 
@@ -76,14 +60,6 @@
           v-else
           title="暂无设计风格"
           description="点击右上角新建，或从内置预设中挑选"
-          class="style-section__empty"
-        />
-      </template>
-
-      <template v-else-if="stylesLocked">
-        <t-empty
-          title="在线设计风格为会员功能"
-          :description="STYLES_LOCKED_MSG"
           class="style-section__empty"
         />
       </template>
@@ -147,8 +123,9 @@ import { useOnlineDesignStyles } from './useOnlineDesignStyles'
 defineOptions({ name: 'DesignListPage' })
 const router = useRouter()
 const store = useDesignStyleStore()
+/** 会员口径：仅下载在线风格受 features.extendedDesignStyles 限制（浏览与手动新增全开放） */
 const stylesLocked = computed(() => !useAuthStore().features.extendedDesignStyles)
-const STYLES_LOCKED_MSG = '自定义设计风格为会员功能，可在 设置 → 账户 开通'
+const DOWNLOAD_LOCKED_MSG = '下载在线风格为会员功能，可在 设置 → 账户 开通'
 
 const activeTab = ref<'local' | 'online'>('local')
 const keyword = ref('')
@@ -193,21 +170,19 @@ const onTabChange = (val: string | number) => {
 
 const handleAdd = () => openDesignStylePut()
 const handleOpenLocal = (id: string) => router.push(`/design/detail/${id}`)
-const handleOpenOnline = (id: string) => router.push(`/design/online/${id}`)
 
-const handleEdit = (id: string) => {
+const handleOpenOnline = (id: string) => {
+  // 在线详情接口含完整 payload（等同下载内容），非会员不进入，提示开通
   if (stylesLocked.value) {
-    MessageUtil.warning(STYLES_LOCKED_MSG)
+    MessageUtil.warning(DOWNLOAD_LOCKED_MSG)
     return
   }
-  openDesignStylePut(id)
+  router.push(`/design/online/${id}`)
 }
 
+const handleEdit = (id: string) => openDesignStylePut(id)
+
 const handleDelete = async (id: string) => {
-  if (stylesLocked.value) {
-    MessageUtil.warning(STYLES_LOCKED_MSG)
-    return
-  }
   const s = store.getById(id)
   if (!s) return
   try {

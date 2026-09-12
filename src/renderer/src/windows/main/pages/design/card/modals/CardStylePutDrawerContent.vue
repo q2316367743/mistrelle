@@ -123,7 +123,7 @@ const handleSave = async () => {
   try {
     const id = await store.put(form, props.styleId)
     if (!id) {
-      MessageUtil.error('保存失败：内置预设只读，或当前档位不支持自定义卡片风格')
+      MessageUtil.error('保存失败：内置预设只读，不可覆盖')
       return
     }
     MessageUtil.success(props.styleId ? '修改成功' : '创建成功')

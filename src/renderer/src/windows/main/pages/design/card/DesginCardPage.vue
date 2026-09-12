@@ -4,12 +4,10 @@
       <div class="style-hero__left">
         <h1 class="style-hero__title">笔记卡片风格</h1>
         <p class="style-hero__subtitle">约定样式的图文卡片风格，供「笔记卡片」生成与 AI 使用</p>
-        <t-badge :count="stylesLocked ? '会员' : 0">
-          <t-button theme="primary" size="large" :disabled="stylesLocked" @click="handleAdd">
-            <template #icon><AddIcon /></template>
-            新建风格
-          </t-button>
-        </t-badge>
+        <t-button theme="primary" size="large" @click="handleAdd">
+          <template #icon><AddIcon /></template>
+          新建风格
+        </t-button>
       </div>
     </section>
 
@@ -48,7 +46,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
 import { AddIcon, SearchIcon } from 'tdesign-icons-vue-next'
-import { useAuthStore, useCardStyleStore } from '@/windows/main/store'
+import { useCardStyleStore } from '@/windows/main/store'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import CardStyleCard from './components/CardStyleCard.vue'
 import { openCardStyleDetail } from './modals/CardStyleDetailDrawer'
@@ -56,9 +54,6 @@ import { openCardStylePut } from './modals/CardStylePutDrawer'
 
 defineOptions({ name: 'DesignCardPage' })
 const store = useCardStyleStore()
-/** 自定义卡片风格为会员功能（服务端在 features 数组返回 extendedCardStyles） */
-const stylesLocked = computed(() => !useAuthStore().features.extendedCardStyles)
-const STYLES_LOCKED_MSG = '自定义卡片风格为会员功能，可在 设置 → 账户 开通'
 
 const keyword = ref('')
 
@@ -76,19 +71,9 @@ const filtered = computed(() => {
 const handleAdd = () => openCardStylePut()
 const handleOpen = (id: string) => openCardStyleDetail(id)
 
-const handleEdit = (id: string) => {
-  if (stylesLocked.value) {
-    MessageUtil.warning(STYLES_LOCKED_MSG)
-    return
-  }
-  openCardStylePut(id)
-}
+const handleEdit = (id: string) => openCardStylePut(id)
 
 const handleDelete = async (id: string) => {
-  if (stylesLocked.value) {
-    MessageUtil.warning(STYLES_LOCKED_MSG)
-    return
-  }
   const s = store.getById(id)
   if (!s) return
   try {
@@ -154,8 +139,8 @@ const handleDelete = async (id: string) => {
 
 .style-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
   padding: 0 24px 32px;
 }
 </style>

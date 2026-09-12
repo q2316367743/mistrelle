@@ -198,10 +198,10 @@ const toSummary = (style: AiDesignStyleItem | AiDesignStyle) => ({
   suitableFor: 'suitableFor' in style ? style.suitableFor : undefined
 })
 
-/** 自定义设计风格为会员功能：非会员 AI 面不可见不可写（系统预设照常可用） */
+/** AI 生成设计风格为会员权益：非会员 Agent 面不可见、工具写入兜底拒绝（手动表单新增不受限） */
 const stylesLocked = () => !useAuthStore().features.extendedDesignStyles
 
-const STYLES_LOCKED_ERROR = '自定义设计风格为会员功能，请引导用户到 设置 → 账户 开通会员'
+const STYLES_LOCKED_ERROR = 'AI 生成设计风格为会员功能，请引导用户到 设置 → 账户 开通会员，或手动新建'
 
 export const designStyleTools: ToolFunction[] = [
   {

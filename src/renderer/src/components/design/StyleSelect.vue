@@ -12,7 +12,6 @@
         :key="s.id"
         :value="s.id"
         :label="s.name"
-        :disabled="!s.isSystem && stylesLocked"
       >
         <t-popup
           trigger="hover"
@@ -56,9 +55,9 @@ withDefaults(
 const modelValue = defineModel<string>({ default: '' })
 
 const designStyleStore = useDesignStyleStore()
-/** 自定义设计风格为会员功能：非会员在下拉中可见但锁定选择 */
+/** 会员口径：自造风格免费可选；市场来源项由 store.all 对非会员过滤（直接不显示） */
 const stylesLocked = computed(() => !useAuthStore().features.extendedDesignStyles)
-/** 按分组聚合的设计风格选项（预设 + 用户自建） */
+/** 按分组聚合的设计风格选项（预设 + 用户自建，非会员不含市场下载项） */
 const groups = computed(() =>
   groupDesignStylesByCategory(
     designStyleStore.all.map((s) => ({
@@ -68,19 +67,21 @@ const groups = computed(() =>
   )
 )
 
-/** 该 id 是否内置预设（isSystem）；自定义 / 在线下载风格均非会员不可用 */
+/** 该 id 是否内置预设（isSystem） */
 const isBuiltin = (id: string): boolean => {
   const s = designStyleStore.getById(id)
   return Boolean(s && 'isSystem' in s && s.isSystem)
 }
 
-// 非会员已选自定义风格时自动清空（下拉项本就 disabled，防 keep-alive 残留 / 会员到期后旧选中提交）
+// 断订后已选市场来源风格时自动清空（store.all 已过滤，防 keep-alive 残留 / 旧选中提交）
 watch(
   [stylesLocked, modelValue],
   () => {
     if (!stylesLocked.value) return
     const v = modelValue.value
-    if (v && !isBuiltin(v)) modelValue.value = ''
+    if (!v || isBuiltin(v)) return
+    const raw = designStyleStore.state.find((e) => e.id === v)
+    if (!raw || raw.source === 'market') modelValue.value = ''
   },
   { immediate: true }
 )

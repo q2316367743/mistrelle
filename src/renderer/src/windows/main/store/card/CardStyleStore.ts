@@ -11,8 +11,6 @@ import {
 } from '@/windows/main/modules/card'
 import { useLog } from '@/hooks/UseLog'
 import { useSnowflake } from '@/hooks'
-// 直连文件而非 '@/store'（index 会再导出本模块，经 index 会成环）
-import { useAuthStore } from '@/windows/main/store/AuthStore'
 
 export const useCardStyleStore = defineStore('card:style', () => {
   const logger = useLog({ name: 'store:card-style' })
@@ -50,11 +48,11 @@ export const useCardStyleStore = defineStore('card:style', () => {
   /**
    * 新增或更新卡片风格，同步写 index.json 与单条文件，返回该风格的 id。
    * 内置预设只读：传入预设 id 时直接拒绝，不做任何写入，返回 undefined。
-   * 自定义卡片风格为会员功能：非会员兜底拒绝写入（UI 入口已锁，防 AI 工具旁路）。
+   * 自造免费且永久归用户（会员文档 5.3 方案 1）：写入不做会员拦截；
+   * AI 工具旁路由 builtin Agent 隐藏 + AI 工具层会员 gate 兜底。
    */
   const put = async (form: AiCardStyleForm, id?: string): Promise<string | undefined> => {
     if (isSystem(id)) return undefined
-    if (!useAuthStore().features.extendedCardStyles) return undefined
     const now = Date.now()
     const props = normalizeCardStyleProps(form.props)
     const template = normalizeCardStyleTemplate(form.template)
@@ -85,8 +83,8 @@ export const useCardStyleStore = defineStore('card:style', () => {
   }
 
   const remove = async (id: string) => {
-    // 内置预设只读，拒绝删除；自定义风格为会员功能，非会员兜底拒绝（UI 入口已提示）
-    if (isSystem(id) || !useAuthStore().features.extendedCardStyles) return
+    // 内置预设只读，拒绝删除；用户自建均可删除
+    if (isSystem(id)) return
     state.value = state.value.filter((e) => e.id !== id)
     await cardStyleListSave(state.value)
     await cardStyleRemove(id)

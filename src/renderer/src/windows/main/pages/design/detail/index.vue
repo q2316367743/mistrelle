@@ -76,7 +76,7 @@ const style = ref<AiDesignStyle>()
 const loadOnline = async () => {
   if (stylesLocked.value) {
     style.value = undefined
-    MessageUtil.warning('在线设计风格为会员功能，可在 设置 → 账户 开通')
+    MessageUtil.warning('下载在线风格为会员功能，可在 设置 → 账户 开通')
     return
   }
   const res = await window.preload.auth.getDesignStyle(id.value)
@@ -110,12 +110,12 @@ const handleEdit = async () => {
 const handleDownload = async () => {
   if (!style.value || downloaded.value) return
   if (stylesLocked.value) {
-    MessageUtil.warning('在线设计风格为会员功能，可在 设置 → 账户 开通')
+    MessageUtil.warning('下载在线风格为会员功能，可在 设置 → 账户 开通')
     return
   }
   downloading.value = true
   try {
-    const savedId = await store.put(toAiDesignStyleForm(style.value), style.value.id)
+    const savedId = await store.put(toAiDesignStyleForm(style.value), style.value.id, 'market')
     if (!savedId) {
       MessageUtil.error('下载失败')
       return

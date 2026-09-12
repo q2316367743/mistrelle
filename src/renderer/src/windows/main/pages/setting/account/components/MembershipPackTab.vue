@@ -61,6 +61,7 @@ function handleBuy(offer: AuthPackOffer): void {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 8px;
 }
 
 .pack-tab__total {

@@ -28,11 +28,15 @@ export const useDesignStyleStore = defineStore('design:style', () => {
   /** 用户自建设计风格（index.json 轻量索引项，列表缓存） */
   const state = ref(new Array<AiDesignStyleItem>())
 
-  /** 内置预设（isSystem） + 用户自建，供列表与详情统一消费（预设在前） */
-  const all = computed<Array<AiDesignStyleItem | AiDesignStyle>>(() => [
-    ...DESIGN_STYLE_PRESETS,
-    ...state.value
-  ])
+  /** 内置预设（isSystem） + 用户自建 + 市场下载，供列表与详情统一消费（预设在前）。
+   *  断订后市场下载内容「直接不显示」（文档 5.2）：非会员过滤 source==='market'，重新订购自动恢复 */
+  const all = computed<Array<AiDesignStyleItem | AiDesignStyle>>(() => {
+    const marketHidden = !useAuthStore().features.extendedDesignStyles
+    return [
+      ...DESIGN_STYLE_PRESETS,
+      ...state.value.filter((s) => !marketHidden || s.source !== 'market')
+    ]
+  })
 
   const init = async () => {
     const list = await designStyleList()
@@ -84,12 +88,16 @@ export const useDesignStyleStore = defineStore('design:style', () => {
   /**
    * 新增或更新设计风格，同步写 index.json 与单条文件，返回该风格的 id。
    * 内置预设只读：传入预设 id 时直接拒绝，不做任何写入，返回 undefined。
-   * 自定义设计风格为会员功能：非会员兜底拒绝写入（UI 入口已锁，防 AI 工具旁路）。
+   * 自造免费且永久归用户（会员文档 5.3 方案 1）：写入不做会员拦截；
+   * AI 工具旁路由 builtin Agent 隐藏 + AI 工具层会员 gate 兜底。
    */
-  const put = async (form: AiDesignStyleForm, id?: string): Promise<string | undefined> => {
+  const put = async (
+    form: AiDesignStyleForm,
+    id?: string,
+    source?: 'market'
+  ): Promise<string | undefined> => {
     // 内置预设只读，拒绝写入
     if (isSystem(id)) return undefined
-    if (!useAuthStore().features.extendedDesignStyles) return undefined
     const now = Date.now()
     if (id) {
       const idx = state.value.findIndex((e) => e.id === id)
@@ -104,6 +112,7 @@ export const useDesignStyleStore = defineStore('design:style', () => {
           typography: form.typography,
           tokens: form.tokens,
           whitespaceRatio: form.whitespaceRatio,
+          source: state.value[idx].source,
           createdAt: state.value[idx].createdAt,
           updatedAt: now
         }
@@ -124,6 +133,7 @@ export const useDesignStyleStore = defineStore('design:style', () => {
         typography: form.typography,
         tokens: form.tokens,
         whitespaceRatio: form.whitespaceRatio,
+        source,
         createdAt: now,
         updatedAt: now
       }
@@ -153,8 +163,8 @@ export const useDesignStyleStore = defineStore('design:style', () => {
   }
 
   const remove = async (id: string) => {
-    // 内置预设只读，拒绝删除；自定义风格为会员功能，非会员兜底拒绝（UI 入口已提示）
-    if (isSystem(id) || !useAuthStore().features.extendedDesignStyles) return
+    // 内置预设只读，拒绝删除；用户自建与市场下载均可删除
+    if (isSystem(id)) return
     state.value = state.value.filter((e) => e.id !== id)
     await designStyleListSave(state.value)
     await designStyleRemove(id)

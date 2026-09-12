@@ -19,7 +19,7 @@
 ├── src/renderer/src/global/CardStylePresets.ts    # 7 套内置预设（isSystem，不落盘；含自由层示范「苹果备忘录」）
 ├── src/renderer/src/entity/ai/AiCardStyle.ts     # 实体 AiCardStyleItem / AiCardStyle / Form
 ├── src/renderer/src/windows/main/modules/card/service/CardStyleService.ts   # ~/.mistrelle/card-style/
-├── src/renderer/src/windows/main/store/card/CardStyleStore.ts               # Pinia，会员硬门控
+├── src/renderer/src/windows/main/store/card/CardStyleStore.ts               # Pinia，内置预设只读保护
 ├── src/renderer/src/windows/main/pages/design/card/DesginCardPage.vue       # 管理页（/design/card，全抽屉）
 │   ├── components/（CardStyleCard / CardStyleFace / CardStylePropField / CardStylePropsForm）
 │   └── modals/（CardStylePutDrawer / CardStyleDetailDrawer，.tsx 外壳 + .vue 内容）
@@ -81,7 +81,7 @@ interface AiCardStyle  extends AiCardStyleItem { isSystem: boolean }  // card-st
 ```
 
 `~/.mistrelle/card-style/index.json` + `card-style-{id}.json`（镜像 design 模式，索引项即完整数据，编辑无需读单条文件）。
-内置预设 7 套代码常量不落盘，`CardStyleStore.all` = 预设在前 + 用户自建；`put`/`remove` 硬门控 `extendedCardStyles`。
+内置预设 7 套代码常量不落盘，`CardStyleStore.all` = 预设在前 + 用户自建；`put`/`remove` 只拦内置预设只读，不做会员拦截（自造免费，2026-09-12 口径）。
 旧数据缺 template/css 字段：`normalizeCardStyleItem` 读时兜底补空串，无迁移。
 
 ### 2.3 自由层契约（`card-style-template.ts`）
@@ -128,8 +128,9 @@ interface AiCardStyle  extends AiCardStyleItem { isSystem: boolean }  // card-st
 
 ## 4. 设计 → 卡片风格管理页
 
-- 页面 `/design/card`（DesginCardPage.vue）：hero（新建按钮 + 会员 badge）+ 搜索 + 网格；无详情路由，查看/编辑全抽屉。
-- `CardStyleFace.vue` 用固定示例内容 + NoteCardRenderer 整卡所见即所得，含示例作者/水印（与主页面同款渲染器）。
+- 页面 `/design/card`（DesginCardPage.vue）：hero（新建按钮）+ 搜索 + 网格（minmax(300px,1fr)/gap 12px，与设计风格页一致）；无详情路由，查看/编辑全抽屉。
+- `CardStyleFace.vue` 用固定示例内容 + NoteCardRenderer 整卡所见即所得，含示例作者/水印（与主页面同款渲染器）；
+  meta 区与 `StyleCardFace` compact 同构（标题行 + 内置胶囊徽标 + actions / 描述两行截断 / `#tag` 标签行）。
 - 编辑表单按注册表分组自动出控件（color→ColorPicker、length/number→InputNumber、enum→Select、font→真实字体下拉）；
   下方「自定义模板」区提供 HTML 模板 / 自定义 CSS 两个等宽 t-textarea（折叠面板展示插槽契约说明），预览实时联动。
 - 详情抽屉在注册表分组值之外，风格含自由层时以等宽 `<pre>` 只读展示模板与 CSS 源码。
@@ -153,9 +154,11 @@ interface AiCardStyle  extends AiCardStyleItem { isSystem: boolean }  // card-st
 ## 6. 会员门控（`extendedCardStyles`）
 
 - `AuthFeatureKey` / `AuthTierInfo` / `AuthStore.FREE_FEATURES` / preload `authChannels.ts`（type + FREE + normalize）+
-  `MemberTierContent.vue` 权益表，五处同步；**服务端在 features 数组返回该键后自动生效**（服务端暂未启用）。
-- 语义（同 design 的 `extendedDesignStyles`）：内置预设人人可用；新建/编辑/删除会员限定——UI 锁定（badge+disabled+warning）、
-  Store 硬拒绝（防 AI 工具旁路）、AI 工具层再拦一次；非会员 AI 面仅见内置预设。Markdown 卡片页本身不设门控。
+  权益表五处同步；**服务端在 features 数组返回该键后自动生效**（服务端暂未启用）。
+- 语义（2026-09-12 会员定稿）：**手动新增/编辑/删除全开放且自造内容永久归用户**（`CardStyleStore.put`/`remove`
+  不做会员拦截）；`extendedCardStyles` 只门控 **AI 生成**——`builtin:card-style` Agent 非会员隐藏（`getById` 保留防 brick）、
+  AI 工具层 `stylesLocked` 再拦一次，非会员 AI 面仅见内置预设。Markdown 卡片页本身不设门控。
+- 卡片风格暂无市场（服务端无卡片风格资源模型），故无下载场景、无 `source` 来源标记（区别于设计风格）。
 
 ## 7. 注意事项
 

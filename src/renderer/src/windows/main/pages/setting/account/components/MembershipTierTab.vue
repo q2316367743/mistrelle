@@ -23,16 +23,12 @@
           </t-tag>
           <span v-if="tier.category === 'free'" class="tier-tab__free">免费</span>
           <div v-else-if="tier.offers.length" class="tier-tab__offers">
-            <t-button
-              v-for="offer in tier.offers"
-              :key="offer.goodsNo"
-              size="small"
-              theme="primary"
-              variant="outline"
-              @click="handleBuy(offer)"
-            >
-              {{ monthLabel(offer.months) }}{{ priceSuffix(offer) }}
-            </t-button>
+            <div v-for="offer in tier.offers" :key="offer.goodsNo" class="tier-tab__offer">
+              <t-button size="small" theme="primary" variant="outline" @click="handleBuy(offer)">
+                {{ monthLabel(offer.months) }}{{ priceSuffix(offer) }}
+              </t-button>
+              <span v-if="dealLabel(offer)" class="tier-tab__deal">{{ dealLabel(offer) }}</span>
+            </div>
           </div>
           <span v-else class="tier-tab__off">暂未上架</span>
         </div>
@@ -42,14 +38,14 @@
 </template>
 <script lang="ts" setup>
 import { CheckIcon } from 'tdesign-icons-vue-next'
-import { fenLabel, monthLabel, openPurchase } from '../modals/offer'
+import { fenLabel, monthLabel, openPurchase, perMonthDeal } from '../modals/offer'
 
 type FeatureKey = 'thirdPartyRelay' | 'extendedDesignStyles' | 'customFonts' | 'extendedCardStyles'
 
+// thirdPartyRelay（第三方中转）已下放免费，不再是档位权益，不在权益表展示
 const FEATURES: Array<{ key: FeatureKey; label: string }> = [
-  { key: 'thirdPartyRelay', label: '第三方中转' },
-  { key: 'extendedDesignStyles', label: '更多设计风格' },
-  { key: 'extendedCardStyles', label: '自定义卡片风格' },
+  { key: 'extendedDesignStyles', label: '下载在线设计风格 + AI 生成设计风格' },
+  { key: 'extendedCardStyles', label: 'AI 生成卡片风格' },
   { key: 'customFonts', label: '自定义字体' }
 ]
 
@@ -76,6 +72,11 @@ const rows = computed<TierRow[]>(() =>
 function priceSuffix(offer: AuthTierOffer): string {
   const label = fenLabel(offer.priceFen)
   return label ? ` ${label}` : ''
+}
+
+/** 多月规格（年卡）折合月价营销位；平台价未同步时不展示 */
+function dealLabel(offer: AuthTierOffer): string | null {
+  return perMonthDeal(offer)
 }
 
 function handleBuy(offer: AuthTierOffer): void {
@@ -156,6 +157,18 @@ function handleBuy(offer: AuthTierOffer): void {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.tier-tab__offer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.tier-tab__deal {
+  font: var(--td-font-body-small);
+  color: var(--td-text-color-secondary);
 }
 
 .tier-tab__free,

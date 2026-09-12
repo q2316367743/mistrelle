@@ -69,6 +69,7 @@
     "@vueuse/core": "^9.13.0",
     "@vueuse/integrations": "^10.11.1",
     "@zumer/snapdom": "^2.24.15",
+    "ag-psd": "^31.0.2",
     "dayjs": "^1.11.14",
     "drizzle-kit": "^0.31.10",
     "echarts": "^6.1.0",

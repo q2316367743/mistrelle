@@ -209,6 +209,11 @@ export interface AiDesignStyleItem extends BaseEntity, AiDesignStyleCore {
   tokens: AiDesignStyleTokens
   /** 留白档位，映射卡片内边距密度 */
   whitespaceRatio: AiDesignStyleWhitespaceRatio
+  /**
+   * 来源：'market' = 从在线风格库下载（会员权益，断订后隐藏）；
+   * 缺省 = 用户自造或旧数据，永久归用户所有
+   */
+  source?: 'market'
 }
 
 export interface AiDesignStyleForm extends AiDesignStyleCore {
@@ -294,6 +299,10 @@ export interface AiDesignStyle extends BaseEntity, AiDesignStyleForm {
    * 是否为系统预设（true则不可删除）
    */
   isSystem: boolean
+  /**
+   * 来源：'market' = 从在线风格库下载（会员权益，断订后隐藏）；缺省 = 用户自造，永久归用户
+   */
+  source?: 'market'
 }
 
 /** tokens 默认值，并用默认值兜底合并部分传入（兼容旧数据 / agent 部分传参） */

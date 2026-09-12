@@ -7,6 +7,7 @@ import {
   parseCanvasVersion,
   computeNodeBounds,
   exportCanvasPng,
+  exportCanvasPsd,
   normalizeRegion,
   type CanvasExportRegion,
   CanvasBatchOp,
@@ -179,15 +180,20 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       name: 'canvas_export',
       label: '导出画布图片',
       description:
-        '将当前画布（或指定版本）渲染为 PNG 图片并保存到本地，返回保存路径。缺省导出整张画布（尺寸 = 画布 doc 宽高，越界元素自动裁剪）；若设计内容在画布内的某个容器 / 卡片中，用 node 或 region 指定导出区域，保证导出尺寸与设计尺寸一致。用于目测整体视觉效果；核对元素精确位置 / 尺寸 / 间距请用 canvas_inspect，无需先导出',
+        '将当前画布（或指定版本）渲染为图片并保存到本地，返回保存路径。缺省导出 PNG（尺寸 = 画布 doc 宽高，越界元素自动裁剪）；若设计内容在画布内的某个容器 / 卡片中，用 node 或 region 指定导出区域，保证导出尺寸与设计尺寸一致。format=psd 时导出分层 Photoshop 文件（仅整张画布，忽略 node / region；逐图层位图化，文本与效果烘焙进位图）。用于目测整体视觉效果；核对元素精确位置 / 尺寸 / 间距请用 canvas_inspect，无需先导出',
       parameters: {
         type: 'object',
         properties: {
           version: { type: 'number', description: '画布版本号（缺省导出当前画布）' },
+          format: {
+            type: 'string',
+            enum: ['png', 'psd'],
+            description: '导出格式：png（缺省）/ psd（分层 Photoshop 文件，仅整张画布导出）'
+          },
           path: {
             type: 'string',
             description:
-              'PNG 保存路径（缺省保存到沙盒 outputs/canvas-{version}.png；父目录不存在会自动创建）'
+              '保存路径（缺省保存到沙盒 outputs/canvas-{version}.png 或 .psd；父目录不存在会自动创建）'
           },
           node: {
             type: 'string',
@@ -209,8 +215,9 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const { version, path, node, region } = params[0] as {
+        const { version, format, path, node, region } = params[0] as {
           version?: number
+          format?: 'png' | 'psd'
           path?: string
           node?: string
           region?: CanvasExportRegion
@@ -226,6 +233,25 @@ export const createCanvasTools = (ctx: CanvasToolContext): ToolFunction[] => {
         }
         if (!doc) {
           return { error: '当前没有打开的画布，请先 canvas_create 或 canvas_open，或指定 version' }
+        }
+        // PSD：逐图层位图化，仅支持整张画布（忽略 node / region）
+        if (format === 'psd') {
+          const psdPath =
+            path ||
+            window.preload.path.join(
+              buildCanvasOutputsDir(sandboxDir),
+              `canvas-${doc.version}.psd`
+            )
+          const bytes = await exportCanvasPsd(doc)
+          await window.preload.fs.mkdir(window.preload.path.dirname(psdPath), true)
+          await window.preload.fs.writeBinaryFile(psdPath, bytes)
+          return {
+            success: true,
+            path: psdPath,
+            width: doc.width,
+            height: doc.height,
+            note: '已导出分层 PSD（逐图层位图化，文本与效果已烘焙进位图，PS 内不可再编辑矢量 / 文字）'
+          }
         }
         // 解析导出区域：node → region → 整张画布；node/region 均缺省时严格按画布尺寸导出（裁剪越界）
         const defaultRegion = (): CanvasExportRegion => ({

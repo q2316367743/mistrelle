@@ -40,11 +40,17 @@
             </template>
             复制图片
           </t-dropdown-item>
-          <t-dropdown-item value="download" :disabled="!store.current.value || busy">
+          <t-dropdown-item value="download-png" :disabled="!store.current.value || busy">
             <template #prefix-icon>
               <download-icon />
             </template>
             下载图片
+          </t-dropdown-item>
+          <t-dropdown-item value="download-psd" :disabled="!store.current.value || busy">
+            <template #prefix-icon>
+              <download-icon />
+            </template>
+            下载 PSD
           </t-dropdown-item>
         </t-dropdown-menu>
       </t-dropdown>
@@ -82,6 +88,7 @@ import {
   buildCanvasFileName,
   buildCanvasOutputsDir,
   exportCanvasPng,
+  exportCanvasPsd,
   getCanvasStore
 } from '@/windows/main/modules/canvas'
 import type { ChatStatus } from '@/windows/main/modules/chat'
@@ -191,22 +198,27 @@ const handleCopy = async () => {
   }
 }
 
-/** 下载当前画布为图片（选择保存路径，文件名 title+时间戳） */
-const handleDownload = async () => {
+/** 下载当前画布（选择保存路径，文件名 title+时间戳；png 整图 / psd 分层位图） */
+const handleDownload = async (format: 'png' | 'psd') => {
   const doc = store.value.current.value
   if (!doc) return
   busy.value = true
   try {
-    const blob = await exportCanvasPng(doc)
-    const name = `${doc.title || doc.name || 'canvas'}-${dayjs().format('YYYYMMDDHHmmss')}.png`
+    const ext = format === 'psd' ? 'psd' : 'png'
+    const name = `${doc.title || doc.name || 'canvas'}-${dayjs().format('YYYYMMDDHHmmss')}.${ext}`
     const path = await window.preload.inject.dialog.save({
       title: '保存画布图片',
       defaultPath: name,
-      filters: [{ name: 'PNG 图片', extensions: ['png'] }]
+      filters:
+        format === 'psd'
+          ? [{ name: 'Photoshop 文件', extensions: ['psd'] }]
+          : [{ name: 'PNG 图片', extensions: ['png'] }]
     })
     if (!path) return
-    await window.preload.fs.writeBinaryFile(path, await blob.arrayBuffer())
-    MessageUtil.success('已保存画布图片')
+    const data =
+      format === 'psd' ? await exportCanvasPsd(doc) : await (await exportCanvasPng(doc)).arrayBuffer()
+    await window.preload.fs.writeBinaryFile(path, data)
+    MessageUtil.success(format === 'psd' ? '已保存分层 PSD' : '已保存画布图片')
   } catch (e) {
     MessageUtil.error('保存失败', e)
   } finally {
@@ -216,7 +228,8 @@ const handleDownload = async () => {
 
 const handleAction: DropdownProps['onClick'] = (data) => {
   if (data.value === 'copy') void handleCopy()
-  else if (data.value === 'download') void handleDownload()
+  else if (data.value === 'download-png') void handleDownload('png')
+  else if (data.value === 'download-psd') void handleDownload('psd')
   else if (data.value === 'folder') {
     if (selected.value) {
       window.preload.inject.shell.showItemInFolder(

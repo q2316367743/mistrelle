@@ -39,6 +39,8 @@ export function mapRemoteToDesignStyle(d: AuthDesignStyleDetail): AiDesignStyle 
     suitableFor: d.suitableFor,
     unsuitableFor: d.unsuitableFor,
     isSystem: false,
+    /** 从在线风格库下载：标记市场来源，非会员时本地列表与选型中隐藏 */
+    source: 'market',
     createdAt: Date.parse(d.createdAt) || Date.now(),
     updatedAt: Date.parse(d.updatedAt) || Date.now()
   }
@@ -74,8 +76,11 @@ function mapRemoteItem(item: AuthDesignStyleItem): AiDesignStyleItem {
   })
 }
 
-/** 在线设计风格列表加载与下载落盘 */
-export function useOnlineDesignStyles(stylesLocked: Ref<boolean>) {
+/**
+ * 在线设计风格列表加载与下载落盘。
+ * 会员口径：列表对所有登录用户开放（市场可见），仅下载受 features.extendedDesignStyles 限制。
+ */
+export function useOnlineDesignStyles(downloadLocked: Ref<boolean>) {
   const store = useDesignStyleStore()
   const onlineList = ref<AiDesignStyleItem[]>([])
   const onlineLoading = ref(false)
@@ -83,7 +88,6 @@ export function useOnlineDesignStyles(stylesLocked: Ref<boolean>) {
   const onlineLoaded = ref(false)
 
   const loadOnline = async () => {
-    if (stylesLocked.value) return
     onlineLoading.value = true
     onlineError.value = ''
     try {
@@ -103,10 +107,10 @@ export function useOnlineDesignStyles(stylesLocked: Ref<boolean>) {
     }
   }
 
-  /** 下载在线风格到本地（保留在线 id） */
+  /** 下载在线风格到本地（保留在线 id，标记市场来源） */
   const downloadToLocal = async (id: string): Promise<boolean> => {
-    if (stylesLocked.value) {
-      MessageUtil.warning('自定义设计风格为会员功能，可在 设置 → 账户 开通')
+    if (downloadLocked.value) {
+      MessageUtil.warning('下载在线风格为会员功能，可在 设置 → 账户 开通')
       return false
     }
     if (store.hasLocal(id)) {
@@ -120,7 +124,7 @@ export function useOnlineDesignStyles(stylesLocked: Ref<boolean>) {
         return false
       }
       const full = mapRemoteToDesignStyle(res.data)
-      const savedId = await store.put(toAiDesignStyleForm(full), full.id)
+      const savedId = await store.put(toAiDesignStyleForm(full), full.id, 'market')
       if (!savedId) {
         MessageUtil.error('下载失败')
         return false
@@ -136,7 +140,7 @@ export function useOnlineDesignStyles(stylesLocked: Ref<boolean>) {
   const isDownloaded = (id: string) => store.hasLocal(id)
 
   const ensureLoaded = (active: boolean) => {
-    if (active && !stylesLocked.value && !onlineLoaded.value) {
+    if (active && !onlineLoaded.value) {
       void loadOnline()
     }
   }

@@ -22,7 +22,7 @@
       </div>
     </template>
 
-    <template v-if="relayEnabled && customItems.length > 0">
+    <template v-if="customItems.length > 0">
       <t-divider size="8px" />
       <div class="ai-setting-sidebar__group-title">自定义供应商</div>
       <div ref="listRef" class="ai-setting-sidebar__list ai-setting-sidebar__list--scroll">
@@ -60,14 +60,12 @@
       </div>
     </template>
 
-    <template v-if="relayEnabled">
-      <div class="ai-setting-sidebar__add">
-        <t-button theme="primary" variant="outline" block @click="emit('add')">
-          <template #icon><AddIcon /></template>
-          添加供应商
-        </t-button>
-      </div>
-    </template>
+    <div class="ai-setting-sidebar__add">
+      <t-button theme="primary" variant="outline" block @click="emit('add')">
+        <template #icon><AddIcon /></template>
+        添加供应商
+      </t-button>
+    </div>
   </div>
 </template>
 
@@ -88,7 +86,6 @@ const emit = defineEmits<{
 }>()
 
 const store = useSettingAiStore()
-const relayEnabled = computed(() => store.relayEnabled)
 const builtinItem = computed(() => store.items.find((i) => i.builtin))
 const customItems = computed(() => store.items.filter((i) => !i.builtin))
 const listRef = ref<HTMLElement>()

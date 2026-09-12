@@ -71,27 +71,19 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
   let initPromise: Promise<void> | undefined
 
   /**
-   * 门控：免费档（未登录 / unknown / 已登录无会员）只提供内置供应商。
-   * thirdPartyRelay 已消费（docs/auth/02），消费点只读 AuthStore.features。
+   * 第三方中转（自定义供应商）已于 2026-09-12 下放免费（会员文档：软件能跑的前提，不能当墙），
+   * 不再做任何档位门控；登录守卫属于账号体系，与本能力无关。
    */
-  const relayEnabled = computed(() => useAuthStore().features.thirdPartyRelay)
-
-  /** 提供给外部的提供方列表：内置恒在首项；免费档过滤掉自定义（不可见不可选） */
-  const visibleItems = computed<AiProvide[]>(() => {
-    const base = items.value
-    return relayEnabled.value ? base : base.filter((item) => item.builtin)
-  })
-
   const options = computed<Array<SelectOptionGroup>>(() => {
-    return handleModelOption(visibleItems.value, 'chat')
+    return handleModelOption(items.value, 'chat')
   })
   const vectorOptions = computed<Array<SelectOptionGroup>>(() => {
-    return handleModelOption(visibleItems.value, 'vector')
+    return handleModelOption(items.value, 'vector')
   })
 
   const optionMap = computed<Map<string, AiProvideOption>>(() => {
     const map = new Map<string, AiProvideOption>()
-    visibleItems.value.forEach((item) => {
+    items.value.forEach((item) => {
       if (!item.enable) return
       item.models
         .filter((model) => model.enable)
@@ -201,14 +193,12 @@ export const useSettingAiStore = defineStore('AiProvideStore', () => {
 
   return {
     items,
-    visibleItems,
     options,
     vectorOptions,
     optionMap,
     ready,
     initPromise,
     refreshingBuiltin,
-    relayEnabled,
     refreshBuiltinModels,
     put,
     remove,

@@ -29,7 +29,7 @@
 | 文档                                                          | 描述                                                                                                          |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | [01-server-auth.md](./auth/01-server-auth.md)                 | 服务端账号接入（better-auth）：主进程 AuthService 单例共享状态 + 状态广播、API Key + 会话双存凭证（safeStorage 落盘）、Bearer 规避 CSRF、`/api/auth/*` 与 `/api/user/*` 契约、公开档位/增量包 SKU、登录弹窗与用户菜单接入；账户页布局见 setting/06 |
-| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播；会员只决定每日赠送，增量包兑永久积分可重复买）、**「会员与积分」弹窗（档位/积分包 Tab 同级）行内规格按钮跳转 16688 商品页购买**（purchaseUrl 由服务端 offers 下发，客户端零硬编码域名）、AuthStore.features 门控（UI 可见锁定 + AI 面过滤 + 渲染不拦，内置风格免费 / 自定义不可用于新会话 / 内置「设计风格创建助手」隐藏） |
+| [02-activation-and-features.md](./auth/02-activation-and-features.md) | 激活码与会员档位功能控制：verify/redeem 五层链路（redeem 后自动 refresh 广播；会员只决定每日赠送，增量包兑永久积分可重复买）、**「会员与积分」弹窗（档位/积分包 Tab 同级）行内规格按钮跳转 16688 商品页购买**（purchaseUrl 由服务端 offers 下发，客户端零硬编码域名）、AuthStore.features 门控（2026-09-12 口径：市场可见可浏览、手动新增自造免费且永久，付费仅市场下载 source='market' 断订隐藏 + AI 生成 + 自定义字体；AI 面过滤 + 渲染不拦） |
 
 ### ai/ —— AI 请求
 
@@ -100,6 +100,7 @@
 | [03-canvas-animation.md](./canvas/03-canvas-animation.md) | 画布动画（v3）：`CanvasAnimation` 声明式动画字段、`@leafer-in/animate` 透传与预览自动播放、PNG 导出 settle；原随附视频导出已随 ffmpeg 移除（见 app/04） |
 | [04-canvas-element-tree.md](./canvas/04-canvas-element-tree.md)         | 画布元素树：设计侧边栏全屏左栏，`selectedId` 驱动元素树 ↔ 画布双向选中联动                      |
 | [05-canvas-property-panel.md](./canvas/05-canvas-property-panel.md)     | 画布元素属性面板：全屏三栏第三栏，本地草稿 +「保存」按钮显式写回（batchEdit update，与 AI 同链路）；x/y 禁改、渐变/$token/布局关键字降级策略、按类型字段矩阵 |
+| [06-canvas-psd-export.md](./canvas/06-canvas-psd-export.md)             | 画布导出分层 PSD（2026-09-12）：ag-psd + 逐图层位图化（叶子光栅化、group→图层组、带效果组拍平）、`canvas_export` format=psd 与侧边栏「下载 PSD」入口、混合模式映射表、已知限制（文本/矢量烘焙进位图） |
 
 ### design/ —— 设计风格
 
@@ -107,10 +108,10 @@
 |---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
 | [01-design-style.md](./design/01-design-style.md)             | 设计风格模块：落盘契约、**8 套本地内置预设**（2 产品 UI + 各类各 1；更多走在线库）、配方字段（aliases / signature / whitespaceRatio / preferredFormats / suitableFor）、tokens + 提示词注入签名手法 |
 | [02-design-style-chat.md](./design/02-design-style-chat.md)   | 设计风格接入 design 聊天：`designStyleId` 创建后锁定、风格转提示词注入稳定 system 前缀、聊天室工作空间/风格只读展示、列表缓存详情不缓存 |
-| [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写；**会员门控**（免费档隐藏 agent、getById 保留历史会话） |
+| [03-design-style-agent.md](./design/03-design-style-agent.md) | 设计风格创建助手：工具 schema 含签名手法等配方字段；create 强调 signature 必写；**会员门控**（AI 生成=会员：免费档隐藏 agent、getById 保留历史会话；手动新增免费） |
 | [04-chart-tool.md](./design/04-chart-tool.md)                 | 图表工具：`chart_generate`（echarts option → SVG 落盘沙盒 → svg 节点 imageUrl 引用，支持全部内置图表）+ `renderChartOptionToSVG` SSR 渲染助手；集成形式调研（leafer 无 SVG 元素、SVG 渲染器 SSR、落盘而非内联的取舍） |
 | [05-style-preview.md](./design/05-style-preview.md)           | 风格预览所见即所得：`AiDesignStyleItem` 索引项扩展 typography/tokens/whitespaceRatio（旧数据读取兜底）、`StyleCardFace` 按规范整卡渲染（`--sp-*` 变量换算、留白密度、对比度文字色）、列表卡壳 + 面与详情大样张；**全局风格下拉组件 `StyleSelect`**（t-select 分组 + 选项悬浮 StyleCardFace 预览 + 非会员锁定，PageNew 与文生图表单共用，自带 overlay 全局样式） |
-| [06-card-style.md](./design/06-card-style.md)                 | 卡片风格与 Markdown 卡片（2026-09-06 三层模型）：**白名单属性注册表**（快捷层，CSS/表单/AI 提示词全派生）+ **自由层 template/css**（HTML 模板 data-nc 插槽契约 + 自定义 CSS，含清洗规则；信纸横线/纸纹/装饰可行）、7 套内置预设（含自由层示范「苹果备忘录」）、管理页（/design/card 全抽屉 + 模板编辑区）、**Markdown 卡片主页面**（/attachment/card：左 Markdown 源码编辑 + 右实时预览，经 NoteCardRenderer iframe 富渲染 + 实测分页 + snapdom 导出）、内置专家「卡片风格创建助手」（cardStyleTools 含 template/css 参数，extendedCardStyles 门控隐藏；ChatType 'card' 已删）、会员键 `extendedCardStyles`（服务端暂未返回） |
+| [06-card-style.md](./design/06-card-style.md)                 | 卡片风格与 Markdown 卡片（2026-09-06 三层模型）：**白名单属性注册表**（快捷层，CSS/表单/AI 提示词全派生）+ **自由层 template/css**（HTML 模板 data-nc 插槽契约 + 自定义 CSS，含清洗规则；信纸横线/纸纹/装饰可行）、7 套内置预设（含自由层示范「苹果备忘录」）、管理页（/design/card 全抽屉 + 模板编辑区）、**Markdown 卡片主页面**（/attachment/card：左 Markdown 源码编辑 + 右实时预览，经 NoteCardRenderer iframe 富渲染 + 实测分页 + snapdom 导出）、内置专家「卡片风格创建助手」（cardStyleTools 含 template/css 参数，extendedCardStyles 门控 AI 生成，手动新增免费；ChatType 'card' 已删）、会员键 `extendedCardStyles`（服务端暂未返回） |
 | [07-design-html-engine.md](./design/07-design-html-engine.md) | 设计创意 HTML 引擎（2026-09-06）：design 类型 **DesignScene 子引擎分层**（canvas/html，创建时选定后锁定、存量缺省 canvas、子 Agent 恒为 canvas）、ChatTypeConfig 按 `DESIGN_SCENE_CONFIG` 委托两份独立提示词与工具、`modules/designHtml/` 数据层（纯 HTML 文件 + `<html data-design-*>` 元信息、sanitizeDesignHtml 清洗、图片 dataURL 解析、snapdom 导出 PNG）、`html_*` 工具面（html_write 全量重写编辑模型 + html_guidelines 白名单复用）、专有侧边栏 HtmlDesignAside/HtmlDesignPreview（iframe 预览 + contain 缩放）、**元素选中与修改**（双击蓝框选中 + contentWindow 挂事件 + body 索引路径定位 + 滚轮升降级 + 全屏元素树 + 双击注入聊天镜像画布引用链） |
 
 ### chat/ —— 对话

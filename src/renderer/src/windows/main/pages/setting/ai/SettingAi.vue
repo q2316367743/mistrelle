@@ -50,7 +50,6 @@ const authStore = useAuthStore()
 
 /** 已登录（登录守卫用） */
 const isSignedIn = computed(() => authStore.status === 'signed-in')
-const relayEnabled = computed(() => store.relayEnabled)
 
 const selectedId = ref<string>('')
 const isCreating = ref(false)
@@ -89,16 +88,6 @@ watch(
   (len) => {
     if (!selectedId.value && !isCreating.value && len > 0) {
       selectItem(store.items[0].id)
-    }
-  },
-  { immediate: true }
-)
-
-watch(
-  () => relayEnabled.value,
-  (enabled) => {
-    if (!enabled && selectedId.value !== BUILTIN_PROVIDER_ID) {
-      selectItem(BUILTIN_PROVIDER_ID)
     }
   },
   { immediate: true }

@@ -20,8 +20,8 @@ export const useAuthStore = defineStore('auth', () => {
   const REFRESH_STALE_MS = 60_000
 
   /**
-   * 档位功能门控（统一消费点）：未登录 / unknown 视为免费档（两项受控功能均禁用）；
-   * 已登录取服务端 features。thirdPartyRelay 暂不消费。
+   * 档位功能门控（统一消费点）：未登录 / unknown 视为免费档（受控功能均禁用）；
+   * 已登录取服务端 features。thirdPartyRelay 已下放免费，客户端不再消费（仅透传兼容）。
    */
   const FREE_FEATURES: AuthFeatures = {
     thirdPartyRelay: false,

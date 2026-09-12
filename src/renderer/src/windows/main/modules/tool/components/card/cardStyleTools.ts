@@ -20,9 +20,10 @@ import {
 import { AiCardStyleForm } from '@/entity'
 import { useAuthStore, useCardStyleStore } from '@/windows/main/store'
 
+/** AI 生成卡片风格为会员权益：非会员 Agent 面不可见、工具写入兜底拒绝（手动表单新增不受限） */
 const stylesLocked = () => !useAuthStore().features.extendedCardStyles
 
-const STYLES_LOCKED_ERROR = '自定义卡片风格为会员功能，请引导用户到 设置 → 账户 开通会员'
+const STYLES_LOCKED_ERROR = 'AI 生成卡片风格为会员功能，请引导用户到 设置 → 账户 开通会员，或手动新建'
 
 /** create/update 共用的样式键值对入参（键 = 注册表白名单，全部可选） */
 const PROPS_PROPERTY: ToolProperty = {
