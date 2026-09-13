@@ -10,17 +10,17 @@ import { openHumanizeDepth } from './components/HumanizeDepthDialog'
 let lastHumanizeDepth = 5
 
 /**
- * 版本条动作编排：去 AI 味（选深度 → 立刻建版本 → 流式写入）。
+ * 去 AI 味动作编排：选深度 → 建版本 → 流式写入，产出进入当前类型的版本历史。
  */
 export const useArticleAssist = (ctx: {
   store: ComputedRef<ArticleStore>
   activeId: Ref<string>
   activeArticle: ComputedRef<ArticleItem | undefined>
+  /** 当前类型（平台）；'' 表示文章尚无类型 */
+  activeType: Ref<string>
   content: Ref<string>
   /** 冲刷未落盘编辑，避免原稿被防抖写脏 */
-  flushSave?: () => void
-  /** 编辑/预览模式（流式期间会强制 preview） */
-  mode?: ComputedRef<'edit' | 'preview'>
+  flushSave?: () => void | Promise<void>
   switchVersion?: (versionId: string) => void | Promise<void>
   removeVersion?: (versionId: string) => void | Promise<void>
 }) => {
@@ -36,17 +36,18 @@ export const useArticleAssist = (ctx: {
   /** 实际执行流式改写（弹窗确认深度后调用） */
   const runHumanize = async (depth: number): Promise<void> => {
     const article = ctx.activeArticle.value
-    if (!article || humanizing.value) return
+    const type = ctx.activeType.value
+    if (!article || !type || humanizing.value) return
     const original = ctx.content.value
     lastHumanizeDepth = depth
-    ctx.flushSave?.()
+    await ctx.flushSave?.()
     humanizing.value = true
     abortController = new AbortController()
     let versionId: string | null = null
     let streamed = ''
 
     try {
-      const version = await ctx.store.value.createVersion(article.id, {
+      const version = await ctx.store.value.createVersion(article.id, type, {
         source: 'humanize',
         content: ''
       })
@@ -67,7 +68,7 @@ export const useArticleAssist = (ctx: {
       const finalText = full || streamed
       const filePath = window.preload.path.join(ctx.store.value.root, version.file)
       await window.preload.fs.writeTextFile(filePath, finalText)
-      await ctx.store.value.patchVersion(article.id, version.id, {
+      await ctx.store.value.patchVersion(article.id, type, version.id, {
         words: finalText.replace(/\s+/g, '').length
       })
       ctx.content.value = finalText
@@ -79,12 +80,12 @@ export const useArticleAssist = (ctx: {
       if (versionId && streamed) {
         const filePath = window.preload.path.join(
           ctx.store.value.root,
-          ctx.activeArticle.value?.file ?? ''
+          ctx.activeArticle.value?.types.find((t) => t.type === ctx.activeType.value)?.file ?? ''
         )
         if (filePath && ctx.activeArticle.value) {
           try {
             await window.preload.fs.writeTextFile(filePath, streamed)
-            await ctx.store.value.patchVersion(article.id, versionId, {
+            await ctx.store.value.patchVersion(article.id, type, versionId, {
               words: streamed.replace(/\s+/g, '').length
             })
           } catch {
@@ -99,7 +100,7 @@ export const useArticleAssist = (ctx: {
         }
       } else if (versionId) {
         try {
-          await ctx.store.value.removeVersion(article.id, versionId)
+          await ctx.store.value.removeVersion(article.id, type, versionId)
           ctx.content.value = original
         } catch {
           ctx.content.value = original
@@ -121,7 +122,7 @@ export const useArticleAssist = (ctx: {
   const handleHumanize = (): void => {
     const article = ctx.activeArticle.value
     const auth = useAuthStore()
-    if (!HUMANIZE_ENABLED || !article || humanizing.value) return
+    if (!HUMANIZE_ENABLED || !article || !ctx.activeType.value || humanizing.value) return
     if (auth.status !== 'signed-in') {
       MessageUtil.warning('请先登录后再使用去 AI 味')
       return
@@ -139,10 +140,6 @@ export const useArticleAssist = (ctx: {
   return {
     humanizing,
     streamingVersionId,
-    /** 流式改写期间强制预览 */
-    editorMode: computed<'edit' | 'preview'>(() =>
-      humanizing.value ? 'preview' : (ctx.mode?.value ?? 'preview')
-    ),
     handleHumanize,
     handleAbortHumanize,
     onSwitchVersion: (versionId: string) => {

@@ -3,12 +3,13 @@
     <editor-content
       :editor="editor"
       class="article-editor__content"
-      :class="{ 'is-preview': mode === 'preview' }"
+      :class="{ 'is-preview': !editable }"
     />
   </div>
 </template>
 <script lang="ts" setup>
 import { EditorContent, useEditor } from '@tiptap/vue-3'
+import type { ChainedCommands } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { TableKit } from '@tiptap/extension-table'
@@ -18,8 +19,8 @@ import { ArticleSlash } from './ArticleSlash'
 
 const props = defineProps<{
   content: string
-  /** 编辑 / 预览模式（由侧边栏 header 控制） */
-  mode: 'edit' | 'preview'
+  /** 是否可编辑（默认 true；流式改写等场景由父级传 false 锁定） */
+  editable?: boolean
   /** 文章 md 所在目录（图片相对路径解析基准） */
   baseDir?: string
   /** 配图目录（assets/ 绝对路径，粘贴 / 拖入图片落盘于此） */
@@ -58,7 +59,7 @@ const insertLocalImage = async (file: File) => {
   emit('image-added', rel)
 }
 
-/** 供配图面板把已登记插图插入光标处（编辑器被分段切换隐藏时也可调用） */
+/** 供外部把图片插入光标处（工具栏插图 / 生图完成回调） */
 const insertImage = (rel: string) => {
   editor.value
     ?.chain()
@@ -66,7 +67,22 @@ const insertImage = (rel: string) => {
     .insertContent({ type: 'image', attrs: { src: rel, alt: '' } })
     .run()
 }
-defineExpose({ insertImage })
+
+/** 执行一条 focus 后的编辑器命令（工具栏格式按钮） */
+const exec = (fn: (chain: ChainedCommands) => ChainedCommands): void => {
+  const ed = editor.value
+  if (!ed) return
+  fn(ed.chain().focus()).run()
+}
+
+defineExpose({
+  insertImage,
+  toggleBold: () => exec((c) => c.toggleBold()),
+  toggleItalic: () => exec((c) => c.toggleItalic()),
+  toggleHeading2: () => exec((c) => c.toggleHeading({ level: 2 })),
+  toggleBulletList: () => exec((c) => c.toggleBulletList()),
+  toggleBlockquote: () => exec((c) => c.toggleBlockquote())
+})
 
 const editor = useEditor({
   extensions: [
@@ -80,7 +96,7 @@ const editor = useEditor({
   ],
   content: props.content,
   contentType: 'markdown',
-  editable: props.mode === 'edit',
+  editable: props.editable !== false,
   editorProps: {
     attributes: { class: 'article-editor__pm' },
     handlePaste: (_view, event) => {
@@ -112,8 +128,8 @@ const editor = useEditor({
 })
 
 watch(
-  () => props.mode,
-  (value) => editor.value?.setEditable(value === 'edit')
+  () => props.editable,
+  (value) => editor.value?.setEditable(value !== false)
 )
 
 /** 外部内容变化（切换文章重挂载由父级 :key 处理，此处兜底外部写入）时仅在确有差异时同步 */
@@ -140,7 +156,7 @@ onBeforeUnmount(() => editor.value?.destroy())
   &__content {
     flex: 1;
     overflow: auto;
-    padding: 16px 20px;
+    padding: 16px 20px 24px;
     box-sizing: border-box;
   }
 }

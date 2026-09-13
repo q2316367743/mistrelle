@@ -64,12 +64,17 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     addCanvasNode: (ref: CanvasNodeRef) => void
     addHtmlElementNode: (ref: HtmlElementRef) => void
     addTextPrompt: (text: string) => void
+    sendTextPrompt: (text: string) => void
   }>()
   provide(CANVAS_NODE_PICK_KEY, (ref) => senderRef.value?.addCanvasNode(ref))
   // HTML 设计稿预览双击元素 → 注入聊天输入框（HtmlDesignAside inject，经本组件转发到 LChatSender.addHtmlElementNode）
   provide(HTML_ELEMENT_PICK_KEY, (ref) => senderRef.value?.addHtmlElementNode(ref))
-  // 写作侧边栏快捷指令 → 注入聊天输入框（ArticleAside inject，经本组件转发到 LChatSender.addTextPrompt）
-  provide(PROMPT_INPUT_KEY, (text) => senderRef.value?.addTextPrompt(text))
+  // 写作侧边栏快捷指令 → 注入聊天输入框（ArticleAside inject，经本组件转发到 LChatSender.addTextPrompt）；
+  // autoSend 时填入后立即发送（如「按风格重写」动作式指令）
+  provide(PROMPT_INPUT_KEY, (text, options) => {
+    if (options?.autoSend) senderRef.value?.sendTextPrompt(text)
+    else senderRef.value?.addTextPrompt(text)
+  })
 
   watch(sandboxDir, (val) => instance.setSandboxDir(val), { immediate: true })
 

@@ -1,181 +1,133 @@
 <template>
   <div class="article-aside">
-    <article-aside-header
-      :articles="articles"
-      :active-id="activeId"
-      :export-disabled="!activeArticle || exporting"
-      :locked="humanizing"
-      @select="(v: unknown) => guardAction(handleSelectChange, v)"
-      @reveal="() => guardAction(handleReveal)"
-      @refresh="() => guardAction(handleRefresh)"
-      @export="() => guardAction(handleExport)"
-    />
-
-    <!-- 窄栏布局：正文 / 配图 / 风格 分段切换 -->
-    <t-radio-group
-      v-if="!fullscreen"
-      class="article-aside__tabs"
-      variant="default-filled"
-      :value="activeTab"
-      :disabled="humanizing"
-      @change="(v: unknown) => typeof v === 'string' && (activeTab = v as ArticleAsideTab)"
-    >
-      <t-radio-button value="content" class="justify-center">正文</t-radio-button>
-      <t-radio-button value="image" class="justify-center">配图</t-radio-button>
-      <t-radio-button value="style" class="justify-center">风格</t-radio-button>
-    </t-radio-group>
-
-    <template v-if="!fullscreen">
-      <div class="article-aside__body">
-        <template v-if="activeArticle">
-          <div v-show="activeTab === 'content'" class="article-aside__pane">
-            <article-version-bar
-              :versions="versions"
-              :active-version-id="activeVersionId"
-              :humanizing="humanizing"
-              :streaming-version-id="streamingVersionId"
-              :content="content"
-              @select="onSwitchVersion"
-              @remove="onRemoveVersion"
-              @humanize="handleHumanize"
-              @abort="handleAbortHumanize"
-            />
-            <article-editor
-              ref="editorRef"
-              :key="editorKey"
-              :content="content"
-              :mode="editorMode"
-              :base-dir="activeMdDir"
-              :assets-dir="assetsDir"
-              @change="handleContentChange"
-              @image-added="handleImageAdded"
-            />
-          </div>
-          <article-image-panel
-            v-if="activeTab === 'image'"
-            class="article-aside__locked"
-            :class="{ 'is-locked': humanizing }"
-            :article="activeArticle"
-            :root="root"
-            :assets-dir="assetsDir"
-            @cover="handleCover"
-            @add-images="handleAddImages"
-            @remove-image="handleRemoveImage"
-            @insert="handleInsertImage"
-          />
-          <article-style-panel
-            v-if="activeTab === 'style'"
-            class="article-aside__locked"
-            :class="{ 'is-locked': humanizing }"
-            :article="activeArticle"
-            @patch="patchArticle"
-            @rewrite="handleRewrite"
-          />
-        </template>
-        <div v-else class="article-aside__empty">{{ emptyHint }}</div>
+    <template v-if="activeArticle">
+      <article-doc-header
+        :article="activeArticle"
+        :articles="articles"
+        :active-type="activeType"
+        :entry="activeEntry"
+        :assets-dir="assetsDir"
+        :locked="humanizing"
+        @patch-type="patchType"
+        @switch-article="(id: string) => guardAction(() => void selectArticle(id))"
+        @switch-type="(t: string) => guardAction(() => void selectType(t))"
+        @detect="handleDetect"
+        @reveal="handleReveal"
+        @refresh="handleRefresh"
+      />
+      <article-toolbar
+        v-if="activeEntry"
+        :versions="versions"
+        :active-version-id="activeVersionId"
+        :humanizing="humanizing"
+        :streaming-version-id="streamingVersionId"
+        :assets-dir="assetsDir"
+        :base-dir="activeMdDir"
+        @format="handleFormat"
+        @insert="handleInsertImage"
+        @gen-image="handleGenImage"
+        @select-version="onSwitchVersion"
+        @remove-version="onRemoveVersion"
+      />
+      <article-editor
+        v-if="activeEntry"
+        ref="editorRef"
+        :key="editorKey"
+        :content="content"
+        :editable="!humanizing"
+        :base-dir="activeMdDir"
+        :assets-dir="assetsDir"
+        @change="handleContentChange"
+        @image-added="handleImageAdded"
+      />
+      <article-doc-actions
+        v-if="activeEntry"
+        :humanizing="humanizing"
+        :words="liveWords"
+        @humanize="handleHumanize"
+        @abort="handleAbortHumanize"
+        @rewrite="handleRewrite"
+        @copy="handleCopy"
+      />
+      <div v-if="!activeEntry" class="article-aside__hint">
+        当前文章还没有类型，在左侧聊天让 AI 设定类型（如公众号、知乎、小红书等）即可开始写作。
       </div>
     </template>
-
-    <!-- 全屏布局：左正文（版本条 + 编辑器）+ 右创作面板常驻 -->
-    <div v-else class="article-aside__split">
-      <div class="article-aside__main">
-        <template v-if="activeArticle">
-          <article-version-bar
-            :versions="versions"
-            :active-version-id="activeVersionId"
-            :humanizing="humanizing"
-            :streaming-version-id="streamingVersionId"
-            :content="content"
-            @select="onSwitchVersion"
-            @remove="onRemoveVersion"
-            @humanize="handleHumanize"
-            @abort="handleAbortHumanize"
-          />
-          <article-editor
-            ref="editorRef"
-            :key="editorKey"
-            :content="content"
-            :mode="editorMode"
-            :base-dir="activeMdDir"
-            :assets-dir="assetsDir"
-            @change="handleContentChange"
-            @image-added="handleImageAdded"
-          />
-        </template>
-        <div v-else class="article-aside__empty">{{ emptyHint }}</div>
-      </div>
-      <div class="article-aside__side" :class="{ 'is-locked': humanizing }">
-        <template v-if="activeArticle">
-          <article-image-panel
-            :article="activeArticle"
-            :root="root"
-            :assets-dir="assetsDir"
-            @cover="handleCover"
-            @add-images="handleAddImages"
-            @remove-image="handleRemoveImage"
-            @insert="handleInsertImage"
-          />
-          <article-style-panel
-            :article="activeArticle"
-            @patch="patchArticle"
-            @rewrite="handleRewrite"
-          />
-        </template>
-        <div v-else class="article-aside__empty">{{ emptyHint }}</div>
+    <div v-else class="article-aside__empty">
+      <div class="empty-card">
+        <div class="empty-card__title">开始写作</div>
+        <p>在左侧聊天告诉 AI 选题与要求，文章创建后会自动出现在这里。</p>
+        <p>
+          写作流程：聊天确定选题与大纲 → AI 生成初稿 → 在此直接编辑润色 → 去 AI 味 / AI 重写 →
+          配图。一篇文章可为公众号、知乎、小红书等多个类型各写一版，互不干扰。
+        </p>
       </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { MessageUtil } from '@/utils/modal'
+import { copyText, openUrlByBrowser } from '@/utils/native'
+import { resolveAssetRel } from '@/windows/main/modules/tool/components/article/imageRef'
 import { PROMPT_INPUT_KEY } from './promptInputBridge'
 import { useArticleDoc } from './useArticleDoc'
 import { useArticleAssist } from './useArticleAssist'
-import { useArticleImageEvents } from './useArticleImageEvents'
-import ArticleAsideHeader from './components/ArticleAsideHeader.vue'
-import ArticleVersionBar from './components/ArticleVersionBar.vue'
+import ArticleDocHeader from './components/ArticleDocHeader.vue'
+import ArticleToolbar from './components/ArticleToolbar.vue'
 import ArticleEditor from './components/ArticleEditor.vue'
-import ArticleImagePanel from './components/ArticleImagePanel.vue'
-import ArticleStylePanel from './components/ArticleStylePanel.vue'
+import ArticleDocActions from './components/ArticleDocActions.vue'
+import { openArticleImageGen } from './components/ArticleImageGenDialog'
 
-/** 侧边栏分段（窄栏布局） */
-type ArticleAsideTab = 'content' | 'image' | 'style'
+/** 腾讯朱雀 AI 检测官网（仅企业接入，这里引导用户到官网手动检测） */
+const ZHUQUE_DETECT_URL = 'https://matrix.tencent.com/ai-detect/ai_gen_txt'
+
+/** 编辑器实例命令面（ArticleEditor defineExpose） */
+type EditorApi = {
+  insertImage: (rel: string) => void
+  toggleBold: () => void
+  toggleItalic: () => void
+  toggleHeading2: () => void
+  toggleBulletList: () => void
+  toggleBlockquote: () => void
+}
 
 const props = defineProps<{
   sandbox?: string
   workspace?: string
-  /** 侧边栏全屏：全屏=左编辑器+右创作面板分栏；窄栏=分段切换，非全屏仅预览 */
+  /** 保留入参兼容：窄栏 / 全屏共用同一文档布局，仅宽度随容器变化 */
   fullscreen?: boolean
 }>()
 
+/** 流式改写进行中：数据层暂停轮询 / 外部重读，避免覆盖流式内容 */
+const suspended = ref(false)
+
 const {
-  root,
   store,
   articles,
-  mode,
   activeId,
   activeArticle,
+  activeType,
+  activeEntry,
   versions,
   activeVersionId,
   content,
-  exporting,
   activeMdDir,
   assetsDir,
-  handleSelectChange,
+  selectArticle,
+  selectType,
   handleContentChange,
   handleSwitchVersion,
   handleRemoveVersion,
+  patchType,
   handleReveal,
-  handleRefresh,
-  handleExport,
-  flushSave
-} = useArticleDoc(props)
+  flushSave,
+  handleRefresh
+} = useArticleDoc(props, suspended)
 
 /** 去 AI 味动作编排 */
 const {
   humanizing,
   streamingVersionId,
-  editorMode,
   handleHumanize,
   handleAbortHumanize,
   onSwitchVersion,
@@ -185,111 +137,148 @@ const {
   store,
   activeId,
   activeArticle,
+  activeType,
   content,
   flushSave,
-  mode,
   switchVersion: handleSwitchVersion,
   removeVersion: handleRemoveVersion
 })
 
-const activeTab = ref<ArticleAsideTab>('content')
-const editorRef = ref<{ insertImage: (rel: string) => void } | null>(null)
+watch(humanizing, (v) => (suspended.value = v), { immediate: true })
+
+const editorRef = ref<EditorApi | null>(null)
 const promptInput = inject(PROMPT_INPUT_KEY)
 
-watch(humanizing, (v) => {
-  if (v) activeTab.value = 'content'
-})
+const editorKey = computed(() => `${activeId.value}:${activeType.value}:${activeVersionId.value}`)
+const liveWords = computed(() => content.value.replace(/\s+/g, '').length)
 
-const editorKey = computed(() => `${activeId.value}:${activeVersionId.value}`)
-const emptyHint = computed(() => {
-  if (activeTab.value === 'image') return '先选择文章，再管理封面与插图'
-  if (activeTab.value === 'style') return '先选择文章，再设置写作风格'
-  return '从上方选择文章，或让 AI 生成文章后在此查看'
-})
+// ─── 编辑器格式与配图 ─────────────────────────────────────────────
 
-const { patchArticle, handleImageAdded, handleAddImages, handleRemoveImage, handleCover } =
-  useArticleImageEvents({ store, activeId, activeArticle })
+type ArticleFormatCmd = 'bold' | 'italic' | 'h2' | 'bulletList' | 'blockquote'
 
-const handleInsertImage = (rel: string) => {
-  activeTab.value = 'content'
-  void nextTick(() => editorRef.value?.insertImage(rel))
+const handleFormat = (cmd: ArticleFormatCmd): void => {
+  const ed = editorRef.value
+  if (!ed) return
+  if (cmd === 'bold') ed.toggleBold()
+  else if (cmd === 'italic') ed.toggleItalic()
+  else if (cmd === 'h2') ed.toggleHeading2()
+  else if (cmd === 'bulletList') ed.toggleBulletList()
+  else if (cmd === 'blockquote') ed.toggleBlockquote()
 }
 
-/** 按当前平台 / 风格重写：指令填入聊天输入框，不自动发送 */
-const handleRewrite = () => {
+/** 编辑器相对 md 目录的图片引用 → 归一为相对 articles/ 登记进当前类型插图列表（去重） */
+const registerImage = (rel: string): void => {
+  const entry = activeEntry.value
+  if (!entry) return
+  const target = `assets/${window.preload.path.basename(rel)}`
+  if ((entry.images ?? []).includes(target)) return
+  patchType({ images: [...(entry.images ?? []), target] })
+}
+
+const handleImageAdded = (rel: string): void => registerImage(rel)
+
+const handleInsertImage = (rel: string): void => {
+  editorRef.value?.insertImage(rel)
+  registerImage(rel)
+}
+
+/** AI 生成插图：产物落 assets/ 后插入光标处并登记 */
+const handleGenImage = (): void => {
+  if (!activeEntry.value) return
+  openArticleImageGen({
+    kind: 'image',
+    assetsDir: assetsDir.value,
+    onSuccess: (absPath) => {
+      const rel = resolveAssetRel(activeMdDir.value, absPath)
+      handleInsertImage(rel)
+    }
+  })
+}
+
+// ─── AI 检测 / AI 重写 ────────────────────────────────────────────
+
+/** AI 检测：先复制正文并系统通知，再打开朱雀官网由默认浏览器检测 */
+const handleDetect = async (): Promise<void> => {
+  if (content.value) {
+    await copyText(content.value)
+    window.preload.inject.notification.show('正文内容已复制')
+  }
+  openUrlByBrowser(ZHUQUE_DETECT_URL)
+}
+
+/** 复制当前类型激活版本正文（markdown 原文）到剪贴板 */
+const handleCopy = async (): Promise<void> => {
+  if (!content.value) return
+  await copyText(content.value)
+  MessageUtil.success('正文已复制到剪贴板')
+}
+
+/** AI 重写：指令自动发送到聊天，AI 用 article_write(newVersion=true) 生成新版本 */
+const handleRewrite = (): void => {
   const article = activeArticle.value
-  if (!article || humanizing.value) return
-  const styleText = article.style ? `「${article.style}」风格` : '平台惯用风格'
+  const entry = activeEntry.value
+  if (!article || !entry || humanizing.value) return
   promptInput?.(
-    `请把《${article.title}》正文重写为 ${article.platform} 平台${styleText}：保持选题与核心信息不变，按该平台与风格调整标题、开头、结构与语气；完成后覆盖写入正文文件 ${article.file}，并用 article_stats 统计字数。`
+    `请为文章《${article.title}》(id: ${article.id}) 的「${entry.type}」类型重写正文：` +
+      '保持选题与核心信息不变，按该平台惯用文风调整标题、开头、结构与语气；' +
+      `完成后用 article_write（type=「${entry.type}」，newVersion=true）写入新版正文，并用 article_stats 统计字数。`,
+    { autoSend: true }
   )
-  MessageUtil.success('指令已填入聊天输入框，可修改后发送')
+  MessageUtil.success('重写指令已发送，AI 正在生成新版本')
 }
 </script>
 <style scoped lang="less">
 .article-aside {
-  height: calc(100% - 8px);
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   padding: 8px 0 8px 8px;
-  &__tabs {
-    margin-top: 8px;
-    width: 100%;
-    display: flex;
-    :deep(.t-radio-button) {
-      flex: 1;
-    }
-  }
-  &__body {
-    margin-top: 8px;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: var(--td-radius-medium);
-    border: 1px solid var(--td-border-level-1-color);
-    overflow: hidden;
-  }
-  &__pane {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  &__split {
-    margin-top: 8px;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    border-radius: var(--td-radius-medium);
-    border: 1px solid var(--td-border-level-1-color);
-    overflow: hidden;
-  }
-  &__main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  &__side {
-    width: 300px;
+
+  :deep(.doc-header),
+  :deep(.doc-toolbar),
+  :deep(.doc-actions) {
     flex-shrink: 0;
-    border-left: 1px solid var(--td-border-level-1-color);
-    overflow-y: auto;
-    background: var(--td-bg-color-container);
   }
-  &__side.is-locked,
-  &__locked.is-locked {
-    pointer-events: none;
-    opacity: 0.55;
+}
+
+.article-aside__hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--td-text-color-placeholder);
+  font-size: var(--td-font-size-body-small);
+  line-height: 1.8;
+}
+
+.article-aside__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.empty-card {
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--td-text-color-placeholder);
+  font-size: var(--td-font-size-body-small);
+  line-height: 1.8;
+
+  &__title {
+    font-size: var(--td-font-size-title-medium);
+    font-weight: 600;
+    color: var(--td-text-color-secondary);
   }
-  &__empty {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--td-text-color-placeholder);
-    font-size: var(--td-font-size-body-small);
+
+  p {
+    margin: 0;
   }
 }
 </style>

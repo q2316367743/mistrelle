@@ -665,6 +665,12 @@ const addTextPrompt = (text: string) => {
     .run()
 }
 
+/** 写作侧边栏动作式指令注入并自动发送（如「按风格重写」）：填入后立即触发发送 */
+const sendTextPrompt = (text: string) => {
+  addTextPrompt(text)
+  handleSend()
+}
+
 const handleSend = () => {
   if (!canSend.value) return
   const message = buildUserMessage()
@@ -736,7 +742,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => editor.value?.destroy())
 
-defineExpose({ addCanvasNode, addHtmlElementNode, addTextPrompt })
+defineExpose({ addCanvasNode, addHtmlElementNode, addTextPrompt, sendTextPrompt })
 </script>
 <style scoped lang="less">
 @import 'LChatSender.less';

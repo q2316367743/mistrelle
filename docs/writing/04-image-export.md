@@ -1,13 +1,13 @@
-# 04 md 图片引用与 zip 导出
+# 04 md 图片引用
 
-> 文章正文引用本地配图使用相对路径，保证编辑器可显示、导出可移植。核心逻辑集中在 `imageRef.ts`。
+> 文章正文引用本地配图使用相对路径，保证编辑器可显示、文件可移植。核心逻辑集中在 `imageRef.ts`。
+> 2026-09-13：zip 导出功能已删除（用户拍板：正文本来就是项目内本地文件，无需导出，侧边栏改为「复制」正文到剪贴板）。
 
 ## 约定
 
 正文内图片一律相对路径（相对 md 所在目录），如 `../assets/xxx.png`：
 
 - **显示**：tiptap 图片节点渲染时把相对路径解析为 `file://` 链接（节点 `src` 属性始终存相对路径）。
-- **导出**：暂存成 `{name}/drafts/ + {name}/assets/` 结构后压缩为 zip，相对引用解压后依然有效。
 - 禁止绝对路径（不可移植）；禁止在提示词 / 编辑器写入 file:// 链接。
 
 ## 核心函数（src/modules/tool/components/article/imageRef.ts）
@@ -21,31 +21,15 @@
 计算 md 到资产文件（assets 目录下）的相对引用，供粘贴 / 拖入图片后插入节点（如 `../assets/x.png`）。
 - `PathApi` 无 `relative`，用 `relPath`（基于 `normalizePath` 字符串）计算。
 
-### `collectArticleAssets(md, mdDir): ArticleAssetRef[]`
-收集 md 引用的本地图片（仅相对路径，按绝对路径去重）。返回 `{ relToMd, absPath }`。
-
-### `exportArticleZip({ root, articleFile, targetZip, name }): Promise<{ assets }>`
-把文章（含引用的本地图片）导出为 zip 压缩包：
-- 暂存到系统临时目录：`{name}/drafts/xxx.md` + `{name}/assets/y.png`（只拷引用到的图片，按 basename）。
-- `window.preload.zip.compress(targetZip, [暂存目录])`（adm-zip：目录以 basename 为根打包整棵树）。
-- 因此 md 内 `../assets/xxx.png` 在解压后解析正确。
-- 图片逃出项目根（如 `../../` 引用外部文件）跳过；不存在的图片跳过。
-- `finally` 清理暂存目录。
+### `copyImageToAssets(assetsDir, srcPath, prefix): Promise<string>`
+把本地图片（绝对路径）复制进项目 assets 目录并返回绝对路径，文件名 `{prefix}-{时间戳}{原扩展名}`。
+- 供封面 / 插图上传与编辑器粘贴共用，统一命名避免互相覆盖。
 
 ## 接入点
 
 - **显示**：`ArticleEditor.vue` 的 `ArticleImage` 节点（`baseDir` prop = 当前 md 目录，`ArticleAside` 传 `activeMdDir`）。
 - **图片落盘**：`ArticleEditor.vue` `handlePaste` / `handleDrop` 把图片写入 `assetsDir`（`{root}/assets`）后插入节点。
-- **导出**：`ArticleAside.handleExport` 用 `dialog.save` 选 zip 路径 → `exportArticleZip` → `MessageUtil` 提示成功 / 失败。
-
-## 导出 zip 结构示例
-
-```
-{name}.zip
-└── {name}/
-    ├── drafts/xxx.md          # md 内图片引用 ../assets/xxx.png
-    └── assets/xxx.png
-```
+- **复制正文**：`ArticleAside.handleCopy` 把当前类型激活版本 markdown 原文复制到剪贴板（`copyText`）。
 
 ## 关键文件
 

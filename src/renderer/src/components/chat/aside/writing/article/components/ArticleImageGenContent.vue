@@ -34,11 +34,9 @@
 <script lang="ts" setup>
 import { openLogin } from '@/components/modals/LoginDialog'
 import { useImageModelStore, useSettingDefaultStore } from '@/windows/main/store'
-import type { ArticlePlatform } from '@/windows/main/modules/tool/components/article/articleTypes'
 
 const props = defineProps<{
   kind: 'cover' | 'image'
-  platform: ArticlePlatform
   /** 项目 assets/ 目录绝对路径（产物落盘于此） */
   assetsDir: string
 }>()
@@ -63,8 +61,8 @@ const modelKey = ref('')
 const generating = ref(false)
 const error = ref('')
 
-/** 默认尺寸：封面按平台取向（小红书竖版、其余横版），插图默认方形 */
-const size = ref(props.kind === 'cover' ? (props.platform === '小红书' ? '1024x1536' : '1536x1024') : '1024x1024')
+/** 默认尺寸：封面横版、插图方形（支持自定义） */
+const size = ref(props.kind === 'cover' ? '1536x1024' : '1024x1024')
 const sizeOptions = SIZE_OPTIONS
 
 // 默认选中：优先「默认生图模型」，否则列表首项；用户改选后不覆盖
