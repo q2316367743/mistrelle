@@ -46,7 +46,6 @@
         :words="liveWords"
         @humanize="handleHumanize"
         @abort="handleAbortHumanize"
-        @rewrite="handleRewrite"
         @copy="handleCopy"
       />
       <div v-if="!activeEntry" class="article-aside__hint">
@@ -69,7 +68,6 @@
 import { MessageUtil } from '@/utils/modal'
 import { copyText, openUrlByBrowser } from '@/utils/native'
 import { resolveAssetRel } from '@/windows/main/modules/tool/components/article/imageRef'
-import { PROMPT_INPUT_KEY } from './promptInputBridge'
 import { useArticleDoc } from './useArticleDoc'
 import { useArticleAssist } from './useArticleAssist'
 import ArticleDocHeader from './components/ArticleDocHeader.vue'
@@ -147,7 +145,6 @@ const {
 watch(humanizing, (v) => (suspended.value = v), { immediate: true })
 
 const editorRef = ref<EditorApi | null>(null)
-const promptInput = inject(PROMPT_INPUT_KEY)
 
 const editorKey = computed(() => `${activeId.value}:${activeType.value}:${activeVersionId.value}`)
 const liveWords = computed(() => content.value.replace(/\s+/g, '').length)
@@ -195,7 +192,7 @@ const handleGenImage = (): void => {
   })
 }
 
-// ─── AI 检测 / AI 重写 ────────────────────────────────────────────
+// ─── AI 检测 / 复制 ───────────────────────────────────────────────
 
 /** AI 检测：先复制正文并系统通知，再打开朱雀官网由默认浏览器检测 */
 const handleDetect = async (): Promise<void> => {
@@ -211,20 +208,6 @@ const handleCopy = async (): Promise<void> => {
   if (!content.value) return
   await copyText(content.value)
   MessageUtil.success('正文已复制到剪贴板')
-}
-
-/** AI 重写：指令自动发送到聊天，AI 用 article_write(newVersion=true) 生成新版本 */
-const handleRewrite = (): void => {
-  const article = activeArticle.value
-  const entry = activeEntry.value
-  if (!article || !entry || humanizing.value) return
-  promptInput?.(
-    `请为文章《${article.title}》(id: ${article.id}) 的「${entry.type}」类型重写正文：` +
-      '保持选题与核心信息不变，按该平台惯用文风调整标题、开头、结构与语气；' +
-      `完成后用 article_write（type=「${entry.type}」，newVersion=true）写入新版正文，并用 article_stats 统计字数。`,
-    { autoSend: true }
-  )
-  MessageUtil.success('重写指令已发送，AI 正在生成新版本')
 }
 </script>
 <style scoped lang="less">

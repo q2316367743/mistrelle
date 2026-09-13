@@ -90,7 +90,7 @@ interface ArticleProject { schema: 2; title: string; updatedTime: number; articl
 ## 创作工作流 prompt（articlePrompt.ts）
 
 - 流程：`article_init` → 选题 → `article_create`（首个类型）→ `article_write` 正文（首次直接覆盖）→ 修改：小修覆盖、大改 `newVersion=true` → 追加平台版：`article_write` 带 type（自动创建，先 `article_read` 已有版本保持选题一致）→ `spawn_agent(type=design)` 配图 → `article_update(type, cover/images)` 登记 → `article_stats` 收尾。
-- **侧边栏联动约定（prompt 已强调）**：正文一律 `article_write`，不要用 `file_write` 直写正文文件（侧边栏感知不到）；用户在侧边栏点「AI 重写」发来的指令，必须 `article_write` 且 `newVersion=true`。
+- **侧边栏联动约定（prompt 已强调）**：正文一律 `article_write`，不要用 `file_write` 直写正文文件（侧边栏感知不到）。重写 / 换平台迭代由用户在聊天中直接提出（侧边栏无重写按钮）。
 - 平台差异化模板绑定 type：公众号（钩子标题/小标题/金句加粗）、知乎（观点+案例）、小红书（emoji/短段/话题标签）、其他（通用结构化）。
 - 相对路径约定：正文内图片一律 `../assets/xxx.png`（相对 drafts/），禁止绝对路径，保证导出可移植。
 

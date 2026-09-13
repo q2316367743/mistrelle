@@ -22,12 +22,6 @@
         去 AI 味
       </t-button>
     </t-tooltip>
-    <t-tooltip content="按当前类型（平台）惯用文风重写正文，生成新版本">
-      <t-button size="small" variant="outline" :disabled="humanizing" @click="emit('rewrite')">
-        <template #icon><ai-icon /></template>
-        AI 重写
-      </t-button>
-    </t-tooltip>
     <div class="doc-actions__spacer" />
     <span class="doc-actions__words">{{ words }} 字</span>
     <t-tooltip content="复制当前正文 Markdown 到剪贴板">
@@ -39,7 +33,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { AiEditIcon, AiIcon, CopyIcon, StopCircleIcon } from 'tdesign-icons-vue-next'
+import { AiEditIcon, CopyIcon, StopCircleIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { HUMANIZE_ENABLED } from '@/windows/main/modules/ai/humanize'
 
@@ -53,7 +47,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'humanize'): void
   (e: 'abort'): void
-  (e: 'rewrite'): void
   (e: 'copy'): void
 }>()
 

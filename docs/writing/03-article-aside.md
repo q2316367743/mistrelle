@@ -13,7 +13,7 @@
 - **写完即呈现 + 刷新常驻**：AI 正文走 `article_write`（store 通道）即时驱动 UI；`file_write` 直写由 mtime 轮询兜底；头部刷新按钮（RefreshIcon）一键以磁盘为准重载（保留当前选中的文章/类型/版本，丢弃未落盘编辑并冲刷防抖写回）。
 - **版本 = 演进史**：时间线下拉（第 N 版 · 来源），点击条目即切换（无「设为当前」按钮），删除按钮 hover 显示；手动编辑永不自动建版。
 - **配图并入编辑器**：工具栏插图（上传）/ 生图（AI 直出）直接插入光标处；封面收敛为头部缩略位（16:9，随类型走）。
-- 风格/体裁维度已删除：平台差异化文风由提示词内置模板按 type 承担，动作条「AI 重写」按当前类型惯用文风生成新版本。
+- 风格/体裁维度已删除：平台差异化文风由提示词内置模板按 type 承担。**「AI 重写」按钮已删（2026-09-13 七轮拍板）**：重写锁定当前类型，而类型由 AI 专属设定，重写入口应收敛到聊天（用户直接对 AI 说，`article_write` + `newVersion=true`）；`PROMPT_INPUT_KEY` 桥（promptInputBridge.ts / useChatSession provide / LChatSender addTextPrompt·sendTextPrompt）随之整体删除。
 
 ## 组件结构
 
@@ -24,13 +24,12 @@ src/components/chat/aside/writing/
     ├── ArticleAside.vue             # 外壳：文档布局编排 + 类型切换接线 + 空态（≤300 行）
     ├── useArticleDoc.ts             # 数据层：store 共享、自动联动（id diff + contentRevs + mtime 轮询）、类型/正文/版本读写、元信息
     ├── useArticleAssist.ts          # 去 AI 味动作编排（按类型产出 humanize 新版本，流式期间 suspended 锁定）
-    ├── promptInputBridge.ts         # PROMPT_INPUT_KEY：指令 → 聊天输入框桥（支持 autoSend 自动发送）
     └── components/
         ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select 切换）+ 刷新按钮 + 更多菜单
         ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 移除，16:9）
         ├── ArticleToolbar.vue       # 工具栏：版本下拉触发 + 格式按钮（B/I/H2/列表/引用）+ 插图 / 生图
         ├── ArticleVersionPanel.vue  # 版本时间线：t-timeline 倒序（第N版·来源），点击即切换，hover 删除
-        ├── ArticleDocActions.vue    # 底部动作条：去 AI 味（或停止）/ AI 重写 · N 字 · 复制（正文 markdown 到剪贴板）
+        ├── ArticleDocActions.vue    # 底部动作条：去 AI 味（或停止）· N 字 · 复制（正文 markdown 到剪贴板）
         ├── ArticleEditor.vue        # tiptap WYSIWYG（恒可编辑），expose insertImage + 格式命令，emit image-added
         ├── ArticleImageGenDialog.tsx + ArticleImageGenContent.vue  # AI 生图命令式弹窗（封面横版/插图方形）
         ├── HumanizeDepthDialog.tsx + HumanizeDepthContent.vue      # 去 AI 味深度选择（1~10，默认 5）
@@ -46,7 +45,7 @@ src/components/chat/aside/writing/
 Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select，AI 设定后在此切换）+ 刷新⟳ + 更多⋯
 工具栏（第N版·来源 ▾ │ B I H2 列表 引用 │        插图 生图）
 tiptap 编辑器（flex:1，恒可编辑）
-底部动作条（去AI味/停止 · AI 重写 ·        N 字 · 复制）
+底部动作条（去AI味/停止 ·        N 字 · 复制）
 ```
 
 - `fullscreen` prop 保留入参但不再切换布局（仅宽度随容器变化）；编辑能力与全屏解耦。
@@ -63,17 +62,16 @@ tiptap 编辑器（flex:1，恒可编辑）
 - 编辑落盘：`ArticleEditor` change → 防抖 800ms 写回当前类型激活版本文件；**永不自动建版**。
 - 实时字数：底部动作条 `words` 由外壳按 `content` 即时统计（去空白字符），不依赖 `article_stats` 落盘值。
 
-## AI 重写（自动发送执行）
+## 重写入口（已收敛到聊天）
 
-- 底部「AI 重写」：组装指令（文章 id、当前类型，要求 `article_write` 带 type 且 `newVersion=true`）→ `PROMPT_INPUT_KEY(text, { autoSend: true })` → `LChatSender.sendTextPrompt`（填入后立即 `handleSend`）→ AI 流式改写 → 产 rewrite 新版本 → 版本时间线可查。过程在聊天可见、可停止。
-- `PROMPT_INPUT_KEY` 签名：`(text, options?: { autoSend?: boolean })`；默认仅填入不发送。
-- `ARTICLE_SCENE_PROMPT` 已明确：正文一律 `article_write`（`file_write` 直写侧边栏感知不到）；大改 / 重写必须 `newVersion=true`；收到侧边栏重写指令必须生成新版本；为已有文章追加平台版直接 `article_write` 带 type（自动创建，先 `article_read` 已有版本保持选题一致）。
+- 侧边栏**无「AI 重写」按钮**（2026-09-13 删除，含 PROMPT_INPUT_KEY 桥整链）：重写锁定当前类型，与「类型由 AI 专属设定」冲突，入口收敛到聊天——用户直接对 AI 说重写要求，AI 用 `article_write`（大改 / 重写带 `newVersion=true`）产出新版本。
+- `ARTICLE_SCENE_PROMPT` 已明确：正文一律 `article_write`（`file_write` 直写侧边栏感知不到）；大改 / 重写必须 `newVersion=true`；为已有文章追加平台版直接 `article_write` 带 type（自动创建，先 `article_read` 已有版本保持选题一致）。
 
 ## 版本时间线（ArticleVersionPanel）
 
 - 触发器：`第N版 · {来源label}`（versions[0] 为第 1 版原稿；`ARTICLE_VERSION_SOURCE_OPTIONS` 中文映射），流式生成中显示 loading +「生成中…」。
 - 面板：t-timeline 倒序（最新在上），每项 = 第N版 · 来源 / 时间（label）/ 字数；**点击条目即切换**（无「设为当前」按钮），删除按钮 hover 显示（popconfirm，store 保证至少保留 1 个）。humanizing 期间禁用。
-- 去 AI 味与 AI 重写的产出都进入当前类型的时间线，旧版可随时切回（内容保留不删）。
+- 去 AI 味的产出进入当前类型的时间线，聊天中让 AI 重写（newVersion=true）的产出同样进入时间线，旧版可随时切回（内容保留不删）。
 
 ## 封面与插图（随类型走）
 

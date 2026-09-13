@@ -656,21 +656,6 @@ const addHtmlElementNode = (ref: HtmlElementRef) => {
     .run()
 }
 
-/** 写作侧边栏快捷指令注入：把指令文本追加进输入框（useChatSession 经 DI 桥接调用），不自动发送 */
-const addTextPrompt = (text: string) => {
-  editor.value
-    ?.chain()
-    .focus()
-    .insertContent([{ type: 'text', text: `${text} ` }])
-    .run()
-}
-
-/** 写作侧边栏动作式指令注入并自动发送（如「按风格重写」）：填入后立即触发发送 */
-const sendTextPrompt = (text: string) => {
-  addTextPrompt(text)
-  handleSend()
-}
-
 const handleSend = () => {
   if (!canSend.value) return
   const message = buildUserMessage()
@@ -742,7 +727,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => editor.value?.destroy())
 
-defineExpose({ addCanvasNode, addHtmlElementNode, addTextPrompt, sendTextPrompt })
+defineExpose({ addCanvasNode, addHtmlElementNode })
 </script>
 <style scoped lang="less">
 @import 'LChatSender.less';

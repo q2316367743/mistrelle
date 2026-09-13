@@ -196,7 +196,7 @@
 |----------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | [01-writing-scene.md](./writing/01-writing-scene.md)           | 写作子场景（WritingScene）：大类型管框架、子场景管能力，场景 article / novelShort      |
 | [02-article-data-layer.md](./writing/02-article-data-layer.md) | 文章数据层与工具（schema=2）：一篇文章×多类型（发布平台由 AI 自由命名、标题+类型唯一，各类型独立版本；status 字段已删除）+ `article_*` 工具驱动（article_write 写正文主通道、type 自动建类型）；旧结构不迁移 |
-| [03-article-aside.md](./writing/03-article-aside.md)           | 文章侧边栏（以文档为中心的写作工作台）：一聊天一文档恒可编辑、标题下拉切换（用户不可改标题，AI 专属经 article_update）、类型下拉切换（AI 专属设定）、头部刷新按钮外显、AI 写完自动呈现（article_write→contentRevs + mtime 轮询兜底）、版本时间线、AI 重写自动发送、插图/生图直插正文、底部复制正文 |
+| [03-article-aside.md](./writing/03-article-aside.md)           | 文章侧边栏（以文档为中心的写作工作台）：一聊天一文档恒可编辑、标题下拉切换（用户不可改标题，AI 专属经 article_update）、类型下拉切换（AI 专属设定）、头部刷新按钮外显、AI 写完自动呈现（article_write→contentRevs + mtime 轮询兜底）、版本时间线、重写入口收敛到聊天（AI 重写按钮已删）、插图/生图直插正文、底部复制正文 |
 | [04-image-export.md](./writing/04-image-export.md)             | md 图片引用：相对路径约定、`imageRef.ts` 解析与资产复制（zip 导出已删除）                     |
 | [05-novel-short-scene.md](./writing/05-novel-short-scene.md)   | 短篇小说场景：每篇一个子目录（story/角色/大纲/设定/文风）、`novel_*` 工具、侧边栏双布局 |
 
