@@ -72,7 +72,7 @@ import { AiEditIcon, CloseIcon, FactCheckIcon, StopCircleIcon } from 'tdesign-ic
 import type { ArticleVersion } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { ARTICLE_VERSION_SOURCE_OPTIONS } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
-import { openUrlByBrowser } from '@/utils/native'
+import { copyText, openUrlByBrowser } from '@/utils/native'
 import { HUMANIZE_ENABLED } from '@/windows/main/modules/ai/humanize'
 
 /** 腾讯朱雀 AI 检测官网（仅企业接入，这里引导用户到官网手动检测） */
@@ -85,6 +85,8 @@ const props = defineProps<{
   humanizing?: boolean
   /** 正在流式生成的版本 id */
   streamingVersionId?: string | null
+  /** 当前激活版本正文，AI 检测前复制到剪贴板 */
+  content: string
 }>()
 
 const emit = defineEmits<{
@@ -105,8 +107,12 @@ const humanizeTooltip = computed(() => {
   return ''
 })
 
-/** 打开朱雀 AI 检测官网，交由默认浏览器检测 */
-const openZhuqueDetect = (): void => {
+/** AI 检测：先复制正文并系统通知，再打开朱雀官网由默认浏览器检测 */
+const openZhuqueDetect = async (): Promise<void> => {
+  if (props.content) {
+    await copyText(props.content)
+    window.preload.inject.notification.show('正文内容已复制')
+  }
   openUrlByBrowser(ZHUQUE_DETECT_URL)
 }
 

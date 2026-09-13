@@ -77,7 +77,7 @@ src/components/chat/aside/writing/
 footer 两个占位按钮已删除，动作收进正文维度顶部的版本条（`ArticleVersionBar.vue`）。
 
 - **去 AI 味**（`HUMANIZE_ENABLED = true`）：需登录；点击后先弹深度选择（1~10，默认 5，记住上次选择）→ 确认后立刻 `createVersion({ source: 'humanize', content: '' })` 并激活 → `requestHumanizeStream`（经 `window.preload.relay.rewriteStream` → 服务端 `/api/rewrite` SSE，携带 `depth`）流式增量写入 `content` → 完成落盘并 `patchVersion` 字数。生成中按钮变为「停止」（`AbortController` → `streamAbort`）；**改写期间页面其它操作全部锁定**（header / 分段 / 版本切换删除 / AI 检测 / 配图与风格面板），仅「停止」可用；编辑器强制 preview；失败且无增量则删空版本回滚原稿，有增量则保留部分成果。
-- **AI 检测 / 朱雀**：腾讯朱雀 AIGC 检测仅面向**企业认证接入**，本项目不集成检测接口；点击「AI 检测」经 `openUrlByBrowser`（`window.preload.inject.shell.openExternal`）在系统默认浏览器打开朱雀官网 `https://matrix.tencent.com/ai-detect/ai_gen_txt`，由用户在官网手动检测。按钮仅在去 AI 味改写期间禁用（`humanizing`）。
+- **AI 检测 / 朱雀**：腾讯朱雀 AIGC 检测仅面向**企业认证接入**，本项目不集成检测接口；点击「AI 检测」依次执行：① 复制当前激活版本正文到剪贴板（`copyText` from `@/utils/native`，正文经新增 `content` prop 传入）；② Electron 系统通知「正文内容已复制」（`window.preload.inject.notification.show`，标题固定为 app 名）；③ 经 `openUrlByBrowser`（`window.preload.inject.shell.openExternal`）在系统默认浏览器打开朱雀官网 `https://matrix.tencent.com/ai-detect/ai_gen_txt`，由用户粘贴正文在官网手动检测。正文为空时跳过 ①② 仍打开官网。按钮仅在去 AI 味改写期间禁用（`humanizing`）。
 
 ## 编辑器（tiptap）
 
