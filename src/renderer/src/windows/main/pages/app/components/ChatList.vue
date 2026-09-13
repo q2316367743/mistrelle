@@ -6,6 +6,7 @@
           v-if="item.kind === 'header'"
           class="group-header"
           :title="item.workspace || undefined"
+          @contextmenu="openWorkspaceContextmenu($event, item.workspace)"
         >
           <button class="group-header__main" type="button" @click="toggleGroup(item.key)">
             <chevron-right-icon v-if="item.collapsed" class="group-header__arrow" />
@@ -66,7 +67,7 @@ import {
 } from 'tdesign-icons-vue-next'
 import type { AiChatItem } from '@/entity/ai'
 import { buildChatMainKey, getChatSessionStatus } from '@/windows/main/modules/chat'
-import { openChatContextmenu } from '@/windows/main/pages/app/chat-func'
+import { openChatContextmenu, openWorkspaceContextmenu } from '@/windows/main/pages/app/chat-func'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatGroups } from './useChatGroups'
 

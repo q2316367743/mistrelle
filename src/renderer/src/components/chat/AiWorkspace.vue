@@ -19,7 +19,7 @@
         </div>
       </template>
       <div :class="['ai-workspace__text', { active: active }]">
-        {{ workspace ? renderBasename(workspace) : '选择工作目录' }}
+        {{ workspace ? displayName(workspace) : '选择工作目录' }}
       </div>
     </t-button>
     <template #content>
@@ -37,10 +37,13 @@
             :class="['ai-workspace-item', { active: workspace === item }]"
             @click="handleHistory(item)"
           >
-            {{ renderBasename(item) }}
+            <span class="ai-workspace-item__label">{{ displayName(item) }}</span>
+            <span class="ai-workspace-item__remove" @click.stop="removeWorkspaceAt(item)">
+              <delete-icon size="14px" />
+            </span>
           </div>
           <div v-if="filteredHistory.length === 0" class="ai-workspace-empty">
-            {{ history.length === 0 ? '暂无最近目录' : '无匹配目录' }}
+            {{ workspaces.length === 0 ? '暂无最近目录' : '无匹配目录' }}
           </div>
         </div>
         <template v-if="active">
@@ -63,9 +66,9 @@
 </template>
 <script lang="ts" setup>
 import Fuse from 'fuse.js'
-import { CloseIcon, FolderAdd1Icon, FolderFilledIcon, SearchIcon } from 'tdesign-icons-vue-next'
-import { readJsonFile, writeJsonFile } from '@/utils/native'
-import { getWorkspaceHistoryPath } from '@/global/Constant'
+import { CloseIcon, DeleteIcon, FolderAdd1Icon, FolderFilledIcon, SearchIcon } from 'tdesign-icons-vue-next'
+import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
+import { useWorkspaceList } from '@/components/chat/useWorkspaceList'
 
 const workspace = defineModel({
   type: String,
@@ -75,10 +78,7 @@ const workspace = defineModel({
 /** 只读展示：会话创建后工作空间锁定，仅显示当前目录，不可再修改 */
 defineProps<{ readonly?: boolean }>()
 
-const history = ref(new Array<string>())
-readJsonFile<Array<string>>(getWorkspaceHistoryPath()).then((list) => {
-  if (list) history.value = list
-})
+const { workspaces, displayName, addHistory, removeWorkspace, countChats } = useWorkspaceList()
 
 const active = computed(() => !!workspace.value)
 
@@ -89,7 +89,7 @@ watch(visible, (val) => {
 })
 
 const historyItems = computed(() =>
-  history.value.map((path) => ({ path, basename: renderBasename(path) }))
+  workspaces.value.map((path) => ({ path, basename: displayName(path) }))
 )
 const fuse = computed(
   () =>
@@ -115,10 +115,7 @@ const selectWorkspace = async () => {
   const paths = await window.preload.inject.dialog.open({ properties: ['openDirectory'] })
   if (!paths || paths.length === 0) return
   workspace.value = paths[0]
-  if (paths[0] && !history.value.includes(paths[0])) {
-    history.value.push(paths[0])
-    await writeJsonFile(getWorkspaceHistoryPath(), history.value)
-  }
+  await addHistory(paths[0])
 }
 const clearAndSelect = () => {
   clearWorkspace()
@@ -129,13 +126,30 @@ const handleHistory = (path: string) => {
   visible.value = false
 }
 
+/** 删除工作空间：其下聊天一并删除，当前选中的目录同步清除 */
+const removeWorkspaceAt = async (path: string) => {
+  const count = countChats(path)
+  try {
+    await MessageBoxUtil.confirm(
+      count > 0
+        ? `将同时删除「${displayName(path)}」下的 ${count} 个聊天及其产物，删除后不可恢复`
+        : `确定从最近目录中移除「${displayName(path)}」？`,
+      '删除工作空间',
+      { confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  await removeWorkspace(path)
+  if (workspace.value === path) workspace.value = ''
+  MessageUtil.success(count > 0 ? '工作空间及其聊天已删除' : '已移除')
+}
+
 const openWorkspace = () => {
   if (workspace.value) {
     window.preload.inject.shell.openPath(workspace.value)
   }
 }
-
-const renderBasename = (path: string) => window.preload.path.basename(path)
 </script>
 <style scoped lang="less">
 .ai-workspace {
@@ -207,6 +221,32 @@ const renderBasename = (path: string) => window.preload.path.basename(path)
     background-color: var(--td-brand-color-light-hover);
     color: var(--td-brand-color);
     font-weight: bold;
+  }
+
+  &__label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__remove {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+    color: var(--td-text-color-placeholder);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+
+    &:hover {
+      color: var(--td-error-color);
+    }
+  }
+
+  &:hover &__remove {
+    opacity: 1;
   }
 }
 .ai-workspace-empty {

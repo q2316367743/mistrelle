@@ -1,6 +1,7 @@
 # 08 - 聊天列表项目分组
 
 > 2026-09-12：侧边栏聊天列表从平铺改为以项目为核心的分组列表。
+> 2026-09-13：工作空间统一数据源（合并口径）+ 删除工作空间能力，见文末「工作空间合并口径与删除」。
 
 ## 需求与拍板
 
@@ -19,6 +20,8 @@
 | `src/renderer/src/windows/main/pages/app/components/useChatGroups.ts` | 分组 composable：`useChatGroups()` 返回 `{ rows, toggleGroup }` |
 | `src/renderer/src/windows/main/pages/app/components/ChatList.vue` | 列表渲染：rows 拍平交给 `VList`（虚拟滚动，统一 item-size 36） |
 | `src/renderer/src/windows/main/pages/new/PageNew.vue` | `?workspace=` 预填工作目录 |
+| `src/renderer/src/components/chat/useWorkspaceList.ts` | 工作空间共享数据源（合并口径）+ 删除能力，面板与左侧分组共同消费 |
+| `src/renderer/src/components/chat/AiWorkspace.vue` | 发送框工作空间面板：列表与左侧同源，条目可删除 |
 
 ## 数据结构与分组契约
 
@@ -29,7 +32,7 @@
 type ChatListRow = ChatGroupHeaderRow | ChatItemRow
 ```
 
-排序规则：任务组固定第一；项目组之间按组内最新 `createdAt`（Map 插入序天然满足：时间倒序遍历首个出现的项目即最近活跃）；组内 `createdAt` 降序。
+排序规则：任务组固定第一；项目组以 `useWorkspaceList` 的合并全集为序（有聊天绑定的按组内最新 `createdAt` 降序在前，仅历史中的空分组按最近使用优先置底）；组内 `createdAt` 降序。
 
 ## 「新建聊天」预填链路
 
@@ -42,6 +45,39 @@ type ChatListRow = ChatGroupHeaderRow | ChatItemRow
 ## 注意事项
 
 - 折叠状态经 `KeyValueUtil`（localStorage）持久化，键 `chat-list-collapsed-groups` 存 key 数组（key = workspace 全路径，任务组 key 为空串 `TASK_GROUP_KEY`），读取时按字符串数组收敛防脏数据。
-- 全部聊天为空时 rows 返回空数组，不渲染孤立的「任务列表」头。
+- 任务列表与工作空间全集均为空时 rows 返回空数组；仅存在空分组（无聊天的历史目录）时仍渲染分组头。
 - 现有交互不变：聊天行右键（重命名/删除）、私 tag、streaming loading、active 高亮。
 - `top`（置顶）字段全库未使用，本次未处理。
+
+## 工作空间合并口径与删除（2026-09-13）
+
+### 背景
+
+AiWorkspace 面板列表（`workspace-history.json`，仅「选择目录」时写入）与左侧分组（聊天表 `workspace` 派生）原本互不同步，出现双侧不一致且历史无删除入口。
+
+### 合并口径（拍板）
+
+- 单一数据源 `useWorkspaceList()`（模块级单例）：
+  - `workspaces` = **聊天绑定的目录 ∪ 目录历史**，排序为「有聊天绑定的在前（组内最近聊天 `createdAt` 降序）→ 仅历史中的在后（历史写入倒序 = 最近使用优先）」；
+  - `addHistory(path)`：去重追加并落盘（「选择目录」仍走此写入）；
+  - `removeWorkspace(path)`：删除其下全部聊天（遍历 `AiChatStore.remove`，级联销毁会话/沙盒/产物）+ 移除历史条目。
+- **消费方两侧同源**：`useChatGroups` 的项目分组按 `workspaces` 全集构建（无聊天绑定的目录生成**空分组**置底）；`AiWorkspace.vue` 面板列表直接展示 `workspaces`，顺序与左侧一致。
+
+### 删除工作空间
+
+- 入口①：AiWorkspace 面板条目 hover 显示删除图标（`click.stop`）。
+- 入口②：左侧分组头右键菜单（`openWorkspaceContextmenu`，任务列表不响应）。
+- 确认：`MessageBoxUtil.confirm`（复用既有工具，取消走 reject 需 catch）；文案按其下聊天数区分（N>0 提示连同聊天一并删除，N=0 仅移除条目）。
+- 删除后：若发送框当前选中的正是该目录，AiWorkspace 面板侧同步清空 `workspace` model；折叠态 localStorage 残留 key 无害（分组消失即不渲染），不做清理。
+
+### 重命名工作空间（2026-09-13 拍板：仅改显示别名）
+
+- 语义：只改左侧分组头与面板条目的**显示名**，聊天绑定的目录路径与磁盘目录均不动。
+- 存储：`KeyValueUtil`（localStorage）键 `workspace-aliases`，`Record<path, alias>`，读取时按字符串值收敛防脏数据。
+- API：`useWorkspaceList().renameWorkspace(path, name)`——空串或与目录 basename 相同即删除别名恢复默认；`displayName(path)` 为统一取名口（别名优先，缺省 basename）。
+- 分组名/面板条目/搜索（Fuse `basename` 键）/删除确认文案均走 `displayName`，别名删除时随 `removeWorkspace` 一并清理。
+
+### 注意事项
+
+- 目录历史文件 `~/.mistrelle/data/workspace-history.json` 仅追加/移除路径字符串，不校验目录在磁盘上是否仍存在。
+- `useWorkspaceList` 引用了 `@/windows/main/store` 的聊天 store，仅在主窗口上下文可用（当前消费方 ChatList / AiWorkspace 均在主窗口）。

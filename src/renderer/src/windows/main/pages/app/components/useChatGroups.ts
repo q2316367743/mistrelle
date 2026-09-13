@@ -1,5 +1,6 @@
 import type { AiChatItem } from '@/entity/ai'
 import { useAiChatStore } from '@/windows/main/store'
+import { useWorkspaceList } from '@/components/chat/useWorkspaceList'
 import { KeyValueUtil } from '@/utils/native/KeyValueUtil'
 import { computed, reactive } from 'vue'
 
@@ -61,14 +62,16 @@ export const useChatGroups = () => {
       if (bucket) bucket.push(chat)
       else projects.set(chat.workspace, [chat])
     }
-    // Map 保持插入序：时间倒序遍历下首个出现的项目即最近活跃，天然满足项目区排序
+    // 项目分组以合并后的工作空间全集为序（有聊天绑定的按最近活跃在前，
+    // 无聊天绑定的空分组置底），与 AiWorkspace 面板列表保持一致
+    const { workspaces, displayName } = useWorkspaceList()
     return [
       { key: TASK_GROUP_KEY, workspace: '', name: '任务列表', chats: tasks },
-      ...[...projects.entries()].map(([workspace, chats]) => ({
+      ...workspaces.value.map((workspace) => ({
         key: workspace,
         workspace,
-        name: window.preload.path.basename(workspace),
-        chats
+        name: displayName(workspace),
+        chats: projects.get(workspace) ?? []
       }))
     ]
   })
@@ -79,9 +82,9 @@ export const useChatGroups = () => {
     KeyValueUtil.setItem(COLLAPSED_STORAGE_KEY, [...collapsed])
   }
 
-  /** 组（header + 聊天行）拍平为虚拟列表行；折叠组只保留 header，全部为空时不渲染 */
+  /** 组（header + 聊天行）拍平为虚拟列表行；折叠组只保留 header，任务列表与工作空间全集均为空时不渲染 */
   const rows = computed<ChatListRow[]>(() => {
-    if (!groups.value.some((group) => group.chats.length > 0)) return []
+    if (groups.value.length === 1 && groups.value[0].chats.length === 0) return []
     return groups.value.flatMap((group) => {
       const header: ChatGroupHeaderRow = {
         kind: 'header',
