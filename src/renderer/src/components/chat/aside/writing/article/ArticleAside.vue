@@ -11,8 +11,6 @@
         @patch-type="patchType"
         @switch-article="(id: string) => guardAction(() => void selectArticle(id))"
         @switch-type="(t: string) => guardAction(() => void selectType(t))"
-        @detect="handleDetect"
-        @reveal="handleReveal"
         @refresh="handleRefresh"
       />
       <article-toolbar
@@ -47,6 +45,8 @@
         @humanize="handleHumanize"
         @abort="handleAbortHumanize"
         @copy="handleCopy"
+        @detect="handleDetect"
+        @reveal="handleReveal"
       />
       <div v-if="!activeEntry" class="article-aside__hint">
         当前文章还没有类型，在左侧聊天让 AI 设定类型（如公众号、知乎、小红书等）即可开始写作。

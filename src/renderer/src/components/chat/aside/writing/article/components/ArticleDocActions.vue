@@ -22,18 +22,36 @@
         去 AI 味
       </t-button>
     </t-tooltip>
-    <div class="doc-actions__spacer" />
-    <span class="doc-actions__words">{{ words }} 字</span>
+    <t-tooltip content="复制正文并打开朱雀官网检测">
+      <t-button size="small" variant="text" :disabled="humanizing" @click="emit('detect')">
+        <template #icon><ai-icon /></template>
+        AI 检测
+      </t-button>
+    </t-tooltip>
+    <t-tooltip content="在文件夹中显示正文文件">
+      <t-button size="small" variant="text" @click="emit('reveal')">
+        <template #icon><folder-open-icon /></template>
+        文件夹
+      </t-button>
+    </t-tooltip>
     <t-tooltip content="复制当前正文 Markdown 到剪贴板">
       <t-button size="small" variant="text" :disabled="humanizing" @click="emit('copy')">
         <template #icon><copy-icon /></template>
         复制
       </t-button>
     </t-tooltip>
+    <div class="doc-actions__spacer" />
+    <span class="doc-actions__words">{{ words }} 字</span>
   </div>
 </template>
 <script lang="ts" setup>
-import { AiEditIcon, CopyIcon, StopCircleIcon } from 'tdesign-icons-vue-next'
+import {
+  AiEditIcon,
+  AiIcon,
+  CopyIcon,
+  FolderOpenIcon,
+  StopCircleIcon
+} from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { HUMANIZE_ENABLED } from '@/windows/main/modules/ai/humanize'
 
@@ -48,6 +66,8 @@ const emit = defineEmits<{
   (e: 'humanize'): void
   (e: 'abort'): void
   (e: 'copy'): void
+  (e: 'detect'): void
+  (e: 'reveal'): void
 }>()
 
 const signedIn = computed(() => useAuthStore().status === 'signed-in')

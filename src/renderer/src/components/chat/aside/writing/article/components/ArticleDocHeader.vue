@@ -32,21 +32,11 @@
       >
         <template #icon><refresh-icon /></template>
       </t-button>
-      <t-dropdown
-        trigger="click"
-        :options="moreOptions"
-        min-column-width="120px"
-        @click="onMoreClick"
-      >
-        <t-button variant="text" shape="square" title="更多操作">
-          <template #icon><more-icon /></template>
-        </t-button>
-      </t-dropdown>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { MoreIcon, RefreshIcon } from 'tdesign-icons-vue-next'
+import { RefreshIcon } from 'tdesign-icons-vue-next'
 import type {
   ArticleItem,
   ArticleTypePatch
@@ -71,8 +61,6 @@ const emit = defineEmits<{
   (e: 'patch-type', patch: ArticleTypePatch): void
   (e: 'switch-article', id: string): void
   (e: 'switch-type', type: string): void
-  (e: 'detect'): void
-  (e: 'reveal'): void
   (e: 'refresh'): void
 }>()
 
@@ -94,18 +82,6 @@ const typeOptions = computed(() =>
 
 const onTypeChange = (value: unknown): void => {
   if (typeof value === 'string') emit('switch-type', value)
-}
-
-// ─── 更多操作 ─────────────────────────────────────────────────────
-
-const moreOptions = [
-  { content: 'AI 检测', value: 'detect' },
-  { content: '在文件夹中显示', value: 'reveal' }
-]
-
-const onMoreClick = (item: { value?: string | number | object }): void => {
-  if (item.value === 'detect') emit('detect')
-  else if (item.value === 'reveal') emit('reveal')
 }
 </script>
 <style scoped lang="less">

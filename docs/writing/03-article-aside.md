@@ -25,11 +25,11 @@ src/components/chat/aside/writing/
     ├── useArticleDoc.ts             # 数据层：store 共享、自动联动（id diff + contentRevs + mtime 轮询）、类型/正文/版本读写、元信息
     ├── useArticleAssist.ts          # 去 AI 味动作编排（按类型产出 humanize 新版本，流式期间 suspended 锁定）
     └── components/
-        ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select 切换）+ 刷新按钮 + 更多菜单
+        ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select 切换）+ 刷新按钮
         ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 移除，16:9）
         ├── ArticleToolbar.vue       # 工具栏：版本下拉触发 + 格式按钮（B/I/H2/列表/引用）+ 插图 / 生图
         ├── ArticleVersionPanel.vue  # 版本时间线：t-timeline 倒序（第N版·来源），点击即切换，hover 删除
-        ├── ArticleDocActions.vue    # 底部动作条：去 AI 味（或停止）· N 字 · 复制（正文 markdown 到剪贴板）
+        ├── ArticleDocActions.vue    # 底部动作条：左组 = AI 检测 / 文件夹 / 去 AI 味（或停止）/ 复制；右侧 = N 字
         ├── ArticleEditor.vue        # tiptap WYSIWYG（恒可编辑），expose insertImage + 格式命令，emit image-added
         ├── ArticleImageGenDialog.tsx + ArticleImageGenContent.vue  # AI 生图命令式弹窗（封面横版/插图方形）
         ├── HumanizeDepthDialog.tsx + HumanizeDepthContent.vue      # 去 AI 味深度选择（1~10，默认 5）
@@ -42,10 +42,10 @@ src/components/chat/aside/writing/
 ## 布局（窄栏 / 全屏统一）
 
 ```
-Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select，AI 设定后在此切换）+ 刷新⟳ + 更多⋯
+Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select，AI 设定后在此切换）+ 刷新⟳
 工具栏（第N版·来源 ▾ │ B I H2 列表 引用 │        插图 生图）
 tiptap 编辑器（flex:1，恒可编辑）
-底部动作条（去AI味/停止 ·        N 字 · 复制）
+底部动作条（AI 检测 · 文件夹 · 去AI味/停止 · 复制 ·        N 字）
 ```
 
 - `fullscreen` prop 保留入参但不再切换布局（仅宽度随容器变化）；编辑能力与全屏解耦。
@@ -80,11 +80,11 @@ tiptap 编辑器（flex:1，恒可编辑）
 - 展示 URL：`window.preload.net.pathToHref(...)`（本地事件服务 /file 资源面）。
 - 两种路径约定并存：正文引用相对 md 目录（`../assets/xxx.png`），登记相对 articles/（`assets/xxx.png`），见 02/04 号文档。
 
-## 更多菜单 / AI 检测 / 复制
+## 底部动作条（AI 检测 / 文件夹 / 去 AI 味 / 复制）
 
-- 头部更多菜单（MoreIcon 下拉）：AI 检测 / 在文件夹中显示。**刷新已移出菜单**，为头部常驻图标按钮（RefreshIcon）：`reload()` 重读 project.json 与正文，保留当前选中的文章/类型/版本，以磁盘为准覆盖并 `saveDoc.cancel()`（丢弃未落盘编辑）。
+- **更多菜单已撤**（2026-09-14 拍板）：原「更多」里的 AI 检测 / 在文件夹中显示移入底部动作条左组（与去 AI 味 / 复制同排），头部只剩刷新常驻按钮（RefreshIcon）：`reload()` 重读 project.json 与正文，保留当前选中的文章/类型/版本，以磁盘为准覆盖并 `saveDoc.cancel()`（丢弃未落盘编辑）；字数独占动作条最右侧。
 - **AI 检测**：复制当前正文到剪贴板（`copyText`）→ 系统通知「正文内容已复制」→ `openUrlByBrowser` 打开腾讯朱雀官网 `https://matrix.tencent.com/ai-detect/ai_gen_txt`（朱雀仅企业接入，不集成检测接口）。
-- **复制（2026-09-13 拍板替代导出）**：正文本来就是项目内本地文件，zip 导出已整体删除（`exportArticleZip`/`collectArticleAssets` 已从 imageRef.ts 移除）；底部动作条「复制」= 当前类型激活版本 markdown 原文进剪贴板。
+- **复制（2026-09-13 拍板替代导出）**：正文本来就是项目内本地文件，zip 导出已整体删除（`exportArticleZip`/`collectArticleAssets` 已从 imageRef.ts 移除）；「复制」= 当前类型激活版本 markdown 原文进剪贴板。
 
 ## 编辑器（tiptap）
 
