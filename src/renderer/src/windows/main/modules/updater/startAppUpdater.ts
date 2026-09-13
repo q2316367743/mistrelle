@@ -1,18 +1,25 @@
 import { useSettingGlobalStore } from '@/windows/main/store'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
+import { openUrlByBrowser } from '@/utils/native/NativeUtil'
+import { showUpdateDialog } from './updateDialog'
 
 let started = false
 let prompting = false
 
+/** 弹统一更新弹窗：builtin 确认后应用内下载；external 确认后打开网盘链接。 */
 async function promptDownload(state: UpdaterState): Promise<void> {
   if (prompting) return
   prompting = true
   try {
-    const version = state.availableVersion ?? ''
-    await MessageBoxUtil.confirm(`发现新版本 ${version}，是否下载？`, '应用更新')
+    const action = await showUpdateDialog(state)
+    if (action !== 'confirm') return
+    if (state.mode === 'external' && state.downloadUrl) {
+      openUrlByBrowser(state.downloadUrl)
+      return
+    }
     await window.preload.updater.download()
   } catch {
-    // 用户取消
+    // 用户取消或弹窗异常
   } finally {
     prompting = false
   }

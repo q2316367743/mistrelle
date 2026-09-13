@@ -3,11 +3,16 @@
  */
 declare type UpdaterStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'
 
+declare type UpdaterMode = 'builtin' | 'external'
+
 declare interface UpdaterState {
   status: UpdaterStatus
+  mode: UpdaterMode
   currentVersion: string
   availableVersion: string | null
   releaseNotes: string | null
+  /** 仅 mode=external 时有值。 */
+  downloadUrl: string | null
   percent: number
   error: string | null
 }

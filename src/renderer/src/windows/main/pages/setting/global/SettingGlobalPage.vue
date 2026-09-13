@@ -46,9 +46,11 @@ const currentVersion = ref('—')
 const busy = ref(false)
 const updater = ref<UpdaterState>({
   status: 'idle',
+  mode: 'builtin',
   currentVersion: '',
   availableVersion: null,
   releaseNotes: null,
+  downloadUrl: null,
   percent: 0,
   error: null,
 })
@@ -58,7 +60,9 @@ const statusText = computed(() => {
   if (updater.value.status === 'checking') return '正在检查…'
   if (updater.value.status === 'downloading') return `正在下载 ${Math.round(updater.value.percent)}%`
   if (updater.value.status === 'available' && updater.value.availableVersion) {
-    return `发现新版本 ${updater.value.availableVersion}`
+    return updater.value.mode === 'external'
+      ? `发现新版本 ${updater.value.availableVersion}（网盘分发）`
+      : `发现新版本 ${updater.value.availableVersion}`
   }
   if (updater.value.status === 'downloaded') return '更新已下载，重启后完成安装'
   if (updater.value.error) return updater.value.error
