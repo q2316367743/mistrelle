@@ -216,10 +216,9 @@ const handleCopy = async (): Promise<void> => {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  padding: 8px 0 0 8px;
+  padding-left: 8px;
   &.fullscreen {
-    padding-bottom: 8px;
-    padding-right: 8px;
+    padding: 0 8px 8px;
   }
   :deep(.doc-header),
   :deep(.doc-toolbar),
