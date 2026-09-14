@@ -37,10 +37,10 @@ export interface ChatTypeOption {
 
 export const CHAT_TYPE_OPTIONS: ChatTypeOption[] = [
   {
-    value: 'office',
-    label: '日常办公',
-    description: '文档、表格、任务管理，全能助手',
-    icon: WorkIcon
+    value: 'writing',
+    label: '写作',
+    description: '文档创作，侧边栏实时编辑与预览',
+    icon: EditIcon
   },
   {
     value: 'design',
@@ -49,9 +49,9 @@ export const CHAT_TYPE_OPTIONS: ChatTypeOption[] = [
     icon: PaletteIcon
   },
   {
-    value: 'writing',
-    label: '写作',
-    description: '文档创作，侧边栏实时编辑与预览',
-    icon: EditIcon
+    value: 'office',
+    label: '日常办公',
+    description: '文档、表格、任务管理，全能助手',
+    icon: WorkIcon
   }
 ]

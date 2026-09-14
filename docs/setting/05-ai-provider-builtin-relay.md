@@ -5,9 +5,9 @@
 「AI 设置」页左侧由扁平列表改为 **两组结构**：
 
 1. **内置**（固定首组）：对接本地 mistrelle-server 的 **OpenAI 兼容中转站**（`/v1/models` + `/v1/chat/completions`）。免费档（未登录 + 已登录无会员）也可用，按积分计费。
-2. **自定义供应商**（`thirdPartyRelay` 门控）：用户自填 Base URL / API Key 直连第三方厂商或中转，**付费档才显示**（`features.thirdPartyRelay === true`）。
+2. **自定义供应商**：用户自填 Base URL / API Key 直连第三方厂商或中转，已下放免费，全员可见可增删改，**无需登录**。
 
-同时新增**登录守卫**：未登录点「模型设置」提示登录；意外进入 `/setting/ai` 也要校验。
+**登录边界**：用第三方 key 全程免登录——`AiModelSelect`「模型设置」入口直接跳 `/setting/ai`，页面 `onMounted` 不再校验登录；只有「内置中转」相关能力（刷新/拉取服务端模型列表）依赖登录凭证。
 
 ## 关键设计
 
@@ -33,16 +33,15 @@
 | `src/preload/src/modules/relay/relayChannels.ts` | 通道常量 + `RelayChatParams` / `RelayStreamHandlers` / `RelayStreamEndPayload` |
 | `src/preload/src/modules/relay/relay.ts` | preload 桥 `window.preload.relay.{listModels, chatStream, streamAbort}`；invoke 只传可克隆参数，本地调 handlers |
 | `src/renderer/src/modules/ai/service.ts` | `listRelayModels()` + `createRelayChatStream()`（内置对话流，复用 `chatAdapter` + `SseParser`） |
-| `src/renderer/src/store/setting/SettingAiStore.ts` | 内置 provider 注入 / 门控过滤 / `refreshBuiltinModels` |
-| `src/renderer/src/pages/setting/ai/SettingAi.vue` | 编排层：登录守卫、选中/新增/删除/启用、内置刷新、接收编辑器 `@save` 落盘（布局与单向流见 [07-ai-setting-page.md](./07-ai-setting-page.md)） |
+| `src/renderer/src/store/setting/SettingAiStore.ts` | 内置 provider 注入 / `refreshBuiltinModels`（门控已删） |
+| `src/renderer/src/pages/setting/ai/SettingAi.vue` | 编排层：选中/新增/删除/启用、内置刷新（需登录）、接收编辑器 `@save` 落盘（布局与单向流见 [07-ai-setting-page.md](./07-ai-setting-page.md)） |
 | `src/renderer/src/pages/setting/ai/components/SettingAiSidebar.vue` | 两组渲染 + Accent 选中条 + 添加按钮 |
 
 ## Store 契约（SettingAiStore 变更）
 
 - `BUILTIN_PROVIDER_ID = 'builtin'`：内置供应商固定 id；`init()` 注入 items 首项（`builtin: true`、`enable: true`、`baseUrl: 'builtin://relay'` 占位、`key: ''`）。
 - **内置不落盘**：`ModelService.modelSave` 落盘前过滤 `item.builtin`，`model.json` 只存用户自定义（防污染 + 防旧版读取异常）。
-- `visibleItems`：门控过滤后的对外列表——免费档（`!relayEnabled`）只含内置；付费档含全部。`options` / `vectorOptions` / `imageOptions` / `optionMap` 全部基于 `visibleItems` 派生（免费档 options 只含内置模型 = 启用项自动切回内置）。
-- `relayEnabled` = `useAuthStore().features.thirdPartyRelay`（未登录/unknown 折叠为 false）。
+- **门控已删**：`visibleItems` / `relayEnabled` 不再存在，`options` / `vectorOptions` / `optionMap` 直接消费全量 `items`（内置 + 自定义，未登录亦然）。
 - `refreshBuiltinModels()`：登录后调用 `listRelayModels()` 更新内置 provider.models；`init()` 及订阅 `auth:changed`（登录/登出/刷新）后自动同步（signed-in 才拉，guest 清空）。
 - `AiProvideOption` 增加 `builtin?: boolean`（请求链路分流依据）。
 
@@ -53,14 +52,15 @@
 - `ChatCommon.ts` `ResolvedChatRequestParams` 增加 `builtin?: boolean` 与 `sessionId?: string`。
 - `AgentChat.resolveModel`：optionMap 命中内置 → 返回 `builtin: true` + `sessionId: this.chatId`；`agentStream.ts` 把 `sessionId` 与该步 `stepId`（同时作为 `requestId` 与 content.id）透传给 `createChatStream`（分流已在 service 内部）。
 
-## 登录守卫
+## 登录边界
+
+第三方 key 免登录，登录只保护「内置中转」相关能力：
 
 | 入口 | 行为 |
 |---|---|
-| `AiModelSelect.vue` `handleModelSetting` | signed-in → 直接跳 `/setting/ai`；unknown → 先 `authStore.refresh()` 再判；guest → `MessageUtil.warning('请先登录后使用模型设置')` + `openLogin(() => router.push('/setting/ai'))`（登录成功回设置页） |
-| `SettingAi.vue` `onMounted` | 同上判定；guest 提示登录 + `openLogin()`（已在本页，无需回调）；unknown 先 refresh |
-
-`openLogin`（`components/modals/LoginDialog.tsx`）新增可选 `onSuccess` 回调（登录成功后关闭弹窗并执行回调），缺省仅关闭。
+| `AiModelSelect.vue` `handleModelSetting` | 直接 `router.push('/setting/ai')`，不再判定登录 |
+| `SettingAi.vue`（页面） | 无 `onMounted` 登录校验，进入即用；默认选中「已登录优先内置 / 未登录优先第一个自定义供应商」（等 `authStore.status` 落定后选，避免 unknown 误判） |
+| `SettingAi.vue` `handleRefreshBuiltin` / `BuiltinProviderPanel` | 未登录时刷新按钮 disabled + 空态「登录后可获取内置模型列表」，强制调用也会提示「请先登录后获取内置模型列表」 |
 
 ## 注意事项
 
@@ -68,6 +68,6 @@
 - 内置供应商的模型开关恒开（disabled），模型由服务端统一管理；「从接口获取模型」「添加模型」「编辑/删除模型」对内置不适用。
 - `session_id`：内置对话流透传当前 chatId，**作 new-api 渠道亲和键**（同一聊天粘同一渠道以命中前缀缓存）；缺省服务端回退 user / 用户 id。配置见服务端 `docs/README.md`「newapi 渠道亲和性配置」。
 - `request_id`：该步 completions 的 content.id（= `stepId`），只作对账记录，**不参与选渠**。
-- 免费档判定走 `features.thirdPartyRelay`（AuthStore 已把未登录/unknown 折叠为 false），页面不直接判 `status`；登录态判定（守卫用）走 `authStore.status === 'signed-in'`。
+- 登录态判定（内置能力 + 页面默认选中）走 `authStore.status === 'signed-in'`；`features.thirdPartyRelay` 客户端已不消费。
 - `SettingAiStore` 引 `useAuthStore` 直连 `@/store/AuthStore`（经 `@/store` index 可能成环，与 DesignStyleStore 先例一致）。
 - relay 流式 IPC **不能**照抄 `aiStream`：`aiStream` 的 HTTP 跑在 preload 同进程，handlers 可直接调用；relay 必须在 main 注入凭证。把 `onStart`/`onChunk` 塞进 `ipcRenderer.invoke` 会触发 structured clone 失败（`An object could not be cloned`）。正确做法：invoke 只传 `params` + `requestId`，main 经 `relay:chatStreamStart` / `Chunk` / `End` 事件回推，preload 本地调 handlers。取消仍走 `streamAbort(requestId)`（requestId 经 onStart 回传）。结束以 `End` 事件为准，避免 invoke 回包赶超最后几个 chunk。

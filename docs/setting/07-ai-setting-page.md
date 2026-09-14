@@ -4,7 +4,7 @@
 
 「AI 设置」页（`/setting/ai`）按 Windows 设置页结构重组：左侧 NavigationView 选供应商，右侧编辑连接与模型。自定义供应商的表单草稿在 `ProviderEditor` 内部维护，父页只做编排与落盘，符合 Vue 单向数据流。
 
-不改 store / relay 契约：内置中转、登录守卫、`thirdPartyRelay` 门控仍见 [05-ai-provider-builtin-relay.md](./05-ai-provider-builtin-relay.md)。
+不改 store / relay 契约：内置中转与「第三方 key 免登录」的登录边界仍见 [05-ai-provider-builtin-relay.md](./05-ai-provider-builtin-relay.md)。
 
 ## 页面结构
 
@@ -13,7 +13,7 @@ AI 设置
 ┌ 侧栏 SettingAiSidebar ─────────┬ 主区 ────────────────────────────┐
 │ 内置                           │ 空态 / BuiltinProviderPanel /     │
 │   [Accent] 内置供应商          │ ProviderEditor                    │
-│ 自定义（付费档）               │   页头 Title + Caption            │
+│ 自定义                         │   页头 Title + Caption            │
 │   可拖拽项 + 启用 + 删除       │   连接表面（名称/URL/Key/格式）   │
 │ [添加供应商]                   │   命令栏（保存 / 拉取模型）       │
 │                                │   模型表面 ProviderModelList      │
@@ -43,7 +43,7 @@ SettingAi.vue ── :source + :key + :persist ──► ProviderEditor（内部
 
 | 文件 | 角色 |
 |------|------|
-| `pages/setting/ai/SettingAi.vue` | 编排：登录守卫、选中/新增/删除/启用、内置刷新、`persist` 落盘 |
+| `pages/setting/ai/SettingAi.vue` | 编排：默认选中、选中/新增/删除/启用、内置刷新（需登录）、`persist` 落盘 |
 | `pages/setting/ai/components/SettingAiSidebar.vue` | NavigationView：分组 + Accent 选中条 + 拖拽排序 |
 | `pages/setting/ai/components/ProviderEditor.vue` | 自定义供应商：本地 draft + 连接表面 + 命令栏 |
 | `pages/setting/ai/components/ProviderModelList.vue` | 模型搜索/分组列表；`readonly` 供内置面板复用 |
@@ -62,5 +62,5 @@ SettingAi.vue ── :source + :key + :persist ──► ProviderEditor（内部
 ## 注意事项
 
 - 模型操作（添加 / 编辑 / 删除 / 开关 / 接口导入）会立即 `await persist` 落盘，与原先「改完即存」一致
-- 免费档侧栏只显示内置；父页 `relayEnabled` watch 强制回选内置
-- 内置模型开关恒开（`ProviderModelList` `readonly`），不可增删改
+- 页面不拦登录：默认选中「已登录优先内置 / 未登录优先第一个自定义供应商」，等 `authStore.status` 落定后选，避免 unknown 误判
+- 内置模型开关恒开（`ProviderModelList` `readonly`），不可增删改；仅内置刷新需登录

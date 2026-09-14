@@ -37,8 +37,17 @@
 </template>
 <script lang="ts" setup>
 import { useAiChatStore, useSettingDefaultStore } from '@/windows/main/store'
-import type { ChatRequestParams, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
-import { CHAT_TYPE_OPTIONS, DESIGN_SCENE_OPTIONS, WRITING_SCENE_OPTIONS } from '@/windows/main/modules/chat'
+import type {
+  ChatRequestParams,
+  ChatType,
+  DesignScene,
+  WritingScene
+} from '@/windows/main/modules/chat'
+import {
+  CHAT_TYPE_OPTIONS,
+  DESIGN_SCENE_OPTIONS,
+  WRITING_SCENE_OPTIONS
+} from '@/windows/main/modules/chat'
 import { MessageUtil } from '@/utils/modal'
 import { toggleCollapsed } from '@/global/BeanFactory'
 
@@ -50,7 +59,7 @@ const route = useRoute()
 
 const show = ref(true)
 const model = ref('')
-const type = ref<ChatType>('office')
+const type = ref<ChatType>('writing')
 const scene = ref<WritingScene>('article')
 const engine = ref<DesignScene>('canvas')
 const designStyleId = ref('')
