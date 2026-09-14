@@ -5,9 +5,9 @@
 服务端（mistrelle-server）提供激活码（会员档位 / 积分包）与会员档位能力契约 `features`。本文档覆盖两件事：
 
 1. **激活码兑换**：`verify`（预检不执行）→ `redeem`（激活）全链路与弹窗 UI。
-2. **档位功能门控**：`features.customFonts`（自定义字体 = 资源库字体）、`features.extendedDesignStyles`（自定义设计风格 = 用户自建风格，非内置预设）与 `features.thirdPartyRelay`（自定义供应商 = 第三方中转，见「thirdPartyRelay 落点」小节）三项能力的客户端控制。
+2. **档位功能门控**：`features.customFonts`（自定义字体 = 资源库字体）、`features.extendedDesignStyles`（自定义设计风格 = 用户自建风格，非内置预设）两项能力的客户端控制；`features.thirdPartyRelay`（自定义供应商 = 第三方中转）已下放免费，客户端不再消费。
 
-`features.thirdPartyRelay` 已消费：自定义供应商（第三方中转）受其门控，详见下方「thirdPartyRelay（自定义供应商）落点」。
+第三方中转已下放免费（2026-09-12），自定义供应商不再受门控、**也无需登录**；详见下方「thirdPartyRelay（自定义供应商）落点」。
 
 ## 激活码链路（照 auth 域五层模式）
 
@@ -90,13 +90,13 @@
 
 - `SettingAiStore`：`relayEnabled`/`visibleItems` 已删，`options`/`vectorOptions`/`optionMap` 直接消费全量 `items`（内置 + 自定义）。
 - `SettingAiSidebar`：自定义供应商分组与「添加供应商」按钮全员可见，不再按档位隐藏。
-- `SettingAi.vue`：强制回选内置的 watch 已删；登录守卫保留（属于账号体系，非会员墙）。
+- `SettingAi.vue`：强制回选内置的 watch 已删；页面登录守卫已删（第三方 key 免登录，仅内置中转刷新需登录）；默认选中「已登录优先内置 / 未登录优先第一个自定义供应商」。
 - 客户端权益表（MembershipTierTab）已移除「第三方中转」行；管理端档位表单不再提供该开关。
 
 | 落点 | 行为（全员） |
 |---|---|
-| `pages/setting/ai/SettingAi.vue` | 内置面板只读展示 + 「刷新模型列表」（需登录，内置中转走服务端凭证）；自定义供应商可增删改排 |
-| `components/chat/AiModelSelect.vue` | 「模型设置」入口：未登录提示登录（登录成功回 `/setting/ai`）；unknown 先 refresh 再判定 |
+| `pages/setting/ai/SettingAi.vue` | 内置面板只读展示 + 「刷新模型列表」（需登录，内置中转走服务端凭证）；自定义供应商可增删改排，免登录进入页面 |
+| `components/chat/AiModelSelect.vue` | 「模型设置」入口：直接跳 `/setting/ai`，不再拦截未登录 |
 
 **内置供应商 = 服务端中转站**（详见 `docs/setting/05-ai-provider-builtin-relay.md`）：模型列表来自 `GET {server}/v1/models`，对话走主进程 relay IPC 代理 `POST {server}/v1/chat/completions`（服务端 apiKey 由主进程注入，渲染层不接触凭证），免费档可用（消耗每日赠送 / 增量包 / 人工充值积分）。
 

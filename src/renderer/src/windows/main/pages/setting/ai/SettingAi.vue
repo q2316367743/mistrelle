@@ -39,7 +39,6 @@
 import { useSettingAiStore, useAuthStore, BUILTIN_PROVIDER_ID } from '@/windows/main/store'
 import type { AiProvideFormat } from '@/entity'
 import { MessageUtil } from '@/utils/modal'
-import { openLogin } from '@/components/modals/LoginDialog'
 import { PROVIDER_NAME_PRESETS, PROVIDER_PRESETS } from './providerPresets'
 import SettingAiSidebar from './components/SettingAiSidebar.vue'
 import BuiltinProviderPanel from './components/BuiltinProviderPanel.vue'
@@ -48,7 +47,7 @@ import ProviderEditor, { type ProviderFormData } from './components/ProviderEdit
 const store = useSettingAiStore()
 const authStore = useAuthStore()
 
-/** 已登录（登录守卫用） */
+/** 已登录（仅内置中转相关能力判定用，第三方 key 免登录） */
 const isSignedIn = computed(() => authStore.status === 'signed-in')
 
 const selectedId = ref<string>('')
@@ -83,37 +82,22 @@ function selectItem(id: string) {
   isCreating.value = false
 }
 
+/**
+ * 默认选中：已登录优先内置，未登录优先第一个自定义供应商（免登录使用第三方 key）。
+ * 等 auth 状态落定为 signed-in / guest 再选，避免 unknown 期间误判。
+ */
 watch(
-  () => store.items.length,
-  (len) => {
-    if (!selectedId.value && !isCreating.value && len > 0) {
-      selectItem(store.items[0].id)
-    }
+  [() => store.items.length, () => authStore.status],
+  () => {
+    if (selectedId.value || isCreating.value || store.items.length === 0) return
+    if (authStore.status === 'unknown') return
+    const preferred = isSignedIn.value
+      ? store.items[0]
+      : (store.items.find((i) => !i.builtin) ?? store.items[0])
+    if (preferred) selectItem(preferred.id)
   },
   { immediate: true }
 )
-
-const router = useRouter()
-
-async function guardLogin(): Promise<boolean> {
-  if (isSignedIn.value) return true
-  if (authStore.status === 'unknown') {
-    await authStore.refresh()
-  }
-  if (isSignedIn.value) return true
-  MessageUtil.warning('请先登录后使用 AI 设置')
-  openLogin(
-    () => {
-      void store.refreshBuiltinModels().catch(() => undefined)
-    },
-    () => router.push('/new')
-  )
-  return false
-}
-
-onMounted(() => {
-  void guardLogin()
-})
 
 async function handleRefreshBuiltin() {
   if (!isSignedIn.value) {

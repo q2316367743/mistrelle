@@ -43,11 +43,9 @@
   </t-popup>
 </template>
 <script lang="ts" setup>
-import { useSettingAiStore, useAuthStore } from '@/windows/main/store'
+import { useSettingAiStore } from '@/windows/main/store'
 import type { ThinkingEffort } from '@/domain'
 import { ChevronDownIcon, ChevronRightIcon, Setting1Icon } from 'tdesign-icons-vue-next'
-import { MessageUtil } from '@/utils/modal'
-import { openLogin } from '@/components/modals/LoginDialog'
 
 const modelValue = defineModel({
   type: String,
@@ -66,7 +64,6 @@ const effortOptions = [
 ]
 
 const router = useRouter()
-const authStore = useAuthStore()
 
 const visible = ref(false)
 
@@ -88,23 +85,9 @@ const handleSelect = (val: string) => {
   modelValue.value = val
   visible.value = false
 }
-/** 模型设置入口：未登录提示登录（登录成功回设置页）；unknown 先刷新凭证再判定 */
-const handleModelSetting = async () => {
-  // 函数读取避免 TS 对 authStore.status 的属性窄化（refresh() 副作用后重读）
-  const isSignedIn = (): boolean => authStore.status === 'signed-in'
-  if (isSignedIn()) {
-    router.push('/setting/ai')
-    return
-  }
-  if (authStore.status === 'unknown') {
-    await authStore.refresh()
-  }
-  if (isSignedIn()) {
-    router.push('/setting/ai')
-    return
-  }
-  MessageUtil.warning('请先登录后使用模型设置')
-  openLogin(() => router.push('/setting/ai'))
+/** 模型设置入口：第三方 key 免费，进入设置页无需登录 */
+const handleModelSetting = () => {
+  router.push('/setting/ai')
 }
 </script>
 <style scoped lang="less">
