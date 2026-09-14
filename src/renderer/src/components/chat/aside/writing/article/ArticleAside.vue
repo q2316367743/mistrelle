@@ -1,5 +1,5 @@
 <template>
-  <div class="article-aside">
+  <div class="article-aside" :class="{ fullscreen: fullscreen }">
     <template v-if="activeArticle">
       <article-doc-header
         :article="activeArticle"
@@ -217,7 +217,10 @@ const handleCopy = async (): Promise<void> => {
   display: flex;
   flex-direction: column;
   padding: 8px 0 0 8px;
-
+  &.fullscreen {
+    padding-bottom: 8px;
+    padding-right: 8px;
+  }
   :deep(.doc-header),
   :deep(.doc-toolbar),
   :deep(.doc-actions) {
