@@ -3,7 +3,7 @@
     <div class="binding-panel__head">
       <div class="binding-panel__cap">{{ keyId }}</div>
       <div class="binding-panel__title">
-        <div class="binding-panel__name">配置键位 {{ keyId }}</div>
+        <div class="binding-panel__name">{{ title }}</div>
         <div
           class="binding-panel__desc"
           :title="summaryText"
@@ -22,6 +22,15 @@
         <close-icon />
       </t-button>
     </div>
+
+    <!-- 旋钮专用：路切换条（左转/右转/按下，路由布局能力派生）；普通键位不传 routes -->
+    <keypad-route-select
+      v-if="routes?.length"
+      :routes="routes"
+      :active-key-id="keyId"
+      label="绑定路"
+      @select="emit('route', $event)"
+    />
 
     <t-input
       v-model="draft.name"
@@ -72,17 +81,33 @@ import {
 import { keypadActionDefinition } from '@common/keypad/actions'
 import { CloseIcon } from 'tdesign-icons-vue-next'
 import HoldBehaviorEditor from './HoldBehaviorEditor.vue'
+import KeypadRouteSelect from './KeypadRouteSelect.vue'
 import KeypadSequenceEditor from './KeypadSequenceEditor.vue'
+import type { KeypadKnobRoute } from './keypadLayouts'
 import { keypadActionSummary } from './actionText'
 import { useKeypad } from '../useKeypad'
 
 defineOptions({ name: 'KeypadBindingPanel' })
 
-const props = defineProps<{ keyId: string }>()
+const props = defineProps<{
+  keyId: string
+  /** 旋钮路列表（仅旋钮传入；长度即布局能力，缺省 = 普通键位不显示切换条） */
+  routes?: KeypadKnobRoute[]
+}>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; route: [keyId: string] }>()
 
 const { config, bindKey } = useKeypad()
+
+/** 当前键位在旋钮路里的名称（左转/右转/按下）；非旋钮路回退键位号 */
+const routeLabel = computed(
+  () => props.routes?.find((route) => route.keyId === props.keyId)?.label ?? ''
+)
+
+/** 标题：旋钮路显示「配置旋钮 · 左转」，普通键位显示键位号 */
+const title = computed(() =>
+  routeLabel.value ? `配置旋钮 · ${routeLabel.value}` : `配置键位 ${props.keyId}`
+)
 
 /** 绑定草稿（本地编辑态；main 配置回读后同步），name 空串 = 未命名、actions 空 = 未绑定仅状态点亮、holdActions 空 = 未配置长按 */
 const draft = ref<{

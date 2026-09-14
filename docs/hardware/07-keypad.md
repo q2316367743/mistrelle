@@ -25,11 +25,11 @@
 `type` 判别的动作联合。三端各有一张注册表，**新增动作 = 各端加一个文件 + 登记一行**，
 分发/归一化/序列编辑器框架零改动：
 
-| 端 | 注册表 | 条目职责 |
-|----|--------|----------|
-| `@common/keypad/actions/` | `KEYPAD_ACTIONS` | `KeypadActionDefinition`：type / label / normalize（配置清洗，main 落盘与渲染层保存预校验共用）/ createDefault（空白草稿） |
-| `src/main/src/buddy/keypad/actions/` | `KEYPAD_ACTION_EXECUTORS` | `KeypadActionExecutor<T>`：onPress（序列执行到该动作时触发，可异步——delay 即 sleep Promise） |
-| 渲染层 `components/actionEditors/` | `KEYPAD_ACTION_EDITORS` | 编辑器组件（统一契约 `props.action` 只读草稿 + `emit('change')` 回传，内部按 type 收窄） |
+| 端                                   | 注册表                    | 条目职责                                                                                                                   |
+| ------------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `@common/keypad/actions/`            | `KEYPAD_ACTIONS`          | `KeypadActionDefinition`：type / label / normalize（配置清洗，main 落盘与渲染层保存预校验共用）/ createDefault（空白草稿） |
+| `src/main/src/buddy/keypad/actions/` | `KEYPAD_ACTION_EXECUTORS` | `KeypadActionExecutor<T>`：onPress（序列执行到该动作时触发，可异步——delay 即 sleep Promise）                               |
+| 渲染层 `components/actionEditors/`   | `KEYPAD_ACTION_EDITORS`   | 编辑器组件（统一契约 `props.action` 只读草稿 + `emit('change')` 回传，内部按 type 收窄）                                   |
 
 - 三张表均用**映射类型 `{ [D in KeypadAction as D['type']]: ... }` 或编译期穷尽校验**
   强制齐活：`KeypadActionType` 联合加了成员而任一注册表漏登记，typecheck 直接报错
@@ -69,12 +69,12 @@
 `@common/types/keypad` 的 `resolveKeypadHoldBehavior(holdActions)`，main 执行侧与渲染层
 展示共用同一函数，避免两端规则漂移：
 
-| 长按队列形状 | 行为 | 语义 |
-|---|---|---|
-| 单条普通「模拟按键」 | `keep` 保持按住 | 按住达到阈值后 `pressCombo` **不自动抬起**，松手才 `releaseCombo` —— 真正的长按该键（语音输入 / 按住修饰键 / 游戏按键） |
-| 多条（任意类型） | `repeat` 持续循环 | 按住达到阈值后循环执行整个队列，每轮之间停 `holdRepeatMs`，松手停止（音量 / 方向键 / 切歌） |
-| 单条媒体键（音量/亮度/播放） | `repeat` 持续循环 | 例外走循环：这类键由系统直接消费，按一次只算一步，保持按住不会持续生效，只有反复触发才等价于「长按音量键」 |
-| 单条非「模拟按键」 | `once` 执行一次 | 单条打开应用只执行一次，避免反复开窗口 |
+| 长按队列形状                 | 行为              | 语义                                                                                                                    |
+| ---------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 单条普通「模拟按键」         | `keep` 保持按住   | 按住达到阈值后 `pressCombo` **不自动抬起**，松手才 `releaseCombo` —— 真正的长按该键（语音输入 / 按住修饰键 / 游戏按键） |
+| 多条（任意类型）             | `repeat` 持续循环 | 按住达到阈值后循环执行整个队列，每轮之间停 `holdRepeatMs`，松手停止（音量 / 方向键 / 切歌）                             |
+| 单条媒体键（音量/亮度/播放） | `repeat` 持续循环 | 例外走循环：这类键由系统直接消费，按一次只算一步，保持按住不会持续生效，只有反复触发才等价于「长按音量键」              |
+| 单条非「模拟按键」           | `once` 执行一次   | 单条打开应用只执行一次，避免反复开窗口                                                                                  |
 
 - **四种触发全覆盖**：点击 = 短按序列；长按（单条模拟按键）= 持续按住该按键；
   长按（多条）= 持续循环整个列表；单条其他类型 = 执行一次
@@ -113,7 +113,7 @@
 1. `src/common/types/keypad.ts`：加 `KeypadUrlAction` 接口并入 `KeypadAction` 联合、
    `KeypadActionType` 加 `'url'`
 2. `src/common/keypad/actions/url.ts`：定义 `{ type:'url', label:'打开网页', normalize,
-   createDefault }`（normalize 校验 http/https 协议，`isValidKeypadUrl` 经 index.ts
+createDefault }`（normalize 校验 http/https 协议，`isValidKeypadUrl` 经 index.ts
    再导出供渲染层实时提示共用），在 `actions/index.ts` 的 `KEYPAD_ACTIONS` 登记一行
 3. `src/main/src/buddy/keypad/actions/urlExecutor.ts`：`onPress` 里 `shell.openExternal(...)`
    （无效网址 reject 由 runSequence 统一捕获），在执行器注册表登记一行
@@ -193,7 +193,10 @@
   "layout": "grid4x2",
   "bindings": {
     "1": { "actions": [{ "type": "combo", "modifiers": ["shift"], "key": "f13" }] },
-    "2": { "name": "切到Cursor", "actions": [{ "type": "app", "path": "/Applications/Cursor.app" }] },
+    "2": {
+      "name": "切到Cursor",
+      "actions": [{ "type": "app", "path": "/Applications/Cursor.app" }]
+    },
     "3": {
       "actions": [
         { "type": "app", "path": "/Applications/WeChat.app" },
@@ -232,7 +235,17 @@
   `holdRepeatMs` = 长按循环间隔（仅推导为循环时落盘），见长按行为节），
   缺省/空序列 = 未绑定仅状态点亮
 - `layout` = 键盘样式布局 id（纯展示偏好，`keypad:saveLayout` 保存，白名单
-  `KEYPAD_LAYOUT_IDS` 校验，非法/缺省归一化回退 `'grid4x2'`）
+  `KEYPAD_LAYOUT_IDS` 校验，非法/缺省归一化回退 `'grid4x2'`）。
+  现有取值：`'grid4x2'`（样式一）/ `'grid4x2Knob'`（样式二，含旋钮）
+- **旋钮键位号**（样式二）：右转 `10` / 左转 `11` / 按下 `12`（键位 9 = 右组下方按键）。
+  三者在 `bindings` 里与普通键位完全同构，例如预置的音量映射：
+  ```jsonc
+  "10": { "name": "音量 +", "actions": [{ "type": "combo", "modifiers": [], "key": "volume-up" }] },
+  "11": { "name": "音量 -", "actions": [{ "type": "combo", "modifiers": [], "key": "volume-down" }] },
+  "12": { "name": "静音",   "actions": [{ "type": "combo", "modifiers": [], "key": "mute" }] }
+  ```
+  键位号是纯数字串（协议 `^(\d+),(on|off)` 接受任意数字），无编号上限；
+  旋钮占用哪些号完全由布局定义决定，换型号只需改布局定义
 - **存量兼容**：`normalizeBinding`——`{name?, actions, holdActions?, holdRepeatMs?}` 新格式 / 上一代纯数组
   序列（无名）/ 最早的单动作对象（含无 `type` 的最老 combo 格式 `{modifiers, key}`）多代全兼容，
   自动包装归一，无需迁移脚本；序列内非法条目逐条丢弃，清空的序列整个丢弃；
@@ -252,32 +265,51 @@
 
 ## 关键文件
 
-| 文件 | 职责 |
-|------|------|
-| `src/common/types/keypad.ts` | 类型契约：`KeypadAction*` 判别联合 / `KeypadBinding`（含 `holdActions?` + `holdRepeatMs?`）/ `KEYPAD_HOLD_MS` + 循环间隔常量 / `KeypadConfig/State/Api` / `AppCatalogItem` + 普通键/媒体键/修饰键白名单守卫 |
-| `src/common/keypad/actions/` | **动作定义注册表**：combo/app/script/permission/delay/url（label/normalize/createDefault）+ `KEYPAD_ACTIONS` 聚合 + 穷尽校验 + `KeypadActionTypeOptions` |
-| `src/common/buddy/keypad/keypadChannels.ts` | IPC 通道常量（getConfig/saveBindings/listApps/connect/disconnect/getState/state） |
-| `src/main/src/buddy/keypad/actions/` | **动作执行器注册表**：onPress（可异步）+ 映射类型聚合（combo=击键模拟、app=shell.openPath/`open -a`、script=cliRun、permission=审批回传、delay=sleep Promise、url=shell.openExternal） |
-| `src/main/src/buddy/keypad/keySimulator.ts` | koffi 模拟按键：平台键码表、pressCombo/releaseCombo/releaseAll、AXIsProcessTrusted |
-| `src/main/src/buddy/keypad/keypadConfig.ts` | keypad.json 读写与归一化（normalizeBinding 多代格式兼容归一 {name?,actions,holdActions?}/纯数组/单动作 + normalizeAction 查表） |
-| `src/main/src/buddy/keypad/keypadService.ts` | 单例服务：init/connect/disconnect/行解析/handleEvent（短按/长按互斥判定 holdTimers）/dispatchHold（keep 保持 / repeat 循环 / once）+runRepeatLoop+runKeepSession+**会话世代 endSession（断开即中止在途序列）**/resetPressed/dispatchSequence+runSequence（顺序执行+世代感知重入守卫）/saveBindings/broadcastState |
-| `src/main/src/buddy/keypad/keypadIpc.ts` | IPC handler 注册（含 listApps） |
-| `src/main/src/buddy/keypad/keypadProtocol.ts` | 无分隔符流式解析器：`数字,on/off` 文法匹配 + 不完整前缀等待 + 失步丢字符重同步 |
-| `src/main/src/modules/appCatalog.ts` | 本机应用枚举（mac .app 扫描 / win 开始菜单 .lnk） |
-| `src/main/src/modules/appIcon.ts` | 应用图标提取（mac qlmanage / win PowerShell）+ PNG 磁盘缓存 |
-| `src/main/src/server/index.ts` | 本地事件服务：新增 `/icon/app` 图标面（Origin 守卫 + 缓存 + 404 回退） |
-| `src/preload/src/modules/keypad/keypad.ts` | 渲染层桥（buddy.ts 注入 `keypad`） |
-| `src/renderer/src/windows/buddy/pages/hardware/keypad/` | 页面：`Keypad.vue` + `useKeypad.ts` + SerialPanel/KeypadKeys/KeypadKeyCap/KeypadBindingPanel/KeypadSequenceEditor/**HoldBehaviorEditor**（长按行为展示 + 循环时间隔输入）/KeypadPlaceholder + `keypadLayouts.ts`（布局注册表）+ `iconHref.ts`（图标 URL/应用名工具）+ `actionText.ts`（动作摘要文本）+ `actionEditors/`（编辑器注册表 + comboRecorder 单例录制） |
+| 文件                                                    | 职责                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/common/types/keypad.ts`                            | 类型契约：`KeypadAction*` 判别联合 / `KeypadBinding`（含 `holdActions?` + `holdRepeatMs?`）/ `KEYPAD_HOLD_MS` + 循环间隔常量 / `KeypadConfig/State/Api` / `AppCatalogItem` + 普通键/媒体键/修饰键白名单守卫                                                                                                                                                                                                                                                                                                                                                          |
+| `src/common/keypad/actions/`                            | **动作定义注册表**：combo/app/script/permission/delay/url（label/normalize/createDefault）+ `KEYPAD_ACTIONS` 聚合 + 穷尽校验 + `KeypadActionTypeOptions`                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `src/common/buddy/keypad/keypadChannels.ts`             | IPC 通道常量（getConfig/saveBindings/listApps/connect/disconnect/getState/state）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/main/src/buddy/keypad/actions/`                    | **动作执行器注册表**：onPress（可异步）+ 映射类型聚合（combo=击键模拟、app=shell.openPath/`open -a`、script=cliRun、permission=审批回传、delay=sleep Promise、url=shell.openExternal）                                                                                                                                                                                                                                                                                                                                                                               |
+| `src/main/src/buddy/keypad/keySimulator.ts`             | koffi 模拟按键：平台键码表、pressCombo/releaseCombo/releaseAll、AXIsProcessTrusted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/main/src/buddy/keypad/keypadConfig.ts`             | keypad.json 读写与归一化（normalizeBinding 多代格式兼容归一 {name?,actions,holdActions?}/纯数组/单动作 + normalizeAction 查表）                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/main/src/buddy/keypad/keypadService.ts`            | 单例服务：init/connect/disconnect/行解析/handleEvent（短按/长按互斥判定 holdTimers）/dispatchHold（keep 保持 / repeat 循环 / once）+runRepeatLoop+runKeepSession+**会话世代 endSession（断开即中止在途序列）**/resetPressed/dispatchSequence+runSequence（顺序执行+世代感知重入守卫）/saveBindings/broadcastState                                                                                                                                                                                                                                                    |
+| `src/main/src/buddy/keypad/keypadIpc.ts`                | IPC handler 注册（含 listApps）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/main/src/buddy/keypad/keypadProtocol.ts`           | 无分隔符流式解析器：`数字,on/off` 文法匹配 + 不完整前缀等待 + 失步丢字符重同步                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `src/main/src/modules/appCatalog.ts`                    | 本机应用枚举（mac .app 扫描 / win 开始菜单 .lnk）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/main/src/modules/appIcon.ts`                       | 应用图标提取（mac qlmanage / win PowerShell）+ PNG 磁盘缓存                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `src/main/src/server/index.ts`                          | 本地事件服务：新增 `/icon/app` 图标面（Origin 守卫 + 缓存 + 404 回退）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `src/preload/src/modules/keypad/keypad.ts`              | 渲染层桥（buddy.ts 注入 `keypad`）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/renderer/src/windows/buddy/pages/hardware/keypad/` | 页面：`Keypad.vue` + `useKeypad.ts` + SerialPanel/KeypadKeys/KeypadKeyCap/**KeypadKnob**（旋钮：圆盘 + 盘内左右转提示 + 键位号提示，按压通道由布局派生）/KeypadBindingPanel/**KeypadRouteSelect**（旋钮路切换条）/KeypadSequenceEditor/**HoldBehaviorEditor**（长按行为展示 + 循环时间隔输入）/KeypadPlaceholder + `keypadLayouts.ts`（布局注册表：分组 + 判别 cell + preset + `knobRoutes`）/`layoutPreset.ts`（样式预置仅补空缺）/`iconHref.ts`（图标 URL/应用名工具）+ `actionText.ts`（动作摘要文本）+ `actionEditors/`（编辑器注册表 + comboRecorder 单例录制） |
 
 ## 页面交互
 
 - 顶部串口面板（照红绿灯精简：下拉 + 刷新 + 连接/断开 + 状态 tag，无调试模式）
 - 已连接显示**实体键盘外观**（2026-09-09 增强）：
   - **键盘样式**：面板头部 t-select 切换（`config.layout` 持久化，`keypad:saveLayout`）；
-    布局定义在渲染层 `keypadLayouts.ts` 注册表（`{ id, label, columns, cells }`，cells 带
-    `cols/rows` 跨格数经 grid auto-placement 排布）。样式一（4×2）：键位 1 左侧竖跨 2 行、
-    键位 6 底部横跨 2 列，2/3/4/5 普通键。新增样式 = @common 加联合成员 + IDS 登记 +
-    渲染层注册表加布局定义
+    布局定义在渲染层 `keypadLayouts.ts` 注册表，模型为**分组 + 判别 cell**：
+    `{ id, label, groups: [{ columns, cells }], preset? }`，cell 分两类——
+    **普通键位** `{ kind: 'key', keyId, cols?, rows? }`（cols/rows 跨格数，组内经 grid
+    auto-placement 排布）、**旋钮** `{ kind: 'knob', cwKey, ccwKey, pressKey? }`。
+    多个分组在键盘外壳内横排、组间由 `t-divider`(vertical) 做**纯视觉分隔**（不参与格位）。
+    - **样式一（4×2）**：单分组 4 列，键位 1 左侧竖跨 2 行、键位 6 底部横跨 2 列，
+      2/3/4/5 普通键。
+    - **样式二（4×2 + 旋钮）**：左分组 4 列八键（键位 1–8）；右分组 1 列——上为旋钮、
+      下为键位 9；`preset` 预置旋钮音量映射（右转 10 音量+ / 左转 11 音量- / 按下 12 静音）。
+    - 新增样式 = @common 加联合成员 + IDS 登记 + 渲染层注册表加布局定义。
+  - **旋钮（2026-09-14）**：无极、可左右转，**三路各占一个普通键位号**，设备按普通按键
+    上报（`<id>,on` / `<id>,off`），因此协议解析/动作模型/执行器/IPC **零改动**，完全复用
+    按键绑定链路。**「是否可按压」是布局配置**——`KeypadKnobCell.pressKey` 缺省即该旋钮
+    不可按压：配置面板的路切换条与键位号提示都由 `knobRoutes(cell)` 从布局派生
+    （可按压 3 路 / 不可按压 2 路），不写死三路；不可按压型号仅用 10/11，12 闲置属预期。
+    编辑方式：点旋钮 → 右侧面板顶部「绑定路」切换条（左转/右转/按下，`t-radio-group`
+    default-filled）选中哪路就配哪路，下方复用现有序列编辑器（面板契约仍是单一 keyId，
+    切路只 emit 新 keyId，既有 watch 自然重载草稿，单向数据流不破）。
+  - **样式预置**：`KeypadLayoutDefinition.preset` 为该样式的开箱默认绑定；切到此样式时由
+    `layoutPreset.applyLayoutPreset` **仅补未绑定键位、不覆盖用户已有绑定**，无新增则跳过
+    保存。切换样式本身即触发一次 `saveBindings`（其内部 resetPressed，属低频可接受）。
+  - **设备侧要求**：旋钮转动必须 `on`/`off` **成对上报**——`keypadService.handleEvent`
+    对同一键位号有按下去重（`if (pressed.has(keyId)) return`），只发 `on` 会让后续转动被吞。
   - **外壳与键帽**（拟物风，只参考实物布局不参考颜色）：格子固定正方形 `--key-size: 88px`
     （合并键 = 整数倍格子不变形），外壳 `--td-bg-color-secondarycontainer` + 内外阴影整体
     居中；键帽 = 白面（`--td-bg-color-container`）+ 灰色厚度层/阴影（半透明黑随主题自适应）+

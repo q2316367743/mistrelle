@@ -12,23 +12,36 @@
     </div>
     <div class="panel-body">
       <div class="keyboard-area">
-        <div
-          class="keyboard"
-          :style="{ gridTemplateColumns: `repeat(${layout.columns}, var(--key-size))` }"
-        >
-          <div
-            v-for="cell in layout.cells"
-            :key="cell.keyId"
-            class="key-slot"
-            :style="spanStyle(cell)"
-          >
-            <keypad-key-cap
-              :key-id="cell.keyId"
-              :binding="bindingOf(cell.keyId)"
-              :selected="activeKeyId === cell.keyId"
-              @select="onKeySelect(cell.keyId)"
-            />
-          </div>
+        <div class="keyboard">
+          <template v-for="(group, index) in layout.groups" :key="index">
+            <!-- 组间视觉分隔（不可点击），仅分隔不参与格位 -->
+            <t-divider v-if="index > 0" layout="vertical" class="keyboard__divider" />
+            <div
+              class="keyboard__group"
+              :style="{ gridTemplateColumns: `repeat(${group.columns}, var(--key-size))` }"
+            >
+              <div
+                v-for="cell in group.cells"
+                :key="cellKey(cell)"
+                class="key-slot"
+                :style="spanStyle(cell)"
+              >
+                <keypad-knob
+                  v-if="cell.kind === 'knob'"
+                  :cell="cell"
+                  :selected="isKnobSelected(cell)"
+                  @select="onKnobSelect(cell)"
+                />
+                <keypad-key-cap
+                  v-else
+                  :key-id="cell.keyId"
+                  :binding="bindingOf(cell.keyId)"
+                  :selected="activeKeyId === cell.keyId"
+                  @select="onKeySelect(cell.keyId)"
+                />
+              </div>
+            </div>
+          </template>
         </div>
       </div>
       <aside class="side-panel">
@@ -37,6 +50,8 @@
             v-if="activeKeyId"
             :key="activeKeyId"
             :key-id="activeKeyId"
+            :routes="activeRoutes"
+            @route="onKeySelect($event)"
             @close="activeKeyId = null"
           />
           <div v-else key="empty" class="side-panel__empty">
@@ -54,30 +69,51 @@ import type { KeypadBinding } from '@common/types/keypad'
 import { isKeypadLayoutId } from '@common/types/keypad'
 import { GestureClickIcon } from 'tdesign-icons-vue-next'
 import KeypadKeyCap from './KeypadKeyCap.vue'
+import KeypadKnob from './KeypadKnob.vue'
 import KeypadBindingPanel from './KeypadBindingPanel.vue'
-import { KEYPAD_LAYOUTS, keypadLayoutOf, type KeypadLayoutCell } from './keypadLayouts'
+import { applyLayoutPreset } from './layoutPreset'
+import {
+  KEYPAD_LAYOUTS,
+  keypadLayoutOf,
+  knobRoutes,
+  type KeypadKnobCell,
+  type KeypadKnobRoute,
+  type KeypadLayoutCell
+} from './keypadLayouts'
 import { useKeypad } from '../useKeypad'
 
 defineOptions({ name: 'KeypadKeys' })
 
-const { config, saveLayout } = useKeypad()
+const { config, saveLayout, saveBindings } = useKeypad()
 
 /** 当前布局（main 配置持有；未回读时缺省首个） */
 const layout = computed(() => keypadLayoutOf(config.value?.layout))
 
 const layoutOptions = KEYPAD_LAYOUTS.map((item) => ({ value: item.id, label: item.label }))
 
-function onLayoutChange(value: unknown): void {
+/** 切换样式：落盘布局，并把该样式的预置映射补进未绑定键位（不覆盖已有绑定） */
+async function onLayoutChange(value: unknown): Promise<void> {
   if (typeof value !== 'string' || !isKeypadLayoutId(value)) return
-  void saveLayout(value)
+  await saveLayout(value)
+  const target = keypadLayoutOf(value)
+  const current = config.value?.bindings ?? {}
+  const next = applyLayoutPreset(target, current)
+  if (next) await saveBindings(next)
+  activeKeyId.value = null
 }
 
 function bindingOf(keyId: string): KeypadBinding | null {
   return config.value?.bindings[keyId] ?? null
 }
 
-/** 大键位跨行/跨列（作用于键槽 grid item 上） */
+/** cell 的 DOM key：旋钮以右转键位号标识（一个旋钮 = 一个 cell） */
+function cellKey(cell: KeypadLayoutCell): string {
+  return cell.kind === 'knob' ? `knob-${cell.cwKey}` : cell.keyId
+}
+
+/** 大键位跨行/跨列（作用于键槽 grid item 上；旋钮不跨格） */
 function spanStyle(cell: KeypadLayoutCell): Record<string, string> {
+  if (cell.kind === 'knob') return {}
   return {
     gridColumn: `span ${cell.cols ?? 1}`,
     gridRow: `span ${cell.rows ?? 1}`
@@ -89,6 +125,35 @@ const activeKeyId = ref<string | null>(null)
 
 function onKeySelect(keyId: string): void {
   activeKeyId.value = activeKeyId.value === keyId ? null : keyId
+}
+
+/** 当前选中键位所属旋钮（非旋钮路/未选中为 null） */
+const activeKnob = computed<KeypadKnobCell | null>(() => {
+  if (!activeKeyId.value) return null
+  for (const group of layout.value.groups) {
+    for (const cell of group.cells) {
+      if (cell.kind !== 'knob') continue
+      if (knobRoutes(cell).some((route) => route.keyId === activeKeyId.value)) return cell
+    }
+  }
+  return null
+})
+
+/** 传给配置面板的旋钮路列表（普通键位为 undefined，面板不显示切换条） */
+const activeRoutes = computed<KeypadKnobRoute[] | undefined>(() =>
+  activeKnob.value ? knobRoutes(activeKnob.value) : undefined
+)
+
+/** 旋钮选中态：该旋钮任一绑定路正在配置面板中 */
+function isKnobSelected(cell: KeypadKnobCell): boolean {
+  return activeKnob.value === cell
+}
+
+/** 点旋钮：面板落到该旋钮的第一条路（左转）；再点当前路则关闭 */
+function onKnobSelect(cell: KeypadKnobCell): void {
+  const first = knobRoutes(cell)[0]
+  if (!first) return
+  onKeySelect(first.keyId)
 }
 </script>
 
@@ -133,6 +198,36 @@ function onKeySelect(keyId: string): void {
   justify-content: center;
 }
 
+/* 外壳内的分组横排（多组之间由 t-divider 视觉分隔） */
+.keyboard {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 16px;
+  border: 1px solid var(--td-component-stroke);
+  border-radius: var(--td-radius-extra);
+  background: var(--td-bg-color-secondarycontainer);
+  box-shadow:
+    inset 0 2px 6px 0 rgba(0, 0, 0, 10%),
+    0 2px 8px 0 rgba(0, 0, 0, 10%);
+
+  --key-size: 88px;
+}
+
+/* 分组：一组等宽列的小 grid（跨行/跨列在组内生效） */
+.keyboard__group {
+  display: grid;
+  grid-auto-rows: var(--key-size);
+  gap: 12px;
+}
+
+/* 组间分隔：撑满键盘高度，作为纯视觉分隔不参与格位 */
+.keyboard__divider {
+  height: var(--key-size);
+  margin: 0 8px;
+}
+
 /* 键槽 = grid item（大键位跨行/跨列在这里生效） */
 .key-slot {
   display: flex;
@@ -161,24 +256,6 @@ function onKeySelect(keyId: string): void {
   &__empty-icon {
     font-size: 28px;
   }
-}
-
-/* 键盘外壳：格子固定正方形尺寸（合并键 = 整数倍格子，不变形），整体在外壳内居中 */
-.keyboard {
-  display: grid;
-  grid-template-columns: repeat(4, var(--key-size));
-  grid-auto-rows: var(--key-size);
-  gap: 12px;
-  width: fit-content;
-  padding: 16px;
-  border: 1px solid var(--td-component-stroke);
-  border-radius: var(--td-radius-extra);
-  background: var(--td-bg-color-secondarycontainer);
-  box-shadow:
-    inset 0 2px 6px 0 rgba(0, 0, 0, 10%),
-    0 2px 8px 0 rgba(0, 0, 0, 10%);
-
-  --key-size: 88px;
 }
 
 /* 空态/配置面板切换动效 */

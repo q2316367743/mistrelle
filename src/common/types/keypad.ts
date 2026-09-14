@@ -297,10 +297,10 @@ export interface KeypadBinding {
  * 布局定义（跨行跨列排布）在渲染层 keypadLayouts 注册表，
  * 新增样式 = 加联合成员 + IDS 登记一行 + 渲染层注册表加布局定义。
  */
-export type KeypadLayoutId = 'grid4x2'
+export type KeypadLayoutId = 'grid4x2' | 'grid4x2Knob'
 
 /** 布局 id 全集（归一化白名单；与渲染层布局注册表保持同步） */
-export const KEYPAD_LAYOUT_IDS: readonly KeypadLayoutId[] = ['grid4x2']
+export const KEYPAD_LAYOUT_IDS: readonly KeypadLayoutId[] = ['grid4x2', 'grid4x2Knob']
 
 /** 布局 id 白名单校验（配置归一化用） */
 export function isKeypadLayoutId(value: string): value is KeypadLayoutId {

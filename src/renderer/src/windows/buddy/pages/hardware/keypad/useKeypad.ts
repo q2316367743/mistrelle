@@ -3,7 +3,12 @@
  * 绑定即改即存，保存后以 main 回读为准（失败自动回滚 UI）。
  * 连接编排/按键解析/动作执行都在 main（keypadService），渲染层只发指令与展示运行态。
  */
-import type { AppCatalogItem, KeypadBinding, KeypadConfig, KeypadLayoutId } from '@common/types/keypad'
+import type {
+  AppCatalogItem,
+  KeypadBinding,
+  KeypadConfig,
+  KeypadLayoutId
+} from '@common/types/keypad'
 import { MessageUtil } from '@/utils/modal'
 
 const config = ref<KeypadConfig | null>(null)
@@ -108,6 +113,7 @@ export function useKeypad() {
     accessibilityGranted,
     apps,
     bindKey,
+    saveBindings,
     saveLayout,
     loadApps,
     connect,
