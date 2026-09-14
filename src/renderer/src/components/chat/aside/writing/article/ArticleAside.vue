@@ -23,7 +23,9 @@
         :assets-dir="assetsDir"
         :base-dir="activeMdDir"
         :has-selection="!!selection"
-        @format="handleFormat"
+        :state="editorState"
+        @command="handleCommand"
+        @block-type="handleBlockType"
         @insert="handleInsertImage"
         @gen-image="handleGenImage"
         @select-version="onSwitchVersion"
@@ -39,7 +41,10 @@
         :assets-dir="assetsDir"
         @change="handleContentChange"
         @image-added="handleImageAdded"
-        @selection-change="(text: string) => (selection = text)"
+        @image-removed="handleImageRemoved"
+        @image-regen="handleImageRegen"
+        @selection-change="handleSelectionChange"
+        @state-change="handleStateChange"
       />
       <article-doc-actions
         v-if="activeEntry"
@@ -70,30 +75,16 @@
 <script lang="ts" setup>
 import { MessageUtil } from '@/utils/modal'
 import { copyText, openUrlByBrowser } from '@/utils/native'
-import { resolveAssetRel } from '@/windows/main/modules/tool/components/article/imageRef'
-import type { ImagePromptContext } from '@/windows/main/modules/tool/components/writing/imagePrompt'
 import { useArticleDoc } from './useArticleDoc'
 import { useArticleAssist } from './useArticleAssist'
+import { useArticleEditorBridge, type ArticleEditorApi } from './useArticleEditorBridge'
 import ArticleDocHeader from './components/ArticleDocHeader.vue'
 import ArticleToolbar from './components/ArticleToolbar.vue'
 import ArticleEditor from './components/ArticleEditor.vue'
 import ArticleDocActions from './components/ArticleDocActions.vue'
-import { openImageGen } from '../components/ImageGenDialog'
 
 /** 腾讯朱雀 AI 检测官网（仅企业接入，这里引导用户到官网手动检测） */
 const ZHUQUE_DETECT_URL = 'https://matrix.tencent.com/ai-detect/ai_gen_txt'
-
-/** 编辑器实例命令面（ArticleEditor defineExpose） */
-type EditorApi = {
-  insertImage: (rel: string) => void
-  /** 读取当前选区文本（无选区返回空串） */
-  getSelection: () => string
-  toggleBold: () => void
-  toggleItalic: () => void
-  toggleHeading2: () => void
-  toggleBulletList: () => void
-  toggleBlockquote: () => void
-}
 
 const props = defineProps<{
   sandbox?: string
@@ -151,70 +142,32 @@ const {
 
 watch(humanizing, (v) => (suspended.value = v), { immediate: true })
 
-const editorRef = ref<EditorApi | null>(null)
-/** 编辑器当前选中的正文文本（空 = 未选中，插图生图禁用） */
-const selection = ref('')
-
 const editorKey = computed(() => `${activeId.value}:${activeType.value}:${activeVersionId.value}`)
 const liveWords = computed(() => content.value.replace(/\s+/g, '').length)
 
-// ─── 编辑器格式与配图 ─────────────────────────────────────────────
-
-type ArticleFormatCmd = 'bold' | 'italic' | 'h2' | 'bulletList' | 'blockquote'
-
-const handleFormat = (cmd: ArticleFormatCmd): void => {
-  const ed = editorRef.value
-  if (!ed) return
-  if (cmd === 'bold') ed.toggleBold()
-  else if (cmd === 'italic') ed.toggleItalic()
-  else if (cmd === 'h2') ed.toggleHeading2()
-  else if (cmd === 'bulletList') ed.toggleBulletList()
-  else if (cmd === 'blockquote') ed.toggleBlockquote()
-}
-
-/** 编辑器相对 md 目录的图片引用 → 归一为相对 articles/ 登记进当前类型插图列表（去重） */
-const registerImage = (rel: string): void => {
-  const entry = activeEntry.value
-  if (!entry) return
-  const target = `assets/${window.preload.path.basename(rel)}`
-  if ((entry.images ?? []).includes(target)) return
-  patchType({ images: [...(entry.images ?? []), target] })
-}
-
-const handleImageAdded = (rel: string): void => registerImage(rel)
-
-const handleInsertImage = (rel: string): void => {
-  editorRef.value?.insertImage(rel)
-  registerImage(rel)
-}
-
-/**
- * 插图语境：以**用户选中的文字**为核心（要插图的正是这段内容），另附文章标题 / 摘要 / 提纲作背景。
- * 刻意不传正文全文——会让模型画成泛泛的「全文配图」而非这一段。无选中时按钮本就禁用，不会走到这里。
- */
-const buildImageContext = (): ImagePromptContext => {
-  const article = activeArticle.value
-  return {
-    title: article?.title,
-    summary: article?.summary,
-    outline: article?.outline,
-    selection: selection.value || editorRef.value?.getSelection() || undefined
-  }
-}
-
-/** AI 生成插图：产物落 assets/ 后插入光标处并登记 */
-const handleGenImage = (): void => {
-  if (!activeEntry.value) return
-  openImageGen({
-    kind: 'image',
-    assetsDir: assetsDir.value,
-    context: buildImageContext(),
-    onSuccess: (absPath) => {
-      const rel = resolveAssetRel(activeMdDir.value, absPath)
-      handleInsertImage(rel)
-    }
-  })
-}
+// ─── 编辑器接线（命令 / 选区 / 状态快照 / 图片登记与生图） ───────────
+// 模板 ref 在组件内声明再传入：仅作字符串模板 ref 的解构 ref 会被 vue-tsc 判未使用
+const editorRef = useTemplateRef<ArticleEditorApi>('editorRef')
+const {
+  selection,
+  editorState,
+  handleSelectionChange,
+  handleStateChange,
+  handleCommand,
+  handleBlockType,
+  handleImageAdded,
+  handleImageRemoved,
+  handleInsertImage,
+  handleGenImage,
+  handleImageRegen
+} = useArticleEditorBridge({
+  editorRef,
+  activeArticle,
+  activeEntry,
+  patchType,
+  activeMdDir,
+  assetsDir
+})
 
 // ─── AI 检测 / 复制 ───────────────────────────────────────────────
 

@@ -132,6 +132,8 @@ export function createAiWindow(): void {
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  win.show()
 }
 
 /** 显示 AI 主窗口（已创建则还原/聚焦；意外销毁则重建） */

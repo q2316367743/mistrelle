@@ -12,13 +12,23 @@ const isRelative = (src: string): boolean =>
 const resolveRel = (mdDir: string, src: string): string => window.preload.path.resolve(mdDir, src)
 
 /**
+ * 把节点里的图片 src 解析为**磁盘绝对路径**（相对路径 → 拼 baseDir）。
+ * 供「复制图片到剪贴板」等需要读盘的场景使用；非相对路径（外链 / data: 等）返回空串。
+ */
+export const resolveArticleImagePath = (baseDir: string, src: string): string => {
+  const trimmed = (src ?? '').trim()
+  if (!isRelative(trimmed)) return ''
+  return resolveRel(baseDir, trimmed)
+}
+
+/**
  * 编辑器显示用：把节点里相对路径图片解析为 file:// 绝对链接（不改节点 src，源真相仍是相对路径）。
  * 非相对路径（外链 / 绝对路径）原样返回。
  */
 export const resolveArticleImage = (baseDir: string, src: string): string => {
   const trimmed = (src ?? '').trim()
   if (!isRelative(trimmed)) return src
-  return window.preload.net.pathToHref(resolveRel(baseDir, trimmed))
+  return window.preload.net.pathToHref(resolveArticleImagePath(baseDir, trimmed))
 }
 
 /**

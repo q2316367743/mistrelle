@@ -29,13 +29,24 @@ src/components/chat/aside/writing/
     └── components/
         ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章）+ 类型下拉（t-select 切换）+ 信息面板（t-popup：标题可编辑 t-input + 简介/提纲只读）+ 刷新按钮
         ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 复制图片 / 移除，16:9）
-        ├── ArticleToolbar.vue       # 工具栏：版本下拉触发 + 格式按钮（B/I/H2/列表/引用）+ 插图 / 生图
+        ├── ArticleToolbar.vue       # 工具栏：版本下拉 + 格式区 + 插图/生图（恒一行，按宽度自适应）
+        ├── ArticleFormatButtons.vue # 格式区：内联按钮 + 「更多」触发（2026-09-14 新增）
+        ├── ArticleFormatPanel.vue   # 「更多」溢出面板：块类型 / 格式 / 插入 三区（2026-09-14 新增）
+        ├── articleFormatButtons.ts  # 按钮元数据表 + 宽度常量（内联行与面板共用）
+        ├── ArticleBubbleMenu.vue    # 选中文字的悬浮格式框（BubbleMenu）（2026-09-14 新增）
+        ├── ArticleImageMenu.vue     # 选中图片的悬浮框：复制/换图/AI 重新生成/删除（2026-09-14 新增）
+        ├── LinkDialog.tsx / LinkDialogContent.vue  # 链接地址输入弹窗（命令式）
         ├── ArticleVersionPanel.vue  # 版本时间线：t-timeline 倒序（第N版·来源），点击即切换，hover 删除
         ├── ArticleDocActions.vue    # 底部动作条：左组 = AI 检测 / 文件夹 / 去 AI 味（或停止）/ 复制；右侧 = N 字
-        ├── ArticleEditor.vue        # tiptap WYSIWYG（恒可编辑），expose insertImage + 格式命令，emit image-added
+        ├── ArticleEditor.vue        # tiptap WYSIWYG（恒可编辑），expose runCommand/setBlockType/insertImage 等
+        ├── articleEditorCommands.ts # 编辑器状态快照 / 命令派发 / 块类型（纯函数）
+        ├── articleEditorImages.ts   # 图片落盘 + 图片节点寻址（选中/替换/删除/计数）
         ├── ArticleImage.ts          # 图片节点：相对路径存 src，渲染时解析 file:// 显示
         └── ArticleSlash.ts          # 斜杠命令
 ```
+
+> 编辑器能力层（工具栏联动 / 悬浮框 / 溢出收起 / markdown 落盘约束）详见 [06-article-editor.md](./06-article-editor.md)。
+> `useArticleEditorBridge.ts`（同级）承载编辑器↔数据层接线，使本外壳保持 ≤300 行。
 
 共用弹窗（2026-09-14 上移至 `writing/components/`，article 与 novelShort 共用）：
 `ImageGenDialog.tsx` + `ImageGenContent.vue`（AI 生图命令式弹窗，封面横版 / 插图方形）、
@@ -49,7 +60,7 @@ src/components/chat/aside/writing/
 
 ```
 Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章）+ 类型下拉（t-select，AI 设定后在此切换）+ 信息ⓘ（标题可编辑 + 简介/提纲只读）+ 刷新⟳
-工具栏（第N版·来源 ▾ │ B I H2 列表 引用 │        插图 生图）
+工具栏（第N版·来源 ▾ │ [正文▾] B I … ⋯ │ 插图 生图）——恒为一行；窄栏时装不下的收进 ⋯ 面板
 tiptap 编辑器（flex:1，恒可编辑）
 底部动作条（AI 检测 · 文件夹 · 去AI味/停止 · 复制 ·        N 字）
 ```

@@ -82,7 +82,11 @@ const triggerLabel = computed((): string => {
 </script>
 <style scoped lang="less">
 .version-trigger {
-  max-width: 180px;
+  /* 可收缩：工具栏按「最小 VERSION_MIN_WIDTH」为它预留预算，实际更宽时由 flex 收缩补足差额，
+     从而把空间让给格式区，保证工具栏恒为一行 */
+  flex: 0 1 auto;
+  min-width: 56px;
+  max-width: 140px;
 
   :deep(.t-button__text) {
     overflow: hidden;

@@ -5,17 +5,45 @@
       class="article-editor__content"
       :class="{ 'is-preview': !editable }"
     />
+    <!-- 选中文字：常用格式悬浮框（与顶部工具栏共用同一命令面） -->
+    <article-bubble-menu v-if="editor" :editor="editor" :disabled="!editable" />
+    <!-- 选中图片：图片操作悬浮框（复制 / 换图 / AI 重新生成 / 删除） -->
+    <article-image-menu
+      v-if="editor"
+      :editor="editor"
+      :disabled="!editable"
+      :base-dir="baseDir ?? ''"
+      :assets-dir="assetsDir ?? ''"
+      @image-changed="(rel) => emit('image-added', rel)"
+      @image-removed="handleImageRemoved"
+      @regen="(payload) => emit('image-regen', payload)"
+    />
   </div>
 </template>
 <script lang="ts" setup>
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import type { ChainedCommands } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { TableKit } from '@tiptap/extension-table'
-import { resolveAssetRel } from '@/windows/main/modules/tool/components/article/imageRef'
 import { ArticleImage } from './ArticleImage'
 import { ArticleSlash } from './ArticleSlash'
+import ArticleBubbleMenu from './ArticleBubbleMenu.vue'
+import ArticleImageMenu from './ArticleImageMenu.vue'
+import {
+  applyBlockType,
+  applyCommand,
+  isSameEditorState,
+  readEditorState,
+  type ArticleBlockType,
+  type ArticleEditorCommand,
+  type ArticleEditorState
+} from './articleEditorCommands'
+import {
+  insertLocalImageFile,
+  countImageRefs,
+  replaceImageAt as replaceImageNodeAt,
+  type ArticleImageContext
+} from './articleEditorImages'
 
 const props = defineProps<{
   content: string
@@ -31,35 +59,15 @@ const emit = defineEmits<{
   (e: 'change', value: string): void
   /** 本地图片粘贴 / 拖入落盘后通知父级登记进插图列表（rel 为相对 md 目录的引用路径） */
   (e: 'image-added', rel: string): void
+  /** 图片彻底不再被引用（悬浮框删除且全文已无同图）时通知父级清理插图列表 */
+  (e: 'image-removed', rel: string): void
+  /** 图片悬浮框请求 AI 重新生成：父级持有文章语境，负责开弹窗并回调 replaceImageAt */
+  (e: 'image-regen', payload: { pos: number; blockText: string }): void
   /** 选区变化（携带选中文本，无选区为空串）：父级据此启用 / 禁用插图生图 */
   (e: 'selection-change', text: string): void
+  /** 编辑器状态快照（格式 active / 块类型 / 撤销可用性）：顶部工具栏据此联动 */
+  (e: 'state-change', state: ArticleEditorState): void
 }>()
-
-/** 文件名清洗：去掉路径分隔与非法字符，保留扩展名 */
-const sanitizeFileName = (name: string): string => {
-  const base = name.replace(/[/\\:*?"<>|]/g, '_') || 'image.png'
-  return base
-}
-
-/** 粘贴 / 拖入本地图片：写入 assets 目录并插入相对路径节点 */
-const insertLocalImage = async (file: File) => {
-  if (!props.assetsDir || !props.baseDir) return
-  const fileName = sanitizeFileName(file.name)
-  const assetPath = window.preload.path.join(props.assetsDir, `${Date.now()}_${fileName}`)
-  try {
-    await window.preload.fs.mkdir(props.assetsDir)
-    await window.preload.fs.writeBinaryFile(assetPath, await file.arrayBuffer())
-  } catch {
-    return
-  }
-  const rel = resolveAssetRel(props.baseDir, assetPath)
-  editor.value
-    ?.chain()
-    .focus()
-    .insertContent({ type: 'image', attrs: { src: rel, alt: '' } })
-    .run()
-  emit('image-added', rel)
-}
 
 /**
  * 供外部把图片插入正文（工具栏「插图」上传 / 生图完成回调）。
@@ -90,27 +98,79 @@ const getSelection = (): string => {
   return ed.state.doc.textBetween(from, to, '\n').trim()
 }
 
-/** 执行一条 focus 后的编辑器命令（工具栏格式按钮） */
-const exec = (fn: (chain: ChainedCommands) => ChainedCommands): void => {
+/**
+ * 图片悬浮框「AI 重新生成」的语境：图片所在**顶层块**的文字 + 当前选区（若有）。
+ * 以所在段落为核心，避免让模型画成泛泛的全文配图。
+ */
+const getImageContext = (): ArticleImageContext => {
+  const ed = editor.value
+  if (!ed) return { blockText: '' }
+  const { $from } = ed.state.selection
+  const depth = Math.min(1, $from.depth)
+  const block = depth >= 1 ? $from.node(depth) : null
+  return {
+    blockText: block?.textContent?.trim() ?? '',
+    selection: getSelection()
+  }
+}
+
+/** 编辑命令统一入口（工具栏 + 悬浮框均走此处，取代原先 8 个独立 toggle 方法） */
+const runCommand = (cmd: ArticleEditorCommand): void => {
   const ed = editor.value
   if (!ed) return
-  fn(ed.chain().focus()).run()
+  applyCommand(ed, cmd)
+}
+
+/** 设置光标所在块类型（工具栏块类型下拉） */
+const setBlockType = (type: ArticleBlockType): void => {
+  const ed = editor.value
+  if (!ed) return
+  applyBlockType(ed.chain().focus(), type).run()
+}
+
+/** 就地替换某位置的图片（图片悬浮框「AI 重新生成」完成后回填） */
+const replaceImageAt = (pos: number, rel: string): void => {
+  const ed = editor.value
+  if (!ed) return
+  replaceImageNodeAt(ed, pos, rel)
+}
+
+/**
+ * 图片被删除：仅当**全文已无任何节点引用同一张图**时才上报，
+ * 避免还有别处用着就把它从文章插图列表里摘掉（AI 侧应该仍能看见这张图）。
+ */
+const handleImageRemoved = (rel: string): void => {
+  const ed = editor.value
+  if (!ed || countImageRefs(ed, rel) > 0) return
+  emit('image-removed', rel)
 }
 
 defineExpose({
   insertImage,
   getSelection,
-  toggleBold: () => exec((c) => c.toggleBold()),
-  toggleItalic: () => exec((c) => c.toggleItalic()),
-  toggleHeading2: () => exec((c) => c.toggleHeading({ level: 2 })),
-  toggleBulletList: () => exec((c) => c.toggleBulletList()),
-  toggleBlockquote: () => exec((c) => c.toggleBlockquote())
+  getImageContext,
+  replaceImageAt,
+  runCommand,
+  setBlockType
 })
+
+/** 上次上报的快照（浅比较用）；须在 useEditor 之前声明——onCreate 会在 useEditor 内同步触发 */
+let lastState: ArticleEditorState | null = null
+
+/** 粘贴 / 拖入本地图片：写入 assets 目录、插入节点、通知父级登记 */
+const handleLocalImage = async (file: File): Promise<void> => {
+  const ed = editor.value
+  if (!ed || !props.assetsDir || !props.baseDir) return
+  const rel = await insertLocalImageFile(ed, file, props.assetsDir, props.baseDir)
+  if (rel) emit('image-added', rel)
+}
 
 const editor = useEditor({
   extensions: [
     StarterKit.configure({
-      heading: { levels: [1, 2, 3, 4] }
+      heading: { levels: [1, 2, 3, 4] },
+      // 编辑器内点击链接只落光标、不跳转（外链跳转由系统浏览器承担，避免误触离开编辑区）
+      link: { openOnClick: false }
     }),
     Markdown,
     ArticleImage.configure({ baseDir: props.baseDir ?? '' }),
@@ -128,7 +188,7 @@ const editor = useEditor({
       for (let i = 0; i < data.items.length; i++) {
         if (data.items[i].type.startsWith('image/')) {
           const file = data.items[i].getAsFile()
-          if (file) void insertLocalImage(file)
+          if (file) void handleLocalImage(file)
           event.preventDefault()
           return true
         }
@@ -140,7 +200,7 @@ const editor = useEditor({
       if (!files || files.length === 0) return false
       const file = files[0]
       if (!file.type.startsWith('image/')) return false
-      void insertLocalImage(file)
+      void handleLocalImage(file)
       event.preventDefault()
       return true
     }
@@ -148,9 +208,20 @@ const editor = useEditor({
   onUpdate: ({ editor: ed }) => {
     emit('change', ed.getMarkdown())
   },
+  // 每次 transaction 都重算快照，仅在**确有变化**时上报，避免每敲一键就重渲染工具栏
+  onTransaction: ({ editor: ed }) => {
+    const next = readEditorState(ed)
+    if (lastState && isSameEditorState(lastState, next)) return
+    lastState = next
+    emit('state-change', next)
+  },
   // 选区变化即上报：工具栏「生图」按有无选中文字启用 / 禁用
   onSelectionUpdate: () => emit('selection-change', getSelection()),
-  onCreate: () => emit('selection-change', getSelection())
+  onCreate: ({ editor: ed }) => {
+    emit('selection-change', getSelection())
+    lastState = readEditorState(ed)
+    emit('state-change', lastState)
+  }
 })
 
 watch(
@@ -172,6 +243,7 @@ onBeforeUnmount(() => editor.value?.destroy())
 </script>
 <style scoped lang="less">
 .article-editor {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 0;
