@@ -22,13 +22,18 @@ export const buildArticleRoot = (workspace: string, sandboxDir: string): string 
 /** 项目索引文件路径 */
 const buildProjectPath = (root: string): string => window.preload.path.join(root, PROJECT_FILE)
 
-/** 初稿版本（读时归一化与创建共用，保证幂等） */
-const buildBaseVersion = (articleId: string, file: string): ArticleVersion => ({
-  id: `${articleId}-base`,
+/** 初稿版本（读时归一化与创建共用，保证幂等）；版本 id 全局唯一，即「标题+类型+版本」单元标识 */
+const buildBaseVersion = (file: string): ArticleVersion => ({
+  id: nanoid(8),
+  no: 1,
   file,
   source: 'original',
   createdTime: Date.now()
 })
+
+/** 下一个版本号：取现有最大 no + 1（存量数据缺 no 时按 0 兜底） */
+const nextVersionNo = (versions: ArticleVersion[]): number =>
+  versions.reduce((max, v) => Math.max(max, v.no ?? 0), 0) + 1
 
 const emptyProject = (title?: string): ArticleProject => ({
   schema: 2,
@@ -97,9 +102,11 @@ export class ArticleStore {
    * 读时归一化。返回是否有变化：
    * - 旧结构（无 types 数组，schema=1）不迁移：保留标题/摘要/提纲，types 置空由 AI 重建，遗留字段序列化时剔除
    * - 每个类型条目：无版本合成 V1 原稿；激活版本失效回落最后一个；file 恒同步激活版本
+   * - 版本号 no 缺失按索引补齐；版本 id 全局去重（旧数据 `${articleId}-base` 跨类型撞 id，重发 nanoid 并同步激活引用）
    */
   private normalizeProject(project: ArticleProject): boolean {
     let dirty = false
+    const seenVersionIds = new Set<string>()
     for (const item of project.articles) {
       if (!Array.isArray(item.types)) {
         const legacy = item as unknown as ArticleItem & Record<string, unknown>
@@ -116,11 +123,24 @@ export class ArticleStore {
           dirty = true
         }
         if (!entry.versions || entry.versions.length === 0) {
-          entry.versions = [buildBaseVersion(item.id, entry.file)]
+          entry.versions = [buildBaseVersion(entry.file)]
           entry.activeVersionId = entry.versions[0].id
           dirty = true
         }
         const versions = entry.versions
+        versions.forEach((v, i) => {
+          if (!Number.isInteger(v.no) || (v.no ?? 0) < 1) {
+            v.no = i + 1
+            dirty = true
+          }
+          if (seenVersionIds.has(v.id)) {
+            const newId = nanoid(8)
+            if (entry.activeVersionId === v.id) entry.activeVersionId = newId
+            v.id = newId
+            dirty = true
+          }
+          seenVersionIds.add(v.id)
+        })
         const active = versions.find((v) => v.id === entry.activeVersionId) ?? versions[versions.length - 1]
         if (entry.activeVersionId !== active.id) {
           entry.activeVersionId = active.id
@@ -150,6 +170,20 @@ export class ArticleStore {
     return entry
   }
 
+  /** 按版本 id 解析「标题+类型+版本」单元（工具面 article_write / read / stats 的唯一寻址方式） */
+  private resolveVersion(
+    project: ArticleProject,
+    id: string
+  ): { article: ArticleItem; entry: ArticleTypeEntry; version: ArticleVersion } {
+    for (const article of project.articles) {
+      for (const entry of article.types) {
+        const version = entry.versions?.find((v) => v.id === id)
+        if (version) return { article, entry, version }
+      }
+    }
+    throw new Error(`未找到文章单元 ${id}，可用 article_list 获取 id`)
+  }
+
   /** 取或创建类型条目（写入路径：类型不存在自动创建空草稿） */
   private ensureEntry(project: ArticleProject, id: string, typeInput: unknown): ArticleTypeEntry {
     const item = this.requireArticle(project, id)
@@ -165,11 +199,12 @@ export class ArticleStore {
   /** 构建空草稿类型条目（新正文文件 + V1 原稿版本；文件内容由调用方写入） */
   private buildEntry(item: ArticleItem, type: string): ArticleTypeEntry {
     const file = `drafts/${item.id}-${nanoid(6)}.md`
+    const version = buildBaseVersion(file)
     return {
       type,
       file,
-      versions: [buildBaseVersion(item.id, file)],
-      activeVersionId: `${item.id}-base`
+      versions: [version],
+      activeVersionId: version.id
     }
   }
 
@@ -188,34 +223,81 @@ export class ArticleStore {
     return this.project.value?.articles ?? []
   }
 
-  /** 新增文章：创建首个类型条目（缺省「其他」）与正文 md 文件并登记到索引 */
-  async createArticle(input: ArticleCreateInput): Promise<ArticleItem> {
+  /**
+   * 创建「标题+类型+版本」单元（article_create 主通道）：
+   * - 按标题找/建文章（标题=主题标识），按类型找/建条目（缺省「其他」）
+   * - 版本号缺省自动：新条目=1，已有条目=最新版本号+1；同号已存在 → 幂等复用返回已有单元 id
+   * - 新建版本时创建正文 md 文件（初始内容 `# 标题`）并设为激活版本
+   */
+  async createArticle(
+    input: ArticleCreateInput
+  ): Promise<{ id: string; title: string; type: string; version: number }> {
     const project = await this.refresh()
-    const id = nanoid(8)
-    const item: ArticleItem = {
-      id,
-      title: input.title,
-      summary: input.summary,
-      outline: input.outline,
-      types: []
+    let item = project.articles.find((a) => a.title === input.title)
+    if (!item) {
+      item = { id: nanoid(8), title: input.title, summary: input.summary, outline: input.outline, types: [] }
+      project.articles.push(item)
+    } else if (input.summary !== undefined || input.outline !== undefined) {
+      if (input.summary !== undefined) item.summary = input.summary
+      if (input.outline !== undefined) item.outline = input.outline
     }
-    const entry = this.buildEntry(item, normalizeType(input.type))
-    item.types.push(entry)
-    const filePath = window.preload.path.join(this.root, entry.file)
+    const type = normalizeType(input.type)
+    let entry = item.types.find((t) => t.type === type)
+    const entryCreated = !entry
+    if (!entry) {
+      entry = this.buildEntry(item, type)
+      item.types.push(entry)
+    }
+    const versions = entry.versions ?? []
+    const no =
+      Number.isInteger(input.version) && (input.version ?? 0) >= 1
+        ? (input.version as number)
+        : entryCreated
+          ? 1
+          : nextVersionNo(versions)
+    const existing = versions.find((v) => v.no === no)
+    if (existing) {
+      await this.persist(project)
+      return { id: existing.id, title: item.title, type, version: no }
+    }
+    const version: ArticleVersion = {
+      id: nanoid(8),
+      no,
+      file: `drafts/${item.id}-${nanoid(6)}.md`,
+      source: 'original',
+      createdTime: Date.now()
+    }
+    entry.versions = [...versions, version]
+    entry.activeVersionId = version.id
+    entry.file = version.file
+    const filePath = window.preload.path.join(this.root, version.file)
     await window.preload.fs.mkdir(window.preload.path.dirname(filePath), true)
     await window.preload.fs.writeTextFile(filePath, `# ${input.title}\n`)
-    project.articles.push(item)
     await this.persist(project)
-    return item
+    return { id: version.id, title: item.title, type, version: no }
   }
 
-  /** 更新文章级信息（标题 / 摘要 / 提纲） */
-  async updateArticle(id: string, patch: ArticleUpdatePatch): Promise<ArticleItem> {
+  /**
+   * 按单元（版本 id）更新信息（article_update 主通道）：
+   * title / summary / outline 作用于所属文章，cover / images 作用于所属类型。
+   */
+  async updateUnit(
+    id: string,
+    patch: ArticleUpdatePatch & ArticleTypePatch
+  ): Promise<Record<string, unknown>> {
     const project = await this.refresh()
-    const item = this.requireArticle(project, id)
-    Object.assign(item, patch)
+    const { article, entry } = this.resolveVersion(project, id)
+    const articlePatch: ArticleUpdatePatch = {}
+    if (patch.title !== undefined) articlePatch.title = patch.title
+    if (patch.summary !== undefined) articlePatch.summary = patch.summary
+    if (patch.outline !== undefined) articlePatch.outline = patch.outline
+    Object.assign(article, articlePatch)
+    const typePatch: ArticleTypePatch = {}
+    if (patch.cover !== undefined) typePatch.cover = patch.cover
+    if (patch.images !== undefined) typePatch.images = patch.images
+    Object.assign(entry, typePatch)
     await this.persist(project)
-    return item
+    return { ...articlePatch, ...typePatch }
   }
 
   /** 更新类型级信息（封面 / 配图；类型不存在自动创建） */
@@ -227,74 +309,75 @@ export class ArticleStore {
     return entry
   }
 
-  /** 删除文章：移除登记并删除全部类型的全部版本正文 md 文件（若存在） */
+  /** 删除单元（版本 id）所属整篇文章：移除登记并删除其全部类型的全部版本正文 md 文件（若存在） */
   async removeArticle(id: string): Promise<void> {
     const project = await this.refresh()
-    const index = project.articles.findIndex((a) => a.id === id)
-    if (index < 0) throw new Error(`未找到文章 ${id}，可用 article_list 获取 id`)
-    const [removed] = project.articles.splice(index, 1)
+    const { article } = this.resolveVersion(project, id)
+    const index = project.articles.indexOf(article)
+    project.articles.splice(index, 1)
     await this.persist(project)
-    if (removed) {
-      const files = new Set(removed.types.flatMap((t) => t.versions?.map((v) => v.file) ?? []))
-      for (const file of files) {
-        const filePath = window.preload.path.join(this.root, file)
-        if (window.preload.fs.existsSync(filePath)) {
-          await window.preload.fs.rm(filePath)
-        }
+    const files = new Set(article.types.flatMap((t) => t.versions?.map((v) => v.file) ?? []))
+    for (const file of files) {
+      const filePath = window.preload.path.join(this.root, file)
+      if (window.preload.fs.existsSync(filePath)) {
+        await window.preload.fs.rm(filePath)
       }
     }
   }
 
-  /** 读取指定类型当前激活版本的正文（markdown 文本） */
-  async readArticle(id: string, typeInput: string): Promise<string> {
+  /** 读取指定单元（版本 id）的正文（markdown 文本） */
+  async readArticle(id: string): Promise<string> {
     const project = await this.refresh()
-    const entry = this.requireEntry(project, id, normalizeType(typeInput))
-    const filePath = window.preload.path.join(this.root, entry.file)
+    const { version } = this.resolveVersion(project, id)
+    const filePath = window.preload.path.join(this.root, version.file)
     if (!(window.preload.fs.existsSync(filePath))) {
       throw new Error(`文章正文文件不存在：${filePath}`)
     }
     return window.preload.fs.readTextFile(filePath)
   }
 
-  /** 统计指定类型正文字数（去空白字符数），回写 entry.words 并落盘 */
-  async countWords(id: string, typeInput: string): Promise<number> {
+  /** 统计指定单元（版本 id）正文字数（去空白字符数），回写 version.words 并落盘 */
+  async countWords(id: string): Promise<number> {
     const project = await this.refresh()
-    const type = normalizeType(typeInput)
-    const entry = this.requireEntry(project, id, type)
-    const text = await this.readArticle(id, type)
+    const { entry, version } = this.resolveVersion(project, id)
+    const text = await this.readArticle(id)
     const words = countChars(text)
-    entry.words = words
+    version.words = words
+    if (entry.activeVersionId === version.id) entry.words = words
     await this.persist(project)
     return words
   }
 
   /**
-   * 写入正文（AI 主通道 article_write）：默认覆盖激活版本文件；asNewVersion=true 时
-   * 另存为 rewrite 新版本。类型不存在自动创建。完成后 bump 内容版本号，驱动侧边栏即时重读。
+   * 写入正文（AI 主通道 article_write）：id 为「标题+类型+版本」单元（版本 id）。
+   * 默认覆盖该版本文件；asNewVersion=true 时在所属类型下另存 rewrite 新版本（返回新 id，后续写入用新 id）。
+   * 写入后该版本设为激活版本并 bump 内容版本号，驱动侧边栏即时呈现。
    */
   async writeContent(
     id: string,
-    typeInput: string,
     content: string,
     asNewVersion = false
-  ): Promise<{ type: string; file: string; versionId: string; words: number }> {
+  ): Promise<{ id: string; version: number; file: string; words: number }> {
     const project = await this.refresh()
-    const entry = this.ensureEntry(project, id, typeInput)
+    const { article, entry, version } = this.resolveVersion(project, id)
     const words = countChars(content)
     if (asNewVersion) {
-      const version = await this.createVersion(id, entry.type, { source: 'rewrite', content })
-      this.bumpContentRev(id, entry.type)
-      return { type: entry.type, file: version.file, versionId: version.id, words }
+      const next = await this.createVersion(article.id, entry.type, { source: 'rewrite', content })
+      this.bumpContentRev(article.id, entry.type)
+      return { id: next.id, version: next.no, file: next.file, words }
     }
-    const version = entry.versions?.find((v) => v.id === entry.activeVersionId)
-    const filePath = window.preload.path.join(this.root, entry.file)
+    const filePath = window.preload.path.join(this.root, version.file)
     await window.preload.fs.mkdir(window.preload.path.dirname(filePath), true)
     await window.preload.fs.writeTextFile(filePath, content)
-    if (version) version.words = words
-    entry.words = words
+    version.words = words
+    if (entry.activeVersionId !== version.id) {
+      entry.activeVersionId = version.id
+      entry.file = version.file
+    }
+    if (entry.activeVersionId === version.id) entry.words = words
     await this.persist(project)
-    this.bumpContentRev(id, entry.type)
-    return { type: entry.type, file: entry.file, versionId: version?.id ?? '', words }
+    this.bumpContentRev(article.id, entry.type)
+    return { id: version.id, version: version.no, file: version.file, words }
   }
 
   /** 新建版本：写入新正文文件并登记为激活版本（每次去 AI 味 / 重写等迭代产生新版本，原版本内容不动） */
@@ -312,6 +395,7 @@ export class ArticleStore {
     await window.preload.fs.writeTextFile(filePath, input.content)
     const version: ArticleVersion = {
       id: nanoid(8),
+      no: nextVersionNo(entry.versions ?? []),
       file,
       source: input.source,
       label: input.label,

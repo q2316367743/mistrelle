@@ -8,7 +8,7 @@
       <div class="version-panel">
         <t-timeline mode="same" layout="vertical">
           <t-timeline-item
-            v-for="(v, i) in reversedVersions"
+            v-for="v in reversedVersions"
             :key="v.id"
             :label="timeLabel(v)"
             :dot-color="v.id === activeVersionId ? 'primary' : 'default'"
@@ -21,7 +21,7 @@
               @click="emit('select', v.id)"
             >
               <div class="version-item__head">
-                <span class="version-item__label">{{ versionLabel(v, i) }}</span>
+                <span class="version-item__label">{{ versionLabel(v) }}</span>
                 <span v-if="v.words" class="version-item__words">{{ v.words }} 字</span>
                 <t-popconfirm
                   v-if="versions.length > 1"
@@ -68,17 +68,16 @@ const sourceLabel = (v: ArticleVersion): string =>
 /** 最新版本在上（时间线倒序展示） */
 const reversedVersions = computed(() => [...props.versions].reverse())
 
-/** 版本号：versions[0] 为第 1 版（原稿），倒序下标换算回正序序号 */
-const versionLabel = (v: ArticleVersion, reversedIndex: number): string =>
-  `第${props.versions.length - reversedIndex}版 · ${sourceLabel(v)}`
+/** 版本号：显式 no 字段（创建时分配，删除中间版本不影响既有编号） */
+const versionLabel = (v: ArticleVersion): string => `第${v.no}版 · ${sourceLabel(v)}`
 
 const timeLabel = (v: ArticleVersion): string => dayjs(v.createdTime).format('MM-DD HH:mm')
 
 const triggerLabel = computed((): string => {
   if (props.streamingVersionId) return '生成中…'
-  const index = props.versions.findIndex((v) => v.id === props.activeVersionId)
-  if (index < 0) return '版本'
-  return `第${index + 1}版 · ${sourceLabel(props.versions[index])}`
+  const active = props.versions.find((v) => v.id === props.activeVersionId)
+  if (!active) return '版本'
+  return `第${active.no}版 · ${sourceLabel(active)}`
 })
 </script>
 <style scoped lang="less">

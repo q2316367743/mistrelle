@@ -22,9 +22,12 @@ export const ARTICLE_VERSION_SOURCE_OPTIONS: Array<CommonSelect<ArticleVersionSo
   { value: 'manual', label: '手动' }
 ]
 
-/** 文章版本（单个类型内的正文迭代快照；封面/插图跟类型走） */
+/** 文章版本（单个类型内的正文迭代快照；封面/插图跟类型走）。
+ *  版本 id 即「标题+类型+版本」单元标识：article_create 返回它，article_write / read / stats 只认它 */
 export interface ArticleVersion {
   id: string
+  /** 显式版本号（同一类型内递增，创建时 max+1；删除中间版本不影响既有编号） */
+  no: number
   /** 正文文件相对 articles/ 的路径，如 drafts/{articleId}-{vid}.md */
   file: string
   source: ArticleVersionSource
@@ -75,11 +78,13 @@ export interface ArticleProject {
   articles: ArticleItem[]
 }
 
-/** 新增文章的可选字段（article_create） */
+/** 新增文章单元的可选字段（article_create）：返回值即单元（版本）id */
 export interface ArticleCreateInput {
   title: string
   /** 首个类型（发布平台），缺省「其他」 */
   type?: string
+  /** 版本号，缺省自动（新类型=1，已有类型=最新版本号+1；同号已存在则复用返回已有 id） */
+  version?: number
   summary?: string
   outline?: string
 }

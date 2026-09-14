@@ -54,13 +54,12 @@ export const useArticleDoc = (
   // ─── 正文加载与落盘 ────────────────────────────────────────────────
 
   const loadContent = async (): Promise<void> => {
-    const entry = activeEntry.value
-    if (!activeArticle.value || !entry) {
+    if (!activeArticle.value || !activeEntry.value || !activeVersionId.value) {
       content.value = ''
       return
     }
     try {
-      content.value = await store.value.readArticle(activeArticle.value.id, entry.type)
+      content.value = await store.value.readArticle(activeVersionId.value)
     } catch {
       // 读取失败保持内存内容，不阻断
     }

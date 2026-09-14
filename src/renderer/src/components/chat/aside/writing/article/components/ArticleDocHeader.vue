@@ -24,6 +24,27 @@
         :disabled="!article.types.length"
         @change="onTypeChange"
       />
+      <t-popup trigger="click" placement="bottom-right" destroy-on-close>
+        <t-button variant="text" shape="square" title="简介与提纲">
+          <template #icon><info-circle-icon /></template>
+        </t-button>
+        <template #content>
+          <div class="doc-info-panel">
+            <div class="doc-info-panel__section">
+              <div class="doc-info-panel__label">简介</div>
+              <p class="doc-info-panel__text" :class="{ 'is-empty': !article.summary }">
+                {{ article.summary || '暂无简介，可让 AI 经 article_update 登记' }}
+              </p>
+            </div>
+            <div class="doc-info-panel__section">
+              <div class="doc-info-panel__label">提纲</div>
+              <p class="doc-info-panel__text is-preline" :class="{ 'is-empty': !article.outline }">
+                {{ article.outline || '暂无提纲，可让 AI 经 article_update 登记' }}
+              </p>
+            </div>
+          </div>
+        </template>
+      </t-popup>
       <t-button
         variant="text"
         shape="square"
@@ -36,7 +57,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { RefreshIcon } from 'tdesign-icons-vue-next'
+import { InfoCircleIcon, RefreshIcon } from 'tdesign-icons-vue-next'
 import type {
   ArticleItem,
   ArticleTypePatch
@@ -115,5 +136,46 @@ const onTypeChange = (value: unknown): void => {
 
 .doc-header__type {
   flex-shrink: 0;
+}
+
+.doc-info-panel {
+  width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__label {
+    font-size: var(--td-font-size-body-small);
+    font-weight: 600;
+    color: var(--td-text-color-secondary);
+    margin-bottom: 4px;
+    &:before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 10px;
+      margin-right: 8px;
+      background: var(--td-brand-color);
+    }
+  }
+
+  &__text {
+    margin: 0;
+    font-size: var(--td-font-size-body-small);
+    line-height: 1.7;
+    color: var(--td-text-color-primary);
+    word-break: break-word;
+
+    &.is-preline {
+      white-space: pre-line;
+    }
+
+    &.is-empty {
+      color: var(--td-text-color-placeholder);
+    }
+  }
 }
 </style>

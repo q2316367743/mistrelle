@@ -3,6 +3,7 @@
 > writing 侧边栏按「大类型（chatType）→ 小类型（writingScene）」两层拆分组件。article 子场景定位为**以文档为中心的写作工作台**：一个聊天 = 一篇文章（主题），文章下可有多个「类型」（发布平台），每个类型独立的版本序列；正文恒可编辑，AI 写完自动呈现，版本是文档演进史（时间线），配图直接插进正文。
 
 2026-09-13 彻底重构（旧版「文章管理器」形态的文章下拉 / 配图 Tab / 风格 Tab / 版本 chips 已废弃）；同日二次迭代：**类型 = 发布平台**，每类型独立版本，风格/体裁维度整体删除（含「深度长文」），旧数据不迁移。同日三次迭代（用户拍板）：**状态字段整体删除**（无作用）、**类型改由 AI 设定**（自由命名、标题+类型唯一，用户端仅查看/切换，删除「添加类型」入口）、**刷新外显**为头部按钮（移出更多菜单）。
+2026-09-14 迭代：**单元模型**（「标题+类型+版本」= 唯一单元、版本 id 即单元标识，见 02 号文档）——AI 写入/读取只认单元 id，侧边栏 `loadContent` 改按激活版本 id 调 `readArticle`；版本号显式化（`ArticleVersion.no`，时间线标签不再按数组索引推算）；头部新增**简介/提纲下拉面板**（信息按钮 + t-popup，只读，由 AI 经 `article_update` 维护——此前 summary/outline 落库但无任何展示位）。
 
 ## 设计原则（重构拍板）
 
@@ -25,7 +26,7 @@ src/components/chat/aside/writing/
     ├── useArticleDoc.ts             # 数据层：store 共享、自动联动（id diff + contentRevs + mtime 轮询）、类型/正文/版本读写、元信息
     ├── useArticleAssist.ts          # 去 AI 味动作编排（按类型产出 humanize 新版本，流式期间 suspended 锁定）
     └── components/
-        ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select 切换）+ 刷新按钮
+        ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select 切换）+ 简介提纲信息面板（t-popup，只读）+ 刷新按钮
         ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 移除，16:9）
         ├── ArticleToolbar.vue       # 工具栏：版本下拉触发 + 格式按钮（B/I/H2/列表/引用）+ 插图 / 生图
         ├── ArticleVersionPanel.vue  # 版本时间线：t-timeline 倒序（第N版·来源），点击即切换，hover 删除
@@ -42,7 +43,7 @@ src/components/chat/aside/writing/
 ## 布局（窄栏 / 全屏统一）
 
 ```
-Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select，AI 设定后在此切换）+ 刷新⟳
+Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select，AI 设定后在此切换）+ 信息ⓘ（简介/提纲下拉面板，只读）+ 刷新⟳
 工具栏（第N版·来源 ▾ │ B I H2 列表 引用 │        插图 生图）
 tiptap 编辑器（flex:1，恒可编辑）
 底部动作条（AI 检测 · 文件夹 · 去AI味/停止 · 复制 ·        N 字）
@@ -54,7 +55,7 @@ tiptap 编辑器（flex:1，恒可编辑）
 ## 数据流与自动联动（useArticleDoc）
 
 - 项目定位：`buildArticleRoot(workspace, sandbox)` → `getArticleStore(root)` 共享响应式实例（与 article_* 工具同源）。
-- **通道一（主）**：AI `article_write` → `store.writeContent(id, type, ...)` → bump `contentRevs["${id}::${type}"]`（内存 reactive Map，不落盘）→ useArticleDoc watch 即时重读正文。`asNewVersion=true` 走 `createVersion(source:'rewrite')`。
+- **通道一（主）**：AI `article_write` → `store.writeContent(unitId, content, ...)` → bump `contentRevs["${articleId}::${type}"]`（内存 reactive Map，不落盘）→ useArticleDoc watch 即时重读正文。`newVersion=true` 走 `createVersion(source:'rewrite')` 返回新 id，写入的版本同时设为激活版本（侧边栏自动切过去）。
 - **通道二（兜底）**：3s `stat` 轮询当前类型激活版本文件 mtime（仿 NovelAside），变化即重读——兼容 AI 用通用 `file_write` 直写的历史路径。
 - **自动选中**：文章 id 集合增量 watcher（仿 NovelAside `seenNovelIds`）——AI 新建且当前无选中 → 自动激活最新一篇（取其首个类型）；当前文章被删 → 回落最新一篇；重开聊天（reload）无选中 → 自动呈现最新一篇。类型集合 watcher：AI 追加类型（article_write 带 type 自动创建）时自动选中新类型。
 - **类型切换**：`selectType` 先 `flushSave()` 冲刷旧类型未落盘编辑，再切换并重读；编辑器 `:key = activeId:activeType:activeVersionId` 切换即重挂。
@@ -65,11 +66,11 @@ tiptap 编辑器（flex:1，恒可编辑）
 ## 重写入口（已收敛到聊天）
 
 - 侧边栏**无「AI 重写」按钮**（2026-09-13 删除，含 PROMPT_INPUT_KEY 桥整链）：重写锁定当前类型，与「类型由 AI 专属设定」冲突，入口收敛到聊天——用户直接对 AI 说重写要求，AI 用 `article_write`（大改 / 重写带 `newVersion=true`）产出新版本。
-- `ARTICLE_SCENE_PROMPT` 已明确：正文一律 `article_write`（`file_write` 直写侧边栏感知不到）；大改 / 重写必须 `newVersion=true`；为已有文章追加平台版直接 `article_write` 带 type（自动创建，先 `article_read` 已有版本保持选题一致）。
+- `ARTICLE_SCENE_PROMPT` 已明确：正文一律 `article_write`（`file_write` 直写侧边栏感知不到）；改一改默认覆盖同 id、重写 / 大改传 `newVersion=true` 拿新 id 后续写新 id；追加平台版 = `article_create` 同标题 + 新类型创建新单元。
 
 ## 版本时间线（ArticleVersionPanel）
 
-- 触发器：`第N版 · {来源label}`（versions[0] 为第 1 版原稿；`ARTICLE_VERSION_SOURCE_OPTIONS` 中文映射），流式生成中显示 loading +「生成中…」。
+- 触发器：`第N版 · {来源label}`（**N 取显式 `ArticleVersion.no`**，创建时分配、删除中间版本不影响既有编号；`ARTICLE_VERSION_SOURCE_OPTIONS` 中文映射），流式生成中显示 loading +「生成中…」。
 - 面板：t-timeline 倒序（最新在上），每项 = 第N版 · 来源 / 时间（label）/ 字数；**点击条目即切换**（无「设为当前」按钮），删除按钮 hover 显示（popconfirm，store 保证至少保留 1 个）。humanizing 期间禁用。
 - 去 AI 味的产出进入当前类型的时间线，聊天中让 AI 重写（newVersion=true）的产出同样进入时间线，旧版可随时切回（内容保留不删）。
 
