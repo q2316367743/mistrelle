@@ -51,16 +51,17 @@
 import { openLogin } from '@/components/modals/LoginDialog'
 import { useImageModelStore, useSettingDefaultStore } from '@/windows/main/store'
 import {
-  draftArticleImagePrompt,
-  type ArticleImageContext
-} from '@/windows/main/modules/tool/components/article/articleImagePrompt'
+  draftImagePrompt,
+  type ImagePromptContext,
+  type ImagePromptKind
+} from '@/windows/main/modules/tool/components/writing/imagePrompt'
 
 const props = defineProps<{
-  kind: 'cover' | 'image'
-  /** 项目 assets/ 目录绝对路径（产物落盘于此） */
+  kind: ImagePromptKind
+  /** 作品 assets/ 目录绝对路径（产物落盘于此） */
   assetsDir: string
-  /** 文章语境：打开弹窗即据此让 AI 代写生图描述（缺省则留空由用户手写） */
-  context?: ArticleImageContext
+  /** 作品语境：打开弹窗即据此让 AI 代写生图描述（缺省则留空由用户手写） */
+  context?: ImagePromptContext
 }>()
 
 const emit = defineEmits<{
@@ -82,7 +83,7 @@ const prompt = ref('')
 const modelKey = ref('')
 const generating = ref(false)
 const error = ref('')
-/** 起草状态：true = 正在让 AI 按文章语境写描述 */
+/** 起草状态：true = 正在让 AI 按作品语境写描述 */
 const drafting = ref(false)
 /** 起草结果标记：undefined 未起草 / 'ok' 已起草 / 'fail' 起草失败（无模型或调用异常） */
 const draftState = ref<'ok' | 'fail' | undefined>(undefined)
@@ -97,7 +98,7 @@ const placeholder = computed(() =>
     : '描述封面画面，建议详细英文（主体 / 风格 / 配色 / 构图）…'
 )
 
-/** 是否有文章语境可供代写（无语境则不展示「换一版」，退回纯手写） */
+/** 是否有作品语境可供代写（无语境则不展示「换一版」，退回纯手写） */
 const hasContext = computed(() => {
   const ctx = props.context
   if (!ctx) return false
@@ -106,13 +107,13 @@ const hasContext = computed(() => {
 
 const draftTip = computed(() => {
   if (drafting.value) {
-    return props.kind === 'image' ? '正在按选中文字起草描述…' : '正在按文章主题起草描述…'
+    return props.kind === 'image' ? '正在按选中文字起草描述…' : '正在按作品主题起草描述…'
   }
   if (draftState.value === 'fail') return 'AI 起草不可用（未配置快速模型），请手动描述画面'
   if (draftState.value === 'ok') {
     return props.kind === 'image'
       ? 'AI 已按选中文字起草，可直接修改或换一版'
-      : 'AI 已按文章主题起草，可直接修改或换一版'
+      : 'AI 已按作品主题起草，可直接修改或换一版'
   }
   return ''
 })
@@ -144,14 +145,14 @@ const modelTip = computed(() => {
 })
 
 /**
- * 起草 / 换一版：按文章语境让 AI 生成一段英文画描述回填。
+ * 起草 / 换一版：按作品语境让 AI 生成一段英文画描述回填。
  * 已有描述时作为「换一版」使用（直接覆盖，不做追加），避免多版描述堆叠难以取舍。
  */
 const handleDraft = async (): Promise<void> => {
   if (!hasContext.value || drafting.value) return
   drafting.value = true
   try {
-    const draft = await draftArticleImagePrompt(props.kind, props.context ?? {})
+    const draft = await draftImagePrompt(props.kind, props.context ?? {})
     if (draft) {
       prompt.value = draft
       draftState.value = 'ok'

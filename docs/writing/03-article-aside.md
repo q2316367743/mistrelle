@@ -32,11 +32,15 @@ src/components/chat/aside/writing/
         ├── ArticleVersionPanel.vue  # 版本时间线：t-timeline 倒序（第N版·来源），点击即切换，hover 删除
         ├── ArticleDocActions.vue    # 底部动作条：左组 = AI 检测 / 文件夹 / 去 AI 味（或停止）/ 复制；右侧 = N 字
         ├── ArticleEditor.vue        # tiptap WYSIWYG（恒可编辑），expose insertImage + 格式命令，emit image-added
-        ├── ArticleImageGenDialog.tsx + ArticleImageGenContent.vue  # AI 生图命令式弹窗（封面横版/插图方形）
-        ├── HumanizeDepthDialog.tsx + HumanizeDepthContent.vue      # 去 AI 味深度选择（1~10，默认 5）
         ├── ArticleImage.ts          # 图片节点：相对路径存 src，渲染时解析 file:// 显示
         └── ArticleSlash.ts          # 斜杠命令
 ```
+
+共用弹窗（2026-09-14 上移至 `writing/components/`，article 与 novelShort 共用）：
+`ImageGenDialog.tsx` + `ImageGenContent.vue`（AI 生图命令式弹窗，封面横版 / 插图方形）、
+`HumanizeDepthDialog.tsx` + `HumanizeDepthContent.vue`（去 AI 味深度选择 1~10，默认 5）。
+生图描述起草的主进程实现同批上移至 `tool/components/writing/imagePrompt.ts`（`draftImagePrompt` / `ImagePromptContext`），
+原 `article/articleImagePrompt.ts` 已删除。
 
 已删除（旧形态）：`ArticleAsideHeader.vue`、`ArticleVersionBar.vue`、`ArticleImagePanel.vue`、`ArticleStylePanel.vue`、`useArticleImageEvents.ts`。
 
@@ -77,14 +81,14 @@ tiptap 编辑器（flex:1，恒可编辑）
 ## 封面与插图（随类型走）
 
 - **封面（ArticleCoverThumb）**：头部 56px 缩略位（固定 16:9），t-popup 内 AI 生成 / 上传 / 移除；`cover` 为类型级字段，变更经 `patchType({ cover })`。
-- **插图（工具栏）**：「插图」= 系统选图 → `copyImageToAssets` → `resolveAssetRel`（相对 md 目录）→ 插入 + 归一为 `assets/{文件名}` 登记进当前类型 `images[]`（去重）；「生图」= `openArticleImageGen`（直出接口 `image.generate record:false`，落 `assets/`，封面横版/插图方形默认尺寸）成功后自动插入并登记；正文粘贴 / 拖入图片（编辑器内置）同样落盘并 emit `image-added` 登记。
+- **插图（工具栏）**：「插图」= 系统选图 → `copyImageToAssets` → `resolveAssetRel`（相对 md 目录）→ 插入 + 归一为 `assets/{文件名}` 登记进当前类型 `images[]`（去重）；「生图」= `openImageGen`（直出接口 `image.generate record:false`，落 `assets/`，封面横版/插图方形默认尺寸）成功后自动插入并登记；正文粘贴 / 拖入图片（编辑器内置）同样落盘并 emit `image-added` 登记。
 - **⚠️ 插图生图以「选中文字」为前提（2026-09-14 用户拍板）**：
   - **未选中文字时「生图」按钮禁用**，tooltip 提示「请先选中要配图的文字」；选中后解除禁用，tooltip 变「根据选中文字生图」。
   - 理由：没有选中就无从确定「画什么、插到哪」——早期版本用「无选区回退正文全文」兜底，结果模型画成泛泛的全文配图，被用户否决。**因此 `ArticleImageContext` 不含正文全文兜底字段**（`selection` 是插图起草的唯一内容依据；封面才用标题/摘要/提纲）。
   - 选中状态经 `ArticleEditor` 的 `selection-change` 事件（`onSelectionUpdate` / `onCreate` 上报 `getSelection()`）流到 `ArticleAside.selection` → `ArticleToolbar.hasSelection`。版本/文章切换时编辑器 `:key` 重挂载，`onCreate` 上报空串自然复位。
 - **⚠️ 插图插入不吞选中文字**：图片是块级节点，直接 `insertContent` 会**替换掉选中内容**——而选中正是用户用来指明位置的。故 `ArticleEditor.insertImage` 有选区时用 `insertContentAt($to.after(1))` 插到**选中块之后**，仅在无选区时才插在光标处（上传与生图两条路径共用此函数）。
-- **弹窗的 AI 代写生图描述（2026-09-14 新增）**：`ArticleImageGenContent` 打开即调 `draftArticleImagePrompt(kind, context)`
-  （`tool/components/article/articleImagePrompt.ts`）——走 `createChatCompletion` + 设置里的快速模型（`defaultQuickModel || defaultAssistantModel`），
+- **弹窗的 AI 代写生图描述（2026-09-14 新增）**：`ImageGenContent` 打开即调 `draftImagePrompt(kind, context)`
+  （`tool/components/writing/imagePrompt.ts`）——走 `createChatCompletion` + 设置里的快速模型（`defaultQuickModel || defaultAssistantModel`），
   按语境起草一段**英文画面描述**回填 textarea，用户可直接改或点「换一版」；无可用模型时静默退回手写（提示「AI 起草不可用」，不报错、不挡流程）。
   - **语境的来源**：封面 → `ArticleDocHeader` 把文章 `title/summary/outline` 透传给 `ArticleCoverThumb` → 弹窗；
     插图 → `ArticleAside.buildImageContext()` = 文章 `title/summary/outline`（仅供理解背景）+ **编辑器选中文字**（画面主体以此为准）。

@@ -68,21 +68,22 @@ export type ResolveSubAgentTypeResult =
   | { ok: false; message: string }
 
 /**
- * 解析 spawn_agent 的 type 参数并校验当前聊天类型是否允许。
+ * 解析 spawn_agent 的 type 参数并校验是否在允许列表内。
+ * allowed 由调用方传入（主 Agent 走 getSceneSubAgentAllow 的场景矩阵，见 global/ChatTypeConfig）——
+ * 本文件是叶子模块，不能反向依赖 ChatTypeConfig，故不在此处自行查表。
  * 缺省 / 空值按 research 处理（向后兼容旧行为）。
  * 非法时返回 { ok: false, message }，由调用方直接回填工具结果，避免模型尝试被禁用的能力。
  */
 export const resolveSubAgentType = (
   raw: unknown,
-  chatType: ChatType
+  allowed: ReadonlyArray<SubAgentType>
 ): ResolveSubAgentTypeResult => {
   const requested = raw === undefined || raw === null || raw === '' ? 'research' : raw
-  const allowed = SUB_AGENT_ALLOW[chatType]
   if (typeof requested === 'string' && (allowed as readonly string[]).includes(requested)) {
     return { ok: true, type: requested as SubAgentType }
   }
   return {
     ok: false,
-    message: `当前聊天类型不支持「${String(requested)}」型子 Agent，可用：${allowed.join(' / ')}`
+    message: `当前场景不支持「${String(requested)}」型子 Agent，可用：${allowed.join(' / ')}`
   }
 }

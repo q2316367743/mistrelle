@@ -6,9 +6,6 @@
  * 短篇相对长篇精简：无伏笔 / 暗线 / 时间线 / 多卷分层，设定固定 5 个 md 文件、轻量。
  */
 
-/** 小说状态 */
-export type NovelStatus = 'draft' | 'writing' | 'done'
-
 /** 小说条目内各文件键（正文 + 4 个设定文件，prompt / 工具 / 侧边栏共用单一数据源） */
 export const NOVEL_FILES = {
   story: 'story.md',
@@ -20,19 +17,25 @@ export const NOVEL_FILES = {
 
 export type NovelFileKey = keyof typeof NOVEL_FILES
 
+/** 可由 AI 经 novel_write_setting 写入的设定文件键（正文走 novel_write、角色走 novel_character_upsert） */
+export const NOVEL_SETTING_FILE_KEYS = ['outline', 'setting', 'style'] as const
+
+export type NovelSettingFileKey = (typeof NOVEL_SETTING_FILE_KEYS)[number]
+
 /** 小说条目（登记在 project.json） */
 export interface NovelItem {
   id: string
   title: string
   /** 题材（科幻 / 言情 / 悬疑 / 都市...） */
   genre: string
-  status: NovelStatus
   /** 子目录相对 novels/ 根目录的路径（{id}/，正文与设定文件都落于此） */
   dir: string
   /** 一句话创意 / 摘要 */
   summary?: string
-  /** 字数（预留，后续实现统计时回写） */
+  /** 正文字数（由 novel_write / novel_stats 回写） */
   words?: number
+  /** 封面图相对项目根的路径（如 {id}/assets/cover-xxx.png），由侧边栏生图 / 上传设置 */
+  cover?: string
 }
 
 /** 小说项目管理索引文件结构（project.json） */
@@ -51,4 +54,4 @@ export interface NovelCreateInput {
 }
 
 /** 可被模型更新的小说字段（novel_update 白名单，排除 id / dir / words） */
-export type NovelUpdatePatch = Partial<Pick<NovelItem, 'title' | 'genre' | 'status' | 'summary'>>
+export type NovelUpdatePatch = Partial<Pick<NovelItem, 'title' | 'genre' | 'summary' | 'cover'>>

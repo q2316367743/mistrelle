@@ -366,6 +366,7 @@ export class ToolChat {
       privacy: this.privacy,
       isSubAgent: this.isSubAgent,
       chatType: this.chatType,
+      writingScene: this.writingScene,
       abortSignal: signal,
       // skill 根目录内脚本执行免审批；toolPolicy 保持叶子 import，故由调用方注入（见 docs/tool/07）
       skillRootDirs: skillAgentList().map((agent) => agent.path)

@@ -122,4 +122,4 @@ interface ArticleProject { schema: 2; title: string; updatedTime: number; articl
 ## 关键文件
 
 - `src/modules/tool/components/article/articleTypes.ts` / `articleStore.ts` / `articleTools.ts` / `articlePrompt.ts`
-- `src/modules/tool/components/article/articleImagePrompt.ts`（侧边栏弹窗的 AI 代写生图描述，见 03 号文档）
+- `src/modules/tool/components/writing/imagePrompt.ts`（写作域共用：侧边栏弹窗的 AI 代写生图描述，见 03 号文档）

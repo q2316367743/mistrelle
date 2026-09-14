@@ -11,6 +11,9 @@ import {
 /** 项目管理索引文件名 */
 const PROJECT_FILE = 'project.json'
 
+/** 正文字数统计口径：去空白字符数（与文章场景 articleStore.countChars 一致） */
+const countChars = (text: string): number => text.replace(/\s+/g, '').length
+
 /** 小说项目根目录：有工作空间优先用工作空间，否则退回沙盒 outputs/ */
 export const buildNovelRoot = (workspace: string, sandboxDir: string): string => {
   const base = workspace || window.preload.path.join(sandboxDir, 'outputs')
@@ -97,7 +100,24 @@ export class NovelStore {
   /** 当前项目管理索引（deep reactive） */
   readonly project = ref<NovelProject | null>(null)
 
+  /**
+   * 文件内容版本号（内存态，不落盘）：novel_* 写入后按 `${id}::${fileKey}` 递增，
+   * 侧边栏 watch 该值即时重读，实现「AI 写完 → 侧边栏自动呈现」（对照 ArticleStore）。
+   */
+  readonly contentRevs = reactive(new Map<string, number>())
+
   constructor(private readonly root: string) {}
+
+  /** 递增某文件的内容版本号，驱动侧边栏即时重读 */
+  private bumpContentRev(id: string, fileKey: NovelFileKey): void {
+    const key = `${id}::${fileKey}`
+    this.contentRevs.set(key, (this.contentRevs.get(key) ?? 0) + 1)
+  }
+
+  /** 小说资源目录（封面 / 插图落盘处）：{root}/{id}/assets */
+  buildAssetsDir(id: string): string {
+    return window.preload.path.join(buildNovelDir(this.root, id), 'assets')
+  }
 
   /**
    * 刷新项目索引：project.json 不存在时自动创建空项目并落盘（幂等）。
@@ -146,7 +166,6 @@ export class NovelStore {
       id,
       title: input.title,
       genre: input.genre,
-      status: 'draft',
       dir,
       summary: input.summary
     }
@@ -193,12 +212,57 @@ export class NovelStore {
     return window.preload.fs.readTextFile(filePath)
   }
 
-  /** 写入小说内某文件内容（正文 / 设定） */
+  /** 写入小说内某文件内容（正文 / 设定）；写入后 bump 内容版本号驱动侧边栏即时呈现 */
   async writeNovelFile(id: string, file: string, content: string): Promise<void> {
     await this.refresh()
     const filePath = buildNovelFilePath(this.root, id, file)
     await window.preload.fs.mkdir(window.preload.path.dirname(filePath), true)
     await window.preload.fs.writeTextFile(filePath, content)
+    const key = (Object.entries(NOVEL_FILES) as [NovelFileKey, string][]).find(
+      ([, name]) => name === file
+    )?.[0]
+    if (key) this.bumpContentRev(id, key)
+  }
+
+  /**
+   * 写入正文（AI 主通道 novel_write）：mode=replace 整体覆盖，mode=append 追加到末尾
+   * （append 供「继续写 / 加一节」用，避免每次续写都要模型回写全文）。
+   * 写入后回写 NovelItem.words 并落盘，bump 内容版本号驱动侧边栏。
+   */
+  async writeStory(
+    id: string,
+    content: string,
+    mode: 'replace' | 'append'
+  ): Promise<{ words: number; mode: 'replace' | 'append' }> {
+    const project = await this.refresh()
+    const item = project.novels.find((n) => n.id === id)
+    if (!item) throw new Error(`未找到小说 ${id}，可用 novel_list 获取 id`)
+    const filePath = buildNovelFilePath(this.root, id, NOVEL_FILES.story)
+    let next = content
+    if (mode === 'append') {
+      const existing = window.preload.fs.existsSync(filePath)
+        ? await window.preload.fs.readTextFile(filePath)
+        : ''
+      const head = existing.trim()
+      next = head ? `${head}\n\n${content.trim()}` : content.trim()
+    }
+    await window.preload.fs.mkdir(window.preload.path.dirname(filePath), true)
+    await window.preload.fs.writeTextFile(filePath, next)
+    item.words = countChars(next)
+    await this.persist(project)
+    this.bumpContentRev(id, 'story')
+    return { words: item.words, mode }
+  }
+
+  /** 统计正文字数（去空白）并回写登记，供 novel_stats 汇报进度 */
+  async countWords(id: string): Promise<number> {
+    const project = await this.refresh()
+    const item = project.novels.find((n) => n.id === id)
+    if (!item) throw new Error(`未找到小说 ${id}，可用 novel_list 获取 id`)
+    const text = await this.readStory(id)
+    item.words = countChars(text)
+    await this.persist(project)
+    return item.words
   }
 
   /** 读取小说正文（story.md，供 novel_read 工具用） */
@@ -206,13 +270,18 @@ export class NovelStore {
     return this.readNovelFile(id, NOVEL_FILES.story)
   }
 
-  /** 汇总读取小说全部设定文件（novel_read_setting，正文写作前注入上下文保证一致性） */
+  /** 汇总读取小说全部设定文件（novel_read_setting 不传 file 时用，正文写作前注入上下文） */
   async readSetting(id: string): Promise<Record<Exclude<NovelFileKey, 'story'>, string>> {
     const setting = {} as Record<Exclude<NovelFileKey, 'story'>, string>
     for (const [key, file] of Object.entries(NOVEL_FILES) as [NovelFileKey, string][]) {
       if (key !== 'story') setting[key] = await this.readNovelFile(id, file)
     }
     return setting
+  }
+
+  /** 读取指定单个文件（novel_read_setting 传 file 时用，避免全量读取浪费 token） */
+  async readFile(id: string, fileKey: NovelFileKey): Promise<string> {
+    return this.readNovelFile(id, NOVEL_FILES[fileKey])
   }
 
   /** 角色卡 upsert：## name 段已存在则替换，否则追加到 characters.md 末尾 */
@@ -228,6 +297,7 @@ export class NovelStore {
     const updated = replaced ?? (existing.trim().length > 0 ? `${existing.trim()}\n\n${block}` : block)
     await window.preload.fs.mkdir(window.preload.path.dirname(filePath), true)
     await window.preload.fs.writeTextFile(filePath, updated)
+    this.bumpContentRev(id, 'characters')
     return updated
   }
 

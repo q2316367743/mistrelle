@@ -70,14 +70,14 @@
 import { MessageUtil } from '@/utils/modal'
 import { copyText, openUrlByBrowser } from '@/utils/native'
 import { resolveAssetRel } from '@/windows/main/modules/tool/components/article/imageRef'
-import type { ArticleImageContext } from '@/windows/main/modules/tool/components/article/articleImagePrompt'
+import type { ImagePromptContext } from '@/windows/main/modules/tool/components/writing/imagePrompt'
 import { useArticleDoc } from './useArticleDoc'
 import { useArticleAssist } from './useArticleAssist'
 import ArticleDocHeader from './components/ArticleDocHeader.vue'
 import ArticleToolbar from './components/ArticleToolbar.vue'
 import ArticleEditor from './components/ArticleEditor.vue'
 import ArticleDocActions from './components/ArticleDocActions.vue'
-import { openArticleImageGen } from './components/ArticleImageGenDialog'
+import { openImageGen } from '../components/ImageGenDialog'
 
 /** 腾讯朱雀 AI 检测官网（仅企业接入，这里引导用户到官网手动检测） */
 const ZHUQUE_DETECT_URL = 'https://matrix.tencent.com/ai-detect/ai_gen_txt'
@@ -190,7 +190,7 @@ const handleInsertImage = (rel: string): void => {
  * 插图语境：以**用户选中的文字**为核心（要插图的正是这段内容），另附文章标题 / 摘要 / 提纲作背景。
  * 刻意不传正文全文——会让模型画成泛泛的「全文配图」而非这一段。无选中时按钮本就禁用，不会走到这里。
  */
-const buildImageContext = (): ArticleImageContext => {
+const buildImageContext = (): ImagePromptContext => {
   const article = activeArticle.value
   return {
     title: article?.title,
@@ -203,7 +203,7 @@ const buildImageContext = (): ArticleImageContext => {
 /** AI 生成插图：产物落 assets/ 后插入光标处并登记 */
 const handleGenImage = (): void => {
   if (!activeEntry.value) return
-  openArticleImageGen({
+  openImageGen({
     kind: 'image',
     assetsDir: assetsDir.value,
     context: buildImageContext(),

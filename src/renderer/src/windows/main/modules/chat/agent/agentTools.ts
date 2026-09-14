@@ -21,6 +21,7 @@ import {
 import { FONT_PICK_TOOL_NAME, formatFontPickResult } from '@/windows/main/modules/tool/components/design/fontTools'
 import { SPAWN_AGENT_TOOL_NAME } from '@/windows/main/modules/subagent/tool'
 import { resolveSubAgentType } from '@/windows/main/modules/subagent/types'
+import { getSceneSubAgentAllow } from '@/global/ChatTypeConfig'
 import { hasImageGenerateAccess } from '@/windows/main/modules/tool/components/design/imageGenerate'
 import {
   DESIGN_DRAW_TOOL_NAME,
@@ -224,8 +225,11 @@ export const runSingleTool = async (
       applyResult(messages, assistantMessageId, call, '错误：无法启动子 Agent，缺少聊天上下文')
       return
     }
-    // 解析并校验子 Agent 类型（按当前聊天类型能力矩阵 SUB_AGENT_ALLOW，缺省 research）
-    const resolved = resolveSubAgentType(args.type, policyContext.chatType ?? 'office')
+    // 解析并校验子 Agent 类型（按场景能力矩阵，如短篇小说场景仅允许 research）
+    const resolved = resolveSubAgentType(
+      args.type,
+      getSceneSubAgentAllow(policyContext.chatType ?? 'office', policyContext.writingScene)
+    )
     if (!resolved.ok) {
       applyResult(messages, assistantMessageId, call, `错误: spawn_agent ${resolved.message}`)
       return

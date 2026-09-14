@@ -32,34 +32,36 @@
 </template>
 <script lang="ts" setup>
 import { AiIcon, DeleteIcon, ImageIcon, UploadIcon } from 'tdesign-icons-vue-next'
-import type { ArticleItem } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { copyImageToAssets } from '@/windows/main/modules/tool/components/article/imageRef'
+import type { ImagePromptContext } from '@/windows/main/modules/tool/components/writing/imagePrompt'
 import { openImageGen } from '../../components/ImageGenDialog'
 import { MessageUtil } from '@/utils/modal'
 
 const props = defineProps<{
-  /** 当前类型封面（相对 articles/ 的路径） */
+  /** 封面相对项目根的路径（如 {id}/assets/cover-xxx.png）；undefined = 未设置 */
   cover?: string
-  /** 配图目录（assets/ 绝对路径，上传与 AI 生成产物落盘于此） */
+  /** 封面目录（{root}/{id}/assets 绝对路径，上传与 AI 生成产物落盘于此） */
   assetsDir: string
-  /** 所属文章（AI 生成封面时提供标题 / 摘要 / 提纲作为起草语境） */
-  article?: Pick<ArticleItem, 'title' | 'summary' | 'outline'>
+  /** 生图起草语境（标题 / 题材 / 摘要） */
+  context?: ImagePromptContext
   /** 流式改写进行中锁定 */
   locked?: boolean
 }>()
 
 const emit = defineEmits<{
-  /** 设置 / 清除封面（rel 为相对 articles/ 的路径，undefined = 清除） */
+  /** 设置 / 清除封面（rel 为相对 novels/ 的路径，undefined = 清除） */
   (e: 'cover', rel: string | undefined): void
 }>()
 
 /** 生图门控：登录即可用（直出接口，积分由服务端扣减） */
 const canGenerate = computed(() => useAuthStore().status === 'signed-in')
 
-/** 登记路径（相对 articles/）→ 展示 URL */
+/** 登记路径（相对 novels/）→ 展示 URL */
 const assetHref = (rel: string): string =>
-  window.preload.net.pathToHref(window.preload.path.join(window.preload.path.dirname(props.assetsDir), rel))
+  window.preload.net.pathToHref(
+    window.preload.path.join(window.preload.path.dirname(props.assetsDir), '..', rel)
+  )
 
 /** 系统选图 → 拷入 assets → 上抛设置封面 */
 const uploadCover = async (): Promise<void> => {
@@ -71,7 +73,7 @@ const uploadCover = async (): Promise<void> => {
   if (!src) return
   try {
     const absPath = await copyImageToAssets(props.assetsDir, src, 'cover')
-    emit('cover', `assets/${window.preload.path.basename(absPath)}`)
+    emit('cover', toRel(absPath))
   } catch {
     MessageUtil.error('图片复制失败')
   }
@@ -81,18 +83,20 @@ const genCover = (): void =>
   openImageGen({
     kind: 'cover',
     assetsDir: props.assetsDir,
-    // 封面起草语境：标题 / 摘要 / 提纲（封面无选中片段概念，不给正文节选）
-    context: {
-      title: props.article?.title,
-      summary: props.article?.summary,
-      outline: props.article?.outline
-    },
-    onSuccess: (absPath) => emit('cover', `assets/${window.preload.path.basename(absPath)}`)
+    context: props.context,
+    onSuccess: (absPath) => emit('cover', toRel(absPath))
   })
+
+/** 绝对路径 → 相对 novels/ 根的登记路径（{id}/assets/xxx.png） */
+const toRel = (absPath: string): string => {
+  const idDir = window.preload.path.dirname(props.assetsDir)
+  const novelId = window.preload.path.basename(idDir)
+  return `${novelId}/assets/${window.preload.path.basename(absPath)}`
+}
 </script>
 <style scoped lang="less">
 .cover-thumb {
-  width: 56px;
+  width: 40px;
   aspect-ratio: 16 / 9;
   border-radius: var(--td-radius-medium);
   border: 1px dashed var(--td-border-level-2-color);
@@ -117,7 +121,7 @@ const genCover = (): void =>
   }
 
   &__empty {
-    font-size: 20px;
+    font-size: 16px;
     color: var(--td-text-color-placeholder);
   }
 }

@@ -4,7 +4,7 @@ import type { AiImageBlock, AiMessageParam } from '@/windows/main/modules/ai'
 import type { AiChatMode } from '@/entity'
 import type { ResolvedChatRequestParams } from '@/windows/main/modules/chat'
 import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
-import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
+import { CHAT_TYPE_CONFIG, getSceneExcludedTools, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
 import { isSceneToolsOnlyAgent, type SubAgentType } from '@/windows/main/modules/subagent/types'
 import { localSkillList, buildSkillCatalogPrompt } from '@/windows/main/modules/skill'
@@ -235,6 +235,11 @@ export const buildAgentRequestMessages = async (
     : await buildWorkspaceSettingsPromptBody(ctx.workspace, settingsCache)
   // 个性化设定（soul/*.md，用户手编、极少变化 → 稳定可缓存；子 Agent 任务作用域不注入）
   const personalizePrompt = ctx.isSubAgent ? '' : await buildPersonalizePrompt(ctx.chatType)
+  // 场景剔除名单（写作子场景能力面收窄）：剔掉装载器时其目录提示词也不再注入，
+  // 否则会在 system 里声明一份模型无法装载的集合目录，纯属诱导。
+  // 用具名字面量而非导入常量：与 NOVEL_EXCLUDED_TOOLS 的声明口径一致（那侧同样用字面量避免拉重依赖）
+  const sceneExcluded = getSceneExcludedTools(ctx.chatType, ctx.writingScene)
+  const catalogDisabled = sceneExcluded.includes('load_tool_collection')
   // system 前缀保持稳定的可缓存内容；skill 正文由 load_skill 工具按需在对话中加载，不进 system
   const systemPrompt = [
     ctx.systemPrompt,
@@ -242,7 +247,7 @@ export const buildAgentRequestMessages = async (
     personalizePrompt,
     catalogPrompt,
     // 可选工具集合目录（静态可缓存）：配合 load_tool_collection 实现按需整组装载
-    sealedSurface ? '' : buildToolCatalogPrompt(),
+    sealedSurface || catalogDisabled ? '' : buildToolCatalogPrompt(),
     sealedSurface ? '' : buildTodoPrompt(),
     workspacePrompt,
     settings.prompt,

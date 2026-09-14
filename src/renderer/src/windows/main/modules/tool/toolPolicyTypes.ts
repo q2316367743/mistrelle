@@ -1,6 +1,7 @@
 import type { ToolFunction, ToolPolicyVerdict } from '@/domain'
 import type { AiChatMode } from '@/entity'
 import type { ChatType } from '@/windows/main/modules/chat/chatType'
+import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
 
 /** 策略解析所需的运行时上下文 */
 export interface ToolPolicyContext {
@@ -28,6 +29,8 @@ export interface ToolPolicyContext {
   denyOnAsk?: boolean
   /** 当前聊天类型（用于 spawn_agent 按能力矩阵校验子 Agent 类型） */
   chatType?: ChatType
+  /** 写作子场景（spawn_agent 据此取场景级子 Agent 能力矩阵，如短篇仅允许 research） */
+  writingScene?: WritingScene
   /** 当前请求的 AbortSignal（主 Agent 终止时级联到子 Agent） */
   abortSignal?: AbortSignal
 }

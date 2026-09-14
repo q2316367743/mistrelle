@@ -1,19 +1,23 @@
 import type { ToolFunction } from '@/domain'
 import { registerToolPolicy } from '@/windows/main/modules/tool/toolPolicy'
 import type { ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
-import { NOVEL_FILES } from './novelTypes'
+import { NOVEL_FILES, NOVEL_SETTING_FILE_KEYS } from './novelTypes'
+import type { NovelSettingFileKey, NovelUpdatePatch } from './novelTypes'
 import { buildNovelRoot, getNovelStore } from './novelStore'
-import type { NovelStatus, NovelUpdatePatch } from './novelTypes'
-
-const STATUSES = new Set<string>(['draft', 'writing', 'done'])
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined)
+
+const FILE_DESC = `设定文件：${NOVEL_SETTING_FILE_KEYS.join(' / ')}（分别对应大纲 / 背景设定 / 文风；角色卡用 novel_character_upsert，正文用 novel_write）`
 
 /**
  * 返回短篇小说场景工具实例（按 workspace / sandbox 定位项目根），供 WritingSceneConfig 场景级注入。
  * 项目根：{workspace}/novels/（有工作空间）或 {sandbox}/outputs/novels/（无工作空间）。
- * 设定文件（outline / setting / style）由 AI 用 file_write 直接写对应文件路径；
- * 角色卡为「## 角色名」分段结构，用 novel_character_upsert 结构化增改。
+ *
+ * 本场景是纯文本创作，file 类 / shell / 绘图 / 生图已从工具面剔除（见 ChatTypeConfig 的
+ * NOVEL_EXCLUDED_TOOLS），一切读写收敛到本文件这组 novel_* 工具：
+ * - 正文：novel_write（replace 覆盖 / append 追加）
+ * - 设定：novel_write_setting（outline / setting / style）
+ * - 角色：novel_character_upsert（## 段落增改）
  */
 export const createNovelTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
   const store = () => getNovelStore(buildNovelRoot(ctx.getWorkspace(), ctx.getSandboxDir()))
@@ -40,7 +44,7 @@ export const createNovelTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
     {
       name: 'novel_list',
       label: '列出小说',
-      description: '列出项目内全部小说（标题 / 题材 / 状态 / 摘要），写作前先看现状',
+      description: '列出项目内全部小说（标题 / 题材 / 摘要 / 字数），写作前先看现状',
       parameters: { type: 'object', properties: {} },
       internal: true,
       risk: 'safe',
@@ -53,7 +57,7 @@ export const createNovelTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'novel_create',
       label: '新建小说',
       description:
-        '新建一部短篇小说：创建子目录（含 story / outline / characters / setting / style 五个骨架文件）并登记到项目索引，返回小说 id 与各文件路径。后续用 file_write 写入各文件、用 novel_character_upsert 增改角色、用 novel_update 更新状态',
+        '新建一部短篇小说：创建子目录（含 story / outline / characters / setting / style 五个骨架文件）并登记到项目索引，返回小说 id 与各文件路径。后续用 novel_write 写正文、novel_write_setting 写设定、novel_character_upsert 增改角色',
       parameters: {
         type: 'object',
         properties: {
@@ -83,14 +87,13 @@ export const createNovelTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
     {
       name: 'novel_update',
       label: '更新小说信息',
-      description: '更新小说元信息（标题 / 题材 / 状态 / 摘要）。状态：draft（草稿）/ writing（写作中）/ done（已完稿）',
+      description: '更新小说元信息（标题 / 题材 / 摘要）。正文与设定内容的修改请用 novel_write / novel_write_setting',
       parameters: {
         type: 'object',
         properties: {
           id: { type: 'string', description: '小说 id（novel_list 获取）' },
           title: { type: 'string', description: '标题' },
           genre: { type: 'string', description: '题材' },
-          status: { type: 'string', description: '状态：draft / writing / done' },
           summary: { type: 'string', description: '一句话创意 / 摘要' }
         },
         required: ['id']
@@ -98,22 +101,99 @@ export const createNovelTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       internal: true,
       risk: 'sensitive',
       handler: async (...params: unknown[]) => {
-        const { id, title, genre, status, summary } = params[0] as {
+        const { id, title, genre, summary } = params[0] as {
           id?: string
           title?: string
           genre?: string
-          status?: string
           summary?: string
         }
         if (!id) return { error: 'id 不能为空' }
         const patch: NovelUpdatePatch = {}
         if (str(title)) patch.title = title
         if (str(genre)) patch.genre = genre
-        if (status && STATUSES.has(status)) patch.status = status as NovelStatus
         if (str(summary)) patch.summary = summary
         if (Object.keys(patch).length === 0) return { error: '没有可更新的字段' }
-        const item = await store().updateNovel(id, patch)
-        return { id: item.id, updated: patch }
+        try {
+          const item = await store().updateNovel(id, patch)
+          return { id: item.id, updated: patch }
+        } catch (e) {
+          return { error: e instanceof Error ? e.message : String(e) }
+        }
+      }
+    },
+    {
+      name: 'novel_write',
+      label: '写入小说正文',
+      description:
+        '写入小说正文（story.md），返回写后字数。mode=replace（默认）整体覆盖全文——重写 / 大幅改写时用；mode=append 追加到正文末尾——续写 / 加一节时用，只需给新增内容，不要重复回写已有部分（几万字的正文每次重述既慢又容易丢内容）',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: '小说 id（novel_list 获取）' },
+          content: {
+            type: 'string',
+            description:
+              '正文内容（完整 markdown）。mode=replace 时为全文；mode=append 时只写新增部分'
+          },
+          mode: {
+            type: 'string',
+            description: '写入方式：replace（默认，整体覆盖）/ append（追加到末尾）'
+          }
+        },
+        required: ['id', 'content']
+      },
+      internal: true,
+      risk: 'sensitive',
+      handler: async (...params: unknown[]) => {
+        const { id, content, mode } = params[0] as {
+          id?: string
+          content?: string
+          mode?: string
+        }
+        if (!id) return { error: 'id 不能为空' }
+        if (typeof content !== 'string' || !content.trim()) return { error: 'content 不能为空' }
+        const writeMode = mode === 'append' ? 'append' : 'replace'
+        try {
+          const result = await store().writeStory(id, content, writeMode)
+          return { success: true, mode: result.mode, words: result.words }
+        } catch (e) {
+          return { error: e instanceof Error ? e.message : String(e) }
+        }
+      }
+    },
+    {
+      name: 'novel_write_setting',
+      label: '写入小说设定',
+      description:
+        '写入小说的设定文件（每次写入该文件的完整内容，覆盖原内容）：outline 故事大纲 / setting 背景设定 / style 写作风格。角色卡请用 novel_character_upsert，正文请用 novel_write',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: '小说 id（novel_list 获取）' },
+          file: { type: 'string', description: FILE_DESC },
+          content: { type: 'string', description: '该文件的完整 markdown 内容' }
+        },
+        required: ['id', 'file', 'content']
+      },
+      internal: true,
+      risk: 'sensitive',
+      handler: async (...params: unknown[]) => {
+        const { id, file, content } = params[0] as {
+          id?: string
+          file?: string
+          content?: string
+        }
+        if (!id) return { error: 'id 不能为空' }
+        if (!file || !(NOVEL_SETTING_FILE_KEYS as readonly string[]).includes(file)) {
+          return { error: `file 必须是 ${NOVEL_SETTING_FILE_KEYS.join(' / ')} 之一` }
+        }
+        if (typeof content !== 'string' || !content.trim()) return { error: 'content 不能为空' }
+        try {
+          await store().writeNovelFile(id, NOVEL_FILES[file as NovelSettingFileKey], content)
+          return { success: true, file }
+        } catch (e) {
+          return { error: e instanceof Error ? e.message : String(e) }
+        }
       }
     },
     {
@@ -142,7 +222,38 @@ export const createNovelTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
       name: 'novel_read_setting',
       label: '读取小说设定',
       description:
-        '汇总读取指定小说的全部设定文件（角色 / 大纲 / 背景设定 / 文风），写作正文前务必调用以保证设定一致。返回每个文件的完整 markdown 内容',
+        '读取指定小说的设定文件：不传 file 时汇总返回全部设定（角色 / 大纲 / 背景设定 / 文风），写作正文前务必调用以保证设定一致；只关心某一个文件时传 file 单选，避免全量读取占用上下文',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: '小说 id（novel_list 获取）' },
+          file: {
+            type: 'string',
+            description: `可选，只读某个设定文件：characters / ${NOVEL_SETTING_FILE_KEYS.join(' / ')}；不传则汇总读全部`
+          }
+        },
+        required: ['id']
+      },
+      internal: true,
+      risk: 'safe',
+      handler: async (...params: unknown[]) => {
+        const { id, file } = params[0] as { id?: string; file?: string }
+        if (!id) return { error: 'id 不能为空' }
+        try {
+          if (file && Object.prototype.hasOwnProperty.call(NOVEL_FILES, file)) {
+            const content = await store().readFile(id, file as keyof typeof NOVEL_FILES)
+            return { file, content }
+          }
+          return await store().readSetting(id)
+        } catch (e) {
+          return { error: e instanceof Error ? e.message : String(e) }
+        }
+      }
+    },
+    {
+      name: 'novel_stats',
+      label: '统计小说字数',
+      description: '统计指定小说正文字数（去空白字符数）并回写登记，用于进度跟踪与完稿确认',
       parameters: {
         type: 'object',
         properties: { id: { type: 'string', description: '小说 id（novel_list 获取）' } },
@@ -154,7 +265,8 @@ export const createNovelTools = (ctx: ChatTypeToolContext): ToolFunction[] => {
         const { id } = params[0] as { id?: string }
         if (!id) return { error: 'id 不能为空' }
         try {
-          return await store().readSetting(id)
+          const words = await store().countWords(id)
+          return { id, words }
         } catch (e) {
           return { error: e instanceof Error ? e.message : String(e) }
         }
@@ -219,8 +331,11 @@ export const NOVEL_TOOL_NAMES = [
   'novel_list',
   'novel_create',
   'novel_update',
+  'novel_write',
+  'novel_write_setting',
   'novel_read',
   'novel_read_setting',
+  'novel_stats',
   'novel_character_upsert',
   'novel_remove'
 ] as const

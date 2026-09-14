@@ -4,7 +4,12 @@ import type { AiTool } from '@/windows/main/modules/ai'
 import type { AiChatMode } from '@/entity'
 import type { ChatRequestParams } from '@/windows/main/modules/chat'
 import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
-import { CHAT_TYPE_CONFIG, SUB_AGENT_TOOL_CONFIG } from '@/global/ChatTypeConfig'
+import {
+  CHAT_TYPE_CONFIG,
+  getSceneExcludedTools,
+  getSceneSubAgentAllow,
+  SUB_AGENT_TOOL_CONFIG
+} from '@/global/ChatTypeConfig'
 import { getDefaultTools, isShellExecTool, toolMap, toolRegistry } from '@/windows/main/modules/tool'
 import { IMAGE_READ_TOOL_NAME } from '@/windows/main/modules/tool/components/native/file'
 import { createToolLoadTool } from '@/windows/main/modules/tool/components/collectionLoader'
@@ -12,7 +17,6 @@ import { recordMemoryTool } from '@/windows/main/modules/memory'
 import { createSpawnAgentTool, SPAWN_AGENT_TOOL_NAME } from '@/windows/main/modules/subagent/tool'
 import {
   isSceneToolsOnlyAgent,
-  SUB_AGENT_ALLOW,
   type SubAgentType
 } from '@/windows/main/modules/subagent/types'
 import { useAiAgentStore, useSettingAiStore } from '@/windows/main/store'
@@ -89,6 +93,8 @@ export const buildBaseFunctions = (
   const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
   const names = [...(agent?.tools ?? []), ...getUserToolNames(params)]
   const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
+  const allowed = getSceneSubAgentAllow(ctx.chatType, ctx.typeTools.writingScene)
+  const excluded = new Set(getSceneExcludedTools(ctx.chatType, ctx.typeTools.writingScene))
   for (const fn of [
     // agent 带的工具
     ...ctx.functions,
@@ -103,15 +109,17 @@ export const buildBaseFunctions = (
     // 渐进式工具加载：模型按 <available_tool_collections> 目录整组装载可选能力集（主/子 Agent 统一）
     createToolLoadTool(ctx.loadedCollections)
   ]) {
+    // 场景剔除（写作子场景收窄能力面）：与执行期兜底同源，防止注册表复装绕过
+    if (excluded.has(fn.name)) continue
     // 子 Agent 不暴露 spawn_agent：防止嵌套派发（子 Agent 的 chatId 是自身 id，再派发路径会错乱）
     if (ctx.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) continue
     // 隐私聊天不暴露记忆工具（用户 # 显式指定也不注入，防止对话内容经工具写入记忆）
     if (ctx.privacy && fn.name === recordMemoryTool.name) continue
     // 非识图模型不下发 image_read（图像传了也看不见，避免诱导无效调用）
     if (fn.name === IMAGE_READ_TOOL_NAME && !isVisionModelRequest(params)) continue
-    // 主 Agent：按聊天类型裁剪 spawn_agent 的可用子 Agent 类型（SUB_AGENT_ALLOW 能力矩阵），减少模型试错
+    // 主 Agent：按聊天类型 / 写作子场景裁剪 spawn_agent 的可用子 Agent 类型，减少模型试错
     if (!ctx.isSubAgent && fn.name === SPAWN_AGENT_TOOL_NAME) {
-      map.set(fn.name, createSpawnAgentTool(SUB_AGENT_ALLOW[ctx.chatType]))
+      map.set(fn.name, createSpawnAgentTool(allowed))
       continue
     }
     map.set(fn.name, fn)
@@ -131,8 +139,10 @@ export const applyLoadedCollections = (
   if (isClosedSurface(ctx)) return
   if (ctx.loadedCollections.value.length === 0) return
   const loaded = new Set(ctx.loadedCollections.value)
+  const excluded = new Set(getSceneExcludedTools(ctx.chatType, ctx.typeTools.writingScene))
   for (const entry of Object.values(toolRegistry)) {
     if (!loaded.has(entry.groupId) || map.has(entry.fn.name)) continue
+    if (excluded.has(entry.fn.name)) continue
     map.set(entry.fn.name, entry.fn)
   }
 }
@@ -167,9 +177,12 @@ export const resolveForExecution = (
   if (isClosedSurface(ctx)) return base
   const map = new Map(base.map((fn) => [fn.name, fn]))
   applyLoadedCollections(ctx, map)
+  const excluded = new Set(getSceneExcludedTools(ctx.chatType, ctx.typeTools.writingScene))
   let changed = false
   for (const name of names) {
     if (map.has(name)) continue
+    // 场景剔除的名字不予兜底：不走注册表查找、不自动复装其所属集合
+    if (excluded.has(name)) continue
     const entry = toolRegistry[name]
     if (!entry) continue
     if (!ctx.loadedCollections.value.includes(entry.groupId)) {
