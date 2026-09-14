@@ -1,23 +1,31 @@
 /**
  * 文章创作场景固定 system 提示词工厂。
  * 主体内容稳定（场景创建后锁定），仅「配图」段落随登录态动态组装：
- * 已登录（生图型子 Agent 可用）时给出定稿后必配的工作流，未登录时替换为一句登录引导，
- * 保证提示词提到的能力与实际注入的工具一致（同 canvasPrompt / designHtmlPrompt 口径）。
+ * 本场景主 Agent 直接持有 design_draw（画布绘制，不门控登录），扩散生图只能经
+ * spawn_agent(type="image") 派发（需登录）。故已登录时给出「先 ask 定方式、再按方式生成」
+ * 的双通道工作流，未登录时收窄为仅画布绘制的单通道，保证提示词提到的能力与实际注入的工具一致
+ * （同 canvasPrompt / designHtmlPrompt 口径）。
  * 与 writing 类型通用写作约定拼接后注入（见 AgentChat.buildTypePromptBody）。
  */
 import { hasImageGenerateAccess } from '@/windows/main/modules/tool/components/design/imageGenerate'
 
-/** 配图工作流（已登录：可派发生图型子 Agent） */
+/** 配图工作流（已登录：画布绘制 / 扩散生图两条通道皆可用，未指定方式时先 ask 征询） */
 const IMAGE_WORKFLOW = [
-  '5. 定稿后**必须配图**（用户明确说不要配图才跳过）：先调 spawn_agent(type="image") 生成封面与插图——封面 1 张（16:9，突出主题），正文按小节配 2~4 张插图（方形 1:1，贴合各节内容）；',
-  '   任务描述写清「用途 + 内容要点 + 建议尺寸 + 产物绝对保存路径」（保存路径填 {文章项目根}/assets/ 下的绝对路径），**不要写英文生图提示词**，生图子 Agent 会自行撰写描述',
-  '6. 配图产出后：用 article_update（带单元 id）登记所属类型的 cover / images（相对 articles/ 的路径）；再用 article_write 覆盖同一 id，把每张插图以相对路径（如 ../assets/xxx.png）插进对应小节（封面不必插正文）',
-  '7. 完稿：article_stats（带单元 id）统计字数，并告知文章完整路径'
+  '5. 定稿后**必须配图**（用户明确说不要配图才跳过）。配图前先定方式：用户本轮已明确指定（如「用画布画」「要写实插图」）就直接采用，**未指定时用 ask 询问一次**，给出两个候选并说明差异：',
+  '   - 画布绘制：版式与文案精确可控、没有 AI 感，适合封面 / 图文卡片 / 知识卡片；用你当前的聊天模型绘制，无需登录',
+  '   - 扩散生图：写实插画 / 照片质感，但画面文字常渲染错误，适合纯视觉素材',
+  '6. 按选定方式生成，封面 1 张（16:9，突出主题）+ 正文按小节 2~4 张插图（方形 1:1，贴合各节内容），产物一律存到 {文章项目根}/assets/ 下的绝对路径：',
+  '   - 选画布绘制：直接调 design_draw(prompt, path, size)，把需要出现的文案写进 prompt，一次一张逐张生成',
+  '   - 选扩散生图：调 spawn_agent(type="image")，任务描述写清「用途 + 内容要点 + 建议尺寸 + 产物绝对保存路径」，**不要写英文生图提示词**，生图子 Agent 会自行撰写描述',
+  '7. 配图产出后：用 article_update（带单元 id）登记所属类型的 cover / images（相对 articles/ 的路径）；再用 article_write 覆盖同一 id，把每张插图以相对路径（如 ../assets/xxx.png）插进对应小节（封面不必插正文）',
+  '8. 完稿：article_stats（带单元 id）统计字数，并告知文章完整路径'
 ].join('\n')
 
-/** 配图段落（未登录：生图不可用） */
-const IMAGE_WORKFLOW_OFFLINE =
-  '5. 配图：当前未登录，无法生图配图；可先完成正文写作，登录后再说「配图」即可用生图型子 Agent 生成封面与插图'
+/** 配图段落（未登录：扩散生图不可用，仅画布绘制单通道，无需再询问方式） */
+const IMAGE_WORKFLOW_OFFLINE = [
+  '5. 定稿后**必须配图**（用户明确说不要配图才跳过）：当前未登录，写实风格的扩散生图不可用，用 design_draw 画布绘制配图（版式与文案精确可控、无 AI 感）——封面 1 张（16:9）+ 正文按小节 2~4 张插图（1:1），产物存到 {文章项目根}/assets/ 下',
+  '6. 配图产出后：用 article_update（带单元 id）登记 cover / images，再用 article_write 覆盖同一 id 把插图以相对路径插进对应小节；最后 article_stats 统计字数'
+].join('\n')
 
 export const buildArticleScenePrompt = (): string =>
   [

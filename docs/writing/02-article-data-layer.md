@@ -97,16 +97,19 @@ interface ArticleProject { schema: 2; title: string; updatedTime: number; articl
 
 ## 创作工作流 prompt（articlePrompt.ts）
 
-> **2026-09-14 迭代**：配图改走**生图型子 Agent**，且「定稿后必配」。
+> **2026-09-14 迭代**：配图支持**画布绘制（design_draw）/ 扩散生图（生图型子 Agent）双通道**，且「定稿后必配、生产前先定方式」。
 > 提示词由静态串改为工厂 `buildArticleScenePrompt()`——仅「配图」段落随登录态动态组装
-> （未登录替换为登录引导），保证提示词提到的能力与实际注入的工具一致。
+> （未登录收窄为仅画布绘制单通道），保证提示词提到的能力与实际注入的工具一致。
 
 - 流程：`article_init` → 选题 → `article_create`（标题+类型+版本，拿单元 id）→ `article_write`（id + content）正文（首次直接覆盖）→ 修改：默认覆盖同 id、要保留原稿 `newVersion=true` 拿新 id 后续写新 id → 追加平台版：`article_create` 同标题 + 新类型（版本 1）拿新 id（先 `article_read` 已有版本保持选题一致）→ **配图（必做）** → `article_stats(id)` 收尾。
-- **配图工作流（登录后）**：先 `spawn_agent(type="image")` 生成封面 1 张（16:9，突出主题）+ 正文按小节 2~4 张插图（1:1，贴合各节）；
-  task 里只写「用途 + 内容要点 + 建议尺寸 + 产物绝对保存路径（`{文章项目根}/assets/` 下）」，**不写英文生图提示词**（生图子 Agent 自行撰写）；
-  产物回来后 `article_update(id, {cover, images})` 登记相对路径，再 `article_write` 覆盖同一 id 把插图以 `../assets/xxx.png` 插进对应小节（封面不插正文）。
-  用户明确说不要配图才跳过。
-- 未登录时配图段落替换为一句「登录后可配图」引导（生图由服务端提供，无法离线生成）。
+- **配图工作流（登录后，双通道 + 先定方式）**：定稿后配图前先定方式——用户本轮已明确指定（「用画布画」/「要写实插图」）就直接采用，**未指定时用 `ask` 询问一次**，两个候选为「画布绘制（文案版式精确可控、无 AI 感）」与「扩散生图（写实质感、文字易错）」。
+  按选定方式生成封面 1 张（16:9）+ 正文按小节 2~4 张插图（1:1），产物一律存 `{文章项目根}/assets/` 下：
+  - 选**画布绘制** → 主 Agent 直接调 `design_draw(prompt, path, size)`，文案写进 prompt，一次一张逐张生成（**用当前聊天模型**，见 [tool/14](../tool/14-design-draw.md)）
+  - 选**扩散生图** → 调 `spawn_agent(type="image")`，task 里只写「用途 + 内容要点 + 建议尺寸 + 产物绝对保存路径」，**不写英文生图提示词**（生图子 Agent 自行撰写）
+
+  产物回来后 `article_update(id, {cover, images})` 登记相对路径，再 `article_write` 覆盖同一 id 把插图以 `../assets/xxx.png` 插进对应小节（封面不插正文）。用户明确说不要配图才跳过。
+  注意主 Agent 工具面**只有 `design_draw`**，`image_generate` 仅在生图型子 Agent 内，扩散生图必须经 `spawn_agent` 派发。
+- 未登录时扩散生图不可用：配图段落收窄为「用 `design_draw` 画布绘制（无需登录）」单通道，无需再 ask。
 - **侧边栏联动约定（prompt 已强调）**：正文一律 `article_write`，不要用 `file_write` 直写正文文件（侧边栏感知不到）。重写 / 换平台迭代由用户在聊天中直接提出（侧边栏无重写按钮）。
 - 平台差异化模板绑定 type：公众号（钩子标题/小标题/金句加粗）、知乎（观点+案例）、小红书（emoji/短段/话题标签）、其他（通用结构化）。
 - 相对路径约定：正文内图片一律 `../assets/xxx.png`（相对 drafts/），禁止绝对路径，保证导出可移植。

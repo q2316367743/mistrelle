@@ -105,6 +105,14 @@ handler 只作占位并返回「应由引擎拦截处理」。
 - **不做登录门控**：纯本地绘制，消耗的是用户自己的聊天模型额度，与是否登录无关
   （对比 `image_generate` 需登录，因其走服务端生图并扣积分）。
 
+### 文章场景：配图前先定方式
+
+文章场景主 Agent 的工具面里只有 `design_draw`——**不持有** `image_generate`（后者仅在生图型
+子 Agent 的能力面内，需经 `spawn_agent(type="image")` 派发）。据此 `articlePrompt.ts` 的配图段落
+（步骤 5）要求：用户本轮已明确指定方式就直接采用，**未指定时先用 `ask` 询问一次**，在
+「画布绘制（`design_draw`）」与「扩散生图（生图型子 Agent）」间二选一，再按选择走对应通道。
+未登录时扩散生图不可用，该段落收窄为仅画布绘制单通道、不再询问。
+
 > ⚠️ **不注册进 `toolGroups` / `toolMap`**：若注册，`toolRegistry` 第③层「执行期兜底」会让设计创意等
 > 未注入场景的模型凭历史记忆幻觉调用 `design_draw` 并静默复装，破坏「design 不注入」的决策。
 > `image_generate` 同样只走 ChatTypeConfig 注入、不入 registry，两者口径一致。
