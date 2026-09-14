@@ -117,6 +117,7 @@ const handleModelSetting = () => {
 
 .ai-select-options {
   height: 240px;
+  width: 200px;
   margin: 8px 0;
   overflow: auto;
   padding: var(--td-pop-padding-m);

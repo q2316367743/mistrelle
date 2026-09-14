@@ -9,6 +9,7 @@
         :assets-dir="assetsDir"
         :locked="humanizing"
         @patch-type="patchType"
+        @patch-article="patchArticle"
         @switch-article="(id: string) => guardAction(() => void selectArticle(id))"
         @switch-type="(t: string) => guardAction(() => void selectType(t))"
         @refresh="handleRefresh"
@@ -122,6 +123,7 @@ const {
   handleSwitchVersion,
   handleRemoveVersion,
   patchType,
+  patchArticle,
   handleReveal,
   flushSave,
   handleRefresh

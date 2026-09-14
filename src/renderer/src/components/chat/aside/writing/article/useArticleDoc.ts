@@ -5,7 +5,10 @@ import {
   destroyArticleStore,
   getArticleStore
 } from '@/windows/main/modules/tool/components/article/articleStore'
-import type { ArticleTypePatch } from '@/windows/main/modules/tool/components/article/articleTypes'
+import type {
+  ArticleTypePatch,
+  ArticleUpdatePatch
+} from '@/windows/main/modules/tool/components/article/articleTypes'
 import { MessageUtil } from '@/utils/modal'
 
 /**
@@ -290,6 +293,13 @@ export const useArticleDoc = (
       .catch(() => MessageUtil.error('类型信息保存失败'))
   }
 
+  /** 文章级元信息写回（标题等），与 AI 工具共享同一响应式实例 */
+  const patchArticle = (patch: ArticleUpdatePatch): void => {
+    const article = activeArticle.value
+    if (!article) return
+    store.value.updateArticle(article.id, patch).catch(() => MessageUtil.error('文章信息保存失败'))
+  }
+
   /** 在文件管理器中显示：选中类型定位到文件，否则打开项目根目录 */
   const handleReveal = (): void => {
     if (activeEntry.value) {
@@ -322,6 +332,7 @@ export const useArticleDoc = (
     handleSwitchVersion,
     handleRemoveVersion,
     patchType,
+    patchArticle,
     handleReveal,
     flushSave,
     handleRefresh: () => void reload()

@@ -17,7 +17,7 @@
         @change="onArticleChange"
       />
       <t-select
-        class="doc-header__type w-100px"
+        class="doc-header__type"
         :value="activeType || undefined"
         :options="typeOptions"
         borderless
@@ -26,11 +26,22 @@
         @change="onTypeChange"
       />
       <t-popup trigger="click" placement="bottom-right" destroy-on-close>
-        <t-button variant="text" shape="square" title="简介与提纲">
+        <t-button variant="text" shape="square" title="标题与文章信息">
           <template #icon><info-circle-icon /></template>
         </t-button>
         <template #content>
           <div class="doc-info-panel">
+            <div class="doc-info-panel__section">
+              <div class="doc-info-panel__label">标题</div>
+              <t-input
+                :value="titleDraft"
+                placeholder="文章标题"
+                @change="onTitleInput"
+                @focus="titleFocused = true"
+                @blur="onTitleBlur"
+                @enter="onTitleEnter"
+              />
+            </div>
             <div class="doc-info-panel__section">
               <div class="doc-info-panel__label">简介</div>
               <p class="doc-info-panel__text" :class="{ 'is-empty': !article.summary }">
@@ -61,7 +72,8 @@
 import { InfoCircleIcon, RefreshIcon } from 'tdesign-icons-vue-next'
 import type {
   ArticleItem,
-  ArticleTypePatch
+  ArticleTypePatch,
+  ArticleUpdatePatch
 } from '@/windows/main/modules/tool/components/article/articleTypes'
 import ArticleCoverThumb from './ArticleCoverThumb.vue'
 
@@ -81,12 +93,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'patch-type', patch: ArticleTypePatch): void
+  (e: 'patch-article', patch: ArticleUpdatePatch): void
   (e: 'switch-article', id: string): void
   (e: 'switch-type', type: string): void
   (e: 'refresh'): void
 }>()
 
-// ─── 标题：select 下拉切换文章（标题只能由 AI 经 article_update 修改） ─
+// ─── 文章：select 下拉切换（标题编辑在 ⓘ 面板内） ───────────────────
 
 const articleOptions = computed(() =>
   props.articles.map((a) => ({ label: a.title || a.id, value: a.id }))
@@ -104,6 +117,49 @@ const typeOptions = computed(() =>
 
 const onTypeChange = (value: unknown): void => {
   if (typeof value === 'string') emit('switch-type', value)
+}
+
+// ─── 标题：简介/提纲面板内直接编辑（本地草稿 + 失焦/回车提交） ────────
+
+const titleDraft = ref('')
+const titleFocused = ref(false)
+
+const syncTitle = (): void => {
+  titleDraft.value = props.article.title ?? ''
+}
+
+// 切换文章时重置草稿；外部（AI 经 article_update）改标题且用户未在编辑时跟随
+watch(
+  () => [props.article.id, props.article.title] as const,
+  () => {
+    if (!titleFocused.value) syncTitle()
+  },
+  { immediate: true }
+)
+
+const onTitleInput = (value: unknown): void => {
+  titleDraft.value = typeof value === 'string' ? value : String(value ?? '')
+}
+
+/** 提交标题：空值不提交（标题为必填且被 AI 当作主题标识），仅回滚草稿 */
+const commitTitle = (): void => {
+  const next = titleDraft.value.trim()
+  if (!next || next === (props.article.title ?? '')) {
+    syncTitle()
+    return
+  }
+  emit('patch-article', { title: next })
+}
+
+const onTitleBlur = (): void => {
+  titleFocused.value = false
+  commitTitle()
+}
+
+/** 回车提交；中文输入法选词回车不提交（IME 组合态） */
+const onTitleEnter = (_value: unknown, context: { e: KeyboardEvent }): void => {
+  if (context.e.isComposing) return
+  commitTitle()
 }
 </script>
 <style scoped lang="less">
@@ -137,6 +193,7 @@ const onTypeChange = (value: unknown): void => {
 
 .doc-header__type {
   flex-shrink: 0;
+  width: 100px;
 }
 
 .doc-info-panel {

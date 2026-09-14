@@ -11,7 +11,13 @@
         </div>
         <div class="cover-pop__actions">
           <t-tooltip content="登录后可使用生图" :disabled="canGenerate">
-            <t-button size="small" variant="text" theme="primary" :disabled="!canGenerate" @click="genCover">
+            <t-button
+              size="small"
+              variant="text"
+              theme="primary"
+              :disabled="!canGenerate"
+              @click="genCover"
+            >
               <template #icon><ai-icon /></template>
               AI 生成
             </t-button>
@@ -20,7 +26,17 @@
             <template #icon><upload-icon /></template>
             上传
           </t-button>
-          <t-button v-if="cover" size="small" variant="text" theme="danger" @click="emit('cover', undefined)">
+          <t-button v-if="cover" size="small" variant="text" theme="primary" @click="copyCover">
+            <template #icon><copy-icon /></template>
+            复制图片
+          </t-button>
+          <t-button
+            v-if="cover"
+            size="small"
+            variant="text"
+            theme="danger"
+            @click="emit('cover', undefined)"
+          >
             <template #icon><delete-icon /></template>
             移除
           </t-button>
@@ -31,7 +47,7 @@
   </t-popup>
 </template>
 <script lang="ts" setup>
-import { AiIcon, DeleteIcon, ImageIcon, UploadIcon } from 'tdesign-icons-vue-next'
+import { AiIcon, CopyIcon, DeleteIcon, ImageIcon, UploadIcon } from 'tdesign-icons-vue-next'
 import type { ArticleItem } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { copyImageToAssets } from '@/windows/main/modules/tool/components/article/imageRef'
@@ -59,7 +75,11 @@ const canGenerate = computed(() => useAuthStore().status === 'signed-in')
 
 /** 登记路径（相对 articles/）→ 展示 URL */
 const assetHref = (rel: string): string =>
-  window.preload.net.pathToHref(window.preload.path.join(window.preload.path.dirname(props.assetsDir), rel))
+  window.preload.net.pathToHref(assetAbsPath(rel))
+
+/** 登记路径（相对 articles/）→ 绝对路径 */
+const assetAbsPath = (rel: string): string =>
+  window.preload.path.join(window.preload.path.dirname(props.assetsDir), rel)
 
 /** 系统选图 → 拷入 assets → 上抛设置封面 */
 const uploadCover = async (): Promise<void> => {
@@ -74,6 +94,18 @@ const uploadCover = async (): Promise<void> => {
     emit('cover', `assets/${window.preload.path.basename(absPath)}`)
   } catch {
     MessageUtil.error('图片复制失败')
+  }
+}
+
+/** 复制封面图片文件到系统剪贴板（main 侧按路径 nativeImage 读盘） */
+const copyCover = async (): Promise<void> => {
+  if (!props.cover) return
+  try {
+    const ok = await window.preload.inject.clipboard.copyImageByPath(assetAbsPath(props.cover))
+    if (ok) MessageUtil.success('封面已复制，可直接粘贴')
+    else MessageUtil.error('复制失败：封面文件不存在或不是有效图片')
+  } catch {
+    MessageUtil.error('复制封面失败')
   }
 }
 
@@ -146,6 +178,7 @@ const genCover = (): void =>
   &__actions {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 4px;
   }
 

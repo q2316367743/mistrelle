@@ -3,11 +3,12 @@
 > writing 侧边栏按「大类型（chatType）→ 小类型（writingScene）」两层拆分组件。article 子场景定位为**以文档为中心的写作工作台**：一个聊天 = 一篇文章（主题），文章下可有多个「类型」（发布平台），每个类型独立的版本序列；正文恒可编辑，AI 写完自动呈现，版本是文档演进史（时间线），配图直接插进正文。
 
 2026-09-13 彻底重构（旧版「文章管理器」形态的文章下拉 / 配图 Tab / 风格 Tab / 版本 chips 已废弃）；同日二次迭代：**类型 = 发布平台**，每类型独立版本，风格/体裁维度整体删除（含「深度长文」），旧数据不迁移。同日三次迭代（用户拍板）：**状态字段整体删除**（无作用）、**类型改由 AI 设定**（自由命名、标题+类型唯一，用户端仅查看/切换，删除「添加类型」入口）、**刷新外显**为头部按钮（移出更多菜单）。
-2026-09-14 迭代：**单元模型**（「标题+类型+版本」= 唯一单元、版本 id 即单元标识，见 02 号文档）——AI 写入/读取只认单元 id，侧边栏 `loadContent` 改按激活版本 id 调 `readArticle`；版本号显式化（`ArticleVersion.no`，时间线标签不再按数组索引推算）；头部新增**简介/提纲下拉面板**（信息按钮 + t-popup，只读，由 AI 经 `article_update` 维护——此前 summary/outline 落库但无任何展示位）。
+2026-09-14 迭代：**单元模型**（「标题+类型+版本」= 唯一单元、版本 id 即单元标识，见 02 号文档）——AI 写入/读取只认单元 id，侧边栏 `loadContent` 改按激活版本 id 调 `readArticle`；版本号显式化（`ArticleVersion.no`，时间线标签不再按数组索引推算）；头部新增**简介/提纲下拉面板**（信息按钮 + t-popup，由 AI 经 `article_update` 维护——此前 summary/outline 落库但无任何展示位）。
+**标题可编辑（2026-09-14）**：面板顶部新增**标题项（t-input）**，用户可直接改标题（本地草稿，失焦/回车提交，中文输入法组合态不提交，空标题不提交并回滚）。这**推翻了此前「标题用户不可修改、仅 AI 可改」的六轮拍板**——摘要/提纲仍只读、由 AI 维护。写回走新增的 `store.updateArticle(id, {title})`（按文章 id 寻址，见 02 号文档）。
 
 ## 设计原则（重构拍板）
 
-- **文档即主界面**：头部直接呈现文档——**标题位 = t-select 下拉切换文章**（六轮拍板：标题用户不可修改，只能让 AI 调 `article_update` 改，用户端标题编辑能力已删）；类型同样 AI 专属设定，旁侧下拉切换。
+- **文档即主界面**：头部直接呈现文档——**标题位 = t-select 下拉切换文章**（六轮拍板：标题用户不可修改，只能让 AI 调 `article_update` 改；**2026-09-14 推翻**：标题改在 ⓘ 面板内用 t-input 直接编辑，头部 t-select 仍只负责切换文章）；类型同样 AI 专属设定，旁侧下拉切换。
 - **类型 = 平台，AI 专属设定**：类型名是自由字符串（推荐 公众号/知乎/小红书 等，仅提示词层面引导），由 AI 经 article_write 自动创建；头部类型 tag 组只读展示 + 点击切换（active 高亮），无添加/删除入口。
 - **无状态维度**：status 字段已从数据模型、AI 工具（article_update）、UI 三处整体删除，旧数据读时剔除。
 - **恒可编辑**：窄栏 / 全屏共用同一套布局，编辑器始终 editable（仅去 AI 味流式期间锁定）。
@@ -26,8 +27,8 @@ src/components/chat/aside/writing/
     ├── useArticleDoc.ts             # 数据层：store 共享、自动联动（id diff + contentRevs + mtime 轮询）、类型/正文/版本读写、元信息
     ├── useArticleAssist.ts          # 去 AI 味动作编排（按类型产出 humanize 新版本，流式期间 suspended 锁定）
     └── components/
-        ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select 切换）+ 简介提纲信息面板（t-popup，只读）+ 刷新按钮
-        ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 移除，16:9）
+        ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章）+ 类型下拉（t-select 切换）+ 信息面板（t-popup：标题可编辑 t-input + 简介/提纲只读）+ 刷新按钮
+        ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 复制图片 / 移除，16:9）
         ├── ArticleToolbar.vue       # 工具栏：版本下拉触发 + 格式按钮（B/I/H2/列表/引用）+ 插图 / 生图
         ├── ArticleVersionPanel.vue  # 版本时间线：t-timeline 倒序（第N版·来源），点击即切换，hover 删除
         ├── ArticleDocActions.vue    # 底部动作条：左组 = AI 检测 / 文件夹 / 去 AI 味（或停止）/ 复制；右侧 = N 字
@@ -47,7 +48,7 @@ src/components/chat/aside/writing/
 ## 布局（窄栏 / 全屏统一）
 
 ```
-Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章；标题仅 AI 可改）+ 类型下拉（t-select，AI 设定后在此切换）+ 信息ⓘ（简介/提纲下拉面板，只读）+ 刷新⟳
+Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章）+ 类型下拉（t-select，AI 设定后在此切换）+ 信息ⓘ（标题可编辑 + 简介/提纲只读）+ 刷新⟳
 工具栏（第N版·来源 ▾ │ B I H2 列表 引用 │        插图 生图）
 tiptap 编辑器（flex:1，恒可编辑）
 底部动作条（AI 检测 · 文件夹 · 去AI味/停止 · 复制 ·        N 字）
@@ -80,7 +81,8 @@ tiptap 编辑器（flex:1，恒可编辑）
 
 ## 封面与插图（随类型走）
 
-- **封面（ArticleCoverThumb）**：头部 56px 缩略位（固定 16:9），t-popup 内 AI 生成 / 上传 / 移除；`cover` 为类型级字段，变更经 `patchType({ cover })`。
+- **封面（ArticleCoverThumb）**：头部 56px 缩略位（固定 16:9），t-popup 内 AI 生成 / 上传 / 复制图片 / 移除（仅已有封面时显示后两者）；`cover` 为类型级字段，变更经 `patchType({ cover })`。
+  - **复制图片**：走 `clipboard.copyImageByPath(绝对路径)`（main 侧 `nativeImage.createFromPath` + `clipboard.writeImage`）——把封面**图片本体**写入系统剪贴板，可直接粘进微信 / 文档；与「复制路径」语义不同，用 `copyImage` 而非 `copyFile`（后者是文件引用，粘贴为文件而非图像）。
 - **插图（工具栏）**：「插图」= 系统选图 → `copyImageToAssets` → `resolveAssetRel`（相对 md 目录）→ 插入 + 归一为 `assets/{文件名}` 登记进当前类型 `images[]`（去重）；「生图」= `openImageGen`（直出接口 `image.generate record:false`，落 `assets/`，封面横版/插图方形默认尺寸）成功后自动插入并登记；正文粘贴 / 拖入图片（编辑器内置）同样落盘并 emit `image-added` 登记。
 - **⚠️ 插图生图以「选中文字」为前提（2026-09-14 用户拍板）**：
   - **未选中文字时「生图」按钮禁用**，tooltip 提示「请先选中要配图的文字」；选中后解除禁用，tooltip 变「根据选中文字生图」。

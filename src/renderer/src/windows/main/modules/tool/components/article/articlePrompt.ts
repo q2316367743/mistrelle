@@ -36,7 +36,7 @@ export const buildArticleScenePrompt = (): string =>
     '- 一篇文章 = 一个主题（标题 + 摘要 + 提纲）；「标题 + 类型（发布平台）+ 版本号」构成唯一单元，单元 id 是写入 / 读取的唯一凭证',
     '- 类型由你设定（自由命名，如公众号 / 知乎 / 小红书 / 视频号等），同一文章内唯一；每个类型下有各自的版本序列（第 1 版、第 2 版…）',
     '- article_create 创建单元并返回 id；article_write / article_read / article_stats 只需 id，无需传类型',
-    '- 用户侧边栏可查看与切换类型 / 版本，但不能修改；标题 / 摘要 / 提纲由你经 article_update 维护',
+    '- 用户侧边栏可查看与切换类型 / 版本，但不能新增或删除；标题用户可直接在侧边栏「简介与提纲」面板修改，摘要 / 提纲由你经 article_update 维护',
     '',
     '### 项目结构',
     '- 文章项目根目录：articles/（有用户工作空间时在 {工作空间}/articles/，否则在沙盒 outputs/articles/）',

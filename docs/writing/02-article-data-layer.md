@@ -3,6 +3,7 @@
 > 文章创作场景的数据层：结构化索引（project.json）+ 正文（drafts/*.md）+ 配图（assets/），以 article_* 工具驱动，store 与侧边栏共享响应式。
 > **模型（2026-09-13，schema=2；同日三次迭代）**：一篇文章 = 一个主题，可有多个「类型」（发布平台，AI 自由命名，标题+类型唯一）；每个类型拥有独立的版本序列与正文。**status 字段已整体删除**（用户拍板无作用，旧数据读时剔除不迁移）；类型由 AI 设定，用户端只能查看与切换。旧结构不迁移（读时 types 置空，AI 重建）。
 > **单元模型（2026-09-14，用户拍板）**：**「标题 + 类型 + 版本」= 唯一单元，版本 id 即单元标识**——`article_create` 创建单元返回 id，`article_write` / `article_read` / `article_stats` / `article_update` / `article_remove` 只认 id（不传 type）；新建版本返回新 id，后续写入新 id。`ArticleVersion.no` 为显式版本号（删除中间版本不影响既有编号）。
+> **标题可用户编辑（2026-09-14 变更）**：此前「标题用户不可修改、仅 AI 经 article_update 改」，现改为**用户可在侧边栏 ⓘ 面板直接改标题**（`updateArticle(id, {title})`）。摘要 / 提纲仍由 AI 维护。注意 `createArticle` 仍按标题找/建文章，用户改名后 AI 须以 `article_list` 的最新标题为准，否则会新建一篇文章。
 
 ## 目录结构
 
@@ -72,7 +73,8 @@ interface ArticleProject { schema: 2; title: string; updatedTime: number; articl
 - 每次变更自动落盘 project.json，重启聊天可恢复。
 - `contentRevs`：内存 reactive `Map<"${id}::${type}", number>`（不落盘）——`writeContent` 写入后递增，侧边栏 watch 即时重读（详见 03 号文档「数据流与自动联动」）。
 - 文章级方法：`init` / `createArticle`（**创建「标题+类型+版本」单元**：按标题找/建文章、按类型找/建条目（缺省「其他」）、版本号缺省自动（新条目=1、已有条目=最新 no+1，同号已存在幂等复用返回已有 id），返回 `{id, title, type, version}`）/ `updateUnit`（按单元 id 更新：title/summary/outline 文章级、cover/images 类型级）/ `removeArticle`（按单元 id 解析所属文章，删除登记 + **全部类型全部版本** md 文件）。
-- 类型级方法：`updateType`（cover/images，类型不存在自动创建；侧边栏 patchType 用）。`addType` / `updateArticle` 已删（前者用户端不新增类型；后者被 `updateUnit` 取代）。
+- 类型级方法：`updateType`（cover/images，类型不存在自动创建；侧边栏 patchType 用）。`addType` 已删（用户端不新增类型）。
+- `updateArticle(id, patch)`：**按文章 id 寻址**更新文章级字段（title/summary/outline），侧边栏标题编辑走它（2026-09-14 加回，与 `updateUnit` 并存——`updateUnit` 要求版本单元 id，无类型的旧文章没有版本单元，改不了标题）。
 - 单元方法（按版本 id）：`writeContent(id, content, asNewVersion?)`（**AI 写正文主通道**）、`readArticle(id)`（侧边栏 loadContent 也走它）、`countWords(id)`（回写 version.words，激活版本同步 entry.words）。
 - 版本方法（articleId + type，侧边栏用）：`createVersion` / `switchVersion` / `removeVersion`（至少保留 1 个；删激活版本回落最后一个）/ `patchVersion`。
 - `resolveVersion(id)`（私有）：全项目按版本 id 解析 `{article, entry, version}`，找不到抛错提示 article_list；`writeContent` / `readArticle` / `countWords` / `updateUnit` / `removeArticle` 均经它寻址。

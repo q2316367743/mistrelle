@@ -304,6 +304,18 @@ export class ArticleStore {
     return { ...articlePatch, ...typePatch }
   }
 
+  /**
+   * 更新文章级信息（标题 / 摘要 / 提纲；按文章 id 寻址）。
+   * 侧边栏标题编辑走这里：无类型的旧文章没有版本单元，不能经 updateUnit 寻址。
+   */
+  async updateArticle(id: string, patch: ArticleUpdatePatch): Promise<ArticleItem> {
+    const project = await this.refresh()
+    const item = this.requireArticle(project, id)
+    Object.assign(item, patch)
+    await this.persist(project)
+    return item
+  }
+
   /** 更新类型级信息（封面 / 配图；类型不存在自动创建） */
   async updateType(id: string, typeInput: string, patch: ArticleTypePatch): Promise<ArticleTypeEntry> {
     const project = await this.refresh()
