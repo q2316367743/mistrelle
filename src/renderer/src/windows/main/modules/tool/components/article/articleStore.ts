@@ -77,6 +77,10 @@ export class ArticleStore {
   /**
    * 刷新项目索引：project.json 不存在时自动创建空项目并落盘（幂等）。
    * 侧边栏挂载 / 工具首次调用时执行。
+   *
+   * ⚠️ 返回 `this.project.value`（reactive 代理）而非磁盘解析出的 raw 对象：本类写方法都是
+   * 「refresh() → 就地改 → persist」模式，拿到 raw 时 `Object.assign(entry, patch)` 只落在
+   * raw target 上、不触发响应式，侧边栏读到的仍是旧值（封面 / 配图不刷新，需重开页面）。
    */
   async refresh(): Promise<ArticleProject> {
     const path = buildProjectPath(this.root)
@@ -86,7 +90,7 @@ export class ArticleStore {
         if (parsed && Array.isArray(parsed.articles)) {
           if (this.normalizeProject(parsed)) await this.persist(parsed)
           this.project.value = parsed
-          return parsed
+          return this.project.value
         }
       } catch {
         // 解析失败（损坏 / 旧格式）落到重建
@@ -95,7 +99,7 @@ export class ArticleStore {
     const project = emptyProject()
     this.project.value = project
     await this.persist(project)
-    return project
+    return this.project.value
   }
 
   /**

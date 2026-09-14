@@ -4,6 +4,8 @@
  * 才注入生图增强规则，避免出现「提示词提到 image_generate、工具却未注入」的错配。
  * 其余完整规则（风格 / 构图 / 字体 / 操作 / 工作流）由 canvas_guidelines 按需加载。
  */
+import { buildSceneImageGenerateRules } from '@/windows/main/modules/tool/components/design/imageGenerateRules'
+
 const DESIGN_CANVAS_BEFORE_VISUAL = [
   '## 设计创意模式',
   '你是资深平面设计师，用图层树画布（canvas_* 工具）创作海报、封面、书籍封面、专辑封面、社媒配图等设计作品。',
@@ -51,13 +53,11 @@ const MAIN_VISUAL_STRATEGY_BASE = [
   '- 规划构图时先定主视觉来源再进构建：真实素材 → 几何图形，避免构建到一半发现没图可放、只能用文字填空。'
 ]
 
-/** 生图增强规则：仅当用户已登录（image_generate 工具已注入）时追加 */
-const IMAGE_GENERATE_RULES = [
-  '### 主视觉来源策略（生图增强，已登录可用生图工具）',
-  '- 无真实素材的插画 / 人物 / 场景 / 纹理 / 抽象视觉 → **用 image_generate(prompt, path?) 生成**（已登录，工具可用），把返回的本地 path 填进 image 节点 imageUrl；生成失败或服务不可用时才回退 stock / placeholder / 几何图形组合。',
-  '- 多个生图素材合并成一张 sprite 图一次生成、再用 image_crop 切分（省钱规范见 canvas_guidelines("image-generation")）；生图失败时如实告知用户，不反复重试。',
-  '- **生图产物带不透明背景色（多为白底，模型不支持真透明）**：需要透明底素材时，用 image_remove_background(path) 去除背景（从边缘清除连续白底，产出带 alpha 的 PNG）后，再把去背景后的 path 填进画布；禁止把带白底的图直接盖在深色 / 彩色背景上。'
-]
+/** 生图增强规则：仅当用户已登录（image_generate 工具已注入）时追加（与 HTML 引擎 / 生图子 Agent 同源） */
+const IMAGE_GENERATE_RULES = buildSceneImageGenerateRules(
+  'image 节点 imageUrl',
+  'canvas_guidelines'
+)
 
 /** 文案去 AI 味规则：仅当用户已登录（humanize_text 工具已注入）时追加 */
 const HUMANIZE_RULES = [

@@ -10,7 +10,7 @@
 articles/                       # 项目根：{workspace}/articles/（有工作空间）或 {sandbox}/outputs/articles/
 ├── project.json                # 项目管理索引（结构化，schema=2）
 ├── drafts/                     # 正文 .md（drafts/{id}.md 或 drafts/{id}-{nanoid}.md，每类型每版本一个文件）
-└── assets/                     # 配图（design 子 Agent 导出于此）
+└── assets/                     # 配图（生图型子 Agent 产物 / 用户上传均落于此）
 ```
 
 ## 数据模型（articleTypes.ts）
@@ -65,6 +65,10 @@ interface ArticleProject { schema: 2; title: string; updatedTime: number; articl
 
 - 按 **root 键控** 的全局单例（`getArticleStore(root)`），工具与侧边栏共享同一响应式实例（仿 CanvasStore）。
 - `refresh()` 幂等：project.json 不存在时自动创建空项目落盘；解析后执行读时归一化（含旧结构清退）。
+- **⚠️ `refresh()` 必须返回 `this.project.value`（reactive 代理），不能返回磁盘解析出的 raw 对象**：本类写方法统一是「refresh() → 就地改 → persist」模式，
+  拿到 raw 时 `Object.assign(entry, patch)` 只落在 raw target 上、**不触发响应式**，侧边栏读到的仍是旧值。
+  症状签名：封面 / 配图更新后界面不刷新，**重开页面（重新读盘）才出现**；正文不受影响是因为它另走 `contentRevs` 这条独立 `reactive` 通道。
+  （`refresh()` 内 `this.project.value = parsed` 本身会触发一次重渲染，但发生在改动之前、数据还是旧的，不能代替代理写入。）
 - 每次变更自动落盘 project.json，重启聊天可恢复。
 - `contentRevs`：内存 reactive `Map<"${id}::${type}", number>`（不落盘）——`writeContent` 写入后递增，侧边栏 watch 即时重读（详见 03 号文档「数据流与自动联动」）。
 - 文章级方法：`init` / `createArticle`（**创建「标题+类型+版本」单元**：按标题找/建文章、按类型找/建条目（缺省「其他」）、版本号缺省自动（新条目=1、已有条目=最新 no+1，同号已存在幂等复用返回已有 id），返回 `{id, title, type, version}`）/ `updateUnit`（按单元 id 更新：title/summary/outline 文章级、cover/images 类型级）/ `removeArticle`（按单元 id 解析所属文章，删除登记 + **全部类型全部版本** md 文件）。
@@ -93,17 +97,29 @@ interface ArticleProject { schema: 2; title: string; updatedTime: number; articl
 
 ## 创作工作流 prompt（articlePrompt.ts）
 
-- 流程：`article_init` → 选题 → `article_create`（标题+类型+版本，拿单元 id）→ `article_write`（id + content）正文（首次直接覆盖）→ 修改：默认覆盖同 id、要保留原稿 `newVersion=true` 拿新 id 后续写新 id → 追加平台版：`article_create` 同标题 + 新类型（版本 1）拿新 id（先 `article_read` 已有版本保持选题一致）→ `spawn_agent(type=design)` 配图 → `article_update(id, cover/images)` 登记 → `article_stats(id)` 收尾。
+> **2026-09-14 迭代**：配图改走**生图型子 Agent**，且「定稿后必配」。
+> 提示词由静态串改为工厂 `buildArticleScenePrompt()`——仅「配图」段落随登录态动态组装
+> （未登录替换为登录引导），保证提示词提到的能力与实际注入的工具一致。
+
+- 流程：`article_init` → 选题 → `article_create`（标题+类型+版本，拿单元 id）→ `article_write`（id + content）正文（首次直接覆盖）→ 修改：默认覆盖同 id、要保留原稿 `newVersion=true` 拿新 id 后续写新 id → 追加平台版：`article_create` 同标题 + 新类型（版本 1）拿新 id（先 `article_read` 已有版本保持选题一致）→ **配图（必做）** → `article_stats(id)` 收尾。
+- **配图工作流（登录后）**：先 `spawn_agent(type="image")` 生成封面 1 张（16:9，突出主题）+ 正文按小节 2~4 张插图（1:1，贴合各节）；
+  task 里只写「用途 + 内容要点 + 建议尺寸 + 产物绝对保存路径（`{文章项目根}/assets/` 下）」，**不写英文生图提示词**（生图子 Agent 自行撰写）；
+  产物回来后 `article_update(id, {cover, images})` 登记相对路径，再 `article_write` 覆盖同一 id 把插图以 `../assets/xxx.png` 插进对应小节（封面不插正文）。
+  用户明确说不要配图才跳过。
+- 未登录时配图段落替换为一句「登录后可配图」引导（生图由服务端提供，无法离线生成）。
 - **侧边栏联动约定（prompt 已强调）**：正文一律 `article_write`，不要用 `file_write` 直写正文文件（侧边栏感知不到）。重写 / 换平台迭代由用户在聊天中直接提出（侧边栏无重写按钮）。
 - 平台差异化模板绑定 type：公众号（钩子标题/小标题/金句加粗）、知乎（观点+案例）、小红书（emoji/短段/话题标签）、其他（通用结构化）。
 - 相对路径约定：正文内图片一律 `../assets/xxx.png`（相对 drafts/），禁止绝对路径，保证导出可移植。
 
 ## 接入点
 
-- `writingScene.ts`：`article.prompt = ARTICLE_SCENE_PROMPT`；`article.tools = createArticleTools`。
+- `global/ChatTypeConfig.ts`：`WRITING_SCENE_CONFIG.article.prompt = (ctx) => buildArticleScenePrompt()`（**工厂**，与其他场景提示词同款）；
+  `article.tools = createArticleTools`；同文件 `SUB_AGENT_TOOL_CONFIG.image` 注册生图子 Agent 工具集。
 - `chatType.ts`：`ChatTypeToolContext` 新增 `getWorkspace`（文章项目优先落工作空间）。
 - `AgentChat.ts`：`typeToolsContext()` 统一构造 ctx（getSandboxDir / getWorkspace / writingScene）。
+- `agentPrompts.buildTypePromptBody`：writing 分支改为调用场景提示词工厂 `WRITING_SCENE_CONFIG[scene].prompt(ctx.typeTools)`。
 
 ## 关键文件
 
 - `src/modules/tool/components/article/articleTypes.ts` / `articleStore.ts` / `articleTools.ts` / `articlePrompt.ts`
+- `src/modules/tool/components/article/articleImagePrompt.ts`（侧边栏弹窗的 AI 代写生图描述，见 03 号文档）

@@ -4,6 +4,7 @@
       <article-cover-thumb
         :cover="entry?.cover"
         :assets-dir="assetsDir"
+        :article="article"
         :locked="locked"
         @cover="(rel) => emit('patch-type', { cover: rel })"
       />

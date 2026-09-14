@@ -6,6 +6,7 @@ import type { ResolvedChatRequestParams } from '@/windows/main/modules/chat'
 import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
 import { CHAT_TYPE_CONFIG, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
 import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
+import { isSceneToolsOnlyAgent, type SubAgentType } from '@/windows/main/modules/subagent/types'
 import { localSkillList, buildSkillCatalogPrompt } from '@/windows/main/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
 import { buildMemoryPrompt, buildMemoryToolPrompt } from '@/windows/main/modules/memory'
@@ -25,6 +26,8 @@ export interface PromptContext {
   messages: Ref<ChatMessage[]>
   systemPrompt: string
   isSubAgent: boolean
+  /** 子 Agent 能力类型（「仅场景工具」型据此裁剪 skill 目录 / 工具集合目录 / todo 指导） */
+  subAgentType?: SubAgentType
   privacy: boolean
   mode: AiChatMode
   chatType: ChatType
@@ -156,7 +159,7 @@ const buildTypePromptBody = (ctx: PromptContext): string => {
     return [base, ctx.designStylePrompt].filter(Boolean).join('\n\n')
   }
   if (ctx.chatType !== 'writing') return base
-  const scenePrompt = WRITING_SCENE_CONFIG[ctx.writingScene].prompt
+  const scenePrompt = WRITING_SCENE_CONFIG[ctx.writingScene].prompt(ctx.typeTools)
   return scenePrompt ? [base, scenePrompt].filter(Boolean).join('\n\n') : base
 }
 
@@ -214,12 +217,20 @@ export const buildAgentRequestMessages = async (
 ): Promise<BuiltRequestMessages> => {
   const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
   const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
+  // 「仅场景工具」型子 Agent（生图型）：工具面封闭在专用集内，不注入 skill 目录 / 可选工具集合目录 /
+  // 记忆与 todo 指导——这些提示词只会诱导它去调用并不存在的工具，纯属噪音
+  const sealedSurface = isSceneToolsOnlyAgent(ctx.subAgentType)
   // 被禁用的 skill 不注入目录（模型不可见即不会调用 load_skill），SkillLocal 管理页仍可见全量
   const skillStore = useSettingSkillStore()
-  const skills = (await localSkillList()).filter((e) => skillStore.isSkillEnabled(e))
+  const skills = sealedSurface
+    ? []
+    : (await localSkillList()).filter((e) => skillStore.isSkillEnabled(e))
   const catalogPrompt = buildSkillCatalogPrompt(skills)
   const workspacePrompt = buildWorkspacePromptBody(ctx.sandboxDir, ctx.workspace)
-  const settings = await buildWorkspaceSettingsPromptBody(ctx.workspace, settingsCache)
+  // 工作空间设定文件（AGENTS.md 等项目约定）对生图任务无关，封闭能力面下不注入
+  const settings = sealedSurface
+    ? { prompt: '', cache: settingsCache }
+    : await buildWorkspaceSettingsPromptBody(ctx.workspace, settingsCache)
   // 个性化设定（soul/*.md，用户手编、极少变化 → 稳定可缓存；子 Agent 任务作用域不注入）
   const personalizePrompt = ctx.isSubAgent ? '' : await buildPersonalizePrompt(ctx.chatType)
   // system 前缀保持稳定的可缓存内容；skill 正文由 load_skill 工具按需在对话中加载，不进 system
@@ -229,8 +240,8 @@ export const buildAgentRequestMessages = async (
     personalizePrompt,
     catalogPrompt,
     // 可选工具集合目录（静态可缓存）：配合 load_tool_collection 实现按需整组装载
-    buildToolCatalogPrompt(),
-    buildTodoPrompt(),
+    sealedSurface ? '' : buildToolCatalogPrompt(),
+    sealedSurface ? '' : buildTodoPrompt(),
     workspacePrompt,
     settings.prompt,
     // 聊天类型固定提示词 + writing 子场景提示词（类型与场景创建后锁定 → 前缀稳定可缓存；子 Agent 只读，无需类型指导）

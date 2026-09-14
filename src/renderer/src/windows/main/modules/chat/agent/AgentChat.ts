@@ -8,6 +8,7 @@ import type { DesignScene } from '@/windows/main/modules/chat/designScene'
 import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
 import type { ToolPolicyContext } from '@/windows/main/modules/tool/toolPolicy'
 import { useSettingAiStore } from '@/windows/main/store'
+import type { SubAgentType } from '@/windows/main/modules/subagent/types'
 import type {
   ChatContext,
   ChatMessageSetterMode,
@@ -56,6 +57,8 @@ export interface UseChatOptions {
   isSubAgent?: boolean
   /** 子 Agent 能力场景（design 型子 Agent 使用，注入画布工具）；主 Agent / research 型子 Agent 不使用 */
   sceneType?: ChatType
+  /** 子 Agent 能力类型（「仅场景工具」型据此切换为封闭的专用工具集） */
+  subAgentType?: SubAgentType
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS；子 Agent 传入更大预算以完成复杂调研 */
   maxSteps?: number
   /** 触顶步数后是否执行最后一次无工具调用强制输出最终总结（子 Agent 使用，避免触顶时只返回截断提示） */
@@ -101,6 +104,8 @@ export class ToolChat {
   readonly isSubAgent: boolean = false
   /** 子 Agent 能力场景（design 型子 Agent 为 'design'，用于注入画布工具）；research 型子 Agent / 主 Agent 缺省 */
   private sceneType?: ChatType
+  /** 子 Agent 能力类型（「仅场景工具」型据此切换为封闭的专用工具集） */
+  private subAgentType?: SubAgentType
   /** 写作子场景（writing 类型内部分层，新建对话时选定，创建后锁定；缺省 article） */
   private writingScene: WritingScene = 'article'
   /** 设计子场景（design 类型的渲染引擎 canvas / html，新建对话时选定，创建后锁定；缺省 canvas） */
@@ -134,6 +139,7 @@ export class ToolChat {
     if (options.chatId) this.chatId = options.chatId
     if (options.isSubAgent) this.isSubAgent = true
     this.sceneType = options.sceneType
+    this.subAgentType = options.subAgentType
     if (options.maxSteps) this.maxSteps = options.maxSteps
     if (options.finalizeOnMaxSteps) this.finalizeOnMaxSteps = true
   }
@@ -175,6 +181,7 @@ export class ToolChat {
       mode: this.mode,
       chatType: this.chatType,
       sceneType: this.sceneType,
+      subAgentType: this.subAgentType,
       typeTools: this.typeToolsContext(),
       todos: this.todos,
       loadedCollections: this.loadedCollections
@@ -187,6 +194,7 @@ export class ToolChat {
       messages: this.messages,
       systemPrompt: this.systemPrompt,
       isSubAgent: this.isSubAgent,
+      subAgentType: this.subAgentType,
       privacy: this.privacy,
       mode: this.mode,
       chatType: this.chatType,
@@ -360,6 +368,9 @@ export class ToolChat {
     if (!this.isSubAgent) {
       ctx.allowedDirs = [...this.allowedDirs.value]
       ctx.onAllowDir = (dir: string) => this.allowDir(dir)
+    } else {
+      // 子 Agent 无交互桥：需审批的调用直接自动拒绝（不进 awaitDecision 等待）
+      ctx.denyOnAsk = true
     }
     return ctx
   }

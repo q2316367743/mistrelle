@@ -21,6 +21,7 @@
         :streaming-version-id="streamingVersionId"
         :assets-dir="assetsDir"
         :base-dir="activeMdDir"
+        :has-selection="!!selection"
         @format="handleFormat"
         @insert="handleInsertImage"
         @gen-image="handleGenImage"
@@ -37,6 +38,7 @@
         :assets-dir="assetsDir"
         @change="handleContentChange"
         @image-added="handleImageAdded"
+        @selection-change="(text: string) => (selection = text)"
       />
       <article-doc-actions
         v-if="activeEntry"
@@ -68,6 +70,7 @@
 import { MessageUtil } from '@/utils/modal'
 import { copyText, openUrlByBrowser } from '@/utils/native'
 import { resolveAssetRel } from '@/windows/main/modules/tool/components/article/imageRef'
+import type { ArticleImageContext } from '@/windows/main/modules/tool/components/article/articleImagePrompt'
 import { useArticleDoc } from './useArticleDoc'
 import { useArticleAssist } from './useArticleAssist'
 import ArticleDocHeader from './components/ArticleDocHeader.vue'
@@ -82,6 +85,8 @@ const ZHUQUE_DETECT_URL = 'https://matrix.tencent.com/ai-detect/ai_gen_txt'
 /** 编辑器实例命令面（ArticleEditor defineExpose） */
 type EditorApi = {
   insertImage: (rel: string) => void
+  /** 读取当前选区文本（无选区返回空串） */
+  getSelection: () => string
   toggleBold: () => void
   toggleItalic: () => void
   toggleHeading2: () => void
@@ -145,6 +150,8 @@ const {
 watch(humanizing, (v) => (suspended.value = v), { immediate: true })
 
 const editorRef = ref<EditorApi | null>(null)
+/** 编辑器当前选中的正文文本（空 = 未选中，插图生图禁用） */
+const selection = ref('')
 
 const editorKey = computed(() => `${activeId.value}:${activeType.value}:${activeVersionId.value}`)
 const liveWords = computed(() => content.value.replace(/\s+/g, '').length)
@@ -179,12 +186,27 @@ const handleInsertImage = (rel: string): void => {
   registerImage(rel)
 }
 
+/**
+ * 插图语境：以**用户选中的文字**为核心（要插图的正是这段内容），另附文章标题 / 摘要 / 提纲作背景。
+ * 刻意不传正文全文——会让模型画成泛泛的「全文配图」而非这一段。无选中时按钮本就禁用，不会走到这里。
+ */
+const buildImageContext = (): ArticleImageContext => {
+  const article = activeArticle.value
+  return {
+    title: article?.title,
+    summary: article?.summary,
+    outline: article?.outline,
+    selection: selection.value || editorRef.value?.getSelection() || undefined
+  }
+}
+
 /** AI 生成插图：产物落 assets/ 后插入光标处并登记 */
 const handleGenImage = (): void => {
   if (!activeEntry.value) return
   openArticleImageGen({
     kind: 'image',
     assetsDir: assetsDir.value,
+    context: buildImageContext(),
     onSuccess: (absPath) => {
       const rel = resolveAssetRel(activeMdDir.value, absPath)
       handleInsertImage(rel)

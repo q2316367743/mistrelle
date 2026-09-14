@@ -73,11 +73,11 @@
         <template #icon><image-add-icon /></template>
         插图
       </t-button>
-      <t-tooltip content="登录后可使用生图" :disabled="canGenerate">
+      <t-tooltip :content="genImageTooltip">
         <t-button
           size="small"
           variant="text"
-          :disabled="humanizing || !canGenerate"
+          :disabled="humanizing || !canGenerate || !hasSelection"
           @click="emit('gen-image')"
         >
           <template #icon><ai-image-icon /></template>
@@ -114,6 +114,8 @@ const props = defineProps<{
   assetsDir: string
   /** 当前文章 md 所在目录（相对引用计算基准） */
   baseDir: string
+  /** 编辑器是否有选中文字（生图以选中内容为依据，未选中则禁用） */
+  hasSelection?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -127,6 +129,17 @@ const emit = defineEmits<{
 
 /** 生图门控：登录即可用（直出接口，积分由服务端扣减） */
 const canGenerate = computed(() => useAuthStore().status === 'signed-in')
+
+/**
+ * 生图提示：未选中时提示先选文字（按钮禁用），选中后说明「据选中文字生图」。
+ * 生图以选中内容为唯一依据——没有选中就无从确定画什么、插到哪，故不给兜底。
+ */
+const genImageTooltip = computed(() => {
+  if (!canGenerate.value) return '登录后可使用生图'
+  if (props.humanizing) return '正在改写中，暂不可生图'
+  if (!props.hasSelection) return '请先选中要配图的文字'
+  return '根据选中文字生图'
+})
 
 /** 系统选图 → 拷入 assets → 插入光标处 */
 const uploadImage = async (): Promise<void> => {

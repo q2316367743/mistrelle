@@ -20,6 +20,12 @@ export interface ToolPolicyContext {
   privacy?: boolean
   /** 是否为子 Agent（只读 · 无交互桥）：只读 shell 命令自动放行，需审批的操作会被禁用交互桥自动拒绝 */
   isSubAgent?: boolean
+  /**
+   * 无审批通道时「需审批即拒绝」：置位后裁决为 ask 的调用不进交互桥等待，直接以
+   * 「无审批通道，已自动拒绝」收场（子 Agent 恒置位——其交互桥本就禁用，ask 永远无法被作答）。
+   * 与「用户拒绝」文案区分：前者是能力面限制，后者是用户主动否决。
+   */
+  denyOnAsk?: boolean
   /** 当前聊天类型（用于 spawn_agent 按能力矩阵校验子 Agent 类型） */
   chatType?: ChatType
   /** 当前请求的 AbortSignal（主 Agent 终止时级联到子 Agent） */

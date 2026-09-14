@@ -4,20 +4,29 @@ import type { ChatType } from '@/windows/main/modules/chat/chatType'
  * 子 Agent 能力类型：
  * - research：调研型（默认，只读调研 / 分析，返回结构化摘要）
  * - design：设计型（画布创作配图 / 设计稿，产物落盘到可信区）
+ * - image：生图型（只做文生图，任务描述进来自行撰写生图提示词并落盘，无调研 / 设计能力）
  */
-export type SubAgentType = 'research' | 'design'
+export type SubAgentType = 'research' | 'design' | 'image'
 
 /**
  * 子 Agent 能力矩阵（单一数据源）：各聊天类型允许派发的子 Agent 类型。
  * - 日常办公 / 设计创意：仅调研型（样式产物走各自工具直管，子 Agent 不重复）
- * - 写作：调研型 + 设计型（文章配图走 design 型子 Agent）
+ * - 写作：调研型 + 设计型（设计稿）+ 生图型（文章封面 / 配图走最小能力面的生图通道）
  * 新增聊天类型或能力类型只需改这里。
  */
 export const SUB_AGENT_ALLOW: Record<ChatType, ReadonlyArray<SubAgentType>> = {
   office: ['research'],
   design: ['research'],
-  writing: ['research', 'design']
+  writing: ['research', 'design', 'image']
 }
+
+/**
+ * 是否为「仅场景工具」型子 Agent：这类子 Agent 的工作面就是一组固定的能力工具
+ * （如生图型的 image_generate + 图片处理），不注入任何默认常驻能力
+ * （记忆 / todo / ask / shell / 文件 / skill / 渐进式装载器），也不允许执行期从
+ * 全局注册表兜底恢复未注入的工具——保证能力面完全封闭、行为可预期。
+ */
+export const isSceneToolsOnlyAgent = (type?: SubAgentType): boolean => type === 'image'
 
 /** 子 Agent 运行选项（由 spawn_agent 工具解析后透传） */
 export interface SubAgentOptions {

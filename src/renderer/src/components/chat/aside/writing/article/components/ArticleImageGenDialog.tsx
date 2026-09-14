@@ -1,5 +1,6 @@
 import { h } from 'vue'
 import { DialogPlugin } from 'tdesign-vue-next'
+import type { ArticleImageContext } from '@/windows/main/modules/tool/components/article/articleImagePrompt'
 import ArticleImageGenContent from './ArticleImageGenContent.vue'
 
 export interface ArticleImageGenParams {
@@ -7,6 +8,8 @@ export interface ArticleImageGenParams {
   kind: 'cover' | 'image'
   /** 产物落盘目录（项目 assets/ 绝对路径） */
   assetsDir: string
+  /** 文章语境：弹窗打开时据此让 AI 代写生图描述（缺省则留空由用户手写） */
+  context?: ArticleImageContext
   /** 成功回调：返回落盘图片绝对路径 */
   onSuccess?: (absPath: string) => void
 }
@@ -22,10 +25,14 @@ export const openArticleImageGen = (params: ArticleImageGenParams) => {
     width: '480px',
     footer: false,
     destroyOnClose: true,
+    closeBtn: false,
+    closeOnEscKeydown: false,
+    closeOnOverlayClick: false,
     body: () =>
       h(ArticleImageGenContent, {
         kind: params.kind,
         assetsDir: params.assetsDir,
+        context: params.context,
         onClose: () => dp?.destroy?.(),
         onSuccess: (absPath: string) => {
           dp?.destroy?.()

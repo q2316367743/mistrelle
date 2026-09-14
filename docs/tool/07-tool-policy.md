@@ -133,3 +133,28 @@ barrel，会复活上文 TDZ 循环链，这是本次实现时踩过并修正的
 | `modules/chat/agent/AgentChat.ts` | `allowedDirs` ref、`setAllowedDirs` / `allowDir`、`buildPolicyContext`（两处内联 ctx 消重） |
 | `modules/chat/agent/ChatSessionManager.ts` | 水合 / watch / persist `allowedDirs` |
 | `components/chat/chat-assistant/tool/ConfirmChatTool.vue` | 勾选项 + 决策构造 |
+
+## 2026-09 升级 2：`denyOnAsk`（无审批通道即自动拒绝）
+
+**背景**：子 Agent 的交互桥是禁用的（`subChat.interactive.setEnabled(false)`），裁决为 `ask` 的调用在
+`interactive.awaitDecision` 处立即拿到 `null`，回填文案是「本轮已停止，工具未执行」——语义上会被误读成
+「用户点了停止」，而实际是「根本没有审批通道」（与既有「中止≠拒绝」同源的老坑）。
+
+**契约**：`ToolPolicyContext.denyOnAsk?: boolean`
+
+- `AgentChat.buildPolicyContext` 在 `isSubAgent` 时置 `true`（主 Agent 不置位，照常走确认卡片）。
+- `agentTools.runSingleTool` 在 `verdict === 'ask'` 分支**先**判 `policyContext.denyOnAsk`：
+  命中即直接回填「该操作需要用户审批，本会话无审批通道，已自动拒绝；请改用允许范围内的方式完成任务」，
+  不进 `markToolInteractive` / `awaitDecision`。
+- 文案与「用户拒绝了该工具调用」严格区分：前者是**能力面限制**，后者是**用户主动否决**。
+
+**判定顺序不变**：`denyOnAsk` 只影响「ask 之后如何收场」，不参与 allow / deny 裁决本身；
+黑名单覆盖层（allow 升 ask）依旧生效，升上来的 ask 在子 Agent 里同样落入自动拒绝。
+
+**涉及文件**：
+
+| 文件 | 改动 |
+|------|------|
+| `modules/tool/toolPolicyTypes.ts` | ctx 新增 `denyOnAsk` |
+| `modules/chat/agent/AgentChat.ts` | `buildPolicyContext` 子 Agent 置位 `denyOnAsk` |
+| `modules/chat/agent/agentTools.ts` | ask 分支前置 `denyOnAsk` 早退 |

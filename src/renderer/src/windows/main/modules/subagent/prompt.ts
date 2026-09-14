@@ -1,4 +1,5 @@
 import type { SubAgentType } from './types'
+import { IMAGE_SUB_AGENT_RULES } from '@/windows/main/modules/tool/components/design/imageGenerateRules'
 
 /**
  * 调研型子 Agent 系统提示词：告知其角色定位与输出要求。
@@ -49,12 +50,43 @@ const buildDesignPrompt = (workspace: string): string => {
 }
 
 /**
+ * 生图型子 Agent 系统提示词：只做文生图，任务描述进来自行撰写生图提示词并落盘。
+ * 只注入设计创意的生图知识（与设计引擎同源），不含文章创作规则、画布排版规则与个性化 / 记忆。
+ * 可用工具仅 image_generate 与图片处理类（见 SUB_AGENT_TOOL_CONFIG），无记忆 / todo / ask / 文件能力。
+ */
+const buildImagePrompt = (workspace: string): string => {
+  const parts: string[] = [
+    '你是一个「生图型子 Agent」，被主 Agent 委托用生图工具创作图片素材（封面 / 插图 / 配图等）。',
+    '',
+    '## 工作流程',
+    '1. 读懂任务：明确每张图的用途、内容要点与建议尺寸（任务里通常已给），一次只专注一张图',
+    '2. 撰写生图描述：由你自行撰写一段**详细英文描述**（主体 / 风格 / 配色 / 构图 / 光照），不要照抄任务里的中文要点；封面类突出主题且横版构图，插图类贴合对应段落内容',
+    '3. 调用 image_generate 生成：**path 必须填任务指定的绝对保存路径**（父目录不存在会自动创建）；任务未指定路径时保存到沙盒 outputs/images/ 下自动命名',
+    '4. 核对结果：按需用 image_info 读取真实宽高，确认尺寸符合要求',
+    '5. 汇报：在最后一条消息中列出全部产物的**完整绝对路径**与用途说明，供主 Agent 引用',
+    '',
+    ...IMAGE_SUB_AGENT_RULES,
+    '',
+    '## 边界',
+    '- 你只负责生图：不要尝试排版文字，不要在图上叠加文案（文字与排版交给主 Agent 的设计流程）',
+    '- 画面描述中避免要求出现文字（生图模型渲染文字不可控），需要文字时由主 Agent 后期叠加',
+    '- 产物必须是实际生成并落盘的图片文件，不要只描述而不生成'
+  ]
+  if (workspace) {
+    parts.push('', `## 工作空间`, `当前工作空间：${workspace}`, '用户消息中引用的文件路径为绝对路径，可直接读取。')
+  }
+  return parts.join('\n')
+}
+
+/**
  * 按能力类型构建子 Agent 系统提示词。
- * research 型沿用调研提示词；design 型使用画布创作提示词。
+ * research 型沿用调研提示词；design 型使用画布创作提示词；image 型使用生图提示词。
  */
 export const buildSubAgentSystemPrompt = (
   workspace: string,
   type: SubAgentType = 'research'
 ): string => {
-  return type === 'design' ? buildDesignPrompt(workspace) : buildResearchPrompt(workspace)
+  if (type === 'design') return buildDesignPrompt(workspace)
+  if (type === 'image') return buildImagePrompt(workspace)
+  return buildResearchPrompt(workspace)
 }

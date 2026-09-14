@@ -171,7 +171,7 @@
 
 | 文档                                                      | 描述                                                                               |
 |-----------------------------------------------------------|------------------------------------------------------------------------------------|
-| [01-subagent-module.md](./subagent/01-subagent-module.md) | 子 Agent 模块：能力类型 × 聊天类型矩阵、research / design 两类、模块结构与运行流程 |
+| [01-subagent-module.md](./subagent/01-subagent-module.md) | 子 Agent 模块：能力类型 × 聊天类型矩阵、research / design / **image（生图型，2026-09-14）** 三类、**仅场景工具型封闭能力面**（`isSceneToolsOnlyAgent` → 只注入专用工具集、关渐进装载与 toolRegistry 兜底、不注入 skill/todo 指导）、`denyOnAsk` 需审批即自动拒绝、模块结构与运行流程 |
 
 ### tool/ —— 工具
 
@@ -183,11 +183,11 @@
 | [04-image-tools.md](./tool/04-image-tools.md)           | 图片工具四件套：`image_generate`（接口自适应）+ `image_crop` 本地切分 + `image_remove_background` flood fill 去白底（生图不支持真透明）+ `image_color_map` 网格主色 + LAB 感知色差突兀区域检测 |
 | [05-file-tools.md](./tool/05-file-tools.md)             | 文件系统工具：`file_read` 主进程流式按行分页（默认 500 行/页，nextOffset/totalLines 翻页，110KB 行预算防 128KB 截断）、`file_stat` 基于 fs.stat 返回权威文件信息、`file_glob` / `file_grep` 主进程递归搜索（glob 匹配 + 内容正则，内置忽略目录与结果上限）；`image_info` 已迁 design 场景工具集、`file_exists` 已删（被 file_stat 覆盖）           |
 | [06-ego-browser-tools.md](./tool/06-ego-browser-tools.md) | ego-browser 工具：`ego_browser_run` 免审批包装 CLI（nodejs 子命令经 stdin 通道传 script，其余子命令 args 透传）、`ego_browser_exist` 只读探测安装状态；可执行文件路径解析（runtime.egoBrowser 配置 → 平台默认推断 → PATH 兜底）；经「浏览器」可选分组注入（不常驻）；`cliRun` 新增 `stdin` 选项 |
-| [07-tool-policy.md](./tool/07-tool-policy.md)           | 工具安全策略注册与模块循环依赖约束：`registerToolPolicy` / `resolveToolPolicy` 机制、TDZ 崩溃根因（toolPolicy import 闭包拉入 chat/store 全量图）与修复（import 叶子化）、后续新增策略的约束；2026-08 升级：聊天级目录白名单（确认卡片勾选「此目录以后都允许」→ `AiChatContent.allowedDirs`，仅本聊天）、skill 根目录脚本免审批（`ctx.skillRootDirs` 注入）、可信区内 cwd 命令免审批（不依赖沙箱开关） |
+| [07-tool-policy.md](./tool/07-tool-policy.md)           | 工具安全策略注册与模块循环依赖约束：`registerToolPolicy` / `resolveToolPolicy` 机制、TDZ 崩溃根因（toolPolicy import 闭包拉入 chat/store 全量图）与修复（import 叶子化）、后续新增策略的约束；2026-08 升级：聊天级目录白名单（确认卡片勾选「此目录以后都允许」→ `AiChatContent.allowedDirs`，仅本聊天）、skill 根目录脚本免审批（`ctx.skillRootDirs` 注入）、可信区内 cwd 命令免审批（不依赖沙箱开关）；2026-09 升级 2：`denyOnAsk`（子 Agent 无审批通道时 ask → 自动拒绝，文案与「用户拒绝」区分） |
 | [08-search-tools.md](./tool/08-search-tools.md)         | 搜索工具：`getDefaultTools()` 动态组装；`zhihu_search` 仅配置 Access Secret 时注入 + `any_search` 可匿名；账号设置知乎项与鉴权头 |
 | [10-default-tools-slimming.md](./tool/10-default-tools-slimming.md) | 默认工具精简（28→20）：shell 只留 cli_run（js/python/node/git_run 彻底删+死配置清理）、浏览器只留 browser_fetch（ego 移可选）、file_exists/read_skill_file 删除（被 file_stat/file_read 覆盖）、file_write_xlsx 移「文档处理」可选组、image_info 迁 design 场景注入；历史兼容按名集合保留清单 |
 | [11-progressive-tool-collection.md](./tool/11-progressive-tool-collection.md) | 渐进式工具加载：`ToolGroup` 增加 id/description、`<available_tool_collections>` 目录 + `load_tool_collection(ids)` 整组装载、洋葱式三层解析（内置→已装载→全局 toolRegistry 兜底，命中即自动复装实现跨 Loop 恢复）、beginRequest 每轮清空不落库；并行审批 UI（待审块均可作答 + 横幅计数定位）；真问题是能力自助化而非省 token |
-| [12-chat-image-generate.md](./tool/12-chat-image-generate.md) | 通用生图对话直出：`image_generate` 升级为唯一通用工具（office + design 双引擎共用，生成图一律作为 `image` 内容块展示在对话中）、执行器 `chatImages` 标记约定（回填 image 块 + 剥离标记）、`hasImageGenerateAccess()` 登录门控（替代默认生图模型门控，4 处统一）、RChatImage 渲染组件 + 折叠白名单保留图片块 |
+| [12-chat-image-generate.md](./tool/12-chat-image-generate.md) | 通用生图对话直出：`image_generate` 升级为唯一通用工具（office + design 双引擎共用，生成图一律作为 `image` 内容块展示在对话中）、执行器 `chatImages` 标记约定（回填 image 块 + 剥离标记）、`hasImageGenerateAccess()` 登录门控（替代默认生图模型门控，4 处统一）、RChatImage 渲染组件 + 折叠白名单保留图片块；**2026-09-14：`model` 档位参数（AI 按用途自选，动态列出可选 code）+ 生图型子 Agent 成为文章配图专用通道** |
 | [13-humanize-tool.md](./tool/13-humanize-tool.md) | `humanize_text` 文案去 AI 味工具（design 双引擎，登录门控）：流式客户端从写作组件目录下沉到 `modules/ai/humanize.ts`（写作侧边栏与工具共用）、工具 `risk: safe` 直接放行、提示词 `hasHumanize` 同源门控、只返回文本不落盘 |
 
 ### writing/ —— 写作
@@ -195,8 +195,8 @@
 | 文档                                                           | 描述                                                                                   |
 |----------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | [01-writing-scene.md](./writing/01-writing-scene.md)           | 写作子场景（WritingScene）：大类型管框架、子场景管能力，场景 article / novelShort      |
-| [02-article-data-layer.md](./writing/02-article-data-layer.md) | 文章数据层与工具（schema=2）：一篇文章×多类型（发布平台由 AI 自由命名），各类型独立版本；**「标题+类型+版本」=唯一单元、版本 id 即单元标识**（article_create 返回 id，write/read/stats/update/remove 只认 id，新版本返回新 id；`ArticleVersion.no` 显式版本号）；status 字段已删除、旧结构不迁移 |
-| [03-article-aside.md](./writing/03-article-aside.md)           | 文章侧边栏（以文档为中心的写作工作台）：一聊天一文档恒可编辑、标题下拉切换（用户不可改标题，AI 专属经 article_update）、类型下拉切换（AI 专属设定）、简介/提纲信息下拉面板（只读）、头部刷新按钮外显、AI 写完自动呈现（article_write→contentRevs + mtime 轮询兜底）、版本时间线（显式 no）、重写入口收敛到聊天（AI 重写按钮已删）、插图/生图直插正文、底部复制正文 |
+| [02-article-data-layer.md](./writing/02-article-data-layer.md) | 文章数据层与工具（schema=2）：一篇文章×多类型（发布平台由 AI 自由命名），各类型独立版本；**「标题+类型+版本」=唯一单元、版本 id 即单元标识**（article_create 返回 id，write/read/stats/update/remove 只认 id，新版本返回新 id；`ArticleVersion.no` 显式版本号）；status 字段已删除、旧结构不迁移；**2026-09-14：配图改走生图型子 Agent 且定稿后必配；场景提示词改工厂 `buildArticleScenePrompt()`（配图段落随登录态组装）** |
+| [03-article-aside.md](./writing/03-article-aside.md)           | 文章侧边栏（以文档为中心的写作工作台）：一聊天一文档恒可编辑、标题下拉切换（用户不可改标题，AI 专属经 article_update）、类型下拉切换（AI 专属设定）、简介/提纲信息下拉面板（只读）、头部刷新按钮外显、AI 写完自动呈现（article_write→contentRevs + mtime 轮询兜底）、版本时间线（显式 no）、重写入口收敛到聊天（AI 重写按钮已删）、插图/生图直插正文、**插图生图以选中文字为前提（未选中禁用+tooltip 引导，插入不吞选中文字）**、**生图弹窗 AI 代写英文描述（按标题/摘要/提纲 + 选中文字起草，可换一版）**、底部复制正文 |
 | [04-image-export.md](./writing/04-image-export.md)             | md 图片引用：相对路径约定、`imageRef.ts` 解析与资产复制（zip 导出已删除）                     |
 | [05-novel-short-scene.md](./writing/05-novel-short-scene.md)   | 短篇小说场景：每篇一个子目录（story/角色/大纲/设定/文风）、`novel_*` 工具、侧边栏双布局 |
 

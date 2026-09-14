@@ -1,0 +1,127 @@
+/**
+ * 文章正文（tiptap ProseMirror 容器）的排版样式。
+ * 从 ArticleEditor.vue 抽出，避免组件文件超 300 行红线（RL-05）；内容样式集中在此也便于整体调整。
+ * 非 scoped：需作用于 editor 生成的 DOM（.article-editor__pm）。
+ */
+.article-editor__pm {
+  outline: none;
+  min-height: 100%;
+  color: var(--td-text-color-primary);
+  font-size: var(--td-font-size-body-large);
+  line-height: 1.8;
+  word-break: break-word;
+
+  p {
+    margin: 0 0 12px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--td-text-color-primary);
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 20px 0 12px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  h3 {
+    font-size: 17px;
+  }
+
+  h4 {
+    font-size: 15px;
+  }
+
+  ul,
+  ol {
+    padding-left: 22px;
+    margin: 0 0 12px;
+  }
+
+  li {
+    margin: 4px 0;
+  }
+
+  blockquote {
+    margin: 0 0 12px;
+    padding: 8px 16px;
+    border-left: 3px solid var(--td-brand-color);
+    background: var(--td-brand-color-light);
+    color: var(--td-text-color-secondary);
+  }
+
+  code {
+    padding: 2px 6px;
+    border-radius: var(--td-radius-small);
+    background: var(--td-bg-color-component);
+    font-family: var(--td-font-family-mono);
+    font-size: 0.9em;
+  }
+
+  pre {
+    margin: 0 0 12px;
+    padding: 12px 16px;
+    border-radius: var(--td-radius-medium);
+    background: var(--td-bg-color-component);
+    overflow-x: auto;
+
+    code {
+      padding: 0;
+      background: transparent;
+    }
+  }
+
+  a {
+    color: var(--td-brand-color);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 12px 0;
+    border-radius: var(--td-radius-medium);
+    border: 1px solid var(--td-border-level-1-color);
+  }
+
+  table {
+    border-collapse: collapse;
+    margin: 0 0 12px;
+    width: 100%;
+    font-size: var(--td-font-size-body-medium);
+
+    th,
+    td {
+      border: 1px solid var(--td-border-level-1-color);
+      padding: 6px 12px;
+      text-align: left;
+    }
+
+    th {
+      background: var(--td-bg-color-component);
+      font-weight: 600;
+    }
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--td-border-level-1-color);
+    margin: 16px 0;
+  }
+}
+
+/* 只读（去 AI 味流式改写期间）时正文不可编辑，光标回落默认以示意 */
+.article-editor__content.is-preview .article-editor__pm {
+  cursor: default;
+}

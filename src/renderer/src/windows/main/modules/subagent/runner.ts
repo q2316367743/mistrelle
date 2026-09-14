@@ -27,12 +27,13 @@ const waitForCompletion = (chat: ToolChat): Promise<'completed' | 'error' | 'sto
 /**
  * 启动子 Agent 执行任务。
  *
- * 权限模型：mode=0（默认）+ InteractiveBridge 禁用。
+ * 权限模型：mode=0（默认）+ InteractiveBridge 禁用 + 策略上下文 denyOnAsk。
  * - safe 工具（file_read、file_list 等）自动放行
  * - 白名单内 shell 命令自动放行
- * - 需审批的操作（非白名单 shell、写入类工具）因交互桥禁用而自动拒绝
+ * - 需审批的操作（非白名单 shell、写入类工具）直接以「无审批通道，已自动拒绝」收场（denyOnAsk）
  * - 安全中心黑名单命中的操作同样自动拒绝
- * - design 型子 Agent 额外注入画布场景工具（canvas_*，安全策略已在 canvas 模块注册，sandbox/workspace 可信区内放行）
+ * - design 型子 Agent 额外注入画布场景工具（canvas_*，安全策略已在 canvas 模块注册，sandbox/workspace 可信区内放行）；
+ *   生图型（image）只注入专用生图工具集（能力面封闭，无记忆 / todo / ask / 文件）
  *
  * 流程：
  * 1. 使用调用方预生成的 subId，创建独立 ToolChat 实例（按能力类型选择 systemPrompt 与场景工具）
@@ -71,8 +72,10 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
     // 隐私聊天：继承主 Agent 标记，子 Agent 同样不注册记忆工具
     privacy: options.privacy,
     systemPrompt: buildSubAgentSystemPrompt(workspace, subAgentType),
-    // 能力类型 → 场景工具（design → canvas）；research 无场景工具
+    // 能力类型 → 场景工具（design → canvas）；research 无场景工具；
+    // 生图型（image）能力面由专用工具集提供，「仅场景工具」分支会剔除默认常驻工具
     sceneType: SUB_AGENT_SCENE[subAgentType ?? 'research'],
+    subAgentType,
     chatId, // 子 Agent 自身的 chatId（虽然子 Agent 不会再 spawn 子 Agent，但保持字段一致）
     isSubAgent: true, // 禁用 spawn_agent 工具 + 不注入子 Agent 使用指导，防止嵌套派发
     maxSteps: MAX_SUB_AGENT_STEPS, // 子 Agent 独立步数预算：复杂任务比主 Agent 需要更多步数才能收尾

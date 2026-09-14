@@ -7,7 +7,8 @@ export const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
 /** 各能力类型的说明（用于工具 description，模型据此理解 type 参数） */
 const SUB_AGENT_TYPE_DESC: Record<SubAgentType, string> = {
   research: '调研型：只读调研 / 分析（搜索文件、对比方案），返回结构化摘要',
-  design: '设计型：用画布创作配图 / 设计稿，导出 PNG 并返回保存路径'
+  design: '设计型：用画布创作配图 / 设计稿，导出 PNG 并返回保存路径',
+  image: '生图型：按任务描述自行撰写生图提示词并生成封面 / 插图，返回图片保存路径'
 }
 
 /**
@@ -33,7 +34,8 @@ export const createSpawnAgentTool = (
         task: {
           type: 'string',
           description:
-            '委托给子 Agent 的任务描述。应当足够清晰完整，包含所需上下文（文件路径、设计尺寸、产物保存路径等），让子 Agent 能独立完成。'
+            '委托给子 Agent 的任务描述。应当足够清晰完整，包含所需上下文（文件路径、设计尺寸、产物保存路径等），让子 Agent 能独立完成。' +
+            '生图型子 Agent 用「用途 + 内容要点 + 建议尺寸 + 产物绝对保存路径」描述即可，生图提示词由它自行撰写，无需在此写英文 prompt。'
         },
         type: {
           type: 'string',

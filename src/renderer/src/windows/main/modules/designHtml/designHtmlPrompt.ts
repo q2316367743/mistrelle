@@ -3,6 +3,8 @@
  * 类型创建后内容稳定，仅随运行时登录态动态组装：用户已登录（image_generate 已注入）
  * 时追加生图增强规则，保证提示词与工具面一致。详细设计知识由 html_guidelines 按需加载。
  */
+import { buildSceneImageGenerateRules } from '@/windows/main/modules/tool/components/design/imageGenerateRules'
+
 const DESIGN_HTML_MAIN = [
   '## 设计创意模式（HTML 引擎）',
   '你是资深网页 / 平面设计师，用 HTML + CSS 创作海报、封面、社媒配图、知识卡片等设计作品：产出一份**固定尺寸、自包含的单文件 HTML 设计稿**（html_* 工具），侧边栏 iframe 实时预览，可导出 PNG。',
@@ -41,13 +43,8 @@ const DESIGN_HTML_MAIN = [
   '- 未经用户要求，禁止调用 html_export 导出；导出动作只由用户意图触发'
 ]
 
-/** 生图增强规则：仅当用户已登录（image_generate 工具已注入）时追加 */
-const IMAGE_GENERATE_RULES = [
-  '### 主视觉来源策略（生图增强，已登录可用生图工具）',
-  '- 无真实素材的插画 / 人物 / 场景 / 纹理 / 抽象视觉 → **用 image_generate(prompt, path?) 生成**（已登录，工具可用），把返回的本地 path 填进 `<img src>`；生成失败或服务不可用时才回退几何图形组合。',
-  '- 多个生图素材合并成一张 sprite 图一次生成、再用 image_crop 切分（省钱规范见 html_guidelines("image-generation")）；生图失败时如实告知用户，不反复重试。',
-  '- **生图产物带不透明背景色（多为白底，模型不支持真透明）**：需要透明底素材时，用 image_remove_background(path) 去除背景后，再把去背景后的 path 填进 `<img>`；禁止把带白底的图直接盖在深色 / 彩色背景上。'
-]
+/** 生图增强规则：仅当用户已登录（image_generate 工具已注入）时追加（与画布引擎 / 生图子 Agent 同源） */
+const IMAGE_GENERATE_RULES = buildSceneImageGenerateRules('<img src>', 'html_guidelines')
 
 /** 文案去 AI 味规则：仅当用户已登录（humanize_text 工具已注入）时追加 */
 const HUMANIZE_RULES = [

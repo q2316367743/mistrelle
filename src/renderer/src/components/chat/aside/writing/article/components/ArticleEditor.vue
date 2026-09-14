@@ -31,6 +31,8 @@ const emit = defineEmits<{
   (e: 'change', value: string): void
   /** 本地图片粘贴 / 拖入落盘后通知父级登记进插图列表（rel 为相对 md 目录的引用路径） */
   (e: 'image-added', rel: string): void
+  /** 选区变化（携带选中文本，无选区为空串）：父级据此启用 / 禁用插图生图 */
+  (e: 'selection-change', text: string): void
 }>()
 
 /** 文件名清洗：去掉路径分隔与非法字符，保留扩展名 */
@@ -59,13 +61,33 @@ const insertLocalImage = async (file: File) => {
   emit('image-added', rel)
 }
 
-/** 供外部把图片插入光标处（工具栏插图 / 生图完成回调） */
+/**
+ * 供外部把图片插入正文（工具栏「插图」上传 / 生图完成回调）。
+ * 图片是块级节点，直接 insertContent 会**替换掉选中的文字**——而选中恰恰是用户用来指明
+ * 「图放这里 / 按这段画」的，不该被吃掉。故有选区时插到选中块的**之后**，无选区才插在光标处。
+ */
 const insertImage = (rel: string) => {
-  editor.value
-    ?.chain()
-    .focus()
-    .insertContent({ type: 'image', attrs: { src: rel, alt: '' } })
-    .run()
+  const ed = editor.value
+  if (!ed) return
+  const node = { type: 'image', attrs: { src: rel, alt: '' } }
+  const { selection } = ed.state
+  if (selection.from !== selection.to) {
+    const $to = selection.$to
+    // after(1) = 选区末尾所在顶层块的结束位置（跨段选中时即最后一段之后）
+    const pos = $to.depth >= 1 ? $to.after(1) : selection.to
+    ed.chain().focus().insertContentAt(pos, node).run()
+    return
+  }
+  ed.chain().focus().insertContent(node).run()
+}
+
+/** 读取当前选区文本（插图弹窗据此让 AI 起草贴合所选段落的画面描述；无选区返回空串） */
+const getSelection = (): string => {
+  const ed = editor.value
+  if (!ed) return ''
+  const { from, to } = ed.state.selection
+  if (from === to) return ''
+  return ed.state.doc.textBetween(from, to, '\n').trim()
 }
 
 /** 执行一条 focus 后的编辑器命令（工具栏格式按钮） */
@@ -77,6 +99,7 @@ const exec = (fn: (chain: ChainedCommands) => ChainedCommands): void => {
 
 defineExpose({
   insertImage,
+  getSelection,
   toggleBold: () => exec((c) => c.toggleBold()),
   toggleItalic: () => exec((c) => c.toggleItalic()),
   toggleHeading2: () => exec((c) => c.toggleHeading({ level: 2 })),
@@ -124,7 +147,10 @@ const editor = useEditor({
   },
   onUpdate: ({ editor: ed }) => {
     emit('change', ed.getMarkdown())
-  }
+  },
+  // 选区变化即上报：工具栏「生图」按有无选中文字启用 / 禁用
+  onSelectionUpdate: () => emit('selection-change', getSelection()),
+  onCreate: () => emit('selection-change', getSelection())
 })
 
 watch(
@@ -161,126 +187,4 @@ onBeforeUnmount(() => editor.value?.destroy())
   }
 }
 </style>
-<style lang="less">
-.article-editor__pm {
-  outline: none;
-  min-height: 100%;
-  color: var(--td-text-color-primary);
-  font-size: var(--td-font-size-body-large);
-  line-height: 1.8;
-  word-break: break-word;
-
-  p {
-    margin: 0 0 12px;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4 {
-    color: var(--td-text-color-primary);
-    font-weight: 600;
-    line-height: 1.4;
-    margin: 20px 0 12px;
-  }
-
-  h1 {
-    font-size: 24px;
-  }
-
-  h2 {
-    font-size: 20px;
-  }
-
-  h3 {
-    font-size: 17px;
-  }
-
-  h4 {
-    font-size: 15px;
-  }
-
-  ul,
-  ol {
-    padding-left: 22px;
-    margin: 0 0 12px;
-  }
-
-  li {
-    margin: 4px 0;
-  }
-
-  blockquote {
-    margin: 0 0 12px;
-    padding: 8px 16px;
-    border-left: 3px solid var(--td-brand-color);
-    background: var(--td-brand-color-light);
-    color: var(--td-text-color-secondary);
-  }
-
-  code {
-    padding: 2px 6px;
-    border-radius: var(--td-radius-small);
-    background: var(--td-bg-color-component);
-    font-family: var(--td-font-family-mono);
-    font-size: 0.9em;
-  }
-
-  pre {
-    margin: 0 0 12px;
-    padding: 12px 16px;
-    border-radius: var(--td-radius-medium);
-    background: var(--td-bg-color-component);
-    overflow-x: auto;
-
-    code {
-      padding: 0;
-      background: transparent;
-    }
-  }
-
-  a {
-    color: var(--td-brand-color);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-
-  img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 12px 0;
-    border-radius: var(--td-radius-medium);
-    border: 1px solid var(--td-border-level-1-color);
-  }
-
-  table {
-    border-collapse: collapse;
-    margin: 0 0 12px;
-    width: 100%;
-    font-size: var(--td-font-size-body-medium);
-
-    th,
-    td {
-      border: 1px solid var(--td-border-level-1-color);
-      padding: 6px 12px;
-      text-align: left;
-    }
-
-    th {
-      background: var(--td-bg-color-component);
-      font-weight: 600;
-    }
-  }
-
-  hr {
-    border: none;
-    border-top: 1px solid var(--td-border-level-1-color);
-    margin: 16px 0;
-  }
-}
-
-.article-editor__content.is-preview .article-editor__pm {
-  cursor: default;
-}
-</style>
+<style lang="less" src="./articleEditorContent.less"></style>

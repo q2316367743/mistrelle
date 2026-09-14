@@ -21,6 +21,7 @@ import {
 import { FONT_PICK_TOOL_NAME, formatFontPickResult } from '@/windows/main/modules/tool/components/design/fontTools'
 import { SPAWN_AGENT_TOOL_NAME } from '@/windows/main/modules/subagent/tool'
 import { resolveSubAgentType } from '@/windows/main/modules/subagent/types'
+import { hasImageGenerateAccess } from '@/windows/main/modules/tool/components/design/imageGenerate'
 
 const ASK_TOOL_NAME = 'ask'
 
@@ -225,6 +226,17 @@ export const runSingleTool = async (
       applyResult(messages, assistantMessageId, call, `错误: spawn_agent ${resolved.message}`)
       return
     }
+    // 生图型子 Agent 的能力面全部依赖服务端生图（登录门控）：未登录直接拒绝，
+    // 避免起一个无可用工具的空子 Agent 白耗步数
+    if (resolved.type === 'image' && !hasImageGenerateAccess()) {
+      applyResult(
+        messages,
+        assistantMessageId,
+        call,
+        '错误: 生图型子 Agent 需要登录后使用（生图由服务端提供，请先登录）'
+      )
+      return
+    }
     const { model, provide, thinking, reasoning_effort } = findLastUserModel(messages)
     if (!model || !provide) {
       applyResult(messages, assistantMessageId, call, '错误：无法确定子 Agent 使用的模型')
@@ -262,6 +274,17 @@ export const runSingleTool = async (
     return
   }
   if (verdict === 'ask') {
+    // 无审批通道（子 Agent）：需审批的调用直接以「自动拒绝」收场，不进交互桥等待。
+    // 文案与「用户拒绝」区分：这是能力面限制，不是用户否决
+    if (policyContext.denyOnAsk) {
+      applyResult(
+        messages,
+        assistantMessageId,
+        call,
+        '该操作需要用户审批，本会话无审批通道，已自动拒绝；请改用允许范围内的方式完成任务'
+      )
+      return
+    }
     markToolInteractive(messages, assistantMessageId, call.toolCallId, 'confirm')
     const decision = await interactive.awaitDecision('confirm', call.toolCallId, args)
     const approved = decision === true || (isConfirmDecision(decision) && decision.approved)

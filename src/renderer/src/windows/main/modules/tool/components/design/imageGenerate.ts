@@ -2,7 +2,8 @@
  * image_generate 工具：根据文字描述生成插画 / 素材图片并保存到本地，生成的图片同时作为
  * image 内容块直接展示在对话中（执行器识别返回值里的 chatImages 标记完成回填，见 agentTools）。
  * - 通用能力门控：登录后注入（hasImageGenerateAccess）；积分扣减由服务端负责，余额不足等
- *   错误经工具结果透传。模型取「设置 → 默认生图模型」，未配置时回退服务端档位列表第一项。
+ *   错误经工具结果透传。模型可用 model 参数按用途自选服务端档位（说明中动态列出可选 code），
+ *   未指定时取「设置 → 默认生图模型」，再无则回退档位列表第一项。
  * - 真实生图逻辑收口在 main 的 ImageService（经 window.preload.image.generate 工具直出模式：
  *   不建页面记录，产物落盘 path 后返回终态）；本工具只做参数校验、路径兜底与结果透传。
  * - 设计创意场景：返回的 path 可直接填进画布 image 节点 imageUrl / HTML `<img src>` 使用。
@@ -22,6 +23,23 @@ export const hasImageGenerateAccess = (): boolean => useAuthStore().status === '
 const buildDefaultOutputPath = (sandboxDir: string): string => {
   const imagesDir = window.preload.path.join(sandboxDir, 'outputs', 'images')
   return window.preload.path.join(imagesDir, `image-${Date.now()}.png`)
+}
+
+/** model 参数说明：动态列出当前可用档位（含积分/张），供模型按用途自选 */
+const buildModelParamDesc = (): string => {
+  const items = useImageModelStore().items
+  if (!items.length) return '生图模型档位 code（暂时拉取不到档位列表，留空使用默认档位）'
+  const list = items
+    .map((item) =>
+      item.pointsPerImage != null
+        ? `${item.value}（${item.label}，${item.pointsPerImage} 积分/张）`
+        : `${item.value}（${item.label}）`
+    )
+    .join('；')
+  return (
+    `生图模型档位 code，可选：${list}。缺省使用「设置 → 默认生图模型」；` +
+    '封面等对画质要求高的图片可选更高档位，普通插图用默认或较低档位以节省积分'
+  )
 }
 
 export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction => ({
@@ -46,6 +64,10 @@ export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction =>
       path: {
         type: 'string',
         description: '输出图片保存路径（缺省保存到沙盒 outputs/images/ 下自动命名；多张时第 1 张落此路径）'
+      },
+      model: {
+        type: 'string',
+        description: buildModelParamDesc()
       },
       size: {
         type: 'string',
@@ -102,6 +124,7 @@ export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction =>
     const {
       prompt,
       path,
+      model: requestedModel,
       size,
       n,
       resolution,
@@ -115,6 +138,7 @@ export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction =>
     } = params[0] as {
       prompt?: string
       path?: string
+      model?: string
       size?: string
       n?: number
       resolution?: string
@@ -132,9 +156,17 @@ export const createImageGenerateTool = (ctx: DesignToolContext): ToolFunction =>
       return { error: '未登录：请先登录后再使用生图功能' }
     }
 
-    // 模型解析：默认生图模型优先，未配置时回退服务端档位列表第一项
+    // 模型解析：显式指定档位优先（须为服务端在售档位，否则报错让模型纠正），
+    // 未指定回退「设置 → 默认生图模型」，再无则取档位列表第一项
+    const modelItems = useImageModelStore().items
+    const requested = requestedModel?.trim()
+    if (requested && modelItems.length && !modelItems.some((item) => item.value === requested)) {
+      return {
+        error: `未知生图档位「${requested}」：可选 ${modelItems.map((item) => item.value).join(' / ')}，或留空使用默认档位`
+      }
+    }
     const model =
-      useSettingDefaultStore().state.defaultImageModel || useImageModelStore().items[0]?.value
+      requested || useSettingDefaultStore().state.defaultImageModel || modelItems[0]?.value
     if (!model) {
       return { error: '当前没有可用的生图模型档位：请稍后重试，或到 设置 → 默认设置 → 默认生图模型 选择模型' }
     }

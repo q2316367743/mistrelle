@@ -32,6 +32,7 @@
 </template>
 <script lang="ts" setup>
 import { AiIcon, DeleteIcon, ImageIcon, UploadIcon } from 'tdesign-icons-vue-next'
+import type { ArticleItem } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { copyImageToAssets } from '@/windows/main/modules/tool/components/article/imageRef'
 import { openArticleImageGen } from './ArticleImageGenDialog'
@@ -42,6 +43,8 @@ const props = defineProps<{
   cover?: string
   /** 配图目录（assets/ 绝对路径，上传与 AI 生成产物落盘于此） */
   assetsDir: string
+  /** 所属文章（AI 生成封面时提供标题 / 摘要 / 提纲作为起草语境） */
+  article?: Pick<ArticleItem, 'title' | 'summary' | 'outline'>
   /** 流式改写进行中锁定 */
   locked?: boolean
 }>()
@@ -78,6 +81,12 @@ const genCover = (): void =>
   openArticleImageGen({
     kind: 'cover',
     assetsDir: props.assetsDir,
+    // 封面起草语境：标题 / 摘要 / 提纲（封面无选中片段概念，不给正文节选）
+    context: {
+      title: props.article?.title,
+      summary: props.article?.summary,
+      outline: props.article?.outline
+    },
     onSuccess: (absPath) => emit('cover', `assets/${window.preload.path.basename(absPath)}`)
   })
 </script>

@@ -11,7 +11,7 @@ import type { ToolFunction } from '@/domain'
 import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
 import type { DesignScene } from '@/windows/main/modules/chat/designScene'
 import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
-import { ARTICLE_SCENE_PROMPT } from '@/windows/main/modules/tool/components/article/articlePrompt'
+import { buildArticleScenePrompt } from '@/windows/main/modules/tool/components/article/articlePrompt'
 import { createArticleTools } from '@/windows/main/modules/tool/components/article/articleTools'
 import { NOVEL_SCENE_PROMPT } from '@/windows/main/modules/tool/components/novel/novelPrompt'
 import { createNovelTools } from '@/windows/main/modules/tool/components/novel/novelTools'
@@ -25,6 +25,8 @@ import {
   hasImageGenerateAccess
 } from '@/windows/main/modules/tool/components/design/imageGenerate'
 import { hasHumanizeAccess } from '@/windows/main/modules/tool/components/design/humanize'
+import { createImageSubAgentTools } from '@/windows/main/modules/tool/components/design/imageSubAgent'
+import type { SubAgentType } from '@/windows/main/modules/subagent/types'
 
 export interface ChatTypeConfig {
   /** 具体名字，eg. 设计创意 */
@@ -41,8 +43,12 @@ export interface ChatTypeConfig {
 export interface WritingSceneConfig {
   /** 具体名字，eg. 文章创作 */
   label: string
-  /** 场景固定提示词（场景创建后锁定 → 可进稳定 system 前缀，不影响 prompt 缓存） */
-  prompt: string
+  /**
+   * 场景提示词工厂（场景创建后锁定 → 可进稳定 system 前缀，不影响 prompt 缓存）。
+   * 为工厂而非静态串：部分段落需按运行时登录态动态组装（如文章场景的配图工作流，
+   * 仅在生图型子 Agent 可用时给出），保证提示词提到的能力与实际工具一致。
+   */
+  prompt: (ctx: ChatTypeToolContext) => string
   /** 场景工具工厂（article → article_* 管理工具） */
   tools: (ctx: ChatTypeToolContext) => ToolFunction[]
 }
@@ -54,12 +60,12 @@ export interface WritingSceneConfig {
 export const WRITING_SCENE_CONFIG: Record<WritingScene, WritingSceneConfig> = {
   article: {
     label: '文章创作',
-    prompt: ARTICLE_SCENE_PROMPT,
+    prompt: () => buildArticleScenePrompt(),
     tools: (ctx) => createArticleTools(ctx)
   },
   novelShort: {
     label: '短篇小说',
-    prompt: NOVEL_SCENE_PROMPT,
+    prompt: () => NOVEL_SCENE_PROMPT,
     tools: (ctx) => createNovelTools(ctx)
   }
 }
@@ -71,6 +77,17 @@ export interface DesignSceneConfig {
   prompt: (ctx: ChatTypeToolContext) => string
   /** 引擎场景工具工厂（canvas → canvas_* 画布工具；html → html_* 设计稿工具） */
   tools: (ctx: ChatTypeToolContext) => ToolFunction[]
+}
+
+/**
+ * 子 Agent 能力类型 → 专用工具工厂（仅用于「仅场景工具」型子 Agent，见 isSceneToolsOnlyAgent）。
+ * 未登记的能力类型走常规路径（主 Agent 工具面 + 场景工具 + 默认常驻工具）。
+ * 生图型：image_generate + 图片处理，能力面完全封闭，不注入任何默认常驻工具。
+ */
+export const SUB_AGENT_TOOL_CONFIG: Partial<
+  Record<SubAgentType, (ctx: ChatTypeToolContext) => ToolFunction[]>
+> = {
+  image: (ctx) => createImageSubAgentTools(ctx)
 }
 
 /**
