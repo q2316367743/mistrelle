@@ -1,7 +1,6 @@
 <template>
-  <div class="novel-aside">
+  <div class="novel-aside" :class="{ fullscreen: fullscreen }">
     <novel-header
-      v-if="activeNovel"
       :novel="activeNovel"
       :novels="novels"
       :active-id="activeId"
@@ -94,7 +93,9 @@ const assetsDir = computed(() =>
 )
 
 /** 编辑器内容即时字数（去空白） */
-const liveWords = computed(() => (contents.value[activeFile.value] ?? '').replace(/\s+/g, '').length)
+const liveWords = computed(
+  () => (contents.value[activeFile.value] ?? '').replace(/\s+/g, '').length
+)
 
 /** 去 AI 味编排（流式改写当前文件） */
 const { humanizing, handleHumanize, handleAbortHumanize } = useNovelAssist({
@@ -155,6 +156,11 @@ const handleRefresh = (): void => {
   flex-direction: column;
   padding: 8px 0 8px 8px;
 
+  &.fullscreen {
+    .novel-aside__body {
+      margin-bottom: 8px;
+    }
+  }
   &__body {
     margin-top: 8px;
     flex: 1;
@@ -162,6 +168,7 @@ const handleRefresh = (): void => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-bottom: 8px;
 
     &--split {
       flex-direction: row;

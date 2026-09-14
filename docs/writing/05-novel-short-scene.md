@@ -129,8 +129,11 @@ src/components/chat/aside/writing/novelShort/
 
 - **即时通道**：watch `store.contentRevs.get(\`${id}::${fileKey}\`)` → AI 经 `novel_*` 写入后立即重读当前文件（编辑器内容若 dirty 则跳过，避免覆盖用户输入）。
 - **轮询兜底**：3s 轮询当前文件 `stat().mtime`，覆盖用户用外部工具手改文件的场景。
-- **自动选中新小说**：watch project.novels 增量（以 reload 后 id 集合为基线），AI `novel_create` 新增且当前未选中时自动选中最新一部。
+- **选中兜底（`ensureActiveSelection`）**：`reload()` 在 `refresh()` 后保证有有效选中——当前选中为空或已被删时回落 `novels` 末位（`createNovel` 追加到末尾，末位即最新）。覆盖首次打开侧边栏 / 手动刷新 / 工作空间切换，避免"有小说却停在引导空态"。
+- **AI 新建自动切换**：ids 增量 watcher 检测到新增（AI `novel_create`）即切到最新一部，切前 `saveDoc.cancel()` + `flushPendingSave()` 防未落盘编辑写串文件。
 - 列表元信息（标题 / 题材 / 字数）走 store 响应式，无需轮询。
+
+**头部常驻**：`NovelHeader` 不再被 `activeNovel` 守卫，零小说时仍渲染（封面位隐藏，下拉显示「暂无小说，可让 AI 生成」空态文案，刷新按钮可用于重扫目录）。正文区引导卡只在 `novels` 为空时出现。
 
 ### 工作台能力
 

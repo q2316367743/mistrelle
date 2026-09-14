@@ -87,9 +87,15 @@ export const useNovelDoc = (props: NovelDocContext) => {
     dirtyFile.value = false
   }
 
-  // ─── 自动选中 AI 新建的小说 ───────────────────────────────
+  // ─── 选中回落与 AI 新建自动切换 ────────────────────────────
 
-  /** 以 reload 后的 id 集合为基线，增量新增且当前未选中任何小说时自动选中最新一部 */
+  /** 当前选中无效（空 / 已被删）时回落到最新一部（createNovel 追加到末尾，末位即最新） */
+  const ensureActiveSelection = (): void => {
+    if (activeId.value && novels.value.some((n) => n.id === activeId.value)) return
+    activeId.value = novels.value[novels.value.length - 1]?.id ?? ''
+  }
+
+  /** 以 reload 后的 id 集合为基线，增量检测 AI 新建（novel_create） */
   const seenNovelIds = ref<Set<string>>(new Set())
   let seenInitialized = false
 
@@ -100,7 +106,7 @@ export const useNovelDoc = (props: NovelDocContext) => {
 
   watch(
     () => novels.value.map((n) => n.id).join(','),
-    () => {
+    async () => {
       if (!seenInitialized) {
         seedSeenNovels()
         return
@@ -108,20 +114,24 @@ export const useNovelDoc = (props: NovelDocContext) => {
       const ids = novels.value.map((n) => n.id)
       const added = ids.filter((id) => !seenNovelIds.value.has(id))
       seedSeenNovels()
-      if (added.length && !activeId.value) {
-        activeId.value = added[added.length - 1]
+      // AI 新建小说：切到最新一部（先落盘当前编辑，防内容写串文件）
+      const target = added[added.length - 1]
+      if (target) {
+        saveDoc.cancel()
+        await flushPendingSave()
+        activeId.value = target
+        return
       }
+      ensureActiveSelection()
     }
   )
 
   // ─── 刷新 ────────────────────────────────────────────────
 
-  /** 刷新项目索引；若当前选中小说已被删除则复位选中 */
+  /** 刷新项目索引：加载后保证有有效选中（无选中回落最新一部） */
   const reload = async (): Promise<void> => {
     await store.value.refresh()
-    if (activeId.value && !novels.value.some((n) => n.id === activeId.value)) {
-      activeId.value = ''
-    }
+    ensureActiveSelection()
     await loadContents()
     seedSeenNovels()
   }

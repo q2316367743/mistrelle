@@ -1,11 +1,23 @@
 <template>
   <div class="novel-actions">
     <t-tooltip :content="humanizeTooltip" :disabled="!humanizeTooltip">
-      <t-button v-if="humanizing" size="small" variant="outline" theme="warning" @click="emit('abort')">
+      <t-button
+        v-if="humanizing"
+        size="small"
+        variant="outline"
+        theme="warning"
+        @click="emit('abort')"
+      >
         <template #icon><stop-circle-icon /></template>
         停止
       </t-button>
-      <t-button v-else size="small" variant="outline" :disabled="!canHumanize" @click="emit('humanize')">
+      <t-button
+        v-else
+        size="small"
+        variant="outline"
+        :disabled="!canHumanize"
+        @click="emit('humanize')"
+      >
         <template #icon><ai-edit-icon /></template>
         去 AI 味
       </t-button>
@@ -27,12 +39,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import {
-  AiEditIcon,
-  CopyIcon,
-  FolderOpenIcon,
-  StopCircleIcon
-} from 'tdesign-icons-vue-next'
+import { AiEditIcon, CopyIcon, FolderOpenIcon, StopCircleIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { HUMANIZE_ENABLED } from '@/windows/main/modules/ai/humanize'
 
@@ -65,7 +72,6 @@ const humanizeTooltip = computed(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-top: 1px solid var(--td-border-level-1-color);
   background: var(--td-bg-color-container);
   padding: 6px 8px 0;
 

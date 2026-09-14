@@ -1,6 +1,7 @@
 <template>
   <div class="novel-header">
     <novel-cover-thumb
+      v-if="novel"
       :cover="novel.cover"
       :assets-dir="assetsDir"
       :context="coverContext"
@@ -12,7 +13,6 @@
       placeholder="选择小说"
       :empty="'暂无小说，可让 AI 生成'"
       :popup-props="{ overlayClassName: 'novel-select-overlay' }"
-      clearable
       @change="$emit('select', $event)"
     >
       <t-option v-for="n in novels" :key="n.id" :value="n.id" :label="n.title">
@@ -39,7 +39,8 @@ import type { NovelItem } from '@/windows/main/modules/tool/components/novel/nov
 import NovelCoverThumb from './NovelCoverThumb.vue'
 
 const props = defineProps<{
-  novel: NovelItem
+  /** 当前选中小说；无小说或未选中时为空（头部仍渲染，仅隐藏封面位） */
+  novel?: NovelItem
   /** 项目内全部小说（下拉切换） */
   novels: NovelItem[]
   activeId: string
@@ -55,10 +56,14 @@ defineEmits<{
 }>()
 
 /** 封面生图起草语境：标题 + 题材 + 摘要 */
-const coverContext = computed(() => ({
-  title: props.novel.title,
-  summary: [props.novel.genre, props.novel.summary].filter(Boolean).join(' · ')
-}))
+const coverContext = computed(() =>
+  props.novel
+    ? {
+        title: props.novel.title,
+        summary: [props.novel.genre, props.novel.summary].filter(Boolean).join(' · ')
+      }
+    : undefined
+)
 </script>
 <style scoped lang="less">
 .novel-header {

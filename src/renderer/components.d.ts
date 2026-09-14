@@ -77,7 +77,6 @@ declare module 'vue' {
     SubAgentAside: typeof import('./src/components/chat/aside/SubAgentAside.vue')['default']
     SubAgentChatTool: typeof import('./src/components/chat/chat-assistant/tool/SubAgentChatTool.vue')['default']
     SubAgentSession: typeof import('./src/components/chat/aside/SubAgentSession.vue')['default']
-    SubAgentTabs: typeof import('./src/components/chat/SubAgentTabs.vue')['default']
     SubPageLayout: typeof import('./src/components/PageLayout/SubPageLayout.vue')['default']
     SubTitle: typeof import('./src/components/PageLayout/SubTitle.vue')['default']
     SuccessResult: typeof import('./src/components/Result/SuccessResult.vue')['default']
