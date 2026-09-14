@@ -32,7 +32,7 @@ type WritingScene = 'article' | 'novelShort'
 ## 工具注入
 
 `AgentChat.getTypeTools()`：主 Agent 按 `chatType` 注入；`writing` 时经 `ChatTypeToolContext.writingScene` 透传场景，
-由 `src/global/ChatTypeConfig.ts` 分发给 `WRITING_SCENE_CONFIG[scene].tools`。子 Agent 逻辑不变（design 型 → canvas）。
+由 `src/global/ChatTypeConfig.ts` 分发给 `WRITING_SCENE_CONFIG[scene].tools`。子 Agent 无场景工具（research 只读 / image 走专用生图集）。
 
 ## 目录结构（按类型预建）
 
@@ -43,7 +43,7 @@ type WritingScene = 'article' | 'novelShort'
 ├── outputs/
 │   ├── articles/            # writing + article 场景
 │   │   ├── drafts/          # 文章正文 .md
-│   │   └── assets/          # 配图（design 子 Agent 导出于此）
+│   │   └── assets/          # 配图（生图型子 Agent 产出于此）
 │   └── novels/              # writing + novelShort 场景（小说子目录由 novel_create 创建）
 ├── inputs/
 ├── tmp/

@@ -1,6 +1,6 @@
 # 生图 / 裁剪 / 去背景 / 颜色分析工具（image_generate / image_crop / image_remove_background / image_color_map）
 
-> design 对话注入的 4 个图片处理工具：生图（依赖默认生图模型，多素材合并省钱）+ 本地裁剪 + 本地去背景 + 本地颜色分析（uTools Sharp）。
+> design 对话注入的图片处理工具：生图（`image_generate`，服务端档位、需登录；多素材合并省钱）+ 本地裁剪 + 本地去背景 + 本地颜色分析（uTools Sharp）。
 > 定位：解决「AI 无插画素材 / 想省生图成本 / 生图产物带白底盖住画布背景 / 需要判断合成图哪里颜色突兀」——多素材拼 sprite 一次生成，
 > 本地切分；需要透明底时本地 flood fill 去背景；需要检查配色是否协调时本地网格色差分析。
 
@@ -22,18 +22,24 @@
 
 ### `image_generate`（文字生图，写沙盒）
 
-| 项       | 值                                                                                                                               |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 参数     | `prompt`（必填，建议详细英文描述）+ `path?`（输出路径，缺省沙盒 `outputs/images/image-{时间戳}.png`）+ `size?`（如 `1024x1024`） |
-| 返回成功 | `{ success, path, width?, height? }`                                                                                             |
-| 返回失败 | `{ error }`（未配置模型 / 模型无效 / 接口失败 / 缺 prompt）                                                                      |
-| 风险     | sensitive，注册路径感知策略（沙盒 / 工作空间内放行）                                                                             |
-| 注入条件 | 仅当「默认生图模型」（设置 → 默认设置）已配置时注入                                                                              |
+> ⚠️ 本节 2026-09-14 校正：注入门控早已从「配置了默认生图模型」改为「**已登录**」；参数面经后续迭代扩充。
+> 完整契约以 [12-chat-image-generate.md](./12-chat-image-generate.md) 为准，本节仅作目录概览。
+
+| 项       | 值                                                                                                                                                              |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 参数     | `prompt`（必填）+ `path?`（缺省沙盒 `outputs/images/image-{时间戳}.png`）+ `model?`（服务端档位 code，缺省取「设置 → 默认生图模型」）+ `size?` + `n?`（1-4）+ `resolution?`（1k/2k/4k）+ `referenceImagePaths?`（图生图）等 |
+| 返回成功 | `{ success, path, width?, height?, count, paths, note, chatImages[] }`（`chatImages` 为执行器消费标记，回传模型前剥离）                                          |
+| 返回失败 | `{ error }`（未登录 / 档位无效 / 无可用档位 / 接口失败 / 缺 prompt）                                                                                             |
+| 风险     | sensitive，注册路径感知策略（沙盒 / 工作空间内放行，其余 ask）                                                                                                    |
+| 注入条件 | **已登录**（`hasImageGenerateAccess()`：office 主对话、design 双引擎、生图型子 Agent）；未登录不注入且提示词为空                                                  |
+| 直出形态 | 生成图作为 `image` 内容块直接展示在对话中（`record: false` 不进页面历史）                                                                                        |
 
 - 真实生图逻辑收口在 `window.preload.image.generate({ record: false, path, ... })`
-  （main `ImageService` 工具直出模式 → `RelayService` 调 `/api/images/generations` 与轮询）。
-  流程：`defaultImageModel`（服务端档位 code）→ 提交任务拿 `taskId` → 轮询至 completed → 落盘。
+  （main `ImageService` 工具直出模式 → `RelayService` 调 `/api/images/*`）。
+  流程：解析档位（显式 `model` → `defaultImageModel` → 档位列表首项）→ 提交任务拿 `taskId` → 轮询至 completed → 落盘。
 - 工具从具体文件路径导入，不经过 chat 桶文件，避免循环依赖。
+- 需要**精确排版 / 可控文案**的设计图（海报 / 封面 / 图文卡片）请改用 [14-design-draw.md](./14-design-draw.md)
+  的 `design_draw`（画布绘图，无 AI 感）。
 
 ### 生图服务端契约（mistrelle-server `/api/images`）
 
@@ -119,9 +125,9 @@
 
 ## 3. 注意事项
 
-- 未配置默认生图模型或模型无效时工具返回明确 error，AI 应如实告知用户并回退 stock / placeholder / 用户素材。
+- 生图档位无效 / 无可用档位 / 未登录时工具返回明确 error，AI 应如实告知用户并回退 stock / placeholder / 用户素材。
 - 接口返回无法识别（无 url / b64Json / taskId）时同样返回明确 error，避免静默失败。
-- image_generate 只在配置默认生图模型后注入；未配置时模型上下文里看不到该工具，不会误调用。
+- image_generate 只在**已登录**时注入（`hasImageGenerateAccess()`）；未登录时模型上下文里看不到该工具，不会误调用。
 - 裁剪 / 去背景输出固定 PNG；去背景输出按 `{basename}_no-bg.png` 命名（可用 output 覆盖）。
 - **路径包含判断统一用 `isPathUnder(target, parent)`**（`src/utils/sandbox.ts`，两端 `normalizePath` 归一化并去尾部 `/`）；
   工具策略里不要再本地重复实现，直接 `import { isPathUnder } from '@/utils/sandbox'`。

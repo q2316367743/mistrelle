@@ -37,7 +37,7 @@ export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
 → `AgentChat.typeToolsContext()`（ctx.designScene）→ `CHAT_TYPE_CONFIG.design` 自动按引擎分流提示词与工具。
 
 - **存量 design 会话无 designScene → 缺省 canvas，行为完全不变**
-- **子 Agent（sceneType='design'）ctx 无 designScene → 自动落 canvas 保持画布引擎**（design 聊天本就不可派 design 子 Agent，SUB_AGENT_ALLOW 只放行 research）
+- **子 Agent 不参与设计引擎分层**（design 聊天仅放行 research 型子 Agent，见 SUB_AGENT_ALLOW；子 Agent 工具面不含画布工具）
 - `agentPrompts.buildTypePromptBody` / `agentFunctions.getTypeTools` 零改动（都经 CHAT_TYPE_CONFIG 委托自动分流）
 
 ## 2. 数据层 `modules/designHtml/`

@@ -264,7 +264,7 @@ export interface SubAgentInfo {
   subId: string
   /** 任务摘要（由 spawn_agent args 解析，可能为空） */
   task: string
-  /** 子 Agent 能力类型（由 spawn_agent args 解析，缺省 research；用于侧边栏按类型联动） */
+  /** 子 Agent 能力类型（由 spawn_agent args 解析，缺省 research） */
   type: SubAgentType
   status: 'running' | 'completed' | 'error'
   /** 所属 assistant 消息在所有 assistant 消息中的下标（用于判定「当前轮」） */
@@ -290,7 +290,7 @@ export const collectSubAgents = (messages: ChatMessage[]): SubAgentInfo[] => {
       try {
         const parsed = JSON.parse(content.data.args ?? '{}') as { task?: string; type?: unknown }
         task = parsed.task ?? ''
-        if (parsed.type === 'research' || parsed.type === 'design') type = parsed.type
+        if (parsed.type === 'research' || parsed.type === 'image') type = parsed.type
       } catch {
         // args 解析失败则忽略任务摘要与类型
       }
@@ -307,12 +307,6 @@ export const lastAssistantIndexOf = (messages: ChatMessage[]): number => {
   let count = 0
   for (const m of messages) if (m.role === 'assistant') count++
   return count - 1
-}
-
-/** 最后一条 assistant 消息 id（无则空串），用于检测新一轮回复开始 */
-export const lastAssistantIdOf = (messages: ChatMessage[]): string => {
-  const last = messages.findLast((m) => m.role === 'assistant')
-  return last?.id ?? ''
 }
 
 /**

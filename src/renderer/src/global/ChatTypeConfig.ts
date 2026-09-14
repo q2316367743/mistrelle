@@ -24,6 +24,7 @@ import {
   createImageGenerateTool,
   hasImageGenerateAccess
 } from '@/windows/main/modules/tool/components/design/imageGenerate'
+import { createDesignDrawTool } from '@/windows/main/modules/tool/components/canvas/designDraw'
 import { hasHumanizeAccess } from '@/windows/main/modules/tool/components/design/humanize'
 import { createImageSubAgentTools } from '@/windows/main/modules/tool/components/design/imageSubAgent'
 import type { SubAgentType } from '@/windows/main/modules/subagent/types'
@@ -125,17 +126,25 @@ export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
 export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
   office: {
     label: '日常办公',
-    // 通用生图：登录后注入 image_generate，生成的图片直接展示在对话中；
-    // 未登录不注入且提示词为空（门控动态组装，登录态稳定时前缀不变、可缓存）
-    prompt: () =>
+    // 图片产出能力说明：design_draw（画布绘图，登录无关）恒在；image_generate（扩散生图，需登录）按登录态追加。
+    // 门控动态组装，登录态稳定时前缀不变、可缓存
+    prompt: () => {
+      const lines = [
+        '## 图片产出能力',
+        '- 需要**精确排版 / 可控文案**的设计图（海报、封面、社交配图、知识卡片、图文排版）时，调用 design_draw(prompt, size?)——它以画布逐层绘制，画面干净、无明显 AI 感'
+      ]
+      if (hasImageGenerateAccess()) {
+        lines.push('- 需要写实插画 / 照片质感的素材时，调用 image_generate(prompt)——扩散生图')
+      }
+      lines.push(
+        '- 生成图片会直接展示在对话中；完成后简要说明结果并告知保存路径（path），失败如实告知，不反复重试'
+      )
+      return lines.join('\n')
+    },
+    tools: (ctx) =>
       hasImageGenerateAccess()
-        ? [
-            '## 生图能力',
-            '- 用户需要生成 / 绘制图片、插画、配图时，调用 image_generate(prompt) 生成，图片会直接展示在对话中',
-            '- 生成完成后简要说明结果，并告知图片保存路径（path）；生成失败如实告知，不反复重试'
-          ].join('\n')
-        : '',
-    tools: (ctx) => (hasImageGenerateAccess() ? [createImageGenerateTool(ctx)] : [])
+        ? [createImageGenerateTool(ctx), createDesignDrawTool()]
+        : [createDesignDrawTool()]
   },
   writing: {
     label: '写作',
@@ -147,14 +156,18 @@ export const CHAT_TYPE_CONFIG: Record<ChatType, ChatTypeConfig> = {
         '约定：',
         '- 使用 file_write 创建 / 更新 .md 文档，路径建议放在 outputs/ 下，便于侧边栏文档树展示与预览',
         '- 每次写作完成后，告知用户文档的完整路径',
-        '- 文档结构清晰：使用标题层级、列表、引用组织内容'
+        '- 文档结构清晰：使用标题层级、列表、引用组织内容',
+        '- 需要**精确排版 / 可控文案**的设计图（封面、图文卡片、社交配图）时，可用 design_draw(prompt, size?) 直接在画布上绘制'
       ].join('\n'),
-    tools: (ctx) => WRITING_SCENE_CONFIG[ctx.writingScene ?? 'article'].tools(ctx)
+    tools: (ctx) => [
+      ...WRITING_SCENE_CONFIG[ctx.writingScene ?? 'article'].tools(ctx),
+      createDesignDrawTool()
+    ]
   },
   design: {
     label: '设计创意',
     // 渲染引擎分层（canvas / html）：提示词与工具按 DESIGN_SCENE_CONFIG 委托；
-    // 子 Agent（sceneType='design'）ctx 无 designScene → 缺省 canvas 保持画布引擎
+    // 子 Agent 不派发 design 能力类型，ctx 无 designScene → 缺省 canvas
     prompt: (ctx) => DESIGN_SCENE_CONFIG[ctx.designScene ?? 'canvas'].prompt(ctx),
     tools: (ctx) => DESIGN_SCENE_CONFIG[ctx.designScene ?? 'canvas'].tools(ctx)
   }

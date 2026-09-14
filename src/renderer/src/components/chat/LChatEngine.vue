@@ -2,7 +2,7 @@
   <t-layout class="l-chat-tool">
     <t-content class="l-chat-tool__content">
       <r-chat-list
-        :messages="displayMessages"
+        :messages="messages"
         :clear-history="messages.length > 1 && status !== 'streaming'"
         :status="status"
         style="flex: 1; margin-top: 8px"
@@ -11,12 +11,6 @@
         @continue="handleContinue"
         @change="handleMessagesChange"
         @view-sub-agent="handleViewSubAgent"
-      />
-      <sub-agent-tabs-comp
-        v-if="subAgentTabs.length > 1 || activeAgentId !== 'main'"
-        :tabs="subAgentTabs"
-        :active-id="activeAgentId"
-        @switch="handleSwitchAgent"
       />
       <l-chat-sender
         ref="_senderRef"
@@ -49,11 +43,14 @@
         :todos="instance.todos.value"
         :agent-history="agentHistory"
         :active-agent-id="activeAgentId"
+        :sub-agent="activeSubAgent"
+        :sub-agent-messages="activeSubAgentMessages"
         :type="asideType"
         :writing-scene="writingScene"
         :design-scene="designScene"
         :fullscreen="fullscreen"
         @view-agent="handleViewSubAgent"
+        @close-sub-agent="handleCloseSubAgent"
       />
     </t-aside>
     <div class="l-chat-tool__header" :class="{ collapsed: collapsed }">
@@ -87,7 +84,6 @@
   </t-layout>
 </template>
 <script lang="ts" setup>
-import SubAgentTabsComp from '@/components/chat/SubAgentTabs.vue'
 import TodoProgressButton from '@/components/chat/TodoProgressButton.vue'
 import RChatList from './RChatList.vue'
 import LChatSender from './sender/LChatSender.vue'
@@ -176,12 +172,12 @@ const {
   handleContinue,
   handleMessagesChange,
   activeAgentId,
-  subAgentTabs,
+  activeSubAgent,
+  activeSubAgentMessages,
   agentHistory,
-  displayMessages,
   asideType,
-  handleSwitchAgent,
-  handleViewSubAgent
+  handleViewSubAgent,
+  handleCloseSubAgent
 } = useChatSession({
   chatId: props.chatId,
   storageKey: props.storageKey,
@@ -207,6 +203,11 @@ watch(
   },
   { immediate: true }
 )
+
+// 打开子 Agent 记录（点消息流里的 spawn_agent 卡片或侧栏「Agent 记录」）时自动展开侧边栏
+watch(activeAgentId, (id) => {
+  if (id !== 'main') aside.value = true
+})
 
 const { l2, r1 } = useTitlePadding()
 const paddingLeft = computed(() => `${l2}px`)

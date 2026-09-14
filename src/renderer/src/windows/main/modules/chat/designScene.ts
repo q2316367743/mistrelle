@@ -5,7 +5,7 @@ import { Html5Icon, LayersIcon } from 'tdesign-icons-vue-next'
  * 设计子场景（design 聊天类型内的渲染引擎分层，新建对话时选定，创建后锁定）：
  * - canvas：画布引擎（leafer 图层树 + 节点级批量编辑，design 类型默认引擎）
  * - html：HTML 引擎（AI 生成固定尺寸自包含 HTML 设计稿，iframe 实时预览 + snapdom 导出 PNG）
- * 子 Agent（sceneType='design'）不携带该字段，缺省 canvas 保持画布引擎。
+ * 仅 design 聊天类型使用；子 Agent 不参与设计引擎分层。
  */
 export type DesignScene = 'canvas' | 'html'
 

@@ -118,7 +118,7 @@
 
 | 文档                                                                | 描述                                                                              |
 |---------------------------------------------------------------------|-----------------------------------------------------------------------------------|
-| [01-thinking-mode.md](./chat/01-thinking-mode.md)                   | DeepSeek 思考模式：`thinking` / `reasoning_effort` 参数、扁平字段设计、思维链渲染、`delta.reasoning` 网关兼容、工具轮次 `reasoning_content` 强制回传契约（缺失补空串防 400） |
+| [01-thinking-mode.md](./chat/01-thinking-mode.md)                   | DeepSeek 思考模式：`thinking` / `reasoning_effort` 参数、扁平字段设计、思维链渲染（**2026-09-14：思考块一律默认折叠**，含流式中）、`delta.reasoning` 网关兼容、工具轮次 `reasoning_content` 强制回传契约（缺失补空串防 400） |
 | [02-chat-locator.md](./chat/02-chat-locator.md)                     | 对话侧边定位器（RChatList Locator）：仅用户消息展示、tooltip 预览前 10 字         |
 | [03-canvas-node-reference.md](./chat/03-canvas-node-reference.md)   | 画布节点引用：双击节点 → 输入框 canvasMention → `CanvasContent` 结构化注入        |
 | [04-chat-session-lifecycle.md](./chat/04-chat-session-lifecycle.md) | 会话生命周期与空闲自动回收：挂载/运行豁免、5 分钟 TTL 过期销毁、回收后磁盘水合    |
@@ -171,7 +171,7 @@
 
 | 文档                                                      | 描述                                                                               |
 |-----------------------------------------------------------|------------------------------------------------------------------------------------|
-| [01-subagent-module.md](./subagent/01-subagent-module.md) | 子 Agent 模块：能力类型 × 聊天类型矩阵、research / design / **image（生图型，2026-09-14）** 三类、**仅场景工具型封闭能力面**（`isSceneToolsOnlyAgent` → 只注入专用工具集、关渐进装载与 toolRegistry 兜底、不注入 skill/todo 指导）、`denyOnAsk` 需审批即自动拒绝、模块结构与运行流程 |
+| [01-subagent-module.md](./subagent/01-subagent-module.md) | 子 Agent 模块：能力类型 × 聊天类型矩阵、research / **image（生图型，2026-09-14）** 两类、**仅场景工具型封闭能力面**（`isSceneToolsOnlyAgent` → 只注入专用工具集、关渐进装载与 toolRegistry 兜底、不注入 skill/todo 指导）、`denyOnAsk` 需审批即自动拒绝、模块结构与运行流程；**2026-09-14 精简**：删除 design 型子 Agent 与 `policy.ts`/`sceneType` 链路、底部 Agent tab 栏移除，子 Agent 聊天记录改在右侧侧栏（`SubAgentAside` + `SubAgentSession` 精简会话视图、X 关闭回正常侧栏、主区恒为主 Agent）、修正 `collectSubAgents` 类型收窄漏 `image` |
 
 ### tool/ —— 工具
 
@@ -189,6 +189,7 @@
 | [11-progressive-tool-collection.md](./tool/11-progressive-tool-collection.md) | 渐进式工具加载：`ToolGroup` 增加 id/description、`<available_tool_collections>` 目录 + `load_tool_collection(ids)` 整组装载、洋葱式三层解析（内置→已装载→全局 toolRegistry 兜底，命中即自动复装实现跨 Loop 恢复）、beginRequest 每轮清空不落库；并行审批 UI（待审块均可作答 + 横幅计数定位）；真问题是能力自助化而非省 token |
 | [12-chat-image-generate.md](./tool/12-chat-image-generate.md) | 通用生图对话直出：`image_generate` 升级为唯一通用工具（office + design 双引擎共用，生成图一律作为 `image` 内容块展示在对话中）、执行器 `chatImages` 标记约定（回填 image 块 + 剥离标记）、`hasImageGenerateAccess()` 登录门控（替代默认生图模型门控，4 处统一）、RChatImage 渲染组件 + 折叠白名单保留图片块；**2026-09-14：`model` 档位参数（AI 按用途自选，动态列出可选 code）+ 生图型子 Agent 成为文章配图专用通道** |
 | [13-humanize-tool.md](./tool/13-humanize-tool.md) | `humanize_text` 文案去 AI 味工具（design 双引擎，登录门控）：流式客户端从写作组件目录下沉到 `modules/ai/humanize.ts`（写作侧边栏与工具共用）、工具 `risk: safe` 直接放行、提示词 `hasHumanize` 同源门控、只返回文本不落盘 |
+| [14-design-draw.md](./tool/14-design-draw.md) | `design_draw` 画布绘图工具（2026-09-14）：参数对齐生图接口（prompt / path / size），内部驱动**工具面封闭**的「设计创意画布 agent」逐层构建并导出 PNG、产物以 `image` 块直出——定位「比扩散生图高一档：无 AI 感、文案版式精确可控」；**四层安全纵深**（`closedToolSurface` 物理封闭工具面 + 维持 `denyOnAsk` 所有 ask 自动拒绝 + 既有策略零放宽 + 外层路径感知策略）、不注册 `toolMap`（防 registry 兜底把工具泄漏到未注入场景）、office/writing 注入且不门控登录 |
 
 ### writing/ —— 写作
 

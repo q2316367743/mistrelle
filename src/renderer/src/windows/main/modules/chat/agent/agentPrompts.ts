@@ -28,6 +28,8 @@ export interface PromptContext {
   isSubAgent: boolean
   /** 子 Agent 能力类型（「仅场景工具」型据此裁剪 skill 目录 / 工具集合目录 / todo 指导） */
   subAgentType?: SubAgentType
+  /** 显式封闭工具面（design_draw 等内部 Agent）：与「仅场景工具」型同款提示词裁剪 */
+  closedToolSurface?: boolean
   privacy: boolean
   mode: AiChatMode
   chatType: ChatType
@@ -217,9 +219,9 @@ export const buildAgentRequestMessages = async (
 ): Promise<BuiltRequestMessages> => {
   const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
   const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
-  // 「仅场景工具」型子 Agent（生图型）：工具面封闭在专用集内，不注入 skill 目录 / 可选工具集合目录 /
-  // 记忆与 todo 指导——这些提示词只会诱导它去调用并不存在的工具，纯属噪音
-  const sealedSurface = isSceneToolsOnlyAgent(ctx.subAgentType)
+  // 封闭工具面（生图型子 Agent / design_draw 内部 Agent）：工具面已固定，不注入 skill 目录 /
+  // 可选工具集合目录 / 记忆与 todo 指导——这些提示词只会诱导它去调用并不存在的工具，纯属噪音
+  const sealedSurface = !!ctx.closedToolSurface || isSceneToolsOnlyAgent(ctx.subAgentType)
   // 被禁用的 skill 不注入目录（模型不可见即不会调用 load_skill），SkillLocal 管理页仍可见全量
   const skillStore = useSettingSkillStore()
   const skills = sealedSurface

@@ -37,7 +37,7 @@ watch(
 ### 设计要点
 
 - **触发信号**取「列表增长且新末条为 user」而非 send 事件：这是「发送了一条消息」在数据侧的可靠信号，天然覆盖异步追加时序；首轮草稿自动发送（`load()` 中 draft 路径同样走 `sendUserMessage`）也生效。
-- **不误伤**：continue 续跑（不新增 user 消息）、删除 / 清空（长度减少）均不触发，保持用户当前视点；子 Agent tab 切换若快照末条为 user 会回底部，属合理 UX。
+- **不误伤**：continue 续跑（不新增 user 消息）、删除 / 清空（长度减少）均不触发，保持用户当前视点。
 - **behavior 用 smooth 且在 nextTick 后调用**：此时目标高度已含新 user + pending assistant 消息，动画终点即真实底部；到达底部后 tdesign 内部 `checkAutoScroll` 判定贴近底部自动恢复跟随，后续流式增量继续自动滚。
 - ref 类型用 DOM 标准 `ScrollBehavior` 联合类型（`'auto' | 'instant' | 'smooth'`），与组件 expose 签名兼容。
 

@@ -1,7 +1,6 @@
 import { ToolChat } from '@/windows/main/modules/chat/agent/AgentChat'
 import { buildChatSubKey } from '@/windows/main/modules/chat/service/ChatService'
 import { MAX_SUB_AGENT_STEPS } from '@/global/Constant'
-import { SUB_AGENT_SCENE } from './policy'
 import { persistSubAgent } from './persistence'
 import { registerRunningSubAgent, unregisterRunningSubAgent } from './registry'
 import { buildSubAgentSystemPrompt } from './prompt'
@@ -32,11 +31,11 @@ const waitForCompletion = (chat: ToolChat): Promise<'completed' | 'error' | 'sto
  * - 白名单内 shell 命令自动放行
  * - 需审批的操作（非白名单 shell、写入类工具）直接以「无审批通道，已自动拒绝」收场（denyOnAsk）
  * - 安全中心黑名单命中的操作同样自动拒绝
- * - design 型子 Agent 额外注入画布场景工具（canvas_*，安全策略已在 canvas 模块注册，sandbox/workspace 可信区内放行）；
- *   生图型（image）只注入专用生图工具集（能力面封闭，无记忆 / todo / ask / 文件）
+ * - design 聊天类型的主 Agent 直接持有画布工具，子 Agent 不再重复；生图型（image）
+ *   只注入专用生图工具集（能力面封闭，无记忆 / todo / ask / 文件）
  *
  * 流程：
- * 1. 使用调用方预生成的 subId，创建独立 ToolChat 实例（按能力类型选择 systemPrompt 与场景工具）
+ * 1. 使用调用方预生成的 subId，创建独立 ToolChat 实例（按能力类型选择 systemPrompt）
  * 2. 建立 throttledWatch 持久化子 Agent 消息到 message/sub_{subId}.json
  * 3. 发送任务消息，等待循环结束
  * 4. 提取最终摘要，持久化最终状态
@@ -72,9 +71,7 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
     // 隐私聊天：继承主 Agent 标记，子 Agent 同样不注册记忆工具
     privacy: options.privacy,
     systemPrompt: buildSubAgentSystemPrompt(workspace, subAgentType),
-    // 能力类型 → 场景工具（design → canvas）；research 无场景工具；
-    // 生图型（image）能力面由专用工具集提供，「仅场景工具」分支会剔除默认常驻工具
-    sceneType: SUB_AGENT_SCENE[subAgentType ?? 'research'],
+    // 生图型（image）能力面由专用工具集提供（「仅场景工具」分支会剔除默认常驻工具）；research 型无专用工具集
     subAgentType,
     chatId, // 子 Agent 自身的 chatId（虽然子 Agent 不会再 spawn 子 Agent，但保持字段一致）
     isSubAgent: true, // 禁用 spawn_agent 工具 + 不注入子 Agent 使用指导，防止嵌套派发

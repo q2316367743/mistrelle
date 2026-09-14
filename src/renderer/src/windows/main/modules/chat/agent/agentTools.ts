@@ -22,6 +22,10 @@ import { FONT_PICK_TOOL_NAME, formatFontPickResult } from '@/windows/main/module
 import { SPAWN_AGENT_TOOL_NAME } from '@/windows/main/modules/subagent/tool'
 import { resolveSubAgentType } from '@/windows/main/modules/subagent/types'
 import { hasImageGenerateAccess } from '@/windows/main/modules/tool/components/design/imageGenerate'
+import {
+  DESIGN_DRAW_TOOL_NAME,
+  resolveDesignDrawSize
+} from '@/windows/main/modules/tool/components/canvas/designDraw'
 
 const ASK_TOOL_NAME = 'ask'
 
@@ -209,7 +213,7 @@ export const runSingleTool = async (
     return
   }
 
-  // spawn_agent：委托子 Agent 执行独立任务（调研 / 设计），返回最终摘要（不进 policy）
+  // spawn_agent：委托子 Agent 执行独立任务（调研 / 生图），返回最终摘要（不进 policy）
   if (fn.name === SPAWN_AGENT_TOOL_NAME) {
     const task = typeof args.task === 'string' ? args.task : ''
     if (!task) {
@@ -265,6 +269,84 @@ export const runSingleTool = async (
       parentSignal: policyContext.abortSignal
     })
     applyResult(messages, assistantMessageId, call, result.summary)
+    return
+  }
+
+  // design_draw：以内嵌画布 agent 绘图并导出 PNG（不进 policy；prompt 可读、path 由外层策略把关）
+  if (fn.name === DESIGN_DRAW_TOOL_NAME) {
+    const prompt = typeof args.prompt === 'string' ? args.prompt.trim() : ''
+    if (!prompt) {
+      applyResult(messages, assistantMessageId, call, '错误：design_draw 缺少 prompt 参数')
+      return
+    }
+    if (!policyContext.chatId || !policyContext.sandboxDir) {
+      applyResult(messages, assistantMessageId, call, '错误：无法开始绘制，缺少聊天上下文')
+      return
+    }
+    const { model, provide, thinking, reasoning_effort } = findLastUserModel(messages)
+    if (!model || !provide) {
+      applyResult(messages, assistantMessageId, call, '错误：无法确定绘图使用的模型')
+      return
+    }
+    const size = resolveDesignDrawSize(args.size)
+    const pathArg = typeof args.path === 'string' && args.path.trim() ? args.path.trim() : ''
+    const outputPath =
+      pathArg ||
+      window.preload.path.join(
+        policyContext.sandboxDir,
+        'outputs',
+        'images',
+        `design-${Date.now()}.png`
+      )
+    markToolExecuting(messages, assistantMessageId, call.toolCallId)
+    // 动态导入避免循环依赖（designDraw → AgentChat → agentFunctions → ChatTypeConfig → designDraw）
+    const { runDesignDraw } = await import(
+      '@/windows/main/modules/tool/components/canvas/designDraw'
+    )
+    try {
+      const result = await runDesignDraw({
+        prompt,
+        size,
+        outputPath,
+        sandboxDir: policyContext.sandboxDir,
+        workspace: policyContext.workspace,
+        model,
+        provide,
+        thinking,
+        reasoningEffort: reasoning_effort,
+        // 主 Agent 终止时级联终止内部绘制
+        parentSignal: policyContext.abortSignal
+      })
+      // chatImages：执行器据此把图片作为 image 块展示在对话中，并从回传模型的结果里剥离该标记
+      applyResult(
+        messages,
+        assistantMessageId,
+        call,
+        serializeResult({
+          success: true,
+          path: result.path,
+          width: result.width,
+          height: result.height,
+          size: `${size.width}x${size.height}`,
+          note: '设计图已生成并展示在对话中（画布方式绘制，可精确控制文案与版式）',
+          chatImages: [
+            {
+              path: result.path,
+              name: window.preload.path.basename(result.path),
+              width: result.width,
+              height: result.height
+            }
+          ]
+        })
+      )
+    } catch (error: unknown) {
+      applyResult(
+        messages,
+        assistantMessageId,
+        call,
+        error instanceof Error ? `错误: ${error.message}` : '错误: 绘制失败'
+      )
+    }
     return
   }
 

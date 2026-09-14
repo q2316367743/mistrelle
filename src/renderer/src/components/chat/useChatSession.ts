@@ -6,10 +6,9 @@ import { INTERACTIVE_KEY } from '@/windows/main/modules/chat/agent/interactive'
 import { readSubAgentContent, getRunningSubAgentMessages } from '@/windows/main/modules/subagent'
 import {
   collectSubAgents,
-  lastAssistantIdOf,
-  lastAssistantIndexOf
+  lastAssistantIndexOf,
+  type SubAgentInfo
 } from '@/windows/main/modules/chat/agent/agentMessages'
-import type { AgentTabItem } from '@/components/chat/SubAgentTabs.vue'
 import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/components/chat/design/canvasNodeBridge'
 import { HTML_ELEMENT_PICK_KEY, type HtmlElementRef } from '@/components/chat/design/htmlElementBridge'
 import { DEFAULT_CONTEXT_WINDOW } from '@/global/Constant'
@@ -28,7 +27,7 @@ export interface UseChatSessionOptions {
  * - 交互桥（INTERACTIVE_KEY）+ 画布节点桥（CANVAS_NODE_PICK_KEY）provide
  * - 发送 / 停止 / 清空 / 删除 / 续跑等会话操作
  * - 上次模型配置回填（initialState）、token 用量估算
- * - 子 Agent 切换（activeAgentId / tabs / 消息快照 / displayMessages 分流）
+ * - 子 Agent 查看（activeAgentId / 消息快照 / 侧栏面板数据）
  *
  * 注意：storageKey 为固定值（会话切换由调用方用 :key 重建本组件实现）。
  */
@@ -170,48 +169,18 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     }
   })
 
-  // ─── 子 Agent 切换 ────────────────────────────────────────────────
+  // ─── 子 Agent 查看 ────────────────────────────────────────────────
 
-  /** 当前选中的 Agent：'main' 表示主 Agent，否则为子 Agent ID */
+  /** 当前在侧栏查看的子 Agent ID：'main' 表示未打开（显示正常侧栏），否则为子 Agent ID */
   const activeAgentId = ref<string>('main')
-  /** 子 Agent 消息快照（切换 tab 时从 sub_{subId}.json 加载） */
+  /** 子 Agent 消息快照（打开时从 chat_sub 表加载） */
   const subAgentMessages = ref<ChatMessage[] | null>(null)
 
-  /** 子 Agent 汇总（全部消息），tab 栏只取最后一条 AI 消息，侧边栏展示全部 */
+  /** 子 Agent 汇总（全部消息），侧边栏「Agent 记录」展示全部 */
   const allSubAgents = computed(() => collectSubAgents(messages.value))
 
-  /**
-   * 侧边栏面板类型：优先跟随活动子 Agent 的能力类型。
-   * 切到 design 型子 Agent（如写作对话里的绘图子 Agent）时切为画布面板，便于查看其生成的图；
-   * 其余（主 Agent / research 子 Agent）回落到会话类型。
-   */
-  const asideType = computed<ChatType>(() => {
-    if (activeAgentId.value !== 'main') {
-      const sub = allSubAgents.value.find((a) => a.subId === activeAgentId.value)
-      if (sub?.type === 'design') return 'design'
-    }
-    return chatType.value
-  })
-
-  /**
-   * 构建 Agent 切换卡片数据：仅展示最后一条 AI 消息 spawn 的子 Agent。
-   * 历史子 Agent 对当前任务无意义，收敛到侧边栏「Agent 记录」查看。
-   */
-  const subAgentTabs = computed<AgentTabItem[]>(() => {
-    const tabs: AgentTabItem[] = [{ id: 'main', label: '主 Agent' }]
-    const lastIdx = lastAssistantIndexOf(messages.value)
-    allSubAgents.value
-      .filter((a) => a.messageIndex === lastIdx)
-      .forEach((info, index) => {
-        tabs.push({
-          id: info.subId,
-          label: `子 Agent ${index + 1}`,
-          task: info.task,
-          status: info.status
-        })
-      })
-    return tabs
-  })
+  /** 侧栏面板类型：恒为会话类型（子 Agent 记录走独立面板，不再借设计画布面板） */
+  const asideType = computed<ChatType>(() => chatType.value)
 
   /** 侧边栏「Agent 记录」数据：全部子 Agent，最后一条消息的标记为当前轮 */
   const agentHistory = computed(() => {
@@ -219,9 +188,15 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     return allSubAgents.value.map((a) => ({ ...a, current: a.messageIndex === lastIdx }))
   })
 
-  /** 当前展示的消息列表：主 Agent 显示会话消息；子 Agent 运行中实时绑定消息流，已完成显示磁盘快照 */
-  const displayMessages = computed(() => {
-    if (activeAgentId.value === 'main') return messages.value
+  /** 当前在侧栏查看的子 Agent 汇总信息（含任务摘要 / 状态），'main' 时为 undefined */
+  const activeSubAgent = computed<SubAgentInfo | undefined>(() => {
+    if (activeAgentId.value === 'main') return undefined
+    return allSubAgents.value.find((a) => a.subId === activeAgentId.value)
+  })
+
+  /** 侧栏展示的子 Agent 消息：运行中实时绑定消息流，已完成显示磁盘快照 */
+  const activeSubAgentMessages = computed<ChatMessage[]>(() => {
+    if (activeAgentId.value === 'main') return []
     // 运行中的子 Agent：直接绑定其响应式 messages（streaming 实时刷新）
     const live = getRunningSubAgentMessages(activeAgentId.value)
     if (live) return live.value
@@ -229,13 +204,12 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     return subAgentMessages.value ?? []
   })
 
-  // 切换 Agent tab：主 Agent 直接切回会话消息；子 Agent 运行中跳过磁盘加载（实时绑定），否则从磁盘加载快照
+  // 打开子 Agent：运行中跳过磁盘加载（实时绑定），否则从磁盘加载快照；关闭（main）时清空
   watch(activeAgentId, async (agentId) => {
     if (agentId === 'main') {
       subAgentMessages.value = null
       return
     }
-    // 运行中的子 Agent：displayMessages 实时绑定，无需磁盘快照
     if (getRunningSubAgentMessages(agentId)) {
       subAgentMessages.value = null
       return
@@ -248,13 +222,13 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     }
   })
 
-  /** 当前选中的子 Agent 是否在运行中（依赖注册表，注册/注销时重算） */
+  /** 当前查看的子 Agent 是否在运行中（依赖注册表，注册/注销时重算） */
   const activeSubRunning = computed(() => {
     if (activeAgentId.value === 'main') return false
     return !!getRunningSubAgentMessages(activeAgentId.value)
   })
 
-  // 子 Agent 从运行中变为完成（从注册表移除）的瞬间：重载磁盘快照，避免 displayMessages 突变为空
+  // 子 Agent 从运行中变为完成（从注册表移除）的瞬间：重载磁盘快照，避免消息区突变为空
   watch(activeSubRunning, async (running) => {
     if (running || activeAgentId.value === 'main') return
     try {
@@ -265,26 +239,15 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     }
   })
 
-  const handleSwitchAgent = (agentId: string) => {
-    activeAgentId.value = agentId
-  }
-
-  /** 点击 spawn_agent 工具卡片：切换到对应子 Agent */
+  /** 点击 spawn_agent 工具卡片 / 侧栏「Agent 记录」条目：在侧栏打开对应子 Agent */
   const handleViewSubAgent = (subAgentId: string) => {
     activeAgentId.value = subAgentId
   }
 
-  // 新一轮回复开始时，若仍停留在历史子 Agent（已不在当前轮 tab 中），自动回到主 Agent
-  watch(
-    () => lastAssistantIdOf(messages.value),
-    () => {
-      if (activeAgentId.value === 'main') return
-      const currentSubIds = new Set(
-        subAgentTabs.value.map((t) => t.id).filter((id) => id !== 'main')
-      )
-      if (!currentSubIds.has(activeAgentId.value)) activeAgentId.value = 'main'
-    }
-  )
+  /** 关闭子 Agent 面板：回到正常侧栏 */
+  const handleCloseSubAgent = () => {
+    activeAgentId.value = 'main'
+  }
 
   return {
     session,
@@ -312,11 +275,11 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     handleContinue,
     handleMessagesChange,
     activeAgentId,
-    subAgentTabs,
+    activeSubAgent,
+    activeSubAgentMessages,
     agentHistory,
-    displayMessages,
     asideType,
-    handleSwitchAgent,
-    handleViewSubAgent
+    handleViewSubAgent,
+    handleCloseSubAgent
   }
 }

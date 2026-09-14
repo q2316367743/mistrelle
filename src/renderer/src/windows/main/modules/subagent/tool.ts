@@ -7,7 +7,6 @@ export const SPAWN_AGENT_TOOL_NAME = 'spawn_agent'
 /** 各能力类型的说明（用于工具 description，模型据此理解 type 参数） */
 const SUB_AGENT_TYPE_DESC: Record<SubAgentType, string> = {
   research: '调研型：只读调研 / 分析（搜索文件、对比方案），返回结构化摘要',
-  design: '设计型：用画布创作配图 / 设计稿，导出 PNG 并返回保存路径',
   image: '生图型：按任务描述自行撰写生图提示词并生成封面 / 插图，返回图片保存路径'
 }
 
@@ -52,4 +51,4 @@ export const createSpawnAgentTool = (
 }
 
 /** 默认（全类型）实例：供 getDefaultTools 展示 / 兜底；AgentChat 运行期会按聊天类型裁剪替换 */
-export const spawnAgentTool: ToolFunction = createSpawnAgentTool(['research', 'design'])
+export const spawnAgentTool: ToolFunction = createSpawnAgentTool(['research', 'image'])

@@ -55,10 +55,14 @@ export interface UseChatOptions {
   chatId?: string
   /** 是否为子 Agent：禁用 spawn_agent 工具（防止嵌套派发导致路径错乱），且不注入子 Agent 使用指导 */
   isSubAgent?: boolean
-  /** 子 Agent 能力场景（design 型子 Agent 使用，注入画布工具）；主 Agent / research 型子 Agent 不使用 */
-  sceneType?: ChatType
   /** 子 Agent 能力类型（「仅场景工具」型据此切换为封闭的专用工具集） */
   subAgentType?: SubAgentType
+  /**
+   * 显式封闭工具面：只注入传入的 functions，不并入默认常驻工具 / 用户勾选 / 装载器，
+   * 并关闭渐进装载与执行期 toolRegistry 兜底（与「仅场景工具」型子 Agent 同款封闭分支）。
+   * 供 design_draw 等「工具面由调用方完全决定」的内部 Agent 使用。
+   */
+  closedToolSurface?: boolean
   /** 单轮 agent loop 最大工具迭代步数，缺省用 MAX_AGENT_STEPS；子 Agent 传入更大预算以完成复杂调研 */
   maxSteps?: number
   /** 触顶步数后是否执行最后一次无工具调用强制输出最终总结（子 Agent 使用，避免触顶时只返回截断提示） */
@@ -102,10 +106,10 @@ export class ToolChat {
   private chatId = ''
   /** 是否为子 Agent（禁用 spawn_agent 工具，防止嵌套派发）【协作面：agentLoop 触顶提示裁剪】 */
   readonly isSubAgent: boolean = false
-  /** 子 Agent 能力场景（design 型子 Agent 为 'design'，用于注入画布工具）；research 型子 Agent / 主 Agent 缺省 */
-  private sceneType?: ChatType
   /** 子 Agent 能力类型（「仅场景工具」型据此切换为封闭的专用工具集） */
   private subAgentType?: SubAgentType
+  /** 显式封闭工具面（design_draw 等内部 Agent）：只暴露注入的 functions，关闭装载器与注册表兜底【协作面】 */
+  readonly closedToolSurface: boolean = false
   /** 写作子场景（writing 类型内部分层，新建对话时选定，创建后锁定；缺省 article） */
   private writingScene: WritingScene = 'article'
   /** 设计子场景（design 类型的渲染引擎 canvas / html，新建对话时选定，创建后锁定；缺省 canvas） */
@@ -138,8 +142,8 @@ export class ToolChat {
     if (options.workspace) this.workspace = options.workspace
     if (options.chatId) this.chatId = options.chatId
     if (options.isSubAgent) this.isSubAgent = true
-    this.sceneType = options.sceneType
     this.subAgentType = options.subAgentType
+    if (options.closedToolSurface) this.closedToolSurface = true
     if (options.maxSteps) this.maxSteps = options.maxSteps
     if (options.finalizeOnMaxSteps) this.finalizeOnMaxSteps = true
   }
@@ -180,8 +184,8 @@ export class ToolChat {
       privacy: this.privacy,
       mode: this.mode,
       chatType: this.chatType,
-      sceneType: this.sceneType,
       subAgentType: this.subAgentType,
+      closedToolSurface: this.closedToolSurface,
       typeTools: this.typeToolsContext(),
       todos: this.todos,
       loadedCollections: this.loadedCollections
@@ -195,6 +199,7 @@ export class ToolChat {
       systemPrompt: this.systemPrompt,
       isSubAgent: this.isSubAgent,
       subAgentType: this.subAgentType,
+      closedToolSurface: this.closedToolSurface,
       privacy: this.privacy,
       mode: this.mode,
       chatType: this.chatType,

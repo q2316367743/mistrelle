@@ -89,3 +89,6 @@ canvas/html 提示词不追加生图增强规则、writing 场景提示词改给
 
 - [attachment/03-image-generate-page.md](../attachment/03-image-generate-page.md) —— 主进程 ImageService 与 `record:false` 直出模式
 - [tool/04-image-tools.md](./04-image-tools.md) —— image_crop / image_remove_background / image_color_map 等配套图片工具
+- [tool/14-design-draw.md](./14-design-draw.md) —— `design_draw`：同样「生成图直出对话」，但内核是**画布绘图**
+  （逐层构建、文案版式精确可控、无 AI 感），与本文的扩散生图互补——精确排版的图表类设计图走 design_draw，
+  写实插画 / 照片质感素材走 `image_generate`。

@@ -243,7 +243,7 @@ export interface AIMessage extends ChatBaseMessage {
   comment?: ChatComment
   /** 完成时间戳（ms） */
   finishedAt?: number
-  /** 本条回复过程中 spawn 的子 Agent ID 列表（用于 UI 展示子 Agent 切换卡片） */
+  /** 本条回复过程中 spawn 的子 Agent ID 列表（用于 UI 侧栏子 Agent 记录入口） */
   subAgentIds?: string[]
   /** 本条回复消耗的 token 用量（来自 API usage；多步 agent loop 累计） */
   usage?: ChatUsage

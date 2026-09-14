@@ -110,6 +110,17 @@ interface ChatSenderInitial {
 - `subagent/types.ts` `SubAgentOptions` 增加 `thinking?: boolean`。
 - `subagent/runner.ts` 解构 `thinking` 写入子 Agent 的 `ChatRequestParams.message.thinking`。
 
+## 思考块展示（RChatThink）
+
+思考内容块的展开 / 折叠由 `chat-assistant/RChatThink.vue` 控制（内部包 tdesign `ChatThinking` 的 `collapsed`）：
+
+- **一律默认折叠**（2026-09-14 调整）：`useBoolState(true)`，包括流式中正在思考的那一块；想看思考过程需用户手动点击展开。
+  此前行为是「正在思考的块初始展开、完成后自动折叠」，现已彻底去掉自动展开。
+- 因恒为折叠，`RChatThink` 不再需要 `active` prop 与「status 变 complete 即折叠」的 watch；
+  `MChatAssistant` 也随之删除 `activeThinkingIndex` computed 与 `:active` 绑定。
+- 注意与**消息级过程折叠**（`MChatAssistant` 的 `processExpanded`，见 `docs/chat/07`）区分：
+  后者控制整条 assistant 消息的「执行过程」块显隐，前者只管单个思考块。
+
 ## 关键文件
 
 | 文件 | 作用 |
@@ -123,6 +134,7 @@ interface ChatSenderInitial {
 | `src/components/chat/AiModelSelect.vue` | 思考开关 + 强度选择器 UI |
 | `src/components/chat/sender/LChatSender.vue` | 接线发送参数（`initial` 对象初始化） |
 | `src/components/chat/sender/chatSenderInitial.ts` | `ChatSenderInitial` 初始化参数类型 |
+| `src/components/chat/chat-assistant/RChatThink.vue` | 思考块渲染：一律默认折叠（`useBoolState(true)`） |
 | `src/components/chat/LChatEngine.vue` | 恢复上次模型 / 思考配置并组装 `initialState` |
 | `src/modules/chat/agent/AgentChat.ts` | 消息写入 / resume 恢复 |
 | `src/modules/chat/agent/agentTools.ts`、`src/modules/subagent/{types,runner}.ts` | 子 Agent 继承 |

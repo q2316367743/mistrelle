@@ -1,8 +1,10 @@
 # 01 子 Agent 模块
 
-> 独立、健壮的子 Agent 能力模块：按「能力类型 × 聊天类型」矩阵约束可派发的子 Agent，支持调研型 / 设计型 / 生图型。
+> 独立、健壮的子 Agent 能力模块：按「能力类型 × 聊天类型」矩阵约束可派发的子 Agent，支持调研型 / 生图型。
 > **生图型（2026-09-14 新增）**：`image` 型子 Agent 只做文生图（自行撰写英文描述 → `image_generate` → 落盘 → 返回路径），
 > 能力面完全封闭（无记忆 / todo / ask / shell / 文件 / skill / 渐进装载器），需审批即自动拒绝。
+> **2026-09-14 精简**：删除 design 型子 Agent（设计创意主对话本就直持画布工具，子 Agent 不重复该能力）；
+> 底部 Agent tab 栏一并移除，子 Agent 聊天记录改在右侧侧栏以精简会话视图展示。
 
 ## 背景与动机
 
@@ -10,7 +12,6 @@
 本次重构拆为独立模块，并引入能力矩阵：
 
 - **调研型（research）**：只读调研 / 分析，返回结构化摘要（默认，行为与旧版一致）。
-- **设计型（design）**：用画布工具（canvas_*）创作配图 / 设计稿，产物落盘到可信区并返回路径。
 - **生图型（image）**：只做文生图，`image_generate` + `image_crop` + `image_info`，任务描述进来自行撰写生图提示词。
 - **能力矩阵**：不同聊天类型允许派发的类型不同，防止无关能力泄漏。
 
@@ -21,13 +22,16 @@ src/modules/subagent/
 ├── index.ts            # 对外导出
 ├── types.ts            # SubAgentType / SUB_AGENT_ALLOW 矩阵 / isSceneToolsOnlyAgent / SubAgentOptions / SubAgentResult / resolveSubAgentType
 ├── tool.ts             # spawn_agent 工具工厂（createSpawnAgentTool，按允许类型动态裁剪 schema）+ SPAWN_AGENT_TOOL_NAME
-├── prompt.ts           # buildSubAgentSystemPrompt：按类型构建 systemPrompt（research / design / image）
-├── policy.ts           # SUB_AGENT_SCENE：能力类型 → 聊天场景（design → 'design'；image → undefined，工具走专用集）
+├── prompt.ts           # buildSubAgentSystemPrompt：按类型构建 systemPrompt（research / image）
 ├── runner.ts           # runSubAgent 主流程（创建 ToolChat、持久化 watcher、级联终止、摘要提取）
 ├── registry.ts         # 运行中子 Agent 注册表（UI 实时绑定消息流）
 ├── summary.ts          # extractFinalSummary：从消息提取最终摘要
-└── persistence.ts      # sub_{id}.json 读写 + readMainContent / readSubAgentContent
+└── persistence.ts      # chat_sub 表读写（buildChatSubKey = sub:{chatId}:{subId}）+ readSubAgentContent
 ```
+
+> `policy.ts`（原 `SUB_AGENT_SCENE`：能力类型 → 聊天场景）已随 design 型一并删除：
+> 删后各类型均无场景工具（research 只读、image 走专用集），`sceneType` 恒为 `undefined`，
+> 该字段及 `AgentChat.sceneType` / `agentFunctions` 的 fallback 分支均成为死代码一并移除。
 
 ## 能力矩阵（单一数据源）
 
@@ -37,7 +41,7 @@ src/modules/subagent/
 |---|---|
 | office（日常办公） | research |
 | design（设计创意） | research（画布在主对话，子 Agent 不重复设计能力） |
-| writing（写作） | research + design + **image**（文章封面 / 配图走生图型；design 型留给需要排版的画布稿） |
+| writing（写作） | research + **image**（文章封面 / 配图走生图型） |
 
 `spawn_agent` 工具按当前聊天类型动态裁剪 `type` 枚举（`AgentChat.getFunctions`），
 拦截处再按矩阵兜底校验（`resolveSubAgentType`），双保险。
@@ -65,17 +69,15 @@ src/modules/subagent/
    **生图型额外校验登录态**（`hasImageGenerateAccess()`，未登录直接回填明确错误，不起空子 Agent）→
    取最近 user 消息的模型 → `runSubAgent`。
 3. `runSubAgent` 按能力类型构建子 Agent：`buildSubAgentSystemPrompt(workspace, type)` 选择 systemPrompt；
-   `SUB_AGENT_SCENE[type]` 决定 `sceneType`（design → 'design'，注入画布工具）；`subAgentType` 透传给 ToolChat
-   （生图型据此走封闭工具面）。
-4. 子 Agent 消息节流持久化到 `message/sub_{subId}.json`，完成后提取摘要返回主 Agent。
+   `subAgentType` 透传给 ToolChat（生图型据此走封闭工具面）。
+4. 子 Agent 消息节流持久化到 `chat_sub` 表（`sub:{chatId}:{subId}`），完成后提取摘要返回主 Agent。
 
-### 子 Agent 场景工具注入
+### 子 Agent 工具面注入
 
 `AgentChat.getTypeTools()`：
 
 - 主 Agent：按 `chatType` 注入（`CHAT_TYPE_CONFIG[chatType].tools`）。
-- 子 Agent：先查 `SUB_AGENT_TOOL_CONFIG[subAgentType]`（生图型 → 专用集）；未命中再看 `sceneType`
-  （design 型 → 画布工具）；research 型两者皆无 → 无场景工具。
+- 子 Agent：查 `SUB_AGENT_TOOL_CONFIG[subAgentType]`（生图型 → 专用集）；未命中（research）→ 无场景工具。
 
 ### 权限模型
 
@@ -84,7 +86,7 @@ src/modules/subagent/
 - safe 工具自动放行；白名单只读 shell 命令自动放行；
 - **需审批操作**：`agentTools.runSingleTool` 见 `policyContext.denyOnAsk` 直接回填「该操作需要用户审批，本会话无审批通道，已自动拒绝」，
   不进 `interactive.awaitDecision`（子 Agent 交互桥本就禁用，等待必然落空）——与「用户拒绝」文案区分：前者是能力面限制；
-- 安全中心黑名单同样生效；design / image 型的工具策略已在各自模块注册（可信区内放行），子 Agent 可直接产出，无需交互。
+- 安全中心黑名单同样生效；生图型的工具策略已在生图模块注册（可信区内放行），子 Agent 可直接产出，无需交互。
 
 ## 工具契约
 
@@ -93,28 +95,36 @@ src/modules/subagent/
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | task | string（必填） | 委托任务描述，需自包含（路径 / 尺寸 / 产物保存路径等）；生图型只需「用途 + 内容要点 + 建议尺寸 + 绝对保存路径」，生图提示词由子 Agent 自行撰写 |
-| type | string（可选） | 子 Agent 类型：research / design / image，缺省 research；仅当前聊天类型允许的类型可传 |
+| type | string（可选） | 子 Agent 类型：research / image，缺省 research；仅当前聊天类型允许的类型可传 |
 
-`resolveSubAgentType(raw, chatType)`：非法返回错误消息字符串，拦截处直接回填工具结果，不让模型重试无意义的能力。
+`resolveSubAgentType(raw, chatType)`：非法返回 `{ ok: false, message }`，拦截处直接回填工具结果，不让模型重试无意义的能力。
 
-## 侧边栏联动（LChatAside）
+## 子 Agent 记录（右侧侧栏）
 
-侧边栏面板类型默认等于会话类型（`ChatType`），但会**跟随活动子 Agent 的能力类型联动**（`LChatEngine.vue` 的 `asideType` computed）：
+子 Agent 的聊天记录不再占据主消息区，也不再有底部 tab 栏，改为在**右侧内容侧栏**（`LChatAside` 所在区域）展示：
 
-- 切到 **design 型子 Agent**（如写作对话里的绘图子 Agent）→ 侧边栏切为画布面板（`DesignAside`），并自动展开，实时展示子 Agent 生成的画布 / 导出的图；
-- 主 Agent 或 **research / image 型子 Agent** → 回落到会话类型面板（office / writing / design）。
+- **打开**：点消息流里的 `spawn_agent` 工具卡片（`SubAgentChatTool` 的 `view` 事件），或侧栏 office 面板「Agent 面板」里的条目
+  （`AgentHistoryList` 的 `view-agent`），两者都写 `useChatSession.activeAgentId`；`LChatEngine` 的 `watch(activeAgentId)`
+  在选中非 `main` 时自动展开侧栏。
+- **展示**：`LChatAside` 首位分支 `v-if="subAgent"` 渲染 `SubAgentAside`（头部：状态点 + 任务摘要 + X 关闭按钮；
+  主体 `SubAgentSession` 精简会话视图——任务块 + 文本 / 思考（默认折叠）/ 工具卡片 / 图片，窄栏紧凑排版）。
+- **数据**：`useChatSession.activeSubAgentMessages` —— 运行中直接绑定注册表的实时 `messages`（streaming 刷新），
+  已完成回落磁盘快照（`readSubAgentContent`）；运行态切换到完成态的瞬间由一个 watch 重载快照，避免突变为空。
+- **关闭**：X 按钮 → `emit('close-sub-agent')` → `activeAgentId = 'main'`，侧栏回到正常会话面板（office / writing / design）。
+- 主消息区**始终显示主 Agent 会话**（`RChatList` 绑 `messages`），查看子 Agent 不打断主对话浏览。
+- 子 Agent 面板**不**自动弹开：仅在用户点入口时打开。
 
 要点：
 
 - 子 Agent 类型从主 Agent 消息里 `spawn_agent` 工具调用的 `args.type` 解析（缺省 `research`），见 `agentMessages.collectSubAgents` 的 `SubAgentInfo.type`。
-- design 子 Agent 与主 Agent 共用同一 `sandboxDir`，画布产物落盘 `{sandbox}/outputs/canvas-*.canvas`，`DesignAside` 按 sandboxDir 键控渲染，因此无需额外数据传递即可看到子 Agent 的画布。
-- 侧边栏「Agent 记录」里的历史子 Agent 同样带 `type`，切换到它们时也会触发联动。
+  ⚠️ 该处类型收窄原写的是 `'research' || 'design'`（漏 `'image'`），已随本次改动修正为 `'research' || 'image'`，
+  否则生图型子 Agent 会被误标为 research。
 
 ## 注意事项
 
 - **循环依赖**：`subagent/runner → AgentChat → agentTools → subagent/runner` 存在环，
   `agentTools` 对 `runSubAgent` 保持动态 import（与旧实现一致）。
 - `AgentChat` 只 import `subagent/tool` 与 `subagent/types`（纯常量 / 工厂，无环）。
-- `LChatEngine.vue` 从 `@/modules/subagent` 导入 `readSubAgentContent` / `getRunningSubAgentMessages`。
-- 新增能力类型：改 `SubAgentType` + `SUB_AGENT_ALLOW` + `SUB_AGENT_SCENE` + `prompt.ts` 分支 + `tool.ts` 的类型说明，
+- `useChatSession.ts` 从 `@/windows/main/modules/subagent` 导入 `readSubAgentContent` / `getRunningSubAgentMessages`。
+- 新增能力类型：改 `SubAgentType` + `SUB_AGENT_ALLOW` + `prompt.ts` 分支 + `tool.ts` 的类型说明，
   若为封闭型再在 `isSceneToolsOnlyAgent` 与 `SUB_AGENT_TOOL_CONFIG` 各注册一处，一处数据源、处处生效。

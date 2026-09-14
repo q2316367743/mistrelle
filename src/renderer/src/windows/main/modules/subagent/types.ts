@@ -3,21 +3,20 @@ import type { ChatType } from '@/windows/main/modules/chat/chatType'
 /**
  * 子 Agent 能力类型：
  * - research：调研型（默认，只读调研 / 分析，返回结构化摘要）
- * - design：设计型（画布创作配图 / 设计稿，产物落盘到可信区）
  * - image：生图型（只做文生图，任务描述进来自行撰写生图提示词并落盘，无调研 / 设计能力）
  */
-export type SubAgentType = 'research' | 'design' | 'image'
+export type SubAgentType = 'research' | 'image'
 
 /**
  * 子 Agent 能力矩阵（单一数据源）：各聊天类型允许派发的子 Agent 类型。
  * - 日常办公 / 设计创意：仅调研型（样式产物走各自工具直管，子 Agent 不重复）
- * - 写作：调研型 + 设计型（设计稿）+ 生图型（文章封面 / 配图走最小能力面的生图通道）
+ * - 写作：调研型 + 生图型（文章封面 / 配图走最小能力面的生图通道）
  * 新增聊天类型或能力类型只需改这里。
  */
 export const SUB_AGENT_ALLOW: Record<ChatType, ReadonlyArray<SubAgentType>> = {
   office: ['research'],
   design: ['research'],
-  writing: ['research', 'design', 'image']
+  writing: ['research', 'image']
 }
 
 /**

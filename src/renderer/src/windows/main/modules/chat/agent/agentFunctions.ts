@@ -30,10 +30,10 @@ export interface ToolSurfaceContext {
   /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
   mode: AiChatMode
   chatType: ChatType
-  /** 子 Agent 能力场景（design 型注入画布工具）；主 Agent / research 型缺省 */
-  sceneType?: ChatType
   /** 子 Agent 能力类型（「仅场景工具」型据此切换为封闭的专用工具集） */
   subAgentType?: SubAgentType
+  /** 显式封闭工具面（design_draw 等内部 Agent）：只暴露注入的 functions，关闭装载器与注册表兜底 */
+  closedToolSurface?: boolean
   /** 场景工具上下文（沙盒 / 工作空间 / 写作场景 / 锚点） */
   typeTools: ChatTypeToolContext
   todos: Ref<TodoItem[]>
@@ -54,12 +54,18 @@ const isVisionModelRequest = (params: ChatRequestParams): boolean => {
   return option?.support?.includes('image') ?? false
 }
 
-/** 按聊天类型 / 子 Agent 能力场景注入场景级工具（design → canvas_*；生图型子 Agent → 专用生图工具集） */
+/**
+ * 是否封闭工具面：显式声明的内部 Agent（design_draw）或「仅场景工具」型子 Agent（生图型）。
+ * 封闭时只暴露注入的 functions，不并入任何默认常驻工具，并关闭渐进装载与执行期兜底。
+ */
+const isClosedSurface = (ctx: ToolSurfaceContext): boolean =>
+  !!ctx.closedToolSurface || isSceneToolsOnlyAgent(ctx.subAgentType)
+
+/** 按聊天类型 / 子 Agent 能力类型注入场景级工具（生图型子 Agent → 专用生图工具集） */
 const getTypeTools = (ctx: ToolSurfaceContext): ToolFunction[] => {
-  if (ctx.isSubAgent) {
+  if (ctx.isSubAgent || ctx.closedToolSurface) {
     const dedicated = ctx.subAgentType ? SUB_AGENT_TOOL_CONFIG[ctx.subAgentType] : undefined
-    if (dedicated) return dedicated(ctx.typeTools)
-    return ctx.sceneType ? CHAT_TYPE_CONFIG[ctx.sceneType].tools(ctx.typeTools) : []
+    return dedicated ? dedicated(ctx.typeTools) : []
   }
   return CHAT_TYPE_CONFIG[ctx.chatType].tools(ctx.typeTools)
 }
@@ -76,7 +82,7 @@ export const buildBaseFunctions = (
   params: ChatRequestParams
 ): Map<string, ToolFunction> => {
   const map = new Map<string, ToolFunction>()
-  if (isSceneToolsOnlyAgent(ctx.subAgentType)) {
+  if (isClosedSurface(ctx)) {
     for (const fn of [...ctx.functions, ...getTypeTools(ctx)]) map.set(fn.name, fn)
     return map
   }
@@ -122,7 +128,7 @@ export const applyLoadedCollections = (
   ctx: ToolSurfaceContext,
   map: Map<string, ToolFunction>
 ): void => {
-  if (isSceneToolsOnlyAgent(ctx.subAgentType)) return
+  if (isClosedSurface(ctx)) return
   if (ctx.loadedCollections.value.length === 0) return
   const loaded = new Set(ctx.loadedCollections.value)
   for (const entry of Object.values(toolRegistry)) {
@@ -158,7 +164,7 @@ export const resolveForExecution = (
   names: string[],
   base: ToolFunction[]
 ): ToolFunction[] => {
-  if (isSceneToolsOnlyAgent(ctx.subAgentType)) return base
+  if (isClosedSurface(ctx)) return base
   const map = new Map(base.map((fn) => [fn.name, fn]))
   applyLoadedCollections(ctx, map)
   let changed = false

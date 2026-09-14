@@ -1,6 +1,12 @@
 <template>
+  <sub-agent-aside
+    v-if="subAgent"
+    :sub-agent="subAgent"
+    :messages="subAgentMessages"
+    @close="$emit('close-sub-agent')"
+  />
   <office-aside
-    v-if="type === 'office'"
+    v-else-if="type === 'office'"
     :messages="messages"
     :workspace="workspace"
     :sandbox="sandbox"
@@ -35,7 +41,9 @@
 import type { ChatMessage, TodoItem } from '@/domain'
 import type { ChatStatus, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
 import type { AgentHistoryItem } from '@/components/chat/AgentHistoryList.vue'
+import type { SubAgentInfo } from '@/windows/main/modules/chat/agent/agentMessages'
 import OfficeAside from './OfficeAside.vue'
+import SubAgentAside from './SubAgentAside.vue'
 import WritingAside from './writing/WritingAside.vue'
 import DesignAside from './design/DesignAside.vue'
 import HtmlDesignAside from './design/HtmlDesignAside.vue'
@@ -52,6 +60,10 @@ withDefaults(
     todos: TodoItem[]
     agentHistory: AgentHistoryItem[]
     activeAgentId: string
+    /** 正在侧栏查看的子 Agent；给出时优先渲染子 Agent 面板，隐藏原会话面板 */
+    subAgent?: SubAgentInfo
+    /** 子 Agent 面板展示的消息（运行中实时 / 已完成磁盘快照） */
+    subAgentMessages?: ChatMessage[]
     fullscreen?: boolean
   }>(),
   {
@@ -65,11 +77,13 @@ withDefaults(
     todos: () => [],
     agentHistory: () => [],
     activeAgentId: 'main',
+    subAgentMessages: () => [],
     fullscreen: false
   }
 )
 
 defineEmits<{
   (e: 'view-agent', subAgentId: string): void
+  (e: 'close-sub-agent'): void
 }>()
 </script>
