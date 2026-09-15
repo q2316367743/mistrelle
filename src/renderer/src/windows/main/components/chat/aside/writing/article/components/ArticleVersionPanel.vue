@@ -1,6 +1,11 @@
 <template>
   <t-popup trigger="click" placement="bottom-left" :disabled="humanizing" destroy-on-close>
-    <t-button size="small" variant="outline" class="version-trigger" :loading="!!streamingVersionId">
+    <t-button
+      size="small"
+      variant="outline"
+      class="version-trigger"
+      :loading="!!streamingVersionId"
+    >
       {{ triggerLabel }}
       <template #suffix><chevron-down-icon /></template>
     </t-button>

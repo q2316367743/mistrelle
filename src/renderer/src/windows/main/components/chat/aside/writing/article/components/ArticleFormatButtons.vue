@@ -120,7 +120,7 @@ const hasOverflow = computed(
 
   &__block {
     /* 宽度与 articleFormatButtons.ts 的 BLOCK_TYPE_WIDTH 保持一致（布局预算据此计算） */
-    width: 60px;
+    width: 68px;
     flex-shrink: 0;
   }
 
