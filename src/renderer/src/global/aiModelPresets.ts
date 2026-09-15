@@ -164,6 +164,7 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       'deepseek-v4-flash': { context: 1000000, output: 384000 },
       'deepseek-v4-pro': { context: 1000000, output: 384000 },
       'deepseek-v4-flash-vision-exp': { context: 1000000, output: 384000, support: ['image'] },
+      'deepseek-v4.1-flash': { context: 1000000, output: 384000, support: ['image'] },
       'deepseek-v3.2': { context: 131072, output: 65536 },
       'deepseek-v3': { context: 128000, output: 8192 },
       'deepseek-chat': { context: 128000, output: 8192 },
@@ -175,6 +176,7 @@ export const AI_MODEL_PROVIDER_PRESETS: AiModelProviderPreset[] = [
       [/deepseek-v[\d.]+.*vision/i, { context: 1000000, output: 384000, support: ['image'] }],
       [/deepseek-vision/i, { support: ['image'] }],
       [/deepseek-v4/i, { context: 1000000, output: 384000 }],
+      [/deepseek-v4\.1/i, { context: 1000000, output: 384000, support: ['image'] }],
       [/deepseek-v3/i, { context: 131072, output: 65536 }],
       [/deepseek-/i, { context: 128000, output: 8192 }]
     ]
