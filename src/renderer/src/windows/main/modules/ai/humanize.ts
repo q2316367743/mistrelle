@@ -9,6 +9,15 @@ import { SseParser } from './sse'
 /** 去 AI 味流式接口是否已接入 */
 export const HUMANIZE_ENABLED = true
 
+/** 记住上次改写深度（整篇与选片段共用），下次作为默认（1~10，首次为 5） */
+let lastHumanizeDepth = 5
+
+export const getLastHumanizeDepth = (): number => lastHumanizeDepth
+
+export const setLastHumanizeDepth = (depth: number): void => {
+  lastHumanizeDepth = Math.min(10, Math.max(1, Math.round(depth)))
+}
+
 export interface HumanizeStreamRequest {
   /** 原文全文 */
   text: string

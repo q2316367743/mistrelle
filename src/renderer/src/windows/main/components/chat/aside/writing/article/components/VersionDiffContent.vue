@@ -13,6 +13,7 @@
 <script lang="ts" setup>
 import * as monaco from 'monaco-editor'
 import { isDark } from '@/global/BeanFactory'
+import { wordDiffTheme } from './wordDiffTheme'
 
 const props = defineProps<{
   /** 左侧（当前版本）标题 */
@@ -33,21 +34,6 @@ const diffEl = ref<HTMLDivElement>()
 let diffEditor: monaco.editor.IStandaloneDiffEditor | null = null
 let originalModel: monaco.editor.ITextModel | null = null
 let modifiedModel: monaco.editor.ITextModel | null = null
-
-/** 只高亮变化字符的主题：整行背景透明，字符级 diff 背景继承内置主题（vs / vs-dark） */
-const wordDiffTheme = (dark: boolean): string => {
-  const name = dark ? 'word-diff-dark' : 'word-diff-light'
-  monaco.editor.defineTheme(name, {
-    base: dark ? 'vs-dark' : 'vs',
-    inherit: true,
-    rules: [],
-    colors: {
-      'diffEditor.insertedLineBackground': '#00000000',
-      'diffEditor.removedLineBackground': '#00000000'
-    }
-  })
-  return name
-}
 
 onMounted(() => {
   if (!diffEl.value) return

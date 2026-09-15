@@ -325,28 +325,25 @@ export const runSingleTool = async (
         // 主 Agent 终止时级联终止内部绘制
         parentSignal: policyContext.abortSignal
       })
-      // chatImages：执行器据此把图片作为 image 块展示在对话中，并从回传模型的结果里剥离该标记
-      applyResult(
-        messages,
-        assistantMessageId,
-        call,
-        serializeResult({
-          success: true,
-          path: result.path,
-          width: result.width,
-          height: result.height,
-          size: `${size.width}x${size.height}`,
-          note: '设计图已生成并展示在对话中（画布方式绘制，可精确控制文案与版式）',
-          chatImages: [
-            {
-              path: result.path,
-              name: window.preload.path.basename(result.path),
-              width: result.width,
-              height: result.height
-            }
-          ]
-        })
-      )
+      // chatImages：执行器据此把图片作为 image 块展示在对话中，并从回传模型的结果里剥离该标记。
+      // 本分支为专用拦截路径，不走通用 handler 分支，须显式调用 appendChatImages 落 image 块
+      const output = appendChatImages(messages, assistantMessageId, call, {
+        success: true,
+        path: result.path,
+        width: result.width,
+        height: result.height,
+        size: `${size.width}x${size.height}`,
+        note: '设计图已生成并展示在对话中（画布方式绘制，可精确控制文案与版式）',
+        chatImages: [
+          {
+            path: result.path,
+            name: window.preload.path.basename(result.path),
+            width: result.width,
+            height: result.height
+          }
+        ]
+      })
+      applyResult(messages, assistantMessageId, call, serializeResult(output))
     } catch (error: unknown) {
       applyResult(
         messages,

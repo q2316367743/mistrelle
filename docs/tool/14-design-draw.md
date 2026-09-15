@@ -132,6 +132,10 @@ handler 只作占位并返回「应由引擎拦截处理」。
 ## 注意事项
 
 - **产物**：PNG 落盘 + `image` 内容块直出；`.canvas` 文件保留在沙盒 `outputs/`，可在设计创意页打开继续编辑。
+- **image 块必须显式写入**：`design_draw` 走 `agentTools.ts` 的**专用拦截分支**，不经通用 handler 分支，
+  故分支内必须先 `appendChatImages(messages, …, call, { chatImages })` 落 `image` 块、再 `serializeResult` 回填。
+  曾误写为直接 `applyResult(serializeResult({ …, chatImages }))`——marker 只进结果字符串、不生成 `image` 块，
+  图片不显示且 `chatImages` 残留在模型上下文（2026-09-15 修复）。
 - **单张**：一次一张图，不支持 `n`；暂不支持设计风格参数（后续可扩展 `style`）。
 - **耗时**：绘制需若干步工具调用，比生图慢，工具 description 已提示模型「耗时较长」。
 - **中止**：主 Agent 中止经 `parentSignal` 级联 `abortChat()`，runner 据 stop 抛「绘图已中止」。

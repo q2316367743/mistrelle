@@ -3,11 +3,8 @@ import type { ArticleItem } from '@/windows/main/modules/tool/components/article
 import type { ArticleStore } from '@/windows/main/modules/tool/components/article/articleStore'
 import { MessageUtil } from '@/utils/modal'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
-import { HUMANIZE_ENABLED, requestHumanizeStream } from '@/windows/main/modules/ai/humanize'
+import { HUMANIZE_ENABLED, requestHumanizeStream, getLastHumanizeDepth, setLastHumanizeDepth } from '@/windows/main/modules/ai/humanize'
 import { openHumanizeDepth } from '../components/HumanizeDepthDialog'
-
-/** 记住上次选择的深度，下次打开弹窗作为默认（首次为 5） */
-let lastHumanizeDepth = 5
 
 /**
  * 去 AI 味动作编排：选深度 → 建版本 → 流式写入，产出进入当前类型的版本历史。
@@ -39,7 +36,7 @@ export const useArticleAssist = (ctx: {
     const type = ctx.activeType.value
     if (!article || !type || humanizing.value) return
     const original = ctx.content.value
-    lastHumanizeDepth = depth
+    setLastHumanizeDepth(depth)
     await ctx.flushSave?.()
     humanizing.value = true
     abortController = new AbortController()
@@ -132,7 +129,7 @@ export const useArticleAssist = (ctx: {
       return
     }
     openHumanizeDepth({
-      defaultDepth: lastHumanizeDepth,
+      defaultDepth: getLastHumanizeDepth(),
       onConfirm: (depth) => void runHumanize(depth)
     })
   }

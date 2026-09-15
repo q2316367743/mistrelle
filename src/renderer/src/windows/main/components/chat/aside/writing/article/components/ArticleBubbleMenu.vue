@@ -12,6 +12,7 @@
           size="small"
           variant="text"
           shape="square"
+          :disabled="humanizing"
           :class="{ 'is-active': readCommandActive(state, btn.cmd) }"
           @click="applyCommand(editor, btn.cmd)"
         >
@@ -20,13 +21,28 @@
       </t-tooltip>
       <span v-if="btn.gapAfter" class="bubble__sep" />
     </template>
+    <span class="bubble__sep" />
+    <!-- 选中文字去 AI 味：改写请求与对比弹窗期间锁编辑器（useSelectionHumanize 编排） -->
+    <t-tooltip :content="humanizeTip" placement="top">
+      <t-button
+        size="small"
+        variant="text"
+        shape="square"
+        :disabled="!canHumanize"
+        :loading="humanizing"
+        @click="startHumanize"
+      >
+        <template #icon><AiEditIcon /></template>
+      </t-button>
+    </t-tooltip>
   </bubble-menu>
 </template>
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, type Component } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/core'
 import {
+  AiEditIcon,
   CodeIcon,
   LinkIcon,
   QuoteIcon,
@@ -35,6 +51,8 @@ import {
   TextformatStrikethroughIcon,
   TextformatUnderlineIcon
 } from 'tdesign-icons-vue-next'
+import { useAuthStore } from '@/windows/main/store/AuthStore'
+import { HUMANIZE_ENABLED } from '@/windows/main/modules/ai/humanize'
 import {
   applyCommand,
   isSameEditorState,
@@ -43,6 +61,7 @@ import {
   type ArticleEditorCommand,
   type ArticleEditorState
 } from './articleEditorCommands'
+import { useSelectionHumanize } from '../useSelectionHumanize'
 
 const props = defineProps<{
   editor: Editor
@@ -91,6 +110,22 @@ const shouldShow = ({
 /** 本地快照：BubbleMenu 自身不订阅 transaction，用编辑器事件自行维护 active 态 */
 const state = ref<ArticleEditorState>(readEditorState(props.editor))
 let last: ArticleEditorState | null = state.value
+
+// ─── 选中文字去 AI 味 ─────────────────────────────────────────────
+
+const { humanizing, start: startHumanize } = useSelectionHumanize({
+  editor: props.editor,
+  isParentLocked: () => props.disabled === true
+})
+
+const canHumanize = computed(() => HUMANIZE_ENABLED && useAuthStore().status === 'signed-in')
+
+const humanizeTip = computed(() => {
+  if (humanizing.value) return '正在改写，请稍候…'
+  if (!HUMANIZE_ENABLED) return '流式接口暂未开放，敬请期待'
+  if (useAuthStore().status !== 'signed-in') return '请先登录后再使用去 AI 味'
+  return '去 AI 味：改写选中文字'
+})
 
 const onTransaction = (): void => {
   const next = readEditorState(props.editor)
