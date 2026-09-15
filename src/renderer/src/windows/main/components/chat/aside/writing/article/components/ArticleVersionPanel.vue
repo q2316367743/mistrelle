@@ -26,7 +26,7 @@
               @click="emit('select', v.id)"
             >
               <div class="version-item__head">
-                <span class="version-item__label">{{ versionLabel(v) }}</span>
+                <span class="version-item__label">{{ articleVersionTitle(v) }}</span>
                 <span v-if="v.words" class="version-item__words">{{ v.words }} 字</span>
                 <t-popconfirm
                   v-if="versions.length > 1"
@@ -51,7 +51,7 @@
 import dayjs from 'dayjs'
 import { ChevronDownIcon, CloseIcon } from 'tdesign-icons-vue-next'
 import type { ArticleVersion } from '@/windows/main/modules/tool/components/article/articleTypes'
-import { ARTICLE_VERSION_SOURCE_OPTIONS } from '@/windows/main/modules/tool/components/article/articleTypes'
+import { articleVersionTitle } from '@/windows/main/modules/tool/components/article/articleTypes'
 
 const props = defineProps<{
   versions: ArticleVersion[]
@@ -67,14 +67,8 @@ const emit = defineEmits<{
   (e: 'remove', versionId: string): void
 }>()
 
-const sourceLabel = (v: ArticleVersion): string =>
-  v.label ?? ARTICLE_VERSION_SOURCE_OPTIONS.find((o) => o.value === v.source)?.label ?? '版本'
-
 /** 最新版本在上（时间线倒序展示） */
 const reversedVersions = computed(() => [...props.versions].reverse())
-
-/** 版本号：显式 no 字段（创建时分配，删除中间版本不影响既有编号） */
-const versionLabel = (v: ArticleVersion): string => `第${v.no}版 · ${sourceLabel(v)}`
 
 const timeLabel = (v: ArticleVersion): string => dayjs(v.createdTime).format('MM-DD HH:mm')
 
@@ -82,7 +76,7 @@ const triggerLabel = computed((): string => {
   if (props.streamingVersionId) return '生成中…'
   const active = props.versions.find((v) => v.id === props.activeVersionId)
   if (!active) return '版本'
-  return `第${active.no}版 · ${sourceLabel(active)}`
+  return articleVersionTitle(active)
 })
 </script>
 <style scoped lang="less">

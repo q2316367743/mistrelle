@@ -22,6 +22,13 @@ export const ARTICLE_VERSION_SOURCE_OPTIONS: Array<CommonSelect<ArticleVersionSo
   { value: 'manual', label: '手动' }
 ]
 
+/** 版本展示名：自定义 label 优先，缺省按 source 显示 */
+export const articleVersionLabel = (v: ArticleVersion): string =>
+  v.label ?? ARTICLE_VERSION_SOURCE_OPTIONS.find((o) => o.value === v.source)?.label ?? '版本'
+
+/** 版本完整标题：第N版 · 展示名 */
+export const articleVersionTitle = (v: ArticleVersion): string => `第${v.no}版 · ${articleVersionLabel(v)}`
+
 /** 文章版本（单个类型内的正文迭代快照；封面/插图跟类型走）。
  *  版本 id 即「标题+类型+版本」单元标识：article_create 返回它，article_write / read / stats 只认它 */
 export interface ArticleVersion {

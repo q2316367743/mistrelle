@@ -50,11 +50,14 @@
         v-if="activeEntry"
         :humanizing="humanizing"
         :words="liveWords"
+        :versions="versions"
+        :active-version-id="activeVersionId"
         @humanize="handleHumanize"
         @abort="handleAbortHumanize"
         @copy="handleCopy"
         @detect="handleDetect"
         @reveal="handleReveal"
+        @compare="handleCompareVersion"
       />
       <div v-if="!activeEntry" class="article-aside__hint">
         当前文章还没有类型，在左侧聊天让 AI 设定类型（如公众号、知乎、小红书等）即可开始写作。
@@ -78,6 +81,8 @@ import { copyText, openUrlByBrowser } from '@/utils/native'
 import { useArticleDoc } from './useArticleDoc'
 import { useArticleAssist } from './useArticleAssist'
 import { useArticleEditorBridge, type ArticleEditorApi } from './useArticleEditorBridge'
+import { openVersionDiffDialog } from './components/VersionDiffDialog'
+import { articleVersionTitle } from '@/windows/main/modules/tool/components/article/articleTypes'
 import ArticleDocHeader from './components/ArticleDocHeader.vue'
 import ArticleToolbar from './components/ArticleToolbar.vue'
 import ArticleEditor from './components/ArticleEditor.vue'
@@ -185,6 +190,26 @@ const handleCopy = async (): Promise<void> => {
   if (!content.value) return
   await copyText(content.value)
   MessageUtil.success('正文已复制到剪贴板')
+}
+
+// ─── 版本对比（monaco diff 弹窗） ─────────────────────────────────
+
+/** 版本对比：左=当前版本实时正文，右=所选版本落盘正文 */
+const handleCompareVersion = async (versionId: string): Promise<void> => {
+  const target = versions.value.find((v) => v.id === versionId)
+  const current = versions.value.find((v) => v.id === activeVersionId.value)
+  if (!target || !current) return
+  try {
+    const targetContent = await store.value.readArticle(versionId)
+    openVersionDiffDialog({
+      currentLabel: articleVersionTitle(current),
+      targetLabel: articleVersionTitle(target),
+      currentContent: content.value,
+      targetContent
+    })
+  } catch (e) {
+    MessageUtil.error('读取版本正文失败', e)
+  }
 }
 </script>
 <style scoped lang="less">

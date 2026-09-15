@@ -205,6 +205,7 @@
 | [04-image-export.md](./writing/04-image-export.md)             | md 图片引用：相对路径约定、`imageRef.ts` 解析与资产复制（zip 导出已删除）                     |
 | [05-novel-short-scene.md](./writing/05-novel-short-scene.md)   | 短篇小说场景（**2026-09-14 工具面收窄 + 写作工作台**）：每篇一个子目录（story/角色/大纲/设定/文风/assets）、工具面剔除 file 类/shell/装载器/绘图/读图/生图子Agent（`NOVEL_EXCLUDED_TOOLS`，请求侧+执行期两层过滤，防注册表复装绕过）、子 Agent 仅 research、status 三态删除；新增 `novel_write`(replace/append 续写)/`novel_write_setting`/`novel_stats`，`read_setting` 支持单文件；侧边栏补封面生图/上传、去 AI 味（`humanize_text` 场景注入）、复制、实时字数、contentRevs 即时刷新；共用弹窗上移 `writing/components/`；**头部常驻（零小说仍显示空态选择框）+ 选中兜底 `ensureActiveSelection`（无选中/被删回落最新，修「有小说却永远空态」）** |
 | [06-article-editor.md](./writing/06-article-editor.md)         | 文章编辑器能力层（2026-09-14）：**状态快照单向推送**（编辑器 onTransaction → 浅比较 → `state-change`，工具栏不再瞎猜；块类型下拉随光标显示标题等级/正文）、命令面收敛为 `runCommand`/`setBlockType`、**BubbleMenu 双悬浮框**（选中文字=格式框 / 选中图片=复制·换图·AI重新生成·删除）、**工具栏溢出收起**（`nowrap` 恒一行 + ResizeObserver 预算 + 「更多」popup 三区，内联优先级见文档）；⚠️ 铁律=**正文以 markdown 落盘**（只上 markdown 能表达的格式，颜色/对齐/高亮刻意不做）；**块级拖拽手柄已整体移除**（官方 DragHandle 值导入 collaboration/y-tiptap/node-range 并裸导入 y-protocols，为一只手柄被迫装 7 包约 9MB 而本项目不做协同编辑；教训=依赖面以 dist 为准、unmet peer 警告不可一律忽略） |
+| [07-article-version-diff.md](./writing/07-article-version-diff.md) | 文章版本对比（2026-09-15）：底部动作条「版本对比」下拉（除当前版本外，新在上）→ `t-dialog` 内嵌 monaco diff 双栏只读对比（左=当前实时正文 / 右=所选落盘正文）；弹窗两件套 `VersionDiffDialog.tsx`+`VersionDiffContent.vue`；版本名统一走 `articleVersionTitle` 共享助手；⚠️ monaco 主题是全局态（diff 选项不含 theme，用 `setTheme`）；**只高亮变化字符不高亮整行**（行背景透明的派生主题，卸载还原） |
 
 ### build/ —— 构建打包
 
