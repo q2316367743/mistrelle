@@ -3,9 +3,7 @@ import type { AttachmentContent, ChatMessage, TodoItem } from '@/domain'
 import type { AiImageBlock, AiMessageParam } from '@/windows/main/modules/ai'
 import type { AiChatMode } from '@/entity'
 import type { ResolvedChatRequestParams } from '@/windows/main/modules/chat'
-import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
-import { CHAT_TYPE_CONFIG, getSceneExcludedTools, WRITING_SCENE_CONFIG } from '@/global/ChatTypeConfig'
-import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
+import type { SceneContext, SceneDefinition } from '@/windows/main/modules/chat/scenes'
 import { isSceneToolsOnlyAgent, type SubAgentType } from '@/windows/main/modules/subagent/types'
 import { localSkillList, buildSkillCatalogPrompt } from '@/windows/main/modules/skill'
 import { buildAiAgentPrompt } from '@/entity/ai'
@@ -32,17 +30,20 @@ export interface PromptContext {
   closedToolSurface?: boolean
   privacy: boolean
   mode: AiChatMode
-  chatType: ChatType
-  writingScene: WritingScene
-  /** 设计风格提示词（design 创建后锁定，会话水合时注入；缺省空串不注入） */
-  designStylePrompt: string
+  /** 当前场景定义（叶子场景：提示词工厂 / 剔除名单 / 个性化作用域） */
+  scene: SceneDefinition
   /** 锚点修改模式的锚点节点 id 集合（空 = 非锚点模式） */
   anchorNodeIds: string[]
   sandboxDir: string
   workspace: string
-  /** 场景上下文（类型提示词工厂按场景动态组装时使用） */
-  typeTools: ChatTypeToolContext
+  /** 场景上下文（提示词工厂按场景动态组装时使用，含设计风格提示词） */
+  typeTools: SceneContext
   todos: Ref<TodoItem[]>
+  /**
+   * 工作空间设定文件缓存盒（可变）：调用方构建前放入实例持有的缓存，
+   * workspaceSettings 贡献者原地回写新缓存，构建后由调用方存回实例
+   */
+  settingsCache: WorkspaceSettingsCache | null
 }
 
 /** 工作空间设定文件缓存（键为 workspace 路径，避免 agent 循环每轮重复读盘） */
@@ -55,8 +56,6 @@ export interface BuiltRequestMessages {
   apiMessages: AiMessageParam[]
   /** 本轮 skill 目录提示词（调用方存为最近值，供完成时 token 构成估算） */
   skillCatalogPrompt: string
-  /** 工作空间设定文件缓存（workspace 未变时复用） */
-  settingsCache: WorkspaceSettingsCache | null
 }
 
 const buildWorkspacePromptBody = (sandboxDir: string, workspace: string): string => {
@@ -150,22 +149,6 @@ const buildSubAgentGuidancePrompt = (): string =>
   ].join('\n')
 
 /**
- * 聊天类型提示词（工厂按场景上下文动态组装）+ writing 子场景提示词拼接。
- * 类型与场景均在创建后锁定，组合稳定 → 进入稳定 system 前缀；design 提示词可随运行时设置
- * （是否配置生图模型）动态变化，与注入工具保持一致。
- */
-const buildTypePromptBody = (ctx: PromptContext): string => {
-  const base = CHAT_TYPE_CONFIG[ctx.chatType].prompt(ctx.typeTools)
-  // 设计风格（design 创建后锁定）：附加在类型提示词之后
-  if (ctx.chatType === 'design' && ctx.designStylePrompt) {
-    return [base, ctx.designStylePrompt].filter(Boolean).join('\n\n')
-  }
-  if (ctx.chatType !== 'writing') return base
-  const scenePrompt = WRITING_SCENE_CONFIG[ctx.writingScene].prompt(ctx.typeTools)
-  return scenePrompt ? [base, scenePrompt].filter(Boolean).join('\n\n') : base
-}
-
-/**
  * 根据当前聊天模式生成一段"模式指令"，作为独立 system 消息追加到稳定 system 之后。
  * 不写入稳定 system 提示词，以保留其缓存前缀；参考 opencode 做法，让 AI 自行收敛行为：
  * - 1 计划模式：可读取 / 分析、可运行 shell（需审批），但严禁写入 / 修改文件，建议先给计划
@@ -208,57 +191,105 @@ const buildAnchorInstructionBody = (anchorNodeIds: string[]): string => {
 }
 
 /**
+ * 稳定 system 前缀的「贡献者」契约：skill / 专家 / 记忆 / 场景等正交注入统一为贡献者，
+ * 每段自带门控（封闭工具面 / 隐私 / 子 Agent 判断收进各段内部），组装主体只负责顺序拼接。
+ * 新增一种注入 = 在 STABLE_CONTRIBUTIONS 中追加一个贡献者。
+ * 顺序即拼接顺序；空串段被过滤，不影响其余段（前缀可缓存的稳定性由各段自身保证）。
+ */
+interface PromptContribution {
+  id: string
+  segment: (ctx: PromptContext, params: ResolvedChatRequestParams) => string | Promise<string>
+}
+
+/** 封闭工具面（生图型子 Agent / design_draw 内部 Agent）：工具面已固定，目录类提示词只会诱导调用不存在的工具 */
+const sealedSurfaceOf = (ctx: PromptContext): boolean =>
+  !!ctx.closedToolSurface || isSceneToolsOnlyAgent(ctx.subAgentType)
+
+const STABLE_CONTRIBUTIONS: PromptContribution[] = [
+  // 构造器注入的基础提示词（主聊天为空；子 Agent / design_draw 内部 Agent 的专属提示词走这里）
+  { id: 'base', segment: (ctx) => ctx.systemPrompt },
+  {
+    // 专家提示词（builtin / 用户自建 agent；其工具注入在 agentFunctions 的 agent.tools 解析）
+    id: 'expert',
+    segment: async (_ctx, params) => {
+      const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
+      return agent ? buildAiAgentPrompt(agent) : ''
+    }
+  },
+  {
+    // 个性化设定（soul/*.md，用户手编、极少变化 → 稳定可缓存；子 Agent 任务作用域不注入）
+    id: 'personalize',
+    segment: (ctx) =>
+      ctx.isSubAgent ? '' : buildPersonalizePrompt(ctx.scene.personalizeScope)
+  },
+  {
+    // skill 目录（渐进式披露）：用户目录 skills 按启用过滤 + 当前场景内置 skill；
+    // 正文由 load_skill 工具按需在对话中加载，不进 system。禁用的 skill 不注入目录（模型不可见即不会调用）
+    id: 'skillCatalog',
+    segment: async (ctx) => {
+      if (sealedSurfaceOf(ctx)) return ''
+      const skillStore = useSettingSkillStore()
+      const skills = (await localSkillList()).filter((e) => skillStore.isSkillEnabled(e))
+      return buildSkillCatalogPrompt(skills, ctx.scene.skills ?? [])
+    }
+  },
+  {
+    // 可选工具集合目录（静态可缓存）：配合 load_tool_collection 按需整组装载；
+    // 场景剔除名单含装载器时不再声明目录，否则会在 system 里声明一份模型无法装载的目录，纯属诱导
+    id: 'toolCatalog',
+    segment: (ctx) =>
+      sealedSurfaceOf(ctx) || (ctx.scene.excludedTools ?? []).includes('load_tool_collection')
+        ? ''
+        : buildToolCatalogPrompt()
+  },
+  { id: 'todoGuide', segment: (ctx) => (sealedSurfaceOf(ctx) ? '' : buildTodoPrompt()) },
+  { id: 'workspace', segment: (ctx) => buildWorkspacePromptBody(ctx.sandboxDir, ctx.workspace) },
+  {
+    // 工作空间设定文件（AGENTS.md 等项目约定，带缓存）；封闭能力面下不注入
+    id: 'workspaceSettings',
+    segment: async (ctx) => {
+      if (sealedSurfaceOf(ctx)) return ''
+      const settings = await buildWorkspaceSettingsPromptBody(ctx.workspace, ctx.settingsCache)
+      // 缓存盒原地回写：调用方（ToolChat）构建后存回实例，workspace 未变时下轮复用
+      ctx.settingsCache = settings.cache
+      return settings.prompt
+    }
+  },
+  {
+    // 场景提示词（叶子场景工厂已含家族通用约定 + 场景专属段 + 设计风格等，创建后锁定 → 前缀稳定可缓存）
+    id: 'scene',
+    segment: (ctx) => ctx.scene.prompt(ctx.typeTools)
+  },
+  {
+    // 记忆工具使用指导仅主 Agent 注入（record_memory 随默认工具注册，子 Agent 任务作用域不记全局记忆）；
+    // 隐私聊天不注入（工具本身也已在函数表构建中过滤）
+    id: 'memoryTool',
+    segment: (ctx) => (ctx.isSubAgent || ctx.privacy ? '' : buildMemoryToolPrompt())
+  },
+  {
+    // 子 Agent 使用指导仅主 Agent 注入（子 Agent 的 spawn_agent 已被过滤，指导无意义且会诱导嵌套）
+    id: 'subAgentGuide',
+    segment: (ctx) => (ctx.isSubAgent ? '' : buildSubAgentGuidancePrompt())
+  }
+]
+
+/**
  * 组装单次请求的完整 API 消息（稳定 system 前缀 + 动态独立 system 段 + 对话历史）。
- * 子 Agent / 隐私聊天的裁剪规则与原实现一致；skill 目录与工作空间设定缓存经返回值回传调用方。
+ * 稳定前缀 = 贡献者管线按序拼接；工作空间设定缓存经 ctx.settingsCache 原地回传。
  */
 export const buildAgentRequestMessages = async (
   ctx: PromptContext,
   params: ResolvedChatRequestParams,
-  assistantMessageId: string,
-  settingsCache: WorkspaceSettingsCache | null
+  assistantMessageId: string
 ): Promise<BuiltRequestMessages> => {
-  const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
-  const agentPrompt = agent ? buildAiAgentPrompt(agent) : ''
-  // 封闭工具面（生图型子 Agent / design_draw 内部 Agent）：工具面已固定，不注入 skill 目录 /
-  // 可选工具集合目录 / 记忆与 todo 指导——这些提示词只会诱导它去调用并不存在的工具，纯属噪音
-  const sealedSurface = !!ctx.closedToolSurface || isSceneToolsOnlyAgent(ctx.subAgentType)
-  // 被禁用的 skill 不注入目录（模型不可见即不会调用 load_skill），SkillLocal 管理页仍可见全量
-  const skillStore = useSettingSkillStore()
-  const skills = sealedSurface
-    ? []
-    : (await localSkillList()).filter((e) => skillStore.isSkillEnabled(e))
-  const catalogPrompt = buildSkillCatalogPrompt(skills)
-  const workspacePrompt = buildWorkspacePromptBody(ctx.sandboxDir, ctx.workspace)
-  // 工作空间设定文件（AGENTS.md 等项目约定）对生图任务无关，封闭能力面下不注入
-  const settings = sealedSurface
-    ? { prompt: '', cache: settingsCache }
-    : await buildWorkspaceSettingsPromptBody(ctx.workspace, settingsCache)
-  // 个性化设定（soul/*.md，用户手编、极少变化 → 稳定可缓存；子 Agent 任务作用域不注入）
-  const personalizePrompt = ctx.isSubAgent ? '' : await buildPersonalizePrompt(ctx.chatType)
-  // 场景剔除名单（写作子场景能力面收窄）：剔掉装载器时其目录提示词也不再注入，
-  // 否则会在 system 里声明一份模型无法装载的集合目录，纯属诱导。
-  // 用具名字面量而非导入常量：与 NOVEL_EXCLUDED_TOOLS 的声明口径一致（那侧同样用字面量避免拉重依赖）
-  const sceneExcluded = getSceneExcludedTools(ctx.chatType, ctx.writingScene)
-  const catalogDisabled = sceneExcluded.includes('load_tool_collection')
-  // system 前缀保持稳定的可缓存内容；skill 正文由 load_skill 工具按需在对话中加载，不进 system
-  const systemPrompt = [
-    ctx.systemPrompt,
-    agentPrompt,
-    personalizePrompt,
-    catalogPrompt,
-    // 可选工具集合目录（静态可缓存）：配合 load_tool_collection 实现按需整组装载
-    sealedSurface || catalogDisabled ? '' : buildToolCatalogPrompt(),
-    sealedSurface ? '' : buildTodoPrompt(),
-    workspacePrompt,
-    settings.prompt,
-    // 聊天类型固定提示词 + writing 子场景提示词（类型与场景创建后锁定 → 前缀稳定可缓存；子 Agent 只读，无需类型指导）
-    buildTypePromptBody(ctx),
-    // 记忆工具使用指导仅主 Agent 注入（record_memory 随默认工具注册，子 Agent 任务作用域不记全局记忆）；
-    // 隐私聊天不注入（工具本身也已在函数表构建中过滤）
-    ctx.isSubAgent || ctx.privacy ? '' : buildMemoryToolPrompt(),
-    // 子 Agent 使用指导仅主 Agent 注入（子 Agent 的 spawn_agent 已被过滤，指导无意义且会诱导嵌套）
-    ctx.isSubAgent ? '' : buildSubAgentGuidancePrompt()
-  ]
+  const segments = await Promise.all(
+    STABLE_CONTRIBUTIONS.map(async (contribution) => ({
+      id: contribution.id,
+      prompt: await contribution.segment(ctx, params)
+    }))
+  )
+  const systemPrompt = segments
+    .map((segment) => segment.prompt)
     .filter(Boolean)
     .join('\n\n')
   const systemMessages: AiMessageParam[] = []
@@ -303,7 +334,7 @@ export const buildAgentRequestMessages = async (
   )
   return {
     apiMessages: [...systemMessages, ...messages],
-    skillCatalogPrompt: catalogPrompt,
-    settingsCache: settings.cache
+    // skill 目录段回传供完成时 token 构成估算（lastSkillCatalogPrompt）
+    skillCatalogPrompt: segments.find((s) => s.id === 'skillCatalog')?.prompt ?? ''
   }
 }

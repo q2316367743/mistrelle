@@ -22,8 +22,8 @@
 | `src/renderer/src/modules/tool/components/collectionLoader.ts` | 装载工具工厂 `createToolLoadTool(loadedRef)` + 目录提示词 `buildToolCatalogPrompt()` |
 | `src/renderer/src/modules/chat/agent/AgentChat.ts` | 三层洋葱解析、生命周期清理、目录注入 |
 | `src/renderer/src/modules/tool/components/agent/index.ts` | `list_tools` 输出补充集合维度（id/description），仅信息性 |
-| `src/renderer/src/components/chat/chat-assistant/tool/ConfirmChatTool.vue` | 并行审批卡片（待审块均可作答） |
-| `src/renderer/src/components/chat/RChatList.vue` | 待审横幅：计数 + 前往第一个未决块 |
+| `src/renderer/src/windows/main/components/chat/chat-assistant/tool/ConfirmChatTool.vue` | 并行审批卡片（待审块均可作答） |
+| `src/renderer/src/windows/main/components/chat/RChatList.vue` | 待审横幅：计数 + 前往第一个未决块 |
 
 ## 数据结构
 

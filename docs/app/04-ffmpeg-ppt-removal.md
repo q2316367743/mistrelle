@@ -33,7 +33,7 @@ main 进程 PptxGenJS 导出。
 
 **已删除**：
 
-- 渲染层：`modules/ppt/` 整目录、`components/chat/aside/ppt/`、`components/chat/ppt/`（pptNodeBridge）、
+- 渲染层：`modules/ppt/` 整目录、`windows/main/components/chat/aside/ppt/`、`windows/main/components/chat/ppt/`（pptNodeBridge）、
   `modules/tool/components/ppt/`（工具定义 + `registerToolPolicy` 策略）、`types/ppt.d.ts`
 - main / preload：`src/main/src/modules/ppt/`（pptIpc / pptxExport / pngWriter）、`src/preload/src/modules/ppt/`、
   `window.preload.ppt` 挂载与 `vite-env.d.ts` 声明

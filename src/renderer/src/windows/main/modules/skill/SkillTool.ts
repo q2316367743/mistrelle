@@ -1,3 +1,4 @@
+import type { BuiltInSkill } from '@/windows/main/modules/chat/scenes'
 import type { LocalSkill } from './types'
 
 // ==========================================
@@ -8,10 +9,17 @@ import type { LocalSkill } from './types'
  * 构建 skill 目录提示词：列出全部 skill 并声明 load_skill 的用法。
  * 仅含 skill 名称与描述，内容稳定，适合作为可缓存的 system 前缀的一部分。
  * skill 正文不在此注入——用户显式指定时由 load_skill 工具按需在对话中加载。
+ * 用户目录 skills（按启用过滤）与场景内置 skill（BuiltInSkill）共用同一目录形态。
  */
-export const buildSkillCatalogPrompt = (skills: LocalSkill[]): string => {
-  if (skills.length === 0) return ''
-  const lines = skills.map((e) => `- ${e.name}：${e.description || e.dirName}`)
+export const buildSkillCatalogPrompt = (
+  skills: LocalSkill[],
+  builtInSkills: ReadonlyArray<BuiltInSkill> = []
+): string => {
+  if (skills.length === 0 && builtInSkills.length === 0) return ''
+  const lines = [
+    ...skills.map((e) => `- ${e.name}：${e.description || e.dirName}`),
+    ...builtInSkills.map((e) => `- ${e.name}：${e.description}`)
+  ]
   return [
     '<available_skills>',
     '以下是当前可用的 Skill 列表，每个 Skill 是针对特定任务的专业指令集。',

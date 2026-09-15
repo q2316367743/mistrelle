@@ -1,5 +1,8 @@
 # 01 子 Agent 模块
 
+> ⚠️ 2026-09-15 场景注册表重构：本文所述 `global/ChatTypeConfig.ts`（CHAT_TYPE_CONFIG / WRITING_SCENE_CONFIG / DESIGN_SCENE_CONFIG / getSceneExcludedTools / getSceneSubAgentAllow / SUB_AGENT_ALLOW）已删除，配置迁移至 `src/renderer/src/windows/main/modules/chat/scenes/`（SceneDefinition 叶子场景定义）。现行契约见 [docs/chat/19](../chat/19-scene-registry-refactor.md)，本文以下内容为当时实现的历史记录。
+
+
 > 独立、健壮的子 Agent 能力模块：按「能力类型 × 聊天类型」矩阵约束可派发的子 Agent，支持调研型 / 生图型。
 > **生图型（2026-09-14 新增）**：`image` 型子 Agent 只做文生图（自行撰写英文描述 → `image_generate` → 落盘 → 返回路径），
 > 能力面完全封闭（无记忆 / todo / ask / shell / 文件 / skill / 渐进装载器），需审批即自动拒绝。

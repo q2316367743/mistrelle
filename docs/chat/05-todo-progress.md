@@ -6,9 +6,9 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/components/chat/TodoProgressButton.vue` | 自包含进度按钮组件：圆环 + 文案 + `t-popup` 弹层 |
-| `src/components/chat/TodoList.vue` | 弹层内容：待办列表渲染（复用，未改动） |
-| `src/components/chat/LChatEngine.vue` | 头部工具栏挂载点：`ml-auto` 容器内、全屏按钮左侧 |
+| `src/renderer/src/windows/main/components/chat/TodoProgressButton.vue` | 自包含进度按钮组件：圆环 + 文案 + `t-popup` 弹层 |
+| `src/renderer/src/windows/main/components/chat/TodoList.vue` | 弹层内容：待办列表渲染（复用，未改动） |
+| `src/renderer/src/windows/main/components/chat/LChatEngine.vue` | 头部工具栏挂载点：`ml-auto` 容器内、全屏按钮左侧 |
 
 ## 数据来源与语义
 

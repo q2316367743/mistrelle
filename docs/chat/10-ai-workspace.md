@@ -15,8 +15,8 @@
 
 ## 关键文件
 
-- `src/renderer/src/components/chat/AiWorkspace.vue`（组件本体）
-- `src/renderer/src/components/chat/sender/LChatSender.vue`（使用方，`lockWorkspace` prop）
+- `src/renderer/src/windows/main/components/chat/AiWorkspace.vue`（组件本体）
+- `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue`（使用方，`lockWorkspace` prop）
 
 ## 数据结构 / API 契约
 

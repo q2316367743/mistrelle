@@ -10,6 +10,7 @@
   <loading-result v-else title="正在加载中" />
 </template>
 <script lang="ts" setup>
+import LChatEngine from '@/windows/main/components/chat/LChatEngine.vue'
 import { useAiChatStore } from '@/windows/main/store'
 import { buildChatMainKey } from '@/windows/main/modules/chat'
 

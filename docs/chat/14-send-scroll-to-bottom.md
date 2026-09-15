@@ -17,7 +17,7 @@ tdesign `@tdesign-vue-next/chat` 的 `ChatList` 内置 autoScroll（ResizeObserv
 
 ## 实现
 
-改动收敛在 `src/renderer/src/components/chat/RChatList.vue`（`LChatEngine.vue` 无需改动）：
+改动收敛在 `src/renderer/src/windows/main/components/chat/RChatList.vue`（`LChatEngine.vue` 无需改动）：
 
 1. `<ChatList>` 加模板 ref，复用其 `expose` 的 `scrollToBottom({ behavior })` 方法。
 2. watch `messages.length`：**增长且新末条为 user 角色**时，`await nextTick()` 等 DOM 渲染完成后调用 `scrollToBottom({ behavior: 'smooth' })`。
@@ -45,6 +45,6 @@ watch(
 
 | 文件 | 职责 |
 |------|------|
-| `src/renderer/src/components/chat/RChatList.vue` | 唯一改动点：chatListRef + 发送滚动 watch |
+| `src/renderer/src/windows/main/components/chat/RChatList.vue` | 唯一改动点：chatListRef + 发送滚动 watch |
 | `node_modules/@tdesign-vue-next/chat/es/chat-list/chat-list.mjs` | （只读参考）`expose({ scrollToBottom })` 与 preventAutoScroll 状态机 |
 | `src/renderer/src/modules/chat/agent/AgentChat.ts` | （只读参考）`sendUserMessage` 异步追加时序 |

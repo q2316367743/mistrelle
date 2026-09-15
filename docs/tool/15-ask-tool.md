@@ -13,8 +13,8 @@
 | `src/renderer/src/windows/main/modules/tool/components/ask.ts` | 工具定义（name/description/parameters schema）、`normalizeAskArgs` 参数归一化、`formatAskResult` 结果格式化，schema 常量 `ASK_OPTIONS_PROPERTY` 供 UI 卡片共用 |
 | `src/renderer/src/windows/main/modules/chat/agent/agentTools.ts` | 执行侧拦截：`runSingleTool` 中 `ASK_TOOL_NAME` 分支，`markToolInteractive('ask')` → `interactive.awaitDecision` 挂起等答案 → `applyResult` 回填（同时写 `ext.askItems` 供 UI 结果卡片渲染） |
 | `src/renderer/src/windows/main/modules/chat/agent/interactive.ts` | `InteractiveBridge` 交互桥：`awaitDecision` 返回 Promise 挂起，UI `resolve(toolCallId, string[])` 兑现；支持排队项直接出队（并行 ask 各自作答） |
-| `src/renderer/src/components/chat/chat-assistant/tool/AskChatTool.vue` | 问答卡片容器：多问题循环、`allAnswered` 提交门控、跳过（resolve null）、结果态渲染（`ext.askItems` →「问题 → 答案」列表） |
-| `src/renderer/src/components/chat/chat-assistant/tool/AskChatQuestion.vue` | 单问题渲染：单选用 `t-radio-group`（缺省选第一项），多选用 `t-checkbox-group`（缺省全不选）；自定义答案输入框 |
+| `src/renderer/src/windows/main/components/chat/chat-assistant/tool/AskChatTool.vue` | 问答卡片容器：多问题循环、`allAnswered` 提交门控、跳过（resolve null）、结果态渲染（`ext.askItems` →「问题 → 答案」列表） |
+| `src/renderer/src/windows/main/components/chat/chat-assistant/tool/AskChatQuestion.vue` | 单问题渲染：单选用 `t-radio-group`（缺省选第一项），多选用 `t-checkbox-group`（缺省全不选）；自定义答案输入框 |
 
 ## 数据契约
 

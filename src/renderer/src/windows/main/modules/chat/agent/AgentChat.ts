@@ -3,9 +3,11 @@ import type { ChatMessage, TodoItem, ToolFunction, UserMessage } from '@/domain'
 import { nanoid } from 'nanoid'
 import { skillAgentList } from '@/windows/main/modules/skill'
 import type { AiChatMode } from '@/entity'
-import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
+import type { ChatType } from '@/windows/main/modules/chat/chatType'
 import type { DesignScene } from '@/windows/main/modules/chat/designScene'
 import type { WritingScene } from '@/windows/main/modules/chat/writingScene'
+import type { SceneContext, SceneDefinition } from '@/windows/main/modules/chat/scenes'
+import { resolveScene } from '@/windows/main/modules/chat/scenes'
 import type { ToolPolicyContext } from '@/windows/main/modules/tool/toolPolicy'
 import { useSettingAiStore } from '@/windows/main/store'
 import type { SubAgentType } from '@/windows/main/modules/subagent/types'
@@ -38,13 +40,13 @@ import {
   resolveForExecution as resolveLoadedTools,
   type ToolSurfaceContext
 } from './agentFunctions'
+import type { AgentRuntime } from './runtime'
 
 export interface UseChatOptions {
   defaultMessages?: ChatMessage[]
   chatServiceConfig?: ChatServiceConfig
   functions?: ToolFunction[]
   systemPrompt?: string
-  enableSkill?: boolean
   sandboxDir?: string
   workspace?: string
   /** 聊天模式（0 默认 / 1 计划 / 2 完全访问），用于约束工具执行行为 */
@@ -70,11 +72,11 @@ export interface UseChatOptions {
 }
 
 /**
- * 会话引擎门面：持有响应式状态与配置，循环编排（agentLoop）、恢复续跑（agentResume）、
- * 提示词（agentPrompts）、函数表（agentFunctions）经快照/实例协作。
+ * 会话引擎门面：持有响应式状态与配置，实现 {@link AgentRuntime} 契约供引擎内部模块
+ * （agentLoop / agentResume 等）调用。循环编排、恢复续跑、提示词、函数表经快照/实例协作。
  * 标注「协作面」的成员供 agent/ 内部模块访问，不属于对外 API。
  */
-export class ToolChat {
+export class ToolChat implements AgentRuntime {
   readonly messages = ref<ChatMessage[]>([])
   readonly status = ref<ChatStatus>('idle')
   readonly toolCalls = ref<ToolCall[]>([])
@@ -166,14 +168,20 @@ export class ToolChat {
   }
 
   /** 场景工具注入上下文（统一构造，避免各工具 ctx 遗漏字段） */
-  private typeToolsContext(): ChatTypeToolContext {
+  private typeToolsContext(): SceneContext {
     return {
       getSandboxDir: () => this.sandboxDir,
       getWorkspace: () => this.workspace,
       writingScene: this.writingScene,
       designScene: this.designScene,
-      getAnchorNodeIds: () => this.anchorNodeIds
+      getAnchorNodeIds: () => this.anchorNodeIds,
+      designStylePrompt: this.designStylePrompt
     }
+  }
+
+  /** 当前场景定义（类型 / 子场景创建后锁定，按需解析，开销为一次查表） */
+  private scene(): SceneDefinition {
+    return resolveScene(this.chatType, this.writingScene, this.designScene)
   }
 
   /** 函数表构建上下文快照（agentFunctions 用，每次构建新取以反映最新会话配置） */
@@ -183,7 +191,7 @@ export class ToolChat {
       isSubAgent: this.isSubAgent,
       privacy: this.privacy,
       mode: this.mode,
-      chatType: this.chatType,
+      scene: this.scene(),
       subAgentType: this.subAgentType,
       closedToolSurface: this.closedToolSurface,
       typeTools: this.typeToolsContext(),
@@ -202,14 +210,13 @@ export class ToolChat {
       closedToolSurface: this.closedToolSurface,
       privacy: this.privacy,
       mode: this.mode,
-      chatType: this.chatType,
-      writingScene: this.writingScene,
-      designStylePrompt: this.designStylePrompt,
+      scene: this.scene(),
       anchorNodeIds: this.anchorNodeIds,
       sandboxDir: this.sandboxDir,
       workspace: this.workspace,
       typeTools: this.typeToolsContext(),
-      todos: this.todos
+      todos: this.todos,
+      settingsCache: this.workspaceSettingsCache
     }
   }
 
@@ -228,14 +235,11 @@ export class ToolChat {
     params: ResolvedChatRequestParams,
     assistantMessageId: string
   ): Promise<AiMessageParam[]> {
-    const built = await buildAgentRequestMessages(
-      this.promptContext(),
-      params,
-      assistantMessageId,
-      this.workspaceSettingsCache
-    )
+    const promptCtx = this.promptContext()
+    const built = await buildAgentRequestMessages(promptCtx, params, assistantMessageId)
     this.lastSkillCatalogPrompt = built.skillCatalogPrompt
-    this.workspaceSettingsCache = built.settingsCache
+    // 工作空间设定缓存经 ctx 缓存盒原地回写（workspaceSettings 贡献者内部更新），存回实例复用
+    this.workspaceSettingsCache = promptCtx.settingsCache
     return built.apiMessages
   }
 
@@ -367,6 +371,7 @@ export class ToolChat {
       isSubAgent: this.isSubAgent,
       chatType: this.chatType,
       writingScene: this.writingScene,
+      designScene: this.designScene,
       abortSignal: signal,
       // skill 根目录内脚本执行免审批；toolPolicy 保持叶子 import，故由调用方注入（见 docs/tool/07）
       skillRootDirs: skillAgentList().map((agent) => agent.path)
@@ -409,19 +414,9 @@ export class ToolChat {
     this.chatType = type
   }
 
-  /** 获取当前聊天类型 */
-  getType(): ChatType {
-    return this.chatType
-  }
-
   /** 设置写作子场景（新建对话时选定，创建后锁定；仅 writing 类型生效） */
   setWritingScene(scene: WritingScene): void {
     this.writingScene = scene
-  }
-
-  /** 获取当前写作子场景 */
-  getWritingScene(): WritingScene {
-    return this.writingScene
   }
 
   /** 设置设计子场景即渲染引擎（新建对话时选定，创建后锁定；仅 design 类型生效） */

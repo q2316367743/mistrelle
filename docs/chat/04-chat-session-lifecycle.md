@@ -18,7 +18,7 @@
 ## 关键文件
 
 - `src/modules/chat/agent/ChatSessionManager.ts` —— 会话类 + 管理器 + 回收逻辑
-- `src/components/chat/LChatEngine.vue` —— 唯一会话消费方，挂载时经 `getChatSession`（隐式 touch），卸载时
+- `src/renderer/src/windows/main/components/chat/LChatEngine.vue` —— 唯一会话消费方，挂载时经 `getChatSession`（隐式 touch），卸载时
   `releaseChatSession`
 
 ## 生命周期与关键 API

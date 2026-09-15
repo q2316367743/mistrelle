@@ -6,7 +6,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/components/chat/chat-user/MChatUser.vue` | 用户消息组件：折叠限高与渐变模糊、溢出检测、箭头展开 / 收起交互 |
+| `src/renderer/src/windows/main/components/chat/chat-user/MChatUser.vue` | 用户消息组件：折叠限高与渐变模糊、溢出检测、箭头展开 / 收起交互 |
 
 ## 交互结构
 

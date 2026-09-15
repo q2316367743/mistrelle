@@ -46,8 +46,8 @@
 以下集合含已删工具名，**有意保留**，用于历史消息的渲染 / 统计 / 上下文判定：
 
 - `utils/tokenEstimate.ts` 与 `modules/chat/agent/agentContext.ts` 的 `SKILL_TOOL_NAMES`（含 `read_skill_file`）
-- `components/chat/chat-assistant/RChatTool.vue` 的 `skillToolNames`（含 `read_skill_file`）
-- `components/chat/chat-assistant/tool/FileChatTool.vue` 的 `file_exists` 动词映射
+- `windows/main/components/chat/chat-assistant/RChatTool.vue` 的 `skillToolNames`（含 `read_skill_file`）
+- `windows/main/components/chat/chat-assistant/tool/FileChatTool.vue` 的 `file_exists` 动词映射
 - `FileProductList.vue` / `OfficeAside.vue` / `contextRules.ts` 对 `file_write_xlsx` 的判定（工具仍存在，勾选后照常生效）
 
 旧工具的聊天卡片渲染降级：`RChatTool` 的 `shellToolNames` 缩为 `['cli_run']`，

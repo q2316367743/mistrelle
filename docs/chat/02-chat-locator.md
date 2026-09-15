@@ -4,7 +4,7 @@
 
 ## 实现思路
 
-`src/components/chat/RChatList.vue` 的 `r-chat-list__locator-group` 原先是每条消息（用户 + 助手）都渲染一个定位按钮，
+`src/renderer/src/windows/main/components/chat/RChatList.vue` 的 `r-chat-list__locator-group` 原先是每条消息（用户 + 助手）都渲染一个定位按钮，
 tooltip 为固定文案「定位到这条消息」。改为：
 
 - 仅对**用户消息**渲染定位按钮（助手消息由滚动本身即可定位，无需侧边指示）；

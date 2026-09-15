@@ -13,7 +13,7 @@ PSD 写入选型 `ag-psd`（唯一成熟的 JS 写 PSD 库，浏览器端可用�
 | `src/renderer/src/windows/main/modules/canvas/canvasPsd.ts` | 核心：`exportCanvasPsd(doc)` → `ArrayBuffer`（直接对接 `fs.writeBinaryFile`） |
 | `modules/canvas/index.ts` | re-export |
 | `modules/tool/components/canvas/canvasTools.ts` | `canvas_export` 增加 `format` 参数 |
-| `components/chat/aside/design/DesignAside.vue` | 「下载 PSD」菜单项（`handleDownload(format)` 合并单函数） |
+| `windows/main/components/chat/aside/design/DesignAside.vue` | 「下载 PSD」菜单项（`handleDownload(format)` 合并单函数） |
 
 ## 导出流程（canvasPsd.ts）
 

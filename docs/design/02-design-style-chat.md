@@ -76,10 +76,10 @@ design 类型聊天在「新增页」可选绑定一个设计风格（可选，�
 | `src/modules/design/service/DesignStylePrompt.ts` | 风格 → 提示词段落（`buildDesignStylePrompt`） |
 | `src/modules/chat/agent/ChatSessionManager.ts` | 会话级水合 / 持久化 / 提示词构建 |
 | `src/modules/chat/agent/AgentChat.ts` | `setDesignStylePrompt` + `buildTypePrompt` 注入 |
-| `src/components/chat/useChatSession.ts` | `initialState.designStyleId` 透出 |
-| `src/components/chat/sender/LChatSender.vue` | 工作空间锁定 + 风格只读 tag |
-| `src/components/chat/AiWorkspace.vue` | `readonly` prop |
-| `src/components/chat/LChatEngine.vue` | 聊天室传 `lock-workspace` |
+| `src/renderer/src/windows/main/components/chat/useChatSession.ts` | `initialState.designStyleId` 透出 |
+| `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue` | 工作空间锁定 + 风格只读 tag |
+| `src/renderer/src/windows/main/components/chat/AiWorkspace.vue` | `readonly` prop |
+| `src/renderer/src/windows/main/components/chat/LChatEngine.vue` | 聊天室传 `lock-workspace` |
 | `src/pages/new/PageNew.vue` | 风格选择器 + 提交携带 |
 
 ## 注意事项

@@ -37,7 +37,7 @@
 | `App.vue`（主）                       | `useTitlePadding({ kind: 'main' })` 声明形态 + `.common-operator { left: v-bind(operatorLeft) }`（l1） |
 | `windows/buddy/App.vue`               | `useTitlePadding({ kind: 'buddy' })` 声明伙伴窗口单按钮形态（窗口内其余消费点无需再传） |
 | `components/PageLayout/PageLayout.vue`| `pl` prop 无默认值，`props.pl ?? \`${l2}px\``；右 padding `24 + r1`（随窗口形态取 l2） |
-| `components/chat/LChatEngine.vue`     | header `padding: 8px (8 + r1)`；collapsed `padding-left: l2`（仅主窗口）    |
+| `windows/main/components/chat/LChatEngine.vue`     | header `padding: 8px (8 + r1)`；collapsed `padding-left: l2`（仅主窗口）    |
 | `pages/design/detail/index.vue`       | `<page-layout :pl="\`${l3}px\`">`（主窗口单按钮场景显式覆盖）               |
 
 注意：`defineProps` 默认值在编译后提升至模块作用域，不能引用 setup 变量，故 `PageLayout` 的 `pl` 改为无默认值 + computed 兜底。原常量 `ASIDE_PADDING_LEFT`（= macOS 的 l2）已删除。`useTitlePadding` 内模块级 `windowKind` 存于各窗口独立的 renderer 进程，互不污染；主窗口为默认值故调用可不传 `kind`，但建议显式声明以与 buddy 对称。

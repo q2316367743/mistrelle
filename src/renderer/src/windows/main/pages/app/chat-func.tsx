@@ -3,7 +3,7 @@ import { DeleteIcon, EditIcon } from 'tdesign-icons-vue-next'
 import { useAiChatStore } from '@/windows/main/store'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import { AiChatItem } from '@/entity/ai'
-import { useWorkspaceList } from '@/components/chat/useWorkspaceList'
+import { useWorkspaceList } from '@/windows/main/components/chat/useWorkspaceList'
 
 /**
  * 打开会话右键菜单

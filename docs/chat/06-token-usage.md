@@ -93,14 +93,14 @@ export interface TokenBreakdown {
 
 ### 5. UI 接入
 
-- `src/components/chat/LChatEngine.vue`：
+- `src/renderer/src/windows/main/components/chat/LChatEngine.vue`：
   - `tokenUsage` computed：取**最后一条 assistant 消息**的 `usage.promptTokens` 为 `contextTokens`，
     `contextWindow` = `optionMap.get(modelKey)?.context || DEFAULT_CONTEXT_WINDOW`。
   - 传给 `LChatSender` 的 `token-usage` prop。
-- `src/components/chat/sender/LChatSender.vue`：
+- `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue`：
   - 按钮：`t-popup trigger="click"` 包住圆形 `t-progress`，圆环 percentage = `contextTokens / contextWindow`，
     旁显示 `formatTokens(contextTokens)`。
-- `src/components/chat/sender/TokenUsagePanel.vue`（弹窗内容）：
+- `src/renderer/src/windows/main/components/chat/sender/TokenUsagePanel.vue`（弹窗内容）：
   - 头部：`13% 已使用 25.0k/192.0k`
   - 分段进度条：四段宽度 = 各分类 token / contextWindow，颜色与明细圆点一致
   - 四行明细：圆点 + 标签 + 百分比（各分类 token / contextWindow）

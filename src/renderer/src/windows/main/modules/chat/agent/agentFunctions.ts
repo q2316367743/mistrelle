@@ -3,13 +3,8 @@ import type { TodoItem, ToolContent, ToolFunction } from '@/domain'
 import type { AiTool } from '@/windows/main/modules/ai'
 import type { AiChatMode } from '@/entity'
 import type { ChatRequestParams } from '@/windows/main/modules/chat'
-import type { ChatType, ChatTypeToolContext } from '@/windows/main/modules/chat/chatType'
-import {
-  CHAT_TYPE_CONFIG,
-  getSceneExcludedTools,
-  getSceneSubAgentAllow,
-  SUB_AGENT_TOOL_CONFIG
-} from '@/global/ChatTypeConfig'
+import type { SceneContext, SceneDefinition } from '@/windows/main/modules/chat/scenes'
+import { SUB_AGENT_TOOL_CONFIG } from '@/windows/main/modules/chat/scenes'
 import { getDefaultTools, isShellExecTool, toolMap, toolRegistry } from '@/windows/main/modules/tool'
 import { IMAGE_READ_TOOL_NAME } from '@/windows/main/modules/tool/components/native/file'
 import { createToolLoadTool } from '@/windows/main/modules/tool/components/collectionLoader'
@@ -33,13 +28,14 @@ export interface ToolSurfaceContext {
   privacy: boolean
   /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
   mode: AiChatMode
-  chatType: ChatType
+  /** 当前场景定义（叶子场景，含工具 / 提示词 / 剔除名单 / 子 Agent 矩阵） */
+  scene: SceneDefinition
   /** 子 Agent 能力类型（「仅场景工具」型据此切换为封闭的专用工具集） */
   subAgentType?: SubAgentType
   /** 显式封闭工具面（design_draw 等内部 Agent）：只暴露注入的 functions，关闭装载器与注册表兜底 */
   closedToolSurface?: boolean
-  /** 场景工具上下文（沙盒 / 工作空间 / 写作场景 / 锚点） */
-  typeTools: ChatTypeToolContext
+  /** 场景上下文（沙盒 / 工作空间 / 子场景 / 锚点 / 设计风格提示词） */
+  typeTools: SceneContext
   todos: Ref<TodoItem[]>
   /** 本条消息内已装载的工具集合 id（渐进式加载临时态，不落库） */
   loadedCollections: Ref<string[]>
@@ -65,13 +61,13 @@ const isVisionModelRequest = (params: ChatRequestParams): boolean => {
 const isClosedSurface = (ctx: ToolSurfaceContext): boolean =>
   !!ctx.closedToolSurface || isSceneToolsOnlyAgent(ctx.subAgentType)
 
-/** 按聊天类型 / 子 Agent 能力类型注入场景级工具（生图型子 Agent → 专用生图工具集） */
+/** 按场景 / 子 Agent 能力类型注入场景级工具（生图型子 Agent → 专用生图工具集） */
 const getTypeTools = (ctx: ToolSurfaceContext): ToolFunction[] => {
   if (ctx.isSubAgent || ctx.closedToolSurface) {
     const dedicated = ctx.subAgentType ? SUB_AGENT_TOOL_CONFIG[ctx.subAgentType] : undefined
     return dedicated ? dedicated(ctx.typeTools) : []
   }
-  return CHAT_TYPE_CONFIG[ctx.chatType].tools(ctx.typeTools)
+  return ctx.scene.tools(ctx.typeTools)
 }
 
 /**
@@ -93,8 +89,8 @@ export const buildBaseFunctions = (
   const agent = params.agentId ? useAiAgentStore().getById(params.agentId) : undefined
   const names = [...(agent?.tools ?? []), ...getUserToolNames(params)]
   const selected = names.map((name) => toolMap[name]).filter((fn): fn is ToolFunction => !!fn)
-  const allowed = getSceneSubAgentAllow(ctx.chatType, ctx.typeTools.writingScene)
-  const excluded = new Set(getSceneExcludedTools(ctx.chatType, ctx.typeTools.writingScene))
+  const allowed = ctx.scene.subAgentAllow
+  const excluded = new Set(ctx.scene.excludedTools ?? [])
   for (const fn of [
     // agent 带的工具
     ...ctx.functions,
@@ -139,7 +135,7 @@ export const applyLoadedCollections = (
   if (isClosedSurface(ctx)) return
   if (ctx.loadedCollections.value.length === 0) return
   const loaded = new Set(ctx.loadedCollections.value)
-  const excluded = new Set(getSceneExcludedTools(ctx.chatType, ctx.typeTools.writingScene))
+  const excluded = new Set(ctx.scene.excludedTools ?? [])
   for (const entry of Object.values(toolRegistry)) {
     if (!loaded.has(entry.groupId) || map.has(entry.fn.name)) continue
     if (excluded.has(entry.fn.name)) continue
@@ -177,7 +173,7 @@ export const resolveForExecution = (
   if (isClosedSurface(ctx)) return base
   const map = new Map(base.map((fn) => [fn.name, fn]))
   applyLoadedCollections(ctx, map)
-  const excluded = new Set(getSceneExcludedTools(ctx.chatType, ctx.typeTools.writingScene))
+  const excluded = new Set(ctx.scene.excludedTools ?? [])
   let changed = false
   for (const name of names) {
     if (map.has(name)) continue

@@ -14,10 +14,10 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/renderer/src/components/chat/aside/design/ElementPropertyPanel.vue` | 面板主体：节点头部（类型徽标 + 图层名）、保存按钮、尺寸块、外观块、形状块 |
-| `src/renderer/src/components/chat/aside/design/TextPropertyFields.vue` | text 专属字段块：内容 / 字体 / 字号 / 字重 / 行高 / 字间距 / 对齐 / 大小写 / 斜体（v-model 绑草稿） |
-| `src/renderer/src/components/chat/aside/design/usePropertyDraft.ts` | 草稿状态 composable：`PropertyDraft` 快照 / diff 计算（`dirty`）/ 显式保存（batchEdit 写回）/ 颜色字段代理 |
-| `src/renderer/src/components/chat/aside/design/DesignAside.vue` | 三栏挂载：`v-if="fullscreen"` + `:node-id="selectedId"` |
+| `src/renderer/src/windows/main/components/chat/aside/design/ElementPropertyPanel.vue` | 面板主体：节点头部（类型徽标 + 图层名）、保存按钮、尺寸块、外观块、形状块 |
+| `src/renderer/src/windows/main/components/chat/aside/design/TextPropertyFields.vue` | text 专属字段块：内容 / 字体 / 字号 / 字重 / 行高 / 字间距 / 对齐 / 大小写 / 斜体（v-model 绑草稿） |
+| `src/renderer/src/windows/main/components/chat/aside/design/usePropertyDraft.ts` | 草稿状态 composable：`PropertyDraft` 快照 / diff 计算（`dirty`）/ 显式保存（batchEdit 写回）/ 颜色字段代理 |
+| `src/renderer/src/windows/main/components/chat/aside/design/DesignAside.vue` | 三栏挂载：`v-if="fullscreen"` + `:node-id="selectedId"` |
 
 ## 字段矩阵（按类型生效）
 

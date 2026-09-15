@@ -67,7 +67,6 @@ export const runSubAgent = async (options: SubAgentOptions): Promise<SubAgentRes
     sandboxDir,
     workspace,
     mode: 0,
-    enableSkill: true,
     // 隐私聊天：继承主 Agent 标记，子 Agent 同样不注册记忆工具
     privacy: options.privacy,
     systemPrompt: buildSubAgentSystemPrompt(workspace, subAgentType),

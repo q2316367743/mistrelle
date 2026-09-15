@@ -63,9 +63,9 @@
 | 落点 | 行为（非会员） |
 |---|---|
 | `pages/design/font/DesignFontPage.vue` | 「添加字体」disabled + 会员 tag；表格 library 行「编辑/删除」disabled（系统字体 meta 编辑不拦） |
-| `components/chat/aside/design/TextPropertyFields.vue`（画布属性面板） | 字体下拉资源库分组 label 加「（会员）」、逐项 disabled |
+| `windows/main/components/chat/aside/design/TextPropertyFields.vue`（画布属性面板） | 字体下拉资源库分组 label 加「（会员）」、逐项 disabled |
 | `pages/design/list/modals/TypographyFields.vue`（风格表单） | 同上 |
-| `components/chat/chat-assistant/tool/FontPickChatTool.vue`（AI 选字面板） | 过滤 library（AI 面不可见） |
+| `windows/main/components/chat/chat-assistant/tool/FontPickChatTool.vue`（AI 选字面板） | 过滤 library（AI 面不可见） |
 | `modules/tool/components/design/fontTools.ts`（font_list） | 过滤 library + 结果 note「资源库自定义字体为会员功能」 |
 
 ### extendedDesignStyles（在线风格库下载 + AI 生成设计风格）落点
@@ -96,7 +96,7 @@
 | 落点 | 行为（全员） |
 |---|---|
 | `pages/setting/ai/SettingAi.vue` | 内置面板只读展示 + 「刷新模型列表」（需登录，内置中转走服务端凭证）；自定义供应商可增删改排，免登录进入页面 |
-| `components/chat/AiModelSelect.vue` | 「模型设置」入口：直接跳 `/setting/ai`，不再拦截未登录 |
+| `windows/main/components/chat/AiModelSelect.vue` | 「模型设置」入口：直接跳 `/setting/ai`，不再拦截未登录 |
 
 **内置供应商 = 服务端中转站**（详见 `docs/setting/05-ai-provider-builtin-relay.md`）：模型列表来自 `GET {server}/v1/models`，对话走主进程 relay IPC 代理 `POST {server}/v1/chat/completions`（服务端 apiKey 由主进程注入，渲染层不接触凭证），免费档可用（消耗每日赠送 / 增量包 / 人工充值积分）。
 

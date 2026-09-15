@@ -32,8 +32,8 @@ AI 调用 image_generate(prompt, path?, model?, size?)
 | `src/renderer/src/windows/main/modules/tool/components/design/imageSubAgent.ts` | 生图型子 Agent 专用工具集（`createImageSubAgentTools`：image_generate + image_crop + image_info） |
 | `src/renderer/src/windows/main/modules/tool/components/design/imageGenerateRules.ts` | 生图提示词知识单一源：设计双引擎共用的增强规则 + 生图子 Agent 自包含规则 |
 | `src/renderer/src/windows/main/modules/chat/agent/agentTools.ts` | 执行器 `appendChatImages` 约定：识别 `chatImages` → 写 `image` 块（stepId 复用工具调用块的）→ 剥离标记 |
-| `src/renderer/src/components/chat/chat-assistant/RChatImage.vue` | 图片块渲染组件：t-image + `pathToHref` 转本地协议、已知宽高按原图比例占位、点击经 t-image-viewer trigger 插槽浮层放大预览 |
-| `src/renderer/src/components/chat/chat-assistant/MChatAssistant.vue` | `image` 渲染分支 + **折叠白名单**（`visibleContents` 过滤时保留 image 块，防止完成后生成图被「折叠执行过程」隐藏） |
+| `src/renderer/src/windows/main/components/chat/chat-assistant/RChatImage.vue` | 图片块渲染组件：t-image + `pathToHref` 转本地协议、已知宽高按原图比例占位、点击经 t-image-viewer trigger 插槽浮层放大预览 |
+| `src/renderer/src/windows/main/components/chat/chat-assistant/MChatAssistant.vue` | `image` 渲染分支 + **折叠白名单**（`visibleContents` 过滤时保留 image 块，防止完成后生成图被「折叠执行过程」隐藏） |
 | `src/renderer/src/global/ChatTypeConfig.ts` | office 注入（登录时 `[createImageGenerateTool(ctx)]` + 生图使用约定提示词）；`SUB_AGENT_TOOL_CONFIG.image` 注册生图子 Agent 工具集 |
 | `src/renderer/src/windows/main/modules/tool/components/design/index.ts` | createDesignTools 注入门控同步换登录判断 |
 | `src/renderer/src/domain/ChatMessage.ts` | `ImageContent`（`type:'image'`，`{ name?, url?, width?, height? }`）——类型早已定义但此前无写入无渲染，本次激活；`url` 存本地绝对路径 |

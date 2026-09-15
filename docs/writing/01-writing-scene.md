@@ -1,5 +1,8 @@
 # 01 写作子场景（WritingScene）
 
+> ⚠️ 2026-09-15 场景注册表重构：本文所述 `global/ChatTypeConfig.ts`（CHAT_TYPE_CONFIG / WRITING_SCENE_CONFIG / DESIGN_SCENE_CONFIG / getSceneExcludedTools / getSceneSubAgentAllow / SUB_AGENT_ALLOW）已删除，配置迁移至 `src/renderer/src/windows/main/modules/chat/scenes/`（SceneDefinition 叶子场景定义）。现行契约见 [docs/chat/19](../chat/19-scene-registry-refactor.md)，本文以下内容为当时实现的历史记录。
+
+
 > writing 聊天类型内部分层：文章创作（article，默认）、短篇小说（novelShort）。新建对话时选定、创建后锁定，场景提示词与目录结构随场景差异化。
 
 ## 设计动机
@@ -95,4 +98,4 @@ PageNew.vue（选 writing → 二级场景 article / novelShort）
 - `src/modules/chat/agent/agentPrompts.ts`：装载器被剔除时抑制 `<available_tool_collections>` 目录
 - `src/modules/chat/agent/ChatSessionManager.ts`：writingScene 持久化与恢复
 - `src/modules/chat/service/ChatService.ts`：`aiChatSandbox` 按场景建目录
-- `src/pages/new/PageNew.vue` + `src/components/chat/sender/LChatSender.vue`：场景透传
+- `src/pages/new/PageNew.vue` + `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue`：场景透传

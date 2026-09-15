@@ -47,7 +47,7 @@ confirm 分支按决策值区分文案：
 
 | 文件 | 改动 |
 |------|------|
-| `components/chat/RChatList.vue` | 横幅 + `scrollToToolCall` + 视口外自动滚动 |
-| `components/chat/chat-assistant/tool/ConfirmChatTool.vue` | `data-tool-call-id` 锚点 |
+| `windows/main/components/chat/RChatList.vue` | 横幅 + `scrollToToolCall` + 视口外自动滚动 |
+| `windows/main/components/chat/chat-assistant/tool/ConfirmChatTool.vue` | `data-tool-call-id` 锚点 |
 | `modules/chat/agent/agentTools.ts` | confirm 分支区分 null（停止）与 false（拒绝）文案 |
 | `modules/tool/toolPolicy.ts` | `isSkillScriptCall` 整串 command 的 token 级判定 |

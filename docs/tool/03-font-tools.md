@@ -10,7 +10,7 @@
 > - 字体工具 `src/modules/tool/components/design/fontTools.ts`
 > - 字体元数据推断 `src/utils/fontMeta.ts`（启发式分类 + 统一过滤，工具与页面共用）
 > - 字体预览加载 `src/utils/fontPreview.ts` + 通用预览组件 `src/components/FontPreviewText.vue`
-> - 选字面板 UI `src/components/chat/chat-assistant/tool/FontPickChatTool.vue`（经 RChatTool 挂载）
+> - 选字面板 UI `src/renderer/src/windows/main/components/chat/chat-assistant/tool/FontPickChatTool.vue`（经 RChatTool 挂载）
 > - 交互桥 `src/modules/chat/agent/interactive.ts`（InteractiveBridge，font_pick 决策）
 > - 渲染层字体注册器 `../../src/modules/canvas/fontRegistry.ts`
 > - preload 字体模块 `src-utools/src/font.js`（Node 环境，系统字体扫描 / 资源库管理 / 元数据持久化）

@@ -9,14 +9,17 @@
       </div>
       <div class="page-new__types">
         <segmented-control v-model="type" :options="typeOptions" />
-        <div class="page-new__type-desc">{{ currentOption?.description }}</div>
-        <template v-if="type === 'writing'">
-          <segmented-control v-model="scene" :options="sceneOptions" class="page-new__scene" />
-          <div class="page-new__type-desc">{{ currentScene?.description }}</div>
+        <div class="page-new__type-desc">{{ currentFamily?.description }}</div>
+        <!-- 子场景维度由注册表派生：家族声明了 variants 即渲染二级选择器（写作→子场景，设计→引擎） -->
+        <template v-if="currentFamily?.variants">
+          <segmented-control
+            v-model="variant"
+            :options="currentFamily.variants.options"
+            class="page-new__scene"
+          />
+          <div class="page-new__type-desc">{{ currentVariant?.description }}</div>
         </template>
         <template v-if="type === 'design'">
-          <segmented-control v-model="engine" :options="engineOptions" class="page-new__scene" />
-          <div class="page-new__type-desc">{{ currentEngine?.description }}</div>
           <style-select v-model="designStyleId" class="page-new__style" />
         </template>
       </div>
@@ -36,6 +39,7 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
+import LChatSender from '@/windows/main/components/chat/sender/LChatSender.vue'
 import { useAiChatStore, useSettingDefaultStore } from '@/windows/main/store'
 import type {
   ChatRequestParams,
@@ -43,11 +47,7 @@ import type {
   DesignScene,
   WritingScene
 } from '@/windows/main/modules/chat'
-import {
-  CHAT_TYPE_OPTIONS,
-  DESIGN_SCENE_OPTIONS,
-  WRITING_SCENE_OPTIONS
-} from '@/windows/main/modules/chat'
+import { SCENE_FAMILIES, SCENE_FAMILY_META } from '@/windows/main/modules/chat/scenes'
 import { MessageUtil } from '@/utils/modal'
 import { toggleCollapsed } from '@/global/BeanFactory'
 
@@ -75,13 +75,35 @@ watch(
   { immediate: true }
 )
 
-const typeOptions = CHAT_TYPE_OPTIONS
-const sceneOptions = WRITING_SCENE_OPTIONS
-const engineOptions = DESIGN_SCENE_OPTIONS
+// 家族选择器选项从注册表派生（单一数据源：SCENE_FAMILIES 顺序即展示顺序）
+const typeOptions = SCENE_FAMILIES.map(({ type: value, label, description, icon }) => ({
+  value,
+  label,
+  description,
+  icon
+}))
 
-const currentOption = computed(() => typeOptions.find((option) => option.value === type.value))
-const currentScene = computed(() => sceneOptions.find((option) => option.value === scene.value))
-const currentEngine = computed(() => engineOptions.find((option) => option.value === engine.value))
+const currentFamily = computed(() => SCENE_FAMILIES.find((family) => family.type === type.value))
+
+/** 写作子场景判定（单一判定点：按注册表 writing 家族的选项集校验） */
+const isWritingVariant = (val: WritingScene | DesignScene): val is WritingScene =>
+  SCENE_FAMILY_META.writing.variants?.options.some((option) => option.value === val) ?? false
+
+/**
+ * 子场景统一双写：家族的 variants.field 指明当前值落在哪个存储字段
+ * （writing 家族写 scene，design 家族写 engine），发送时原样透传给 ChatRequestParams。
+ */
+const variant = computed<WritingScene | DesignScene>({
+  get: () => (currentFamily.value?.variants?.field === 'designScene' ? engine.value : scene.value),
+  set: (val) => {
+    if (isWritingVariant(val)) scene.value = val
+    else engine.value = val
+  }
+})
+
+const currentVariant = computed(() =>
+  currentFamily.value?.variants?.options.find((option) => option.value === variant.value)
+)
 
 const handleSend = async (message: ChatRequestParams) => {
   if (!message.message.model) {

@@ -132,7 +132,7 @@ barrel，会复活上文 TDZ 循环链，这是本次实现时踩过并修正的
 | `modules/chat/agent/agentTools.ts` | confirm 分支解析新决策并回写白名单 |
 | `modules/chat/agent/AgentChat.ts` | `allowedDirs` ref、`setAllowedDirs` / `allowDir`、`buildPolicyContext`（两处内联 ctx 消重） |
 | `modules/chat/agent/ChatSessionManager.ts` | 水合 / watch / persist `allowedDirs` |
-| `components/chat/chat-assistant/tool/ConfirmChatTool.vue` | 勾选项 + 决策构造 |
+| `windows/main/components/chat/chat-assistant/tool/ConfirmChatTool.vue` | 勾选项 + 决策构造 |
 
 ## 2026-09 升级 2：`denyOnAsk`（无审批通道即自动拒绝）
 

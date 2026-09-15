@@ -1,6 +1,6 @@
 import type { AiChatItem } from '@/entity/ai'
 import { useAiChatStore } from '@/windows/main/store'
-import { useWorkspaceList } from '@/components/chat/useWorkspaceList'
+import { useWorkspaceList } from '@/windows/main/components/chat/useWorkspaceList'
 import { KeyValueUtil } from '@/utils/native/KeyValueUtil'
 import { computed, reactive } from 'vue'
 

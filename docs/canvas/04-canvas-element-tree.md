@@ -34,11 +34,11 @@
 
 | 文件                                                      | 职责                                                                      |
 |-----------------------------------------------------------|---------------------------------------------------------------------------|
-| `src/components/chat/LChatEngine.vue`                     | 传递 `:fullscreen` 到 `l-chat-aside`                                       |
-| `src/components/chat/aside/LChatAside.vue`                | 新增 `fullscreen` prop，透传到 `design-aside`                              |
-| `src/components/chat/aside/design/DesignAside.vue`        | 全屏双栏布局；持有 `selectedId` 作为双向联动唯一状态源                     |
-| `src/components/chat/aside/design/CanvasElementTree.vue`  | 原生元素树：分组节点可选中、展开/折叠、类型图标、`@select` 上抛            |
-| `src/components/chat/aside/design/CanvasRenderer.vue`     | `selectedId` prop（findId → select/cancel）+ `@select` emit（EditorEvent.SELECT） |
+| `src/renderer/src/windows/main/components/chat/LChatEngine.vue`                     | 传递 `:fullscreen` 到 `l-chat-aside`                                       |
+| `src/renderer/src/windows/main/components/chat/aside/LChatAside.vue`                | 新增 `fullscreen` prop，透传到 `design-aside`                              |
+| `src/renderer/src/windows/main/components/chat/aside/design/DesignAside.vue`        | 全屏双栏布局；持有 `selectedId` 作为双向联动唯一状态源                     |
+| `src/renderer/src/windows/main/components/chat/aside/design/CanvasElementTree.vue`  | 原生元素树：分组节点可选中、展开/折叠、类型图标、`@select` 上抛            |
+| `src/renderer/src/windows/main/components/chat/aside/design/CanvasRenderer.vue`     | `selectedId` prop（findId → select/cancel）+ `@select` emit（EditorEvent.SELECT） |
 
 > 元素树为**原生实现**（非 tdesign Tree）：分组（group）节点是设计语义里的可选图层，
 > 必须可选中；原生树把「点击节点 → 选中」与「点击箭头 → 展开/折叠」分离，避免

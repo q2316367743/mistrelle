@@ -1,5 +1,8 @@
 # 设计创意 HTML 引擎（designScene 双引擎分层）
 
+> ⚠️ 2026-09-15 场景注册表重构：本文所述 `global/ChatTypeConfig.ts`（CHAT_TYPE_CONFIG / WRITING_SCENE_CONFIG / DESIGN_SCENE_CONFIG / getSceneExcludedTools / getSceneSubAgentAllow / SUB_AGENT_ALLOW）已删除，配置迁移至 `src/renderer/src/windows/main/modules/chat/scenes/`（SceneDefinition 叶子场景定义）。现行契约见 [docs/chat/19](../chat/19-scene-registry-refactor.md)，本文以下内容为当时实现的历史记录。
+
+
 > 2026-09-06 落地。设计创意（design ChatType）在画布引擎之外新增 **HTML 引擎**：
 > AI 生成固定尺寸的自包含 HTML 设计稿 → 侧边栏 iframe 实时预览 → snapdom 导出 PNG。
 > 引擎在**新建对话时选定、创建后锁定**（与 type / writingScene 同机制）。
@@ -108,7 +111,7 @@ export const DESIGN_SCENE_CONFIG: Record<DesignScene, DesignSceneConfig> = {
 ## 4. 专有侧边栏
 
 ```
-components/chat/aside/design/
+windows/main/components/chat/aside/design/
 ├── DesignAside.vue          # 画布引擎（原有）
 ├── HtmlDesignAside.vue      # HTML 引擎外壳：版本 t-select + 刷新 + dropdown + 全屏树/预览分发 + 双击注入桥
 ├── HtmlDesignPreview.vue    # 预览子组件：iframe + contain 缩放 + 双击选中/滚轮升降级 + 元素树上报

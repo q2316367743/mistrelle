@@ -1,5 +1,8 @@
 # 05 短篇小说场景（novelShort）
 
+> ⚠️ 2026-09-15 场景注册表重构：本文所述 `global/ChatTypeConfig.ts`（CHAT_TYPE_CONFIG / WRITING_SCENE_CONFIG / DESIGN_SCENE_CONFIG / getSceneExcludedTools / getSceneSubAgentAllow / SUB_AGENT_ALLOW）已删除，配置迁移至 `src/renderer/src/windows/main/modules/chat/scenes/`（SceneDefinition 叶子场景定义）。现行契约见 [docs/chat/19](../chat/19-scene-registry-refactor.md)，本文以下内容为当时实现的历史记录。
+
+
 > writing 第二子场景：短篇小说创作。每篇小说一个子目录，含正文 + 角色 / 大纲 / 背景设定 / 文风四个设定文件；相对长篇小说精简掉伏笔 / 暗线 / 时间线 / 多卷分层等机制。
 >
 > **本场景为纯文本创作，工具面经过收窄**：file 类 / shell / 绘图 / 读图 / 生图型子 Agent 全部剔除，一切读写收敛到 `novel_*` 专用工具。封面改由侧边栏直呼生图接口。
@@ -112,7 +115,7 @@ interface NovelProject { schema: 1; title: string; updatedTime: number; novels: 
 ## 侧边栏（novelShort/）
 
 ```
-src/components/chat/aside/writing/novelShort/
+src/renderer/src/windows/main/components/chat/aside/writing/novelShort/
 ├── NovelAside.vue              # 容器（只做装配，逻辑在 composable）
 ├── useNovelDoc.ts              # 数据层：store / 列表 / 当前文件 / 加载落盘 / 即时刷新 / 轮询兜底
 ├── useNovelAssist.ts           # 去 AI 味动作编排（流式覆盖当前文件）
@@ -145,7 +148,7 @@ src/components/chat/aside/writing/novelShort/
 ### 共用弹窗（已上移）
 
 `ArticleImageGenDialog` / `ArticleImageGenContent` / `HumanizeDepthDialog` / `HumanizeDepthContent` 已上移至
-`src/components/chat/aside/writing/components/`，中性化命名为 `ImageGenDialog.tsx` / `ImageGenContent.vue` / `HumanizeDepthDialog.tsx` / `HumanizeDepthContent.vue`，article 与 novelShort 共用（仅 `assetsDir` 与 `context` 不同）。
+`src/renderer/src/windows/main/components/chat/aside/writing/components/`，中性化命名为 `ImageGenDialog.tsx` / `ImageGenContent.vue` / `HumanizeDepthDialog.tsx` / `HumanizeDepthContent.vue`，article 与 novelShort 共用（仅 `assetsDir` 与 `context` 不同）。
 生图描述起草主进程实现上移至 `modules/tool/components/writing/imagePrompt.ts`（`draftImagePrompt` / `ImagePromptContext`），原 `article/articleImagePrompt.ts` 已删除。
 
 ## 接入点
@@ -161,8 +164,8 @@ src/components/chat/aside/writing/novelShort/
 
 - `src/modules/tool/components/novel/novelTypes.ts` / `novelStore.ts` / `novelTools.ts` / `novelPrompt.ts`
 - `src/modules/tool/components/writing/imagePrompt.ts`（写作域共用生图描述起草）
-- `src/components/chat/aside/writing/novelShort/`（含 `useNovelDoc.ts` / `useNovelAssist.ts`）
-- `src/components/chat/aside/writing/components/`（article 与 novelShort 共用弹窗）
+- `src/renderer/src/windows/main/components/chat/aside/writing/novelShort/`（含 `useNovelDoc.ts` / `useNovelAssist.ts`）
+- `src/renderer/src/windows/main/components/chat/aside/writing/components/`（article 与 novelShort 共用弹窗）
 
 ## 注意事项
 

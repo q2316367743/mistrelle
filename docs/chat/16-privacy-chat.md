@@ -59,9 +59,9 @@ LChatAttachment 开关（t-switch，模式面板；lockPrivacy 时禁用）
 | `src/renderer/src/modules/chat/agent/AgentChat.ts` | `privacy` 字段 / `setPrivacy` / 记忆注入跳过 / record_memory 过滤 / policyContext 透传 |
 | `src/renderer/src/modules/chat/agent/ChatSessionManager.ts` | 会话级 `privacy` ref、load 水合（send 不修改，锁定属性） |
 | `src/renderer/src/modules/memory/MemoryExtractor.ts` | 隐私会话跳过提取并推进进度 |
-| `src/renderer/src/components/chat/sender/LChatAttachment.vue` | 模式面板隐私开关行（`lockPrivacy` 禁用）+ 锁定说明文案 |
-| `src/renderer/src/components/chat/sender/LChatSender.vue` | `v-model:privacy`、`lockPrivacy` 透传、footer「隐私」tag（锁定时不可关闭）、消息携带、initial 回填 |
-| `src/renderer/src/components/chat/LChatEngine.vue` | 标题前「私」tag（danger light）、`privacy` prop、sender 传 `lock-privacy` |
+| `src/renderer/src/windows/main/components/chat/sender/LChatAttachment.vue` | 模式面板隐私开关行（`lockPrivacy` 禁用）+ 锁定说明文案 |
+| `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue` | `v-model:privacy`、`lockPrivacy` 透传、footer「隐私」tag（锁定时不可关闭）、消息携带、initial 回填 |
+| `src/renderer/src/windows/main/components/chat/LChatEngine.vue` | 标题前「私」tag（danger light）、`privacy` prop、sender 传 `lock-privacy` |
 | `src/renderer/src/pages/chat/PageChat.vue` | `:privacy="chat.privacy"` 传入引擎（chat 为 computed 跟随 store） |
 | `src/renderer/src/pages/app/components/ChatList.vue` | 侧边栏列表项名称前「私」tag（danger light） |
 

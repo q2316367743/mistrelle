@@ -13,7 +13,7 @@
 | `src/renderer/src/modules/chat/agent/agentStream.ts` | 重试循环：`runOnce(stepId)` 单次尝试（原流消费逻辑）+ 外层 attempt 循环、`isRetryableError`、`abortableDelay`；**流完整性校验**（见下节）；工具参数 JSON 落历史前校验，非法抛可重试错误（见错误分类表） |
 | `src/renderer/src/modules/chat/agent/agentMessages.ts` | `removeStepContents`（按 stepId 清半截内容）、`upsertStepNotice`（提示块原地更新 / 追加） |
 | `src/renderer/src/modules/ai/transport.ts` | `HttpError = Error & { status }` 与 `isHttpError` 守卫（`buildHttpError` 构造时附带状态码） |
-| `src/renderer/src/components/chat/chat-assistant/MChatAssistant.vue` | `isRetryNotice` 分支：提示块渲染为 `RefreshIcon` + 灰色状态行 |
+| `src/renderer/src/windows/main/components/chat/chat-assistant/MChatAssistant.vue` | `isRetryNotice` 分支：提示块渲染为 `RefreshIcon` + 灰色状态行 |
 
 ## 错误分类
 

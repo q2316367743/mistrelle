@@ -1,6 +1,8 @@
 import { AiChatContent, AiChatItem } from '@/entity/ai'
 import { getDataForWorkspace } from '@/global/Constant'
 import type { ChatType, WritingScene } from '@/windows/main/modules/chat'
+import type { DesignScene } from '@/windows/main/modules/chat/designScene'
+import { resolveScene } from '@/windows/main/modules/chat/scenes'
 import { cloneDeep } from 'es-toolkit'
 
 // ==========================================
@@ -123,10 +125,12 @@ export const aiChatContentStamp = async (key: string): Promise<number | null> =>
 
 /** 沙盒目录创建选项：按聊天类型预建专属目录结构 */
 export interface ChatSandboxOptions {
-  /** 聊天类型：writing 场景额外预建文章项目目录 */
+  /** 聊天类型（家族）：场景专属目录清单取自场景定义的 sandboxDirs */
   type?: ChatType
   /** 写作子场景（writing 类型下默认 article，预留扩展） */
   writingScene?: WritingScene
+  /** 设计子场景（design 类型下默认 canvas） */
+  designScene?: DesignScene
 }
 
 // 创建此次聊天的沙盒目录（消息体已入 DB，无需 message/ 子目录）
@@ -141,21 +145,14 @@ export const aiChatSandbox = async (id: string, options: ChatSandboxOptions = {}
     window.preload.fs.mkdir(inputs),
     window.preload.fs.mkdir(tmp)
   ])
-  // writing 场景：按子场景预建项目目录
-  // - article：articles/（drafts 正文 + assets 配图）
-  // - novelShort：novels/（每部小说子目录由 novel_create 创建）
-  if (options.type === 'writing') {
-    if (options.writingScene === 'novelShort') {
-      await window.preload.fs.mkdir(window.preload.path.join(outputs, 'novels'), true)
-    } else {
-      const articles = window.preload.path.join(outputs, 'articles')
-      await window.preload.fs.mkdir(articles, true)
-      await Promise.all([
-        window.preload.fs.mkdir(window.preload.path.join(articles, 'drafts')),
-        window.preload.fs.mkdir(window.preload.path.join(articles, 'assets'))
-      ])
-    }
-  }
+  // 按场景预建专属项目目录（如 writing/article → articles/{drafts,assets}；writing/novelShort → novels/），
+  // 目录清单来自场景定义的 sandboxDirs（相对沙盒根），通用 outputs/inputs/tmp 已在上面创建
+  const scene = resolveScene(options.type ?? 'office', options.writingScene, options.designScene)
+  await Promise.all(
+    (scene.sandboxDirs?.() ?? []).map((dir) =>
+      window.preload.fs.mkdir(window.preload.path.join(folder, dir), true)
+    )
+  )
 }
 
 export const getSandboxDir = (id: string) => window.preload.path.join(getDataForWorkspace(), id)

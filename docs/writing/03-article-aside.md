@@ -20,7 +20,7 @@
 ## 组件结构
 
 ```
-src/components/chat/aside/writing/
+src/renderer/src/windows/main/components/chat/aside/writing/
 ├── WritingAside.vue                 # writingScene 分发壳（article / novelShort）
 └── article/
     ├── ArticleAside.vue             # 外壳：文档布局编排 + 类型切换接线 + 空态（≤300 行）

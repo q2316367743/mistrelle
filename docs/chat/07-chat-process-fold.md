@@ -6,7 +6,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `src/components/chat/chat-assistant/MChatAssistant.vue` | 助理消息组件：过程折叠判定、折叠/展开渲染、异常停止提示 |
+| `src/renderer/src/windows/main/components/chat/chat-assistant/MChatAssistant.vue` | 助理消息组件：过程折叠判定、折叠/展开渲染、异常停止提示 |
 
 ## 折叠判定逻辑
 

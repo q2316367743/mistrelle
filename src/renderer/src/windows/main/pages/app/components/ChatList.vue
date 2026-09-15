@@ -38,9 +38,7 @@
           @contextmenu="onContextmenu($event, item.chat)"
           @click="goTo(`/chat/${item.chat.id}`)"
         >
-          <PaletteIcon v-if="item.chat.type === 'design'" class="menu-icon" />
-          <EditIcon v-else-if="item.chat.type === 'writing'" class="menu-icon" />
-          <WorkIcon v-else class="menu-icon" />
+          <component :is="getSceneFamily(item.chat.type ?? 'office').icon" class="menu-icon" />
           <t-tag v-if="item.chat.privacy" theme="danger" variant="light" size="small" class="shrink-0">
             私
           </t-tag>
@@ -57,16 +55,14 @@ import { VList } from 'virtua/vue'
 import {
   ChevronDownIcon,
   ChevronRightIcon,
-  EditIcon,
   FolderIcon,
   FolderOpenIcon,
-  PaletteIcon,
   PlusIcon,
-  TaskIcon,
-  WorkIcon
+  TaskIcon
 } from 'tdesign-icons-vue-next'
 import type { AiChatItem } from '@/entity/ai'
 import { buildChatMainKey, getChatSessionStatus } from '@/windows/main/modules/chat'
+import { getSceneFamily } from '@/windows/main/modules/chat/scenes'
 import { openChatContextmenu, openWorkspaceContextmenu } from '@/windows/main/pages/app/chat-func'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatGroups } from './useChatGroups'

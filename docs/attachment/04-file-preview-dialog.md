@@ -2,7 +2,7 @@
 
 > 关键文件：`src/renderer/src/components/preview/FilePreviewDialog.tsx`（外壳 + 分发）+ `FilePreviewContent.vue`（内容）
 > 依赖：`LinkPreviewDrawer`（同目录，处理 http 链接预览）；主进程 `src/main/src/server/index.ts`（本地事件服务 `/file` 资源面 MIME 表，见 docs/server/01）
-> 演进：原 `components/chat/chat-assistant/modals/FilePreviewDialog.tsx`（纯 tsx，违反弹窗拆分约定）提升为公共组件并拆分为外壳 + 内容
+> 演进：原 `windows/main/components/chat/chat-assistant/modals/FilePreviewDialog.tsx`（纯 tsx，违反弹窗拆分约定）提升为公共组件并拆分为外壳 + 内容
 
 ## 实现思路
 

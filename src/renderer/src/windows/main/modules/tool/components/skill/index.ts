@@ -8,6 +8,7 @@ import {
   localSkillContentGet,
   localSkillList
 } from '@/windows/main/modules/skill'
+import { findBuiltInSkill } from '@/windows/main/modules/chat/scenes'
 
 const findSkill = async (identifier: string): Promise<LocalSkill | undefined> => {
   const key = identifier.trim().toLowerCase()
@@ -34,10 +35,15 @@ export const skillTools: ToolFunction[] = [
     risk: 'safe',
     handler: async (...params: unknown[]) => {
       const { name } = params[0] as { name: string }
+      // 解析链：用户目录 skills 优先，未命中兜底查场景内置 skill（content-only，无配套文件）
       const skill = await findSkill(name)
-      if (!skill) return { error: `未找到名为 "${name}" 的 Skill` }
-      const content = await localSkillContentGet(skill)
-      return { name: skill.name, path: skill.path, content }
+      if (skill) {
+        const content = await localSkillContentGet(skill)
+        return { name: skill.name, path: skill.path, content }
+      }
+      const builtin = findBuiltInSkill(name)
+      if (builtin) return { name: builtin.name, content: builtin.content }
+      return { error: `未找到名为 "${name}" 的 Skill` }
     }
   }
 ]

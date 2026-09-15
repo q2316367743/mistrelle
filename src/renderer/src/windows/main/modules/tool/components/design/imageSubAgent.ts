@@ -6,7 +6,7 @@
  * - 生图子 Agent 的任务是自包含的（撰写描述 → 生成 → 落盘 → 汇报路径），无需调研、提问或读写业务文件；
  * - 能力面越窄，模型越不可能跑偏去调无关工具、也越省上下文。
  * 与主流程共用同一个 image_generate 实例（参数 schema 完全一致），保证「AI 生图 = 设计创意生图 = 文章配图生图」。
- * 工具组合经 global/ChatTypeConfig 的 SUB_AGENT_TOOL_CONFIG 注册，本文件只提供工厂。
+ * 工具组合经 chat/scenes 的 SUB_AGENT_TOOL_CONFIG 注册，本文件只提供工厂。
  */
 import type { ToolFunction } from '@/domain'
 import { createImageGenerateTool, hasImageGenerateAccess } from './imageGenerate'

@@ -73,7 +73,11 @@ export const useAiChatStore = defineStore('ai-chat', () => {
     state.value.push(item)
     // 保存索引（行级 upsert）+ 创建沙盒目录（产物用）+ 保存聊天内容（含草稿，消息体在 DB）
     await aiChatUpsertItem(item)
-    await aiChatSandbox(id, { type: params.type, writingScene: params.writingScene })
+    await aiChatSandbox(id, {
+      type: params.type,
+      writingScene: params.writingScene,
+      designScene: params.designScene
+    })
     await aiChatContentSet(buildChatMainKey(id), {
       updatedTime: now,
       draft: params,

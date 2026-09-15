@@ -10,7 +10,7 @@
  * - image_generate：文字生图（仅登录后注入；生成的图片同时展示在对话中；真实实现见 main ImageService，经 image 域 IPC 直出）
  * - chart_generate：echarts 图表渲染为 SVG 落盘（支持 echarts 全部内置图表类型）
  * - humanize_text：文案去 AI 味改写（仅登录后注入；与写作侧边栏去 AI 味同源，见 modules/ai/humanize.ts）
- * 工具注入：chatType.ts（global/ChatTypeConfig）的 design 配置里与画布工具一起挂载。
+ * 工具注入：chat/scenes/design.ts 的 design 叶子场景配置里与画布工具一起挂载。
  * 注：字体入库 / 元数据修改由用户在资源管理页完成（window.preload.font），不对 AI 暴露注册工具。
  */
 import type { ToolFunction } from '@/domain'

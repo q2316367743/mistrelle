@@ -22,14 +22,14 @@ CanvasRenderer 双击节点
 | 文件                                                  | 职责                                                                                 |
 |-------------------------------------------------------|--------------------------------------------------------------------------------------|
 | `src/domain/ChatMessage.ts`                           | 新增 `CanvasItem` / `CanvasContent`，并入 `UserMessageContent`                       |
-| `src/components/chat/design/canvasNodeBridge.ts`      | `CanvasNodeRef` 类型 + `CANVAS_NODE_PICK_KEY`（InjectionKey）                        |
-| `src/components/chat/LChatEngine.vue`                 | `provide(CANVAS_NODE_PICK_KEY, ...)`，转发到 `senderRef.addCanvasNode`               |
-| `src/components/chat/sender/LChatSender.vue`          | `CanvasMention` tiptap 节点、`addCanvasNode` 方法（`defineExpose`）、canvas 维度提取 |
-| `src/components/chat/sender/chatSenderContent.ts`     | `canvasMention` → `CanvasContent` 序列化                                             |
-| `src/components/chat/aside/design/CanvasRenderer.vue` | 双击事件 → 注入回调（无桥接时降级复制节点 id）                                       |
+| `src/renderer/src/windows/main/components/chat/design/canvasNodeBridge.ts`      | `CanvasNodeRef` 类型 + `CANVAS_NODE_PICK_KEY`（InjectionKey）                        |
+| `src/renderer/src/windows/main/components/chat/LChatEngine.vue`                 | `provide(CANVAS_NODE_PICK_KEY, ...)`，转发到 `senderRef.addCanvasNode`               |
+| `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue`          | `CanvasMention` tiptap 节点、`addCanvasNode` 方法（`defineExpose`）、canvas 维度提取 |
+| `src/renderer/src/windows/main/components/chat/sender/chatSenderContent.ts`     | `canvasMention` → `CanvasContent` 序列化                                             |
+| `src/renderer/src/windows/main/components/chat/aside/design/CanvasRenderer.vue` | 双击事件 → 注入回调（无桥接时降级复制节点 id）                                       |
 | `src/modules/chat/agent/agentContext.ts`              | `buildPinnedContext` 处理 `CanvasContent`                                            |
-| `src/components/chat/chat-user/MChatUser.vue`         | 聊天列表渲染 canvas 标签                                                             |
-| `src/components/chat/RChatList.vue`                   | 定位器 tooltip 的 canvas 兜底文案                                                    |
+| `src/renderer/src/windows/main/components/chat/chat-user/MChatUser.vue`         | 聊天列表渲染 canvas 标签                                                             |
+| `src/renderer/src/windows/main/components/chat/RChatList.vue`                   | 定位器 tooltip 的 canvas 兜底文案                                                    |
 
 ## 数据结构 / API 契约
 

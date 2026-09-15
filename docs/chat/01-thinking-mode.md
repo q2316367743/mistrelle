@@ -53,7 +53,7 @@ createChatStream({
 
 ## UI 与链路
 
-`src/components/chat/AiModelSelect.vue`：在弹窗「模型设置」上方新增设置块：
+`src/renderer/src/windows/main/components/chat/AiModelSelect.vue`：在弹窗「模型设置」上方新增设置块：
 
 - `t-switch`：思考模式开关（`v-model:thinking`）。
 - `t-radio-group`（button 风格）：思考强度 低 / 高 / 最高（`v-model:effort`），思考关闭时禁用。
@@ -81,7 +81,7 @@ lastUser.reasoning_effort ?? 'high' → sender.effort
 
 ## 初始化参数对象封装
 
-`LChatSender.vue` 的初始化参数统一收敛为单个 `initial: ChatSenderInitial` 对象（`src/components/chat/sender/chatSenderInitial.ts`），
+`LChatSender.vue` 的初始化参数统一收敛为单个 `initial: ChatSenderInitial` 对象（`src/renderer/src/windows/main/components/chat/sender/chatSenderInitial.ts`），
 取代原先逐个 `initial*` prop + 逐个 watch 的写法：
 
 ```ts
@@ -131,11 +131,11 @@ interface ChatSenderInitial {
 | `src/modules/ai/formats/chat.ts` | chat 格式请求体构建（`thinking` / `reasoning_effort` 落 body） |
 | `src/modules/chat/agent/agentContext.ts` | 重建 assistant 请求消息：思考开启时带 `tool_calls` 的消息强制回传 `reasoning_content`（空缺补空串） |
 | `src/modules/chat/agent/agentStream.ts` | 扁平参数 → `createChatStream` 透传 |
-| `src/components/chat/AiModelSelect.vue` | 思考开关 + 强度选择器 UI |
-| `src/components/chat/sender/LChatSender.vue` | 接线发送参数（`initial` 对象初始化） |
-| `src/components/chat/sender/chatSenderInitial.ts` | `ChatSenderInitial` 初始化参数类型 |
-| `src/components/chat/chat-assistant/RChatThink.vue` | 思考块渲染：一律默认折叠（`useBoolState(true)`） |
-| `src/components/chat/LChatEngine.vue` | 恢复上次模型 / 思考配置并组装 `initialState` |
+| `src/renderer/src/windows/main/components/chat/AiModelSelect.vue` | 思考开关 + 强度选择器 UI |
+| `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue` | 接线发送参数（`initial` 对象初始化） |
+| `src/renderer/src/windows/main/components/chat/sender/chatSenderInitial.ts` | `ChatSenderInitial` 初始化参数类型 |
+| `src/renderer/src/windows/main/components/chat/chat-assistant/RChatThink.vue` | 思考块渲染：一律默认折叠（`useBoolState(true)`） |
+| `src/renderer/src/windows/main/components/chat/LChatEngine.vue` | 恢复上次模型 / 思考配置并组装 `initialState` |
 | `src/modules/chat/agent/AgentChat.ts` | 消息写入 / resume 恢复 |
 | `src/modules/chat/agent/agentTools.ts`、`src/modules/subagent/{types,runner}.ts` | 子 Agent 继承 |
 

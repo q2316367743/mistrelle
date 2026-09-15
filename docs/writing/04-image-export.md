@@ -34,6 +34,6 @@
 ## 关键文件
 
 - `src/modules/tool/components/article/imageRef.ts`
-- `src/components/chat/aside/writing/article/components/ArticleEditor.vue`
-- `src/components/chat/aside/writing/article/components/ArticleImage.ts`
-- `src/components/chat/aside/writing/article/ArticleAside.vue`
+- `src/renderer/src/windows/main/components/chat/aside/writing/article/components/ArticleEditor.vue`
+- `src/renderer/src/windows/main/components/chat/aside/writing/article/components/ArticleImage.ts`
+- `src/renderer/src/windows/main/components/chat/aside/writing/article/ArticleAside.vue`

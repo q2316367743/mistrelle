@@ -169,7 +169,6 @@ export const runDesignDraw = async (
     workspace,
     mode: 0,
     // 内部 agent 不需要 skill 体系（工具面已封闭）
-    enableSkill: false,
     systemPrompt: buildDesignDrawPrompt(size, workspace),
     // 只暴露显式传入的工具面：不并入默认常驻 / 用户勾选，关闭渐进装载与注册表兜底
     functions: [...canvasTools, ...materialTools],

@@ -11,7 +11,7 @@
 | `SETTING_SECURE` `/setting/secure` | `secure.json` | `store/setting/SettingSecureStore.ts` | 同上 |
 | `SETTING_DEFAULT` `/setting/default` | `default.json` | `store/setting/SettingDefaultStore.ts` | 同上 |
 | `LIST_AI_WORKSPACE` `/list/ai/workspace` | —（不迁移） | `store/ai/AiWorkspaceStore.ts` | 零消费方孤儿 store，连同 `entity/ai/AiWorkspace.ts` 一并删除 |
-| `KEY_AI_WORKSPACE` `/key/ai/workspace` | `workspace-history.json` | `components/chat/AiWorkspace.vue` | push 后显式保存 |
+| `KEY_AI_WORKSPACE` `/key/ai/workspace` | `workspace-history.json` | `windows/main/components/chat/AiWorkspace.vue` | push 后显式保存 |
 
 路径工厂集中在 `global/Constant.ts`（`getSettingNetworkPath` 等，与 `getModelPath`/`getAgentPath`/`getAccountPath` 同构）；读写经 `utils/native/JsonFileUtil.ts` 的 `readJsonFile` / `writeJsonFile`（`window.preload.fs` 桥，全量覆写）。
 

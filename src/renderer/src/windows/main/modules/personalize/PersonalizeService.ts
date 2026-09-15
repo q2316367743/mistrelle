@@ -1,6 +1,5 @@
 import { PERSONALIZE_FILE_CONFIG, type PersonalizeScope } from '@/entity'
 import { getSoulDir, getSoulFilePath } from '@/global/Constant'
-import type { ChatType } from '@/windows/main/modules/chat/chatType'
 
 interface PersonalizeSection {
   title: string
@@ -38,18 +37,21 @@ const fileMtime = async (file: string): Promise<number> => {
 
 let sectionsCache: { signature: string; sections: PersonalizeSection[] } | undefined
 
-const matchScope = (scope: PersonalizeScope, chatType: ChatType): boolean => {
-  if (scope === 'all') return true
-  if (scope === 'design') return chatType === 'design'
-  return chatType === 'writing'
-}
+/**
+ * 段落作用域与场景作用域匹配：all 恒可见；专属段落仅在场景声明了同名作用域时可见。
+ * 场景未声明 personalizeScope（如 office）时只见 all 段落——按声明匹配，无隐式兜底。
+ */
+const matchScope = (scope: PersonalizeScope, sceneScope: PersonalizeScope | undefined): boolean =>
+  scope === 'all' || scope === sceneScope
 
 /**
  * 组装注入主 Agent 稳定 system 前缀的个性化设定段：
  * 五个 soul/*.md 按各自 scope 过滤（IDENTITY/AGENT/USER 全类型，DESIGN 仅 design，WRITE 仅 writing）。
  * 按全部文件 mtime 签名缓存（用户手编内容极少变化，不破坏前缀缓存）；全部为空时返回空串。
  */
-export const buildPersonalizePrompt = async (chatType: ChatType): Promise<string> => {
+export const buildPersonalizePrompt = async (
+  sceneScope?: Exclude<PersonalizeScope, 'all'>
+): Promise<string> => {
   const signature = (
     await Promise.all(PERSONALIZE_FILE_CONFIG.map((config) => fileMtime(config.file)))
   ).join('|')
@@ -61,7 +63,7 @@ export const buildPersonalizePrompt = async (chatType: ChatType): Promise<string
     }
     sectionsCache = { signature, sections }
   }
-  const scoped = sectionsCache.sections.filter((section) => matchScope(section.scope, chatType))
+  const scoped = sectionsCache.sections.filter((section) => matchScope(section.scope, sceneScope))
   if (scoped.length === 0) return ''
   return [
     '## 个性化设定',

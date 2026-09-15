@@ -136,6 +136,8 @@
 | [16-privacy-chat.md](./chat/16-privacy-chat.md)                     | 隐私聊天（创建后锁定）：chat 表 privacy 列（唯一写入口 AiChatStore.add）、不注入记忆 / 不注册 record_memory（含子 Agent 继承）、提取跳过但推进进度、聊天室开关禁用（lock-privacy）、引擎标题「私」tag |
 | [17-tool-phase-lifecycle.md](./chat/17-tool-phase-lifecycle.md)     | 工具调用四态生命周期：`ToolPhase`（pending/confirm/executing/complete/stop）块级单一事实源、`setAssistantStatus` 连坐事故复盘（审批卡消失 + DB complete/UI 执行中悬案同根因）、`toolPhaseOf` 历史旧值归一、UI 纯状态驱动（撤 effectiveStatus 覆盖与探针）、AgentChat 拆分五模块（1052→445 行） |
 | [18-agent-image-read.md](./chat/18-agent-image-read.md)             | Agent 主动读图：`image_read` 工具（识图模型下发、safe 免审批）+ `visionImages` 约定键（剥离后路径落 toolcall ext）；工具结果消息不支持图像块，请求构建时以「紧随 tool 消息的 user 消息」注入（适配器零改动）；contextRules 读类过期使同路径旧图不重注入、用户附件同路径去重 |
+| [19-scene-registry-refactor.md](./chat/19-scene-registry-refactor.md) | **Agent 场景注册表重构（2026-09-15）**：三层架构（AgentRuntime 引擎契约 / SceneDefinition 场景注册表 / PromptContribution 注入管线）；`global/ChatTypeConfig.ts` 删除、场景四件套（prompt+skills+tools+aside）自包含、`resolveScene` 无 default 穷尽解析、UI 七处静默分支清零（LChatAside 动态组件 / PageNew / ChatList / 沙盒 / 个性化作用域）、场景内置 skill 与 load_skill 解析链、死代码清理（enableSkill / getType / getWritingScene / WritingAside.vue）；**含「新增场景操作指南」与旧→新对照表** |
+| [20-chat-components-relocation.md](./chat/20-chat-components-relocation.md) | **chat 组件树迁出全局组件目录（2026-09-15）**：`src/components/chat/` → `windows/main/components/chat/`（新建窗口级组件目录），退出 unplugin-vue-components 自动导入、全部显式 import（含原靠自动导入的 9 处补齐）、components.d.ts 60 条 chat 条目清理；tdesign 走 resolver 不受影响 |
 
 ### memory/ —— 记忆
 

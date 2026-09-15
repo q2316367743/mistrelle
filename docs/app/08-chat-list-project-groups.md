@@ -20,8 +20,8 @@
 | `src/renderer/src/windows/main/pages/app/components/useChatGroups.ts` | 分组 composable：`useChatGroups()` 返回 `{ rows, toggleGroup }` |
 | `src/renderer/src/windows/main/pages/app/components/ChatList.vue` | 列表渲染：rows 拍平交给 `VList`（虚拟滚动，统一 item-size 36） |
 | `src/renderer/src/windows/main/pages/new/PageNew.vue` | `?workspace=` 预填工作目录 |
-| `src/renderer/src/components/chat/useWorkspaceList.ts` | 工作空间共享数据源（合并口径）+ 删除能力，面板与左侧分组共同消费 |
-| `src/renderer/src/components/chat/AiWorkspace.vue` | 发送框工作空间面板：列表与左侧同源，条目可删除 |
+| `src/renderer/src/windows/main/components/chat/useWorkspaceList.ts` | 工作空间共享数据源（合并口径）+ 删除能力，面板与左侧分组共同消费 |
+| `src/renderer/src/windows/main/components/chat/AiWorkspace.vue` | 发送框工作空间面板：列表与左侧同源，条目可删除 |
 
 ## 数据结构与分组契约
 

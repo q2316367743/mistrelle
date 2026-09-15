@@ -1,23 +1,11 @@
-import type { ChatType } from '@/windows/main/modules/chat/chatType'
-
 /**
  * 子 Agent 能力类型：
  * - research：调研型（默认，只读调研 / 分析，返回结构化摘要）
  * - image：生图型（只做文生图，任务描述进来自行撰写生图提示词并落盘，无调研 / 设计能力）
+ *
+ * 各场景允许派发的能力矩阵见 chat/scenes 各叶子场景的 subAgentAllow（场景即上层建筑）。
  */
 export type SubAgentType = 'research' | 'image'
-
-/**
- * 子 Agent 能力矩阵（单一数据源）：各聊天类型允许派发的子 Agent 类型。
- * - 日常办公 / 设计创意：仅调研型（样式产物走各自工具直管，子 Agent 不重复）
- * - 写作：调研型 + 生图型（文章封面 / 配图走最小能力面的生图通道）
- * 新增聊天类型或能力类型只需改这里。
- */
-export const SUB_AGENT_ALLOW: Record<ChatType, ReadonlyArray<SubAgentType>> = {
-  office: ['research'],
-  design: ['research'],
-  writing: ['research', 'image']
-}
 
 /**
  * 是否为「仅场景工具」型子 Agent：这类子 Agent 的工作面就是一组固定的能力工具
@@ -69,8 +57,8 @@ export type ResolveSubAgentTypeResult =
 
 /**
  * 解析 spawn_agent 的 type 参数并校验是否在允许列表内。
- * allowed 由调用方传入（主 Agent 走 getSceneSubAgentAllow 的场景矩阵，见 global/ChatTypeConfig）——
- * 本文件是叶子模块，不能反向依赖 ChatTypeConfig，故不在此处自行查表。
+ * allowed 由调用方传入（主 Agent 走场景定义的 subAgentAllow 能力矩阵，见 chat/scenes）——
+ * 本文件是叶子模块，不能反向依赖场景注册表，故不在此处自行查表。
  * 缺省 / 空值按 research 处理（向后兼容旧行为）。
  * 非法时返回 { ok: false, message }，由调用方直接回填工具结果，避免模型尝试被禁用的能力。
  */
