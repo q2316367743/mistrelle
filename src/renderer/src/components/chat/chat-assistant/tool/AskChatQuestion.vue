@@ -4,7 +4,7 @@
       <span class="ask-index">{{ index + 1 }}</span>
       <span class="ask-question-text">{{ question }}</span>
     </div>
-    <t-radio-group v-model="selected" direction="vertical" class="ask-options">
+    <t-radio-group v-if="!multiple" v-model="selected" direction="vertical" class="ask-options">
       <t-radio
         v-for="opt in options"
         :key="opt.key"
@@ -26,14 +26,37 @@
         />
       </t-radio>
     </t-radio-group>
+    <t-checkbox-group v-else v-model="checkedKeys" class="ask-options">
+      <t-checkbox
+        v-for="opt in options"
+        :key="opt.key"
+        :value="opt.key"
+        class="ask-option"
+      >
+        <span class="ask-option-label">{{ opt.label }}</span>
+        <span v-if="opt.description" class="ask-option-desc">{{ opt.description }}</span>
+      </t-checkbox>
+      <t-checkbox :value="CUSTOM_KEY" class="ask-option ask-option--custom">
+        <t-input
+          ref="customInputRef"
+          v-model="custom"
+          borderless
+          class="ask-option-input"
+          placeholder="自定义答案…"
+          @click.stop
+          @focus="onCustomFocus"
+          @enter="onEnter"
+        />
+      </t-checkbox>
+    </t-checkbox-group>
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { AskOption } from '@/windows/main/modules/tool/components/ask'
 
-// 自定义答案在单选组中的伪选项 key，保证与普通选项互斥
+// 自定义答案的伪选项 key：单选组中与普通选项互斥，多选组中作为可勾选的附加项
 const CUSTOM_KEY = '__custom__'
 
 const props = defineProps({
@@ -48,30 +71,59 @@ const props = defineProps({
   index: {
     type: Number,
     required: true
+  },
+  multiple: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits<{
-  /** 答案变化时带出当前问题的已选答案字符串 */
+  /** 答案变化时带出当前问题的已选答案字符串（多选为「、」连接） */
   (e: 'change', answer: string): void
   /** 自定义输入框回车，请求父级提交整张问答卡片 */
   (e: 'submit'): void
 }>()
 
+// 单选：当前选中 key（缺省选第一个选项）；多选：勾选的 key 集合（可含自定义伪选项）
 const selected = ref(props.options.length > 0 ? props.options[0].key : CUSTOM_KEY)
+const checkedKeys = ref<string[]>([])
 const custom = ref('')
+const customInputRef = ref<{ focus: () => void } | null>(null)
 
-// 互斥：选中普通选项时清空自定义输入
+// 单选互斥：选中普通选项时清空自定义输入
 watch(selected, (val) => {
   if (val !== CUSTOM_KEY) custom.value = ''
 })
-// 互斥：输入自定义答案时切到自定义选项
-watch(custom, (val) => {
-  if (val) selected.value = CUSTOM_KEY
+
+// 多选：勾中自定义项时聚焦输入框，取消勾选则清空文本
+watch(checkedKeys, (keys) => {
+  if (keys.includes(CUSTOM_KEY)) nextTick(() => customInputRef.value?.focus())
+  else custom.value = ''
 })
 
-// 当前问题的有效答案：普通选项取 label，自定义取输入文本
+// 输入自定义答案：单选切到自定义选项；多选自动勾上自定义项
+watch(custom, (val) => {
+  if (!val) return
+  if (props.multiple) {
+    if (!checkedKeys.value.includes(CUSTOM_KEY)) {
+      checkedKeys.value = [...checkedKeys.value, CUSTOM_KEY]
+    }
+  } else {
+    selected.value = CUSTOM_KEY
+  }
+})
+
+// 当前问题的有效答案：多选按选项顺序拼接已选 labels 与自定义文本；单选普通选项取 label，自定义取输入文本
 const answer = computed(() => {
+  if (props.multiple) {
+    const labels = props.options
+      .filter((opt) => checkedKeys.value.includes(opt.key))
+      .map((opt) => opt.label)
+    const text = custom.value.trim()
+    if (checkedKeys.value.includes(CUSTOM_KEY) && text) labels.push(text)
+    return labels.join('、')
+  }
   if (selected.value === CUSTOM_KEY) return custom.value.trim()
   return props.options.find((o) => o.key === selected.value)?.label ?? selected.value
 })
@@ -87,6 +139,12 @@ onMounted(() => {
 })
 
 const onCustomFocus = () => {
+  if (props.multiple) {
+    if (!checkedKeys.value.includes(CUSTOM_KEY)) {
+      checkedKeys.value = [...checkedKeys.value, CUSTOM_KEY]
+    }
+    return
+  }
   selected.value = CUSTOM_KEY
 }
 
@@ -132,8 +190,9 @@ const onEnter = () => {
     width: 100%;
   }
 
-  // Fluent RadioButtons：整行可点、hover/选中态背景
-  :deep(.t-radio) {
+  // Fluent RadioButtons / Checkboxes：整行可点、hover/选中态背景
+  :deep(.t-radio),
+  :deep(.t-checkbox) {
     display: flex;
     align-items: flex-start;
     gap: 10px;
@@ -151,12 +210,14 @@ const onEnter = () => {
       background: var(--td-brand-color-light);
     }
 
-    .t-radio__input {
+    .t-radio__input,
+    .t-checkbox__input {
       flex-shrink: 0;
       margin-top: 3px;
     }
 
-    .t-radio__label {
+    .t-radio__label,
+    .t-checkbox__label {
       flex: 1;
       min-width: 0;
       color: var(--td-text-color-primary);

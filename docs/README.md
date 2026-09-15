@@ -191,6 +191,7 @@
 | [12-chat-image-generate.md](./tool/12-chat-image-generate.md) | 通用生图对话直出：`image_generate` 升级为唯一通用工具（office + design 双引擎共用，生成图一律作为 `image` 内容块展示在对话中）、执行器 `chatImages` 标记约定（回填 image 块 + 剥离标记）、`hasImageGenerateAccess()` 登录门控（替代默认生图模型门控，4 处统一）、RChatImage 渲染组件 + 折叠白名单保留图片块；**2026-09-14：`model` 档位参数（AI 按用途自选，动态列出可选 code）+ 生图型子 Agent 成为文章配图专用通道** |
 | [13-humanize-tool.md](./tool/13-humanize-tool.md) | `humanize_text` 文案去 AI 味工具（design 双引擎，登录门控）：流式客户端从写作组件目录下沉到 `modules/ai/humanize.ts`（写作侧边栏与工具共用）、工具 `risk: safe` 直接放行、提示词 `hasHumanize` 同源门控、只返回文本不落盘 |
 | [14-design-draw.md](./tool/14-design-draw.md) | `design_draw` 画布绘图工具（2026-09-14）：参数对齐生图接口（prompt / path / size），内部驱动**工具面封闭**的「设计创意画布 agent」逐层构建并导出 PNG、产物以 `image` 块直出——定位「比扩散生图高一档：无 AI 感、文案版式精确可控」；**四层安全纵深**（`closedToolSurface` 物理封闭工具面 + 维持 `denyOnAsk` 所有 ask 自动拒绝 + 既有策略零放宽 + 外层路径感知策略）、不注册 `toolMap`（防 registry 兜底把工具泄漏到未注入场景）、office/writing 注入且不门控登录 |
+| [15-ask-tool.md](./tool/15-ask-tool.md) | `ask` 询问用户工具全链路（schema → InteractiveBridge → 问答卡片 → formatAskResult）：单/多问题形态、**2026-09-15 多选支持**（问题级 `multiple: true`，checkbox 渲染，答案「、」连接）、option key 归一化防「整组串选」bug（漏 key → `undefined === undefined` 全亮，`normalizeAskArgs` 统一兜底）、resolve 协议 `string[]`（label 文本非 key）与 `ext.askItems` 结果卡片 |
 
 ### writing/ —— 写作
 

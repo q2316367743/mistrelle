@@ -7,6 +7,7 @@
         :index="idx"
         :question="item.question"
         :options="item.options"
+        :multiple="item.multiple"
         @change="onAnswer(idx, $event)"
         @submit="submit"
       />
@@ -46,7 +47,7 @@ import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
 import {
   normalizeAskArgs,
   type AskAnswerItem,
-  type AskOption
+  type AskQuestion
 } from '@/windows/main/modules/tool/components/ask'
 import AskChatQuestion from '@/components/chat/chat-assistant/tool/AskChatQuestion.vue'
 
@@ -69,9 +70,7 @@ const args = computed(() => {
   }
 })
 
-const items = computed<Array<{ question: string; options: AskOption[] }>>(() =>
-  normalizeAskArgs(args.value)
-)
+const items = computed<AskQuestion[]>(() => normalizeAskArgs(args.value))
 
 // 各问题的答案，与 items 按索引对应；由子组件 change 事件带出
 const answers = ref<string[]>([])

@@ -9,6 +9,8 @@ export interface AskOption {
 export interface AskQuestion {
   question: string
   options: AskOption[]
+  /** 该问题是否允许多选（用户可勾选多个选项），归一化后恒为布尔值 */
+  multiple: boolean
 }
 
 /** 用户作答后生成的「问题 + 答案」对，写入 toolcall ext 供 UI 结果卡片渲染 */
@@ -20,6 +22,8 @@ export interface AskAnswerItem {
 export interface AskArgs {
   question?: string
   options?: AskOption[]
+  /** 单问题模式下该问题是否允许多选 */
+  multiple?: boolean
   /** 一次询问多个问题时使用，每个问题带自己的候选选项 */
   questions?: AskQuestion[]
 }
@@ -45,22 +49,49 @@ export const ASK_OPTIONS_PROPERTY: ToolProperty = {
 const ASK_QUESTIONS_PROPERTY: ToolProperty = {
   type: 'array',
   description:
-    '一次询问多个问题时使用：数组每个元素是一个问题（含 question 与各自独立的 options）。提供该字段后无需再传 question / options。',
+    '一次询问多个问题时使用：数组每个元素是一个问题（含 question 与各自独立的 options，可传 multiple: true 允许该问题多选）。提供该字段后无需再传 question / options。',
   items: {
     type: 'object',
     description: '单个问题',
     properties: {
       question: { type: 'string', description: '需要用户回答的问题' },
+      multiple: { type: 'boolean', description: '该问题是否允许多选（用户可勾选多个选项），缺省为单选' },
       options: ASK_OPTIONS_PROPERTY
     },
     required: ['question', 'options']
   }
 }
 
+/** 归一化单个问题的候选选项：key/label 互相兜底、key 冲突去重（防模型漏 key 导致整组选项同时呈选中态） */
+const normalizeOptions = (raw: unknown): AskOption[] => {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const result: AskOption[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const opt = item as Partial<AskOption>
+    const key = typeof opt.key === 'string' ? opt.key.trim() : ''
+    const label = typeof opt.label === 'string' ? opt.label.trim() : ''
+    // key 与 label 全空的选项无法展示也无法选中，直接剔除
+    if (!key && !label) continue
+    const base = key || label
+    let finalKey = base
+    let suffix = 1
+    while (seen.has(finalKey)) finalKey = `${base}-${suffix++}`
+    seen.add(finalKey)
+    const normalized: AskOption = { key: finalKey, label: label || base }
+    if (typeof opt.description === 'string' && opt.description.trim()) {
+      normalized.description = opt.description
+    }
+    result.push(normalized)
+  }
+  return result
+}
+
 /**
  * 归一化 ask 工具参数为问题列表：优先解析 questions 数组（多问题），
  * 回退单个 question + options（单问题，兼容历史调用）。
- * 过滤掉缺 question 的非法项，保证调用方拿到的是有效问题。
+ * 过滤掉缺 question 的非法项并归一化选项 key，保证调用方拿到的是有效问题。
  */
 export const normalizeAskArgs = (args: Record<string, unknown>): AskQuestion[] => {
   const list = Array.isArray(args.questions) ? args.questions : []
@@ -72,7 +103,8 @@ export const normalizeAskArgs = (args: Record<string, unknown>): AskQuestion[] =
       )
       .map((item) => ({
         question: item.question as string,
-        options: Array.isArray(item.options) ? (item.options as AskOption[]) : []
+        multiple: item.multiple === true,
+        options: normalizeOptions(item.options)
       }))
       .filter((item) => item.question.trim() !== '')
   }
@@ -80,7 +112,8 @@ export const normalizeAskArgs = (args: Record<string, unknown>): AskQuestion[] =
     return [
       {
         question: args.question,
-        options: Array.isArray(args.options) ? (args.options as AskOption[]) : []
+        multiple: args.multiple === true,
+        options: normalizeOptions(args.options)
       }
     ]
   }
@@ -111,11 +144,12 @@ export const askTool: ToolFunction = {
   name: 'ask',
   label: '询问用户',
   description:
-    '当你需要用户做出决策或补充信息时调用。可以一次询问多个问题：用 questions 数组给出每个问题（含各自 2-5 个候选选项）；也可以只询问单个问题（用 question + options）。用户会看到所有问题并分别选择答案（也可自行输入），所有答案会一起返回给你。优先提供选项，避免开放式提问；一次要问多个问题时尽量合并进同一次调用，减少打断。',
+    '当你需要用户做出决策或补充信息时调用。可以一次询问多个问题：用 questions 数组给出每个问题（含各自 2-5 个候选选项）；也可以只询问单个问题（用 question + options）。某个问题允许多个答案并存时（如「想要哪些功能」），给该问题传 multiple: true，用户可勾选多个选项，答案会以「、」连接返回。用户会看到所有问题并分别选择答案（也可自行输入），所有答案会一起返回给你。优先提供选项，避免开放式提问；一次要问多个问题时尽量合并进同一次调用，减少打断。',
   parameters: {
     type: 'object',
     properties: {
       question: { type: 'string', description: '单个问题的题干（仅在只询问一个问题时使用）' },
+      multiple: { type: 'boolean', description: '仅单问题模式下使用：该问题是否允许多选，缺省为单选' },
       options: ASK_OPTIONS_PROPERTY,
       questions: ASK_QUESTIONS_PROPERTY
     },
