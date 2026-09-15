@@ -29,15 +29,19 @@
                 <keypad-knob
                   v-if="cell.kind === 'knob'"
                   :cell="cell"
-                  :selected="isKnobSelected(cell)"
-                  @select="onKnobSelect(cell)"
+                  :selected="isCellSelected(selection, cell.controlId)"
+                  @select="selectControl(cell)"
                 />
                 <keypad-key-cap
                   v-else
-                  :key-id="cell.keyId"
-                  :binding="bindingOf(cell.keyId)"
-                  :selected="activeKeyId === cell.keyId"
-                  @select="onKeySelect(cell.keyId)"
+                  :control-id="cell.controlId"
+                  :binding="
+                    bindingAt(config?.bindings, { controlId: cell.controlId, signal: 'on' })
+                  "
+                  :selected="
+                    isSameSelection(selection, { controlId: cell.controlId, signal: 'on' })
+                  "
+                  @select="selectSignal(cell.controlId, 'on')"
                 />
               </div>
             </div>
@@ -47,12 +51,14 @@
       <aside class="side-panel">
         <Transition name="panel-fade" mode="out-in">
           <keypad-binding-panel
-            v-if="activeKeyId"
-            :key="activeKeyId"
-            :key-id="activeKeyId"
+            v-if="selection"
+            :key="`${selection.controlId}:${selection.signal}`"
+            :control-id="selection.controlId"
+            :kind="activeContext.cell?.kind ?? 'button'"
+            :signal="selection.signal"
             :routes="activeRoutes"
-            @route="onKeySelect($event)"
-            @close="activeKeyId = null"
+            @signal="selectSignal(selection.controlId, $event)"
+            @close="selection = null"
           />
           <div v-else key="empty" class="side-panel__empty">
             <gesture-click-icon class="side-panel__empty-icon" />
@@ -65,7 +71,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { KeypadBinding } from '@common/types/keypad'
+import type { KeypadBindSignal } from '@common/types/keypad'
 import { isKeypadLayoutId } from '@common/types/keypad'
 import { GestureClickIcon } from 'tdesign-icons-vue-next'
 import KeypadKeyCap from './KeypadKeyCap.vue'
@@ -74,12 +80,18 @@ import KeypadBindingPanel from './KeypadBindingPanel.vue'
 import { applyLayoutPreset } from './layoutPreset'
 import {
   KEYPAD_LAYOUTS,
+  controlRoutes,
   keypadLayoutOf,
-  knobRoutes,
-  type KeypadKnobCell,
-  type KeypadKnobRoute,
-  type KeypadLayoutCell
+  type KeypadControlCell
 } from './keypadLayouts'
+import {
+  bindingAt,
+  flattenCells,
+  isCellSelected,
+  isSameSelection,
+  selectionContext,
+  type KeypadSelection
+} from './keypadSelection'
 import { useKeypad } from '../useKeypad'
 
 defineOptions({ name: 'KeypadKeys' })
@@ -91,7 +103,7 @@ const layout = computed(() => keypadLayoutOf(config.value?.layout))
 
 const layoutOptions = KEYPAD_LAYOUTS.map((item) => ({ value: item.id, label: item.label }))
 
-/** 切换样式：落盘布局，并把该样式的预置映射补进未绑定键位（不覆盖已有绑定） */
+/** 切换样式：落盘布局，并把该样式的预置映射补进未绑定信号路（不覆盖已有绑定） */
 async function onLayoutChange(value: unknown): Promise<void> {
   if (typeof value !== 'string' || !isKeypadLayoutId(value)) return
   await saveLayout(value)
@@ -99,20 +111,16 @@ async function onLayoutChange(value: unknown): Promise<void> {
   const current = config.value?.bindings ?? {}
   const next = applyLayoutPreset(target, current)
   if (next) await saveBindings(next)
-  activeKeyId.value = null
+  selection.value = null
 }
 
-function bindingOf(keyId: string): KeypadBinding | null {
-  return config.value?.bindings[keyId] ?? null
-}
-
-/** cell 的 DOM key：旋钮以右转键位号标识（一个旋钮 = 一个 cell） */
-function cellKey(cell: KeypadLayoutCell): string {
-  return cell.kind === 'knob' ? `knob-${cell.cwKey}` : cell.keyId
+/** cell 的 DOM key：一个控件一个 cell（kind 前缀防同类同名冲突） */
+function cellKey(cell: KeypadControlCell): string {
+  return `${cell.kind}-${cell.controlId}`
 }
 
 /** 大键位跨行/跨列（作用于键槽 grid item 上；旋钮不跨格） */
-function spanStyle(cell: KeypadLayoutCell): Record<string, string> {
+function spanStyle(cell: KeypadControlCell): Record<string, string> {
   if (cell.kind === 'knob') return {}
   return {
     gridColumn: `span ${cell.cols ?? 1}`,
@@ -120,40 +128,27 @@ function spanStyle(cell: KeypadLayoutCell): Record<string, string> {
   }
 }
 
-/** 配置面板打开中的键位；点其他键切换、再点同一键关闭（X/保存/清除同样关闭） */
-const activeKeyId = ref<string | null>(null)
+/** 配置面板打开中的目标（控件 + 信号路）；点其他路切换、再点同路关闭 */
+const selection = ref<KeypadSelection | null>(null)
 
-function onKeySelect(keyId: string): void {
-  activeKeyId.value = activeKeyId.value === keyId ? null : keyId
+/** 布局内全部 cell 的拍平索引（选中目标按 controlId 反查所属 cell） */
+const cells = computed(() => flattenCells(layout.value.groups))
+
+/** 选中目标所属 cell 与其可绑定路（面板据此渲染信号切换条） */
+const activeContext = computed(() => selectionContext(cells.value, selection.value))
+const activeRoutes = computed(() => activeContext.value.routes)
+
+/** 选中某控件的某一路信号；已选中该路则关闭面板（toggle） */
+function selectSignal(controlId: string, signal: KeypadBindSignal): void {
+  const target: KeypadSelection = { controlId, signal }
+  selection.value = isSameSelection(selection.value, target) ? null : target
 }
 
-/** 当前选中键位所属旋钮（非旋钮路/未选中为 null） */
-const activeKnob = computed<KeypadKnobCell | null>(() => {
-  if (!activeKeyId.value) return null
-  for (const group of layout.value.groups) {
-    for (const cell of group.cells) {
-      if (cell.kind !== 'knob') continue
-      if (knobRoutes(cell).some((route) => route.keyId === activeKeyId.value)) return cell
-    }
-  }
-  return null
-})
-
-/** 传给配置面板的旋钮路列表（普通键位为 undefined，面板不显示切换条） */
-const activeRoutes = computed<KeypadKnobRoute[] | undefined>(() =>
-  activeKnob.value ? knobRoutes(activeKnob.value) : undefined
-)
-
-/** 旋钮选中态：该旋钮任一绑定路正在配置面板中 */
-function isKnobSelected(cell: KeypadKnobCell): boolean {
-  return activeKnob.value === cell
-}
-
-/** 点旋钮：面板落到该旋钮的第一条路（左转）；再点当前路则关闭 */
-function onKnobSelect(cell: KeypadKnobCell): void {
-  const first = knobRoutes(cell)[0]
+/** 点旋钮：落到该控件的首条可绑定路（左转，若不可转动则为首路）；再点当前路则关闭 */
+function selectControl(cell: KeypadControlCell): void {
+  const first = controlRoutes(cell)[0]
   if (!first) return
-  onKeySelect(first.keyId)
+  selectSignal(cell.controlId, first.signal)
 }
 </script>
 

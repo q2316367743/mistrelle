@@ -1,7 +1,7 @@
 <template>
   <div class="binding-panel">
     <div class="binding-panel__head">
-      <div class="binding-panel__cap">{{ keyId }}</div>
+      <div class="binding-panel__cap">{{ controlId }}</div>
       <div class="binding-panel__title">
         <div class="binding-panel__name">{{ title }}</div>
         <div
@@ -23,13 +23,13 @@
       </t-button>
     </div>
 
-    <!-- 旋钮专用：路切换条（左转/右转/按下，路由布局能力派生）；普通键位不传 routes -->
-    <keypad-route-select
-      v-if="routes?.length"
+    <!-- 多路控件（旋钮）：路切换条（左转/右转/按下，由布局能力派生）；单路控件不显示 -->
+    <keypad-signal-select
+      v-if="routes.length > 1"
       :routes="routes"
-      :active-key-id="keyId"
+      :active="signal"
       label="绑定路"
-      @select="emit('route', $event)"
+      @select="emit('signal', $event)"
     />
 
     <t-input
@@ -41,11 +41,14 @@
     />
 
     <div class="binding-panel__section">
-      <div class="binding-panel__label">短按 · 点击触发</div>
+      <div class="binding-panel__label">
+        {{ supportsHold ? `短按 · 点击触发` : `${signalLabel} · 触发` }}
+      </div>
       <keypad-sequence-editor :actions="draft.actions" @change="draft.actions = $event" />
     </div>
 
-    <div class="binding-panel__section">
+    <!-- 长按仅按压类信号有：转动是瞬时事件（有极旋钮另带幅度），不做长按判定 -->
+    <div v-if="supportsHold" class="binding-panel__section">
       <div class="binding-panel__label">长按 · 按住 {{ KEYPAD_HOLD_MS }}ms 触发</div>
       <keypad-sequence-editor
         :actions="draft.holdActions"
@@ -72,41 +75,61 @@
 </template>
 
 <script lang="ts" setup>
-import type { KeypadAction, KeypadBinding } from '@common/types/keypad'
+import type {
+  KeypadAction,
+  KeypadBinding,
+  KeypadBindSignal,
+  KeypadControlKind
+} from '@common/types/keypad'
 import {
   KEYPAD_HOLD_MS,
   KEYPAD_REPEAT_MS_DEFAULT,
+  KeypadControlKindOptions,
+  keypadSignalLabel,
+  keypadSignalSupportsHold,
   resolveKeypadHoldBehavior
 } from '@common/types/keypad'
 import { keypadActionDefinition } from '@common/keypad/actions'
 import { CloseIcon } from 'tdesign-icons-vue-next'
 import HoldBehaviorEditor from './HoldBehaviorEditor.vue'
-import KeypadRouteSelect from './KeypadRouteSelect.vue'
+import KeypadSignalSelect from './KeypadSignalSelect.vue'
 import KeypadSequenceEditor from './KeypadSequenceEditor.vue'
-import type { KeypadKnobRoute } from './keypadLayouts'
+import type { KeypadBindRoute } from './keypadLayouts'
 import { keypadActionSummary } from './actionText'
 import { useKeypad } from '../useKeypad'
 
 defineOptions({ name: 'KeypadBindingPanel' })
 
 const props = defineProps<{
-  keyId: string
-  /** 旋钮路列表（仅旋钮传入；长度即布局能力，缺省 = 普通键位不显示切换条） */
-  routes?: KeypadKnobRoute[]
+  controlId: string
+  /** 控件基础类型（按键/旋钮；标题展示用） */
+  kind: KeypadControlKind
+  /** 当前配置的信号路 */
+  signal: KeypadBindSignal
+  /** 该控件的可绑定路（由布局 kind + capabilities 派生；长度即能力） */
+  routes: KeypadBindRoute[]
 }>()
 
-const emit = defineEmits<{ close: []; route: [keyId: string] }>()
+const emit = defineEmits<{ close: []; signal: [signal: KeypadBindSignal] }>()
 
 const { config, bindKey } = useKeypad()
 
-/** 当前键位在旋钮路里的名称（左转/右转/按下）；非旋钮路回退键位号 */
-const routeLabel = computed(
-  () => props.routes?.find((route) => route.keyId === props.keyId)?.label ?? ''
+/** 该信号是否支持短按/长按两段（按压类 true、转动类 false） */
+const supportsHold = computed(() => keypadSignalSupportsHold(props.signal))
+
+/** 当前信号展示名（左转/右转/按下） */
+const signalLabel = computed(() => keypadSignalLabel(props.signal))
+
+/** 控件形态名（按键/旋钮） */
+const kindLabel = computed(
+  () => KeypadControlKindOptions.find((opt) => opt.value === props.kind)?.label ?? '控件'
 )
 
-/** 标题：旋钮路显示「配置旋钮 · 左转」，普通键位显示键位号 */
+/** 标题：多路控件显示「配置旋钮 10 · 左转」，单路控件显示「配置按键 1」 */
 const title = computed(() =>
-  routeLabel.value ? `配置旋钮 · ${routeLabel.value}` : `配置键位 ${props.keyId}`
+  props.routes.length > 1
+    ? `配置${kindLabel.value} ${props.controlId} · ${signalLabel.value}`
+    : `配置${kindLabel.value} ${props.controlId}`
 )
 
 /** 绑定草稿（本地编辑态；main 配置回读后同步），name 空串 = 未命名、actions 空 = 未绑定仅状态点亮、holdActions 空 = 未配置长按 */
@@ -123,14 +146,15 @@ const draft = ref<{
 })
 const saving = ref(false)
 
-// 配置回读（保存成功/清除/外部变更）即同步草稿；编辑中的本地值只在本面板保存时写回
+// 配置回读（保存成功/清除/切信号路/外部变更）即同步草稿；编辑中的本地值只在本面板保存时写回
 watch(
-  () => config.value?.bindings[props.keyId],
+  () => config.value?.bindings[props.controlId]?.[props.signal],
   (next) => {
     draft.value = {
       name: next?.name ?? '',
       actions: cloneActions(next?.actions ?? []),
-      holdActions: cloneActions(next?.holdActions ?? []),
+      // 转动路无长按概念：即便存量数据残留长按字段也不带入草稿
+      holdActions: supportsHold.value ? cloneActions(next?.holdActions ?? []) : [],
       holdRepeatMs: next?.holdRepeatMs ?? KEYPAD_REPEAT_MS_DEFAULT
     }
   },
@@ -176,14 +200,15 @@ async function save(): Promise<void> {
     const binding: KeypadBinding = name
       ? { name, actions: draft.value.actions }
       : { actions: draft.value.actions }
-    if (draft.value.holdActions.length) {
+    // 长按字段仅按压类信号写入（转动路落盘后归一化也会剥除，此处不产生脏数据）
+    if (supportsHold.value && draft.value.holdActions.length) {
       binding.holdActions = draft.value.holdActions
       // holdRepeatMs 仅「持续循环」时有意义
       if (resolveKeypadHoldBehavior(draft.value.holdActions) === 'repeat') {
         binding.holdRepeatMs = draft.value.holdRepeatMs
       }
     }
-    await bindKey(props.keyId, binding)
+    await bindKey(props.controlId, props.signal, binding)
     emit('close')
   } finally {
     saving.value = false
@@ -191,7 +216,7 @@ async function save(): Promise<void> {
 }
 
 async function clear(): Promise<void> {
-  await bindKey(props.keyId, null)
+  await bindKey(props.controlId, props.signal, null)
   emit('close')
 }
 </script>

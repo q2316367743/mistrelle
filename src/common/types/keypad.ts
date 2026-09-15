@@ -1,8 +1,16 @@
 /**
  * 小键盘（keypad）域类型契约：main / preload / renderer 跨端共享。
- * 设备为串口输入设备（9600 波特率，行协议 `<键位>,<on|off>`），main 收到按键后
- * 按键位绑定驱动动作。动作类型注册表化：类型联合在此（纯数据），
- * 动作定义（label/normalize）在 @common/keypad/actions，main 执行器与渲染层编辑器各有注册表。
+ * 设备为串口输入设备（9600 波特率，行协议 `<控件id>,<信号>[,<幅度两位>]`），main 收到信号后
+ * 按「控件 + 信号」绑定驱动动作。
+ *
+ * **控件模型（三层）**：
+ * - 基础类型 `KeypadControlKind`：button（内置 on/off）、knob（内置 left/right）——一个控件占一个 id
+ * - 拓展能力 `KeypadControlCapability`：press（可按压，叠加 on/off）、detent（有极，转动信号带幅度）
+ * - 派生信号集：由 @common/keypad/controls 的 `keypadControlSignals(kind, caps)` 算出，
+ *   布局注册表只声明 kind + capabilities，不写死具体信号
+ *
+ * 动作类型注册表化：类型联合在此（纯数据），动作定义（label/normalize）在 @common/keypad/actions，
+ * main 执行器与渲染层编辑器各有注册表。
  * 约定：联合 type 独立命名一次、Options 名称映射紧跟；主键全集从 KEY_CODES 元组派生防失同步；
  * 通道常量在 @common/buddy/keypad/keypadChannels，
  * window 挂载由渲染层 vite-env.d.ts 声明（仅伙伴窗口独立 preload 注入）。
@@ -167,12 +175,99 @@ export function isKeypadKeyName(value: string): value is KeypadKeyName {
   return isKeypadRegularKeyName(value) || isKeypadMediaKeyName(value)
 }
 
-/** 按键动作（设备行协议 `<键位>,<动作>`：on=按下、off=释放） */
-export type KeypadKeyAction = 'on' | 'off'
+/** 控件基础类型（设备物理形态；内置信号集见 @common/keypad/controls 的 CONTROL_SIGNALS） */
+export type KeypadControlKind = 'button' | 'knob'
 
-/** 按键动作白名单校验（行协议解析用） */
-export function isKeypadKeyAction(value: string): value is KeypadKeyAction {
-  return value === 'on' || value === 'off'
+/** 控件基础类型名称映射 */
+export const KeypadControlKindOptions: Array<CommonSelect<KeypadControlKind>> = [
+  { value: 'button', label: '按键' },
+  { value: 'knob', label: '旋钮' }
+]
+
+/** 控件基础类型全集（运行时校验用，派生自 Options） */
+export const KEYPAD_CONTROL_KINDS: readonly KeypadControlKind[] = KeypadControlKindOptions.map(
+  (opt) => opt.value
+)
+
+/** 控件基础类型白名单校验（布局归一化用） */
+export function isKeypadControlKind(value: string): value is KeypadControlKind {
+  return (KEYPAD_CONTROL_KINDS as readonly string[]).includes(value)
+}
+
+/**
+ * 控件拓展能力（在基础类型之上叠加，可多选）：
+ * - press 可按压：给 knob 叠加 on/off（button 本就自带 on/off，叠加为幂等）
+ * - detent 有极：不新增信号，而是让转动信号携带幅度（百分比两位）
+ */
+export type KeypadControlCapability = 'press' | 'detent'
+
+/** 拓展能力名称映射 */
+export const KeypadControlCapabilityOptions: Array<CommonSelect<KeypadControlCapability>> = [
+  { value: 'press', label: '可按压' },
+  { value: 'detent', label: '有极（转动带幅度）' }
+]
+
+/** 拓展能力全集（运行时校验用，派生自 Options） */
+export const KEYPAD_CONTROL_CAPABILITIES: readonly KeypadControlCapability[] =
+  KeypadControlCapabilityOptions.map((opt) => opt.value)
+
+/** 拓展能力白名单校验（布局归一化用） */
+export function isKeypadControlCapability(value: string): value is KeypadControlCapability {
+  return (KEYPAD_CONTROL_CAPABILITIES as readonly string[]).includes(value)
+}
+
+/**
+ * 控件信号（行协议第二段）：
+ * - on / off：按压类（按下 / 抬起），button 内置，knob 需 press 能力
+ * - left / right：转动类（逆时针 / 顺时针），knob 内置；detent 时携带幅度
+ */
+export type KeypadSignal = 'on' | 'off' | 'left' | 'right'
+
+/** 控件信号名称映射（顺序即界面路切换条顺序） */
+export const KeypadSignalOptions: Array<CommonSelect<KeypadSignal>> = [
+  { value: 'on', label: '按下' },
+  { value: 'off', label: '抬起' },
+  { value: 'left', label: '左转' },
+  { value: 'right', label: '右转' }
+]
+
+/** 控件信号全集（协议解析与运行时校验用，派生自 Options） */
+export const KEYPAD_SIGNALS: readonly KeypadSignal[] = KeypadSignalOptions.map((opt) => opt.value)
+
+/** 控件信号白名单校验（行协议解析用） */
+export function isKeypadSignal(value: string): value is KeypadSignal {
+  return (KEYPAD_SIGNALS as readonly string[]).includes(value)
+}
+
+/** 信号展示名（左转/右转/按下/抬起） */
+export function keypadSignalLabel(signal: KeypadSignal): string {
+  return KeypadSignalOptions.find((opt) => opt.value === signal)?.label ?? signal
+}
+
+/**
+ * 可绑定信号（off 仅释放语义**不可绑定**：它只做按下簿记、取消长按计时并结束长按会话，
+ * 可绑定路只有「按下」与两个转动方向）。
+ */
+export type KeypadBindSignal = Exclude<KeypadSignal, 'off'>
+
+/** 可绑定信号全集（配置归一化白名单；顺序与界面一致） */
+export const KEYPAD_BIND_SIGNALS: readonly KeypadBindSignal[] = KEYPAD_SIGNALS.filter(
+  (signal): signal is KeypadBindSignal => signal !== 'off'
+)
+
+/** 可绑定信号白名单校验（配置归一化与布局校验用） */
+export function isKeypadBindSignal(value: string): value is KeypadBindSignal {
+  return (KEYPAD_BIND_SIGNALS as readonly string[]).includes(value)
+}
+
+/**
+ * 该信号是否支持短按/长按两段：
+ * - 按压类（on）支持——按住达 KEYPAD_HOLD_MS 触发 holdActions
+ * - 转动类（left/right）不支持——转动是瞬时事件（有极旋钮还带幅度），只有一段动作序列；
+ *   连续快转由设备重复上报信号表达，不做长按判定。
+ */
+export function keypadSignalSupportsHold(signal: KeypadBindSignal): boolean {
+  return signal === 'on'
 }
 
 /** 键位动作类型（新增动作 = 加联合成员 + 在 @common/keypad/actions 注册定义 + main 执行器 + 渲染层编辑器） */
@@ -231,7 +326,10 @@ export type KeypadAction =
   | KeypadDelayAction
   | KeypadUrlAction
 
-/** 长按判定阈值（全局）：按住达到该时长触发 holdActions；阈值内松手触发短按 actions */
+/**
+ * 长按判定阈值（全局）：按住达到该时长触发 holdActions；阈值内松手触发短按 actions。
+ * 仅对支持长按的信号生效（`keypadSignalSupportsHold` = 按压类 on）；转动信号无长按判定。
+ */
 export const KEYPAD_HOLD_MS = 600
 
 /**
@@ -275,17 +373,21 @@ export const KEYPAD_REPEAT_MS_DEFAULT = 100
 /** 单次按住的循环总时长上限（ms）：防 off 丢失导致无限连发 */
 export const KEYPAD_REPEAT_MAX_MS = 60000
 
-/** 键位绑定：动作序列 + 可选显示名称（键帽优先显示名称，未命名回退首条动作摘要） */
+/**
+ * 单路绑定：动作序列 + 可选显示名称（键帽优先显示名称，未命名回退首条动作摘要）。
+ * 「短按/长按」两段只对有 `keypadSignalSupportsHold` 的信号（按压类 on）有意义；
+ * 转动信号（left/right）只有 actions 一段，长按字段归一化时会被剥除。
+ */
 export interface KeypadBinding {
   /** 显示名称（可选；trim 非空才落盘） */
   name?: string
-  /** 动作序列（短按触发；未配置 holdActions 时按下立即执行） */
+  /** 动作序列（短按触发；未配置 holdActions 时信号到达立即执行） */
   actions: KeypadAction[]
   /**
-   * 长按动作序列（可选；配置后该键启用短按/长按互斥判定：
-   * 按下启动 KEYPAD_HOLD_MS 计时，到时仍按住执行本序列，阈值内松手执行 actions）。
+   * 长按动作序列（可选；仅按压信号）。配置后该路启用短按/长按互斥判定：
+   * 按下启动 KEYPAD_HOLD_MS 计时，到时仍按住执行本序列，阈值内松手执行 actions。
    * 长按期间做什么由队列形状推导，见 resolveKeypadHoldBehavior。
-   * 空/全非法不落盘（归一化清洗），无此字段 = 键位保持按下立即执行，存量行为不变。
+   * 空/全非法不落盘（归一化清洗），无此字段 = 信号到达立即执行，存量行为不变。
    */
   holdActions?: KeypadAction[]
   /** 长按循环每轮之间的间隔 ms（20–5000；缺省 KEYPAD_REPEAT_MS_DEFAULT；仅推导为 repeat 时生效） */
@@ -293,8 +395,15 @@ export interface KeypadBinding {
 }
 
 /**
+ * 单控件绑定表：键 = 可绑定信号（on/left/right），值 = 该路绑定。
+ * 一个控件在 bindings 里占一个键，其各路信号天然成组（旋钮的左右转与按下同属一条记录）。
+ * 缺省某信号 = 该路未绑定（仅状态展示）。
+ */
+export type KeypadBindingMap = Partial<Record<KeypadBindSignal, KeypadBinding>>
+
+/**
  * 键盘样式布局 id（纯展示概念，落盘到 config.layout 供下次进入还原）。
- * 布局定义（跨行跨列排布）在渲染层 keypadLayouts 注册表，
+ * 布局定义（控件类型/能力/跨行跨列排布）在渲染层 keypadLayouts 注册表，
  * 新增样式 = 加联合成员 + IDS 登记一行 + 渲染层注册表加布局定义。
  */
 export type KeypadLayoutId = 'grid4x2' | 'grid4x2Knob'
@@ -315,12 +424,15 @@ export interface AppCatalogItem {
   path: string
 }
 
-/** 小键盘配置（落盘结构）：lastPort 记忆串口 + bindings（键位 id → 动作）+ layout 键盘样式 */
+/**
+ * 小键盘配置（落盘结构）：lastPort 记忆串口 + bindings（控件 id → 各路信号绑定）+ layout 键盘样式。
+ * bindings 键 = 设备行协议里的控件 id（字符串，如 '1'、旋钮 '10'）。
+ */
 export interface KeypadConfig {
   /** 上次使用的串口路径；未记录为空串 */
   lastPort: string
-  /** 键位绑定表：键为设备行协议里的键位 id（如 '1'..'6'），值为绑定（可选名称 + 动作序列），缺省 = 未绑定仅状态展示 */
-  bindings: Record<string, KeypadBinding>
+  /** 控件绑定表：键为控件 id，值为该控件各可绑定信号的绑定（缺省信号 = 未绑定仅状态展示） */
+  bindings: Record<string, KeypadBindingMap>
   /** 键盘样式布局 id（纯展示偏好；非法/缺省归一化为首个布局） */
   layout: KeypadLayoutId
 }
@@ -331,22 +443,32 @@ export interface KeypadResult {
   msg?: string
 }
 
-/** 小键盘运行态（渲染层纯展示用；连接编排/按键解析/动作执行都在 main） */
+/** 运行态里的单个信号（控件 id + 信号；value 为转动幅度百分比，仅 detent 旋钮有） */
+export interface KeypadSignalState {
+  controlId: string
+  signal: KeypadBindSignal
+  /** 转动幅度百分比（0–99；仅转动信号且设备上报了幅度时存在） */
+  value?: number
+}
+
+/** 小键盘运行态（渲染层纯展示用；连接编排/信号解析/动作执行都在 main） */
 export interface KeypadState {
   /** 当前已连接的串口路径（= 配置 lastPort 已开时）；未连接为 null */
   connectedPath: string | null
-  /** 当前按下的键位 id 列表（含未绑定的键位） */
-  pressed: string[]
+  /** 当前按下的按压类信号（含未绑定的控件；off 到达即移除） */
+  pressed: KeypadSignalState[]
+  /** 最近发生的转动信号（瞬时高亮；main 侧超时自动过期，仅用于界面反馈） */
+  rotation: KeypadSignalState[]
   /** 系统级模拟按键权限是否就绪（macOS 为辅助功能授权检测，Windows 恒 true） */
   accessibilityGranted: boolean
 }
 
 /** window.preload.keypad 契约：小键盘域桥（仅伙伴窗口的独立 preload 注入，主窗口运行时不存在） */
 export interface KeypadApi {
-  /** 读取整份配置（含 lastPort 与键位绑定） */
+  /** 读取整份配置（含 lastPort 与控件绑定） */
   getConfig(): Promise<KeypadConfig>
-  /** 全量保存键位绑定表；main 归一化清洗后落盘 */
-  saveBindings(bindings: Record<string, KeypadBinding>): Promise<KeypadResult>
+  /** 全量保存控件绑定表；main 归一化清洗后落盘 */
+  saveBindings(bindings: Record<string, KeypadBindingMap>): Promise<KeypadResult>
   /** 保存键盘样式布局（main 校验白名单后落盘） */
   saveLayout(layout: KeypadLayoutId): Promise<KeypadResult>
   /** 本机应用目录（应用下拉选项源；main 扫描系统应用清单） */
@@ -355,8 +477,8 @@ export interface KeypadApi {
   connect(path: string): Promise<KeypadResult>
   /** 断开当前连接（同时释放所有按住中的组合键） */
   disconnect(): Promise<void>
-  /** 读取运行态（连接/按下/权限） */
+  /** 读取运行态（连接/按下/转动/权限） */
   getState(): Promise<KeypadState>
-  /** 订阅运行态变化推送（连接/断开/意外断开/按下变化）；返回取消订阅函数 */
+  /** 订阅运行态变化推送（连接/断开/意外断开/按下/转动）；返回取消订阅函数 */
   onState(callback: (state: KeypadState) => void): () => void
 }

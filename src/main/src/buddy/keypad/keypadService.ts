@@ -1,12 +1,21 @@
 /**
- * 小键盘服务（main 进程，模块级单例）：持有配置、编排串口连接、解析按键流并驱动系统级模拟按键。
- * 设备上报 `<键位>,<on|off>` 且**不带任何行尾分隔符**，经 keypadProtocol 文法解析（非按行分帧）；
+ * 小键盘服务（main 进程，模块级单例）：持有配置、编排串口连接、消费信号事件并驱动系统级模拟按键。
+ * 设备上报 `<控件id>,<信号>[,<幅度两位>]` 且**不带任何行尾分隔符**，经 keypadProtocol 文法解析；
  * 串口原始数据读取复用 serial 域 SerialService（subscribePortData），模拟按键在 keySimulator（koffi）。
- * 长按行为由长按队列形状推导（见 resolveKeypadHoldBehavior / dispatchHold）：
- * 单条模拟按键=保持按住直到松手、多条=循环整个队列直到松手、单条其他类型=执行一次。
- * 主动断开、异常拔线、换连接、保存绑定一律 resetPressed：换代中止在途序列、清计时与循环保持会话、
+ * 序列执行与长按会话分别委托给 keypadSequence / keypadHold，本模块负责配置、连接与信号路由。
+ *
+ * **寻址统一为路由键 `controlId:signal`**（如 `1:on`、`10:left`）：控件的每一路信号各自独立
+ * 持有一份计时器/重入守卫/长按会话，同一旋钮的左右转与按压互不干扰。绑定查找走
+ * `config.bindings[controlId]?.[signal]`。**off 不可绑定**，只做释放语义（与 on 共用一个路由键）。
+ *
+ * 信号分两类处理：
+ * - 按压类 on/off：on 去重后按长按判定分流（见下）；off 摘除 pressed、取消挂起计时
+ *   （未达阈值 → 触发短按序列）并结束长按会话
+ * - 转动类 left/right：瞬时事件，登记运行态 `rotation`（供界面高亮，超时自动过期）后**直接执行**
+ *   该路动作序列，无去重、无长按（连续快转由设备重复上报信号表达）
+ *
+ * 主动断开、异常拔线、换连接、保存绑定一律 resetPressed：换代中止在途序列、清计时与长按会话、
  * 释放所有残留组合——保证断开瞬间所有按键事件立即停止。
- * 连接编排/lastPort 记忆/意外断开处理都在本服务（渲染层只发指令、编辑绑定与展示运行态）。
  */
 import { app, BrowserWindow } from 'electron'
 import {
@@ -21,71 +30,55 @@ import { KeypadChannels } from '@common/buddy/keypad/keypadChannels'
 import {
   isKeypadLayoutId,
   KEYPAD_HOLD_MS,
-  KEYPAD_REPEAT_MAX_MS,
-  KEYPAD_REPEAT_MS_DEFAULT,
-  resolveKeypadHoldBehavior,
-  type KeypadAction,
-  type KeypadBinding,
-  type KeypadComboAction,
+  type KeypadBindSignal,
   type KeypadConfig,
   type KeypadResult,
+  type KeypadSignal,
+  type KeypadSignalState,
   type KeypadState
 } from '@common/types/keypad'
-import { KEYPAD_ACTION_EXECUTORS } from './actions'
-import { createKeypadParser, type KeypadKeyEvent } from './keypadProtocol'
-import { defaultConfig, loadConfig, normalizeBinding, saveConfigFile } from './keypadConfig'
-import { isAccessibilityGranted, pressCombo, releaseAll, releaseCombo } from './keySimulator'
+import { endAllHolds, endHold, startHold } from './keypadHold'
+import { dispatchSequence, endSession, generation, resetSequences } from './keypadSequence'
+import { createKeypadParser, type KeypadSignalEvent } from './keypadProtocol'
+import { defaultConfig, loadConfig, normalizeBindings, saveConfigFile } from './keypadConfig'
+import { isAccessibilityGranted, releaseAll } from './keySimulator'
+
+/** 转动高亮的保留时长（ms）：转动是瞬时事件，main 登记后在此时长内保留供界面反馈 */
+const ROTATION_HIGHLIGHT_MS = 180
 
 // 声明即给默认值：数据回调在任何时序下都可能被触发
 let config: KeypadConfig = defaultConfig()
 /** 数据订阅退订函数（connect 时重挂；端口关闭由 SerialService 清理，此处仅防悬挂引用） */
 let unsubscribeData: (() => void) | null = null
-/** 当前按下的键位 id（含未绑定键位；设备 on/off 驱动） */
-const pressed = new Set<string>()
+/** 当前按下的按压信号（含未绑定控件；设备 on/off 驱动），键 = 路由键 `controlId:on` */
+const pressed = new Map<string, KeypadSignalState>()
+/** 最近转动信号（键 = 路由键），到期自动移除；仅用于界面高亮 */
+const rotation = new Map<string, KeypadSignalState>()
+/** 转动高亮的过期计时器（键 = 路由键） */
+const rotationTimers = new Map<string, ReturnType<typeof setTimeout>>()
 /**
- * 序列执行中的键位（防重入：序列含延时时长于物理按压，执行中忽略该键位的再次触发）。
- * 值为发起时的会话世代——断开后旧序列的收尾只清理自己的世代，不会误删重连后新序列的条目。
- */
-const running = new Map<string, number>()
-/**
- * 挂起的长按判定计时器：keyId → timer（仅配置了 holdActions 的键位在 on 时启动）。
- * 到时仍按住 → 循环执行长按序列；阈值内 off → 取消计时并触发短按序列（互斥分流）。
+ * 挂起的长按判定计时器：路由键 → timer（仅配置了 holdActions 的按压路在 on 时启动）。
+ * 到时仍按住 → 按长按序列形状推导的行为执行；阈值内 off → 取消计时并触发短按序列（互斥分流）。
  */
 const holdTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
-/** 运行中的长按循环会话（keyId → 循环；wake 用于抬手时中断当前间隔等待） */
-interface HoldLoop {
-  cancelled: boolean
-  wake: (() => void) | null
-}
-const holdLoops = new Map<string, HoldLoop>()
-
-/** 运行中的长按保持会话（keyId → 已按住的组合，抬手时倒序抬起） */
-interface KeepSession {
-  cancelled: boolean
-  held: KeypadComboAction[]
-}
-const keepSessions = new Map<string, KeepSession>()
-
 /**
- * 连接会话世代：断开（主动/拔线/换连接/保存绑定）即换代，让**在途序列、长按循环与挂起计时立即失效**。
- * 当前世代的 aborted 信号在换代时 resolve，使卡在延时/异步动作上的 await 立刻返回，
- * 不再向下执行后续按键动作（这是「断开后按键必须马上停」的关键一环）。
- * 注意：信号必须在下发时按世代捕获，不能读模块变量（换代后它已指向新世代的未决 promise）。
+ * 路由键：一个控件的每一路信号独立寻址。**按压路的 on/off 归一到同一路由**
+ * （`1:on`——off 是 on 的释放语义，不是独立一路，否则 `pressed` 查询永远落空）；
+ * 转动路各用自身信号（`10:left` / `10:right`）。
  */
-let sessionGeneration = 0
-let abortCurrentSession: () => void = () => {}
-let sessionSignal: Promise<void> = new Promise((resolve) => {
-  abortCurrentSession = resolve
-})
+function signalRoute(controlId: string, signal: KeypadSignal): string {
+  return `${controlId}:${signal === 'off' ? 'on' : signal}`
+}
 
-/** 结束当前连接会话：中止在途执行（换代 + resolve 旧信号）并建档新会话供后续使用 */
-function endSession(): void {
-  abortCurrentSession()
-  sessionGeneration += 1
-  sessionSignal = new Promise((resolve) => {
-    abortCurrentSession = resolve
-  })
+/** 信号是否为按压类（on/off；转动类走另一条瞬时路径） */
+function isPressSignal(signal: KeypadSignal): signal is 'on' | 'off' {
+  return signal === 'on' || signal === 'off'
+}
+
+/** 取某控件某路的绑定（未绑定为 undefined） */
+function bindingOf(controlId: string, signal: KeypadBindSignal) {
+  return config.bindings[controlId]?.[signal]
 }
 
 /** 运行态（配置 lastPort 已开视为已连接；权限状态即查即返回） */
@@ -93,7 +86,8 @@ export function getState(): KeypadState {
   const connected = getSerialState().ports.some((item) => item.path === config.lastPort)
   return {
     connectedPath: connected ? config.lastPort : null,
-    pressed: [...pressed],
+    pressed: [...pressed.values()],
+    rotation: [...rotation.values()],
     accessibilityGranted: isAccessibilityGranted()
   }
 }
@@ -106,224 +100,128 @@ function broadcastState(): void {
   }
 }
 
-/** 结束键位的长按会话（幂等）：终止循环并唤醒间隔等待、倒序抬起保持中的组合 */
-function endHoldSession(keyId: string): void {
-  const loop = holdLoops.get(keyId)
-  if (loop) {
-    loop.cancelled = true
-    holdLoops.delete(keyId)
-    loop.wake?.()
+/** 清某路运行态：清转动高亮与过期计时、摘除按压态 */
+function clearSignalState(key: string): void {
+  const timer = rotationTimers.get(key)
+  if (timer) {
+    clearTimeout(timer)
+    rotationTimers.delete(key)
   }
-  const session = keepSessions.get(keyId)
-  if (session) {
-    keepSessions.delete(keyId)
-    session.cancelled = true
-    for (let i = session.held.length - 1; i >= 0; i -= 1) releaseCombo(session.held[i])
-    session.held.length = 0
-  }
+  rotation.delete(key)
+  pressed.delete(key)
 }
 
-/** 结束全部长按会话（断开/拔线/换连接/保存绑定共用） */
-function cancelHoldSessions(): void {
-  for (const keyId of [...new Set([...holdLoops.keys(), ...keepSessions.keys()])]) {
-    endHoldSession(keyId)
-  }
+/** 清空全部信号运行态（断开/保存绑定共用；调用方负责随后广播） */
+function clearSignalStates(): void {
+  for (const timer of rotationTimers.values()) clearTimeout(timer)
+  rotationTimers.clear()
+  rotation.clear()
+  pressed.clear()
 }
 
 /**
- * 立即停止并释放一切按键相关状态：清挂起的长按计时、终止循环与保持会话、清按下集合并抬起残留组合。
- * 主动断开、异常拔线、换连接、保存绑定一律调用；顺序为先换代中止在途序列（防复位后又被写状态）再清理。
+ * 登记转动高亮：写入 `rotation` 并重置过期计时（同路连转即续期，不会堆积多条）；
+ * 到期移除并复播一次运行态。幅度（有极旋钮）一并带上供界面显示。
+ */
+function markRotation(controlId: string, signal: 'left' | 'right', value?: number): void {
+  const state: KeypadSignalState = { controlId, signal }
+  if (value != null) state.value = value
+  const key = signalRoute(controlId, signal)
+  rotation.set(key, state)
+  const existing = rotationTimers.get(key)
+  if (existing) clearTimeout(existing)
+  rotationTimers.set(
+    key,
+    setTimeout(() => {
+      rotationTimers.delete(key)
+      rotation.delete(key)
+      broadcastState()
+    }, ROTATION_HIGHLIGHT_MS)
+  )
+}
+
+/**
+ * 立即停止并释放一切按键相关状态：清挂起的长按计时、终止在途序列与长按会话、清信号运行态并抬起残留组合。
+ * 主动断开、异常拔线、换连接、保存绑定一律调用；顺序为**先换代中止在途序列**（防复位后又被写状态）再清理。
  */
 function resetPressed(): void {
-  endSession()
-  running.clear()
+  resetSequences()
   for (const timer of holdTimers.values()) clearTimeout(timer)
   holdTimers.clear()
-  cancelHoldSessions()
-  pressed.clear()
+  endAllHolds()
+  clearSignalStates()
   releaseAll()
 }
+
 /** 重新订阅当前端口的原始数据并接协议解析器（connect 内部调用） */
 function subscribeData(): void {
   unsubscribeData?.()
   unsubscribeData = subscribePortData(config.lastPort, createKeypadParser(handleEvent))
 }
 
-/**
- * 按键事件消费：on=按下、off=释放。
- * 按下状态变化即广播；未配置长按的键位在按下时顺序执行动作序列（现状行为）。
- * 配置了 holdActions 的键位启用短按/长按互斥判定：
- * 按下启动 KEYPAD_HOLD_MS 计时，到时仍按住按长按序列形状推导的行为执行（见 dispatchHold）。
- */
-function handleEvent(event: KeypadKeyEvent): void {
-  const { keyId, action } = event
-  if (action === 'on') {
-    if (pressed.has(keyId)) return
-    pressed.add(keyId)
-    const generation = sessionGeneration
-    const binding = config.bindings[keyId]
-    const holdActions = binding?.holdActions
-    if (holdActions?.length) {
-      holdTimers.set(
-        keyId,
-        setTimeout(() => {
-          holdTimers.delete(keyId)
-          // 计时期间已断开（换代）→ 丢弃该次长按，不再触发动作
-          if (generation !== sessionGeneration) return
-          dispatchHold(keyId, holdActions, generation)
-        }, KEYPAD_HOLD_MS)
-      )
-    } else if (binding) {
-      dispatchSequence(keyId, binding.actions, generation)
-    }
+/** 处理按压类 on：去重后按长按判定分流（配置了长按则起计时，否则立即执行短按序列） */
+function handlePress(controlId: string): void {
+  const key = signalRoute(controlId, 'on')
+  if (pressed.has(key)) return
+  pressed.set(key, { controlId, signal: 'on' })
+  const gen = generation()
+  const binding = bindingOf(controlId, 'on')
+  const holdActions = binding?.holdActions
+  if (holdActions?.length) {
+    holdTimers.set(
+      key,
+      setTimeout(() => {
+        holdTimers.delete(key)
+        // 计时期间已断开（换代）→ 丢弃该次长按，不再触发动作
+        if (gen !== generation()) return
+        startHold({
+          key,
+          actions: holdActions,
+          repeatMs: binding?.holdRepeatMs,
+          generation: gen,
+          isHeld: () => pressed.has(key)
+        })
+      }, KEYPAD_HOLD_MS)
+    )
+  } else if (binding) {
+    dispatchSequence(key, binding.actions, gen)
+  }
+}
+
+/** 处理按压类 off：摘除按下态；未达阈值的挂起计时转为短按序列，已达阈值的长按会话就此结束 */
+function handleRelease(controlId: string): void {
+  const key = signalRoute(controlId, 'on')
+  if (!pressed.has(key)) return
+  clearSignalState(key)
+  const timer = holdTimers.get(key)
+  if (timer) {
+    clearTimeout(timer)
+    holdTimers.delete(key)
+    const binding = bindingOf(controlId, 'on')
+    if (binding?.actions.length) dispatchSequence(key, binding.actions, generation())
+  }
+  endHold(key)
+}
+
+/** 处理转动类信号：登记瞬时高亮后直接执行该路序列（连续快转 = 设备重复上报，逐次触发） */
+function handleRotation(controlId: string, signal: 'left' | 'right', value?: number): void {
+  markRotation(controlId, signal, value)
+  const binding = bindingOf(controlId, signal)
+  if (binding?.actions.length) {
+    dispatchSequence(signalRoute(controlId, signal), binding.actions, generation())
+  }
+}
+
+/** 信号事件消费：按压类分短按/长按互斥判定，转动类直接执行（瞬时事件，无去重无长按） */
+function handleEvent(event: KeypadSignalEvent): void {
+  if (event.signal === 'off') {
+    handleRelease(event.controlId)
+  } else if (isPressSignal(event.signal)) {
+    handlePress(event.controlId)
   } else {
-    if (!pressed.has(keyId)) return
-    pressed.delete(keyId)
-    const timer = holdTimers.get(keyId)
-    if (timer) {
-      // 未达长按阈值的释放 → 取消计时并触发短按（已达阈值时计时器已被回调移除，此处不触发）
-      clearTimeout(timer)
-      holdTimers.delete(keyId)
-      const binding = config.bindings[keyId]
-      if (binding?.actions.length) dispatchSequence(keyId, binding.actions, sessionGeneration)
-    }
-    // 已达阈值的长按会话（keep 保持 / repeat 循环）在抬手时结束
-    endHoldSession(keyId)
+    handleRotation(event.controlId, event.signal, event.value)
   }
   broadcastState()
-}
-
-/**
- * 长按分发（按住达到 KEYPAD_HOLD_MS 后调用）：行为由长按队列形状推导，不做配置。
- * keep=单条模拟按键保持按住直到抬手（真正的长按该键）；
- * repeat=多条循环整个队列直到抬手（单条媒体键同样走循环）；
- * once=单条非模拟按键只执行一次。
- */
-function dispatchHold(keyId: string, actions: KeypadAction[], generation: number): void {
-  const behavior = resolveKeypadHoldBehavior(actions)
-  if (behavior === 'keep') {
-    void runKeepSession(keyId, actions, generation)
-    return
-  }
-  if (behavior === 'repeat') {
-    const interval = config.bindings[keyId]?.holdRepeatMs ?? KEYPAD_REPEAT_MS_DEFAULT
-    void runRepeatLoop(keyId, actions, interval, generation)
-    return
-  }
-  dispatchSequence(keyId, actions, generation)
-}
-
-/** 会话是否仍有效（断开换代后所有在途执行立即失效） */
-function isSessionLive(generation: number): boolean {
-  return generation === sessionGeneration
-}
-
-/**
- * 可中断等待：抬手（endHoldSession 调 wake）或断开（resetPressed 经 endSession 换代）立即 resolve。
- * 断开时无须额外唤醒——endHoldSession 会 wake，且调用方在 await 后还会复核 isSessionLive。
- */
-function interruptibleSleep(loop: HoldLoop, ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      loop.wake = null
-      resolve()
-    }, ms)
-    loop.wake = () => {
-      clearTimeout(timer)
-      loop.wake = null
-      resolve()
-    }
-  })
-}
-
-/**
- * 长按循环：立即执行第一轮，随后每 interval 执行一轮（一轮跑完再等间隔，串行不重叠），
- * 抬手/断开即停。每轮前复核会话有效、按键仍按住与总时长上限（防 off 丢失导致无限连发）。
- */
-async function runRepeatLoop(
-  keyId: string,
-  actions: KeypadAction[],
-  interval: number,
-  generation: number
-): Promise<void> {
-  const loop: HoldLoop = { cancelled: false, wake: null }
-  holdLoops.set(keyId, loop)
-  const deadline = Date.now() + KEYPAD_REPEAT_MAX_MS
-  try {
-    while (
-      isSessionLive(generation) &&
-      !loop.cancelled &&
-      pressed.has(keyId) &&
-      Date.now() < deadline
-    ) {
-      await runSequence(actions, generation)
-      if (!isSessionLive(generation) || loop.cancelled || !pressed.has(keyId) || Date.now() >= deadline) {
-        break
-      }
-      await interruptibleSleep(loop, interval)
-    }
-  } finally {
-    if (holdLoops.get(keyId) === loop) holdLoops.delete(keyId)
-  }
-}
-
-/**
- * 长按保持：顺序执行长按队列，「模拟按键」调 pressCombo 且不自动抬起（抬手时统一释放），
- * 其余动作照常执行一次。断开/抬手经 endHoldSession 立即释放并按倒序抬起。
- */
-async function runKeepSession(
-  keyId: string,
-  actions: KeypadAction[],
-  generation: number
-): Promise<void> {
-  const session: KeepSession = { cancelled: false, held: [] }
-  keepSessions.set(keyId, session)
-  for (const action of actions) {
-    if (session.cancelled || !isSessionLive(generation)) return
-    try {
-      if (action.type === 'combo') {
-        pressCombo(action)
-        session.held.push(action)
-      } else {
-        await KEYPAD_ACTION_EXECUTORS[action.type].onPress(action)
-      }
-    } catch (error) {
-      console.error('[keypad] 长按保持动作执行失败', error)
-    }
-  }
-}
-
-/**
- * 启动键位的动作序列：执行中再次触发直接忽略（防连按并发重入）；fire-and-forget 不抛出。
- * 记录发起时的会话世代，断开换代后逐条复核，不再向下执行。
- */
-function dispatchSequence(keyId: string, actions: KeypadAction[], generation: number): void {
-  if (running.get(keyId) === generation) return
-  running.set(keyId, generation)
-  void runSequence(actions, generation).finally(() => {
-    // 仅当仍是自己这一代时才清理（断开换代后重连的同键位新序列不受影响）
-    if (running.get(keyId) === generation) running.delete(keyId)
-  })
-}
-
-/**
- * 顺序执行动作序列：逐条查执行器注册表 await onPress（delay 执行器以 sleep Promise 形成间隔）。
- * 单条失败记日志继续下一条（按键响应不阻塞、不抛出）；
- * **每条执行前复核会话有效**——断开（主动/拔线）换代后立刻停止，
- * 且卡在延时/异步动作上的 await 会被 sessionAborted 唤醒（与当前动作的 Promise 竞速）。
- */
-async function runSequence(actions: KeypadAction[], generation: number): Promise<void> {
-  // 按世代捕获中止信号：断开换代时它 resolve，当前动作不再等待
-  const signal = sessionSignal
-  for (const action of actions) {
-    if (!isSessionLive(generation)) return
-    try {
-      const executing = Promise.resolve(KEYPAD_ACTION_EXECUTORS[action.type].onPress(action))
-      await Promise.race([executing, signal])
-    } catch (error) {
-      console.error('[keypad] 动作执行失败', error)
-    }
-  }
 }
 
 /** 启动初始化（main 启动即执行，不依赖渲染层）：加载配置、订阅意外断开、按 lastPort 自动连接 */
@@ -397,17 +295,12 @@ export async function disconnect(): Promise<void> {
 }
 
 /**
- * 全量保存键位绑定表：逐个键位归一化清洗后落盘。
+ * 全量保存控件绑定表：逐控件逐信号归一化清洗后落盘（旧扁平格式自动迁移为 `{ on: 绑定 }`）。
  * 保存前中止一切在途按键执行并释放残留组合（被移除/改绑的旧动作不残留）；不抛错，结果对象返回。
  */
 export function saveBindings(input: Record<string, unknown>): KeypadResult {
-  const bindings: Record<string, KeypadBinding> = {}
-  for (const [keyId, raw] of Object.entries(input)) {
-    const binding = normalizeBinding(raw)
-    if (binding) bindings[keyId] = binding
-  }
   resetPressed()
-  config.bindings = bindings
+  config.bindings = normalizeBindings(input)
   saveConfigFile(config)
   return { ok: true }
 }

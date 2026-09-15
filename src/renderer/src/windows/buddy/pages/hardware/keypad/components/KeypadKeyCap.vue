@@ -7,7 +7,7 @@
     @mouseleave="mouseDown = false"
     @click="emit('select')"
   >
-    <span class="keycap__badge">{{ keyId }}</span>
+    <span class="keycap__badge">{{ controlId }}</span>
     <div class="keycap__summary">
       <template v-if="binding?.actions.length">
         <!-- 已命名：名称即摘要（名称代表整个序列） -->
@@ -43,10 +43,10 @@ import { useKeypad } from '../useKeypad'
 defineOptions({ name: 'KeypadKeyCap' })
 
 const props = defineProps<{
-  keyId: string
-  /** 当前键位的绑定（未绑定为 null） */
+  controlId: string
+  /** 当前控件「按下」路的绑定（未绑定为 null） */
   binding: KeypadBinding | null
-  /** 配置面板打开中（键位选中高亮） */
+  /** 配置面板打开中（控件选中高亮） */
   selected?: boolean
 }>()
 
@@ -55,7 +55,9 @@ const emit = defineEmits<{ select: [] }>()
 const { pressed } = useKeypad()
 
 /** 设备物理按下（main 推送；键帽保持按下态并发光） */
-const isPressed = computed(() => pressed.value.includes(props.keyId))
+const isPressed = computed(() =>
+  pressed.value.some((item) => item.controlId === props.controlId && item.signal === 'on')
+)
 
 /** 鼠标按下的瞬时动画态 */
 const mouseDown = ref(false)

@@ -6,15 +6,20 @@
 import type {
   AppCatalogItem,
   KeypadBinding,
+  KeypadBindingMap,
+  KeypadBindSignal,
   KeypadConfig,
-  KeypadLayoutId
+  KeypadLayoutId,
+  KeypadSignalState
 } from '@common/types/keypad'
 import { MessageUtil } from '@/utils/modal'
 
 const config = ref<KeypadConfig | null>(null)
 /** 运行态（main 推送；渲染层纯展示） */
 const connectedPath = ref<string | null>(null)
-const pressed = ref<string[]>([])
+const pressed = ref<KeypadSignalState[]>([])
+/** 最近转动信号（main 侧超时自动过期；仅用于旋钮瞬时高亮） */
+const rotation = ref<KeypadSignalState[]>([])
 /** 系统级模拟按键权限（macOS 辅助功能授权；Windows 恒 true） */
 const accessibilityGranted = ref(true)
 /** 本机应用目录（应用编辑器下拉选项源；首次加载后模块级缓存） */
@@ -28,11 +33,11 @@ async function reload(): Promise<void> {
   config.value = await window.preload.keypad.getConfig()
 }
 
-/** 全量保存键位绑定（无论成败都回读，UI 始终与 main 对齐） */
-async function saveBindings(bindings: Record<string, KeypadBinding>): Promise<void> {
+/** 全量保存控件绑定表（无论成败都回读，UI 始终与 main 对齐） */
+async function saveBindings(bindings: Record<string, KeypadBindingMap>): Promise<void> {
   try {
     // config 来自 ref（深层 reactive）：浅展开后的嵌套动作对象仍是 Proxy，跨桥会克隆失败，须深拷贝
-    const plain = JSON.parse(JSON.stringify(bindings)) as Record<string, KeypadBinding>
+    const plain = JSON.parse(JSON.stringify(bindings)) as Record<string, KeypadBindingMap>
     const result = await window.preload.keypad.saveBindings(plain)
     if (!result.ok) MessageUtil.error(result.msg || '保存失败')
   } catch (e) {
@@ -42,13 +47,20 @@ async function saveBindings(bindings: Record<string, KeypadBinding>): Promise<vo
   }
 }
 
-/** 绑定单个键位（即改即存；binding 为 null/空序列 = 解除绑定） */
-async function bindKey(keyId: string, binding: KeypadBinding | null): Promise<void> {
+/** 绑定单个控件的某一路信号（即改即存；binding 为 null/空序列 = 解除该路绑定，无其他路时空控件一并移除） */
+async function bindKey(
+  controlId: string,
+  signal: KeypadBindSignal,
+  binding: KeypadBinding | null
+): Promise<void> {
   const current = config.value
   if (!current) return
-  const bindings = { ...current.bindings }
-  if (binding && binding.actions.length) bindings[keyId] = binding
-  else delete bindings[keyId]
+  const bindings: Record<string, KeypadBindingMap> = { ...current.bindings }
+  const map: KeypadBindingMap = { ...bindings[controlId] }
+  if (binding && binding.actions.length) map[signal] = binding
+  else delete map[signal]
+  if (Object.keys(map).length) bindings[controlId] = map
+  else delete bindings[controlId]
   await saveBindings(bindings)
 }
 
@@ -91,16 +103,18 @@ export function useKeypad() {
   if (!initialized) {
     initialized = true
     void reload()
-    // 运行态：先拉一次再订阅推送（连接/断开/意外断开/按下变化都由 main 广播）
+    // 运行态：先拉一次再订阅推送（连接/断开/意外断开/按下/转动都由 main 广播）
     void window.preload.keypad.getState().then((state) => {
       connectedPath.value = state.connectedPath
       pressed.value = state.pressed
+      rotation.value = state.rotation
       accessibilityGranted.value = state.accessibilityGranted
     })
     let prev: string | null = null
     window.preload.keypad.onState((state) => {
       connectedPath.value = state.connectedPath
       pressed.value = state.pressed
+      rotation.value = state.rotation
       accessibilityGranted.value = state.accessibilityGranted
       if (prev && !state.connectedPath) MessageUtil.warning('串口连接已断开')
       prev = state.connectedPath
@@ -110,6 +124,7 @@ export function useKeypad() {
     config,
     connectedPath,
     pressed,
+    rotation,
     accessibilityGranted,
     apps,
     bindKey,
