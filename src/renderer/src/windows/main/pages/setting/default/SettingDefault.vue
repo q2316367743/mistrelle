@@ -29,18 +29,6 @@
         </template>
       </t-list-item>
       <t-list-item>
-        <t-list-item-meta title="默认总结模型" description="订阅内容总结等任务使用的模型" />
-        <template #action>
-          <t-select
-            v-model="state.defaultSummaryModel"
-            :options="options"
-            class="w-360px"
-            placeholder="请选择默认总结模型"
-            clearable
-          />
-        </template>
-      </t-list-item>
-      <t-list-item>
         <t-list-item-meta title="默认翻译模型" description="翻译服务使用的模型" />
         <template #action>
           <t-select

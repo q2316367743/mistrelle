@@ -54,7 +54,7 @@ AgentChat.buildRequestMessages
 - **lastConsolidateDate 语义**：下一个待消费日期（含边界，消费条件「日期 >= 该值 且 < 今天」）。合并后经 `nextDayKey` 推进到本次消费最大日期的下一天，每个日期的文件恰好被消费一次、不重复。注意：合并完成后该日期文件若再被追加（跨零点防抖落盘竞态），追加部分不会被再次消费。
   - 旧版语义为「已消费最大日期 + 严格大于」，存在启用当天（首启基线日）文件永不消费的缺陷；旧存量值在新语义下基线日文件至多被重新消费一次，由合并提示词去重吸收，无需数据迁移。
 - **首启基线**：state.json 首次创建时 `lastConsolidateDate = 今天`，不回溯提取历史会话，记忆从启用日开始积累，启用当天的每日文件自次日起可被合并消费。
-- **模型**：提取与合并走 `defaultSummaryModel || defaultQuickModel` 兜底链（同订阅总结），`createChatCompletion` 非流式调用。
+- **模型**：提取与合并只认「记忆模型」（设置-记忆页的 `defaultSummaryModel`），**无兜底链**（2026-09-15 去掉 `|| defaultQuickModel`，避免用上用户没预期参与记忆的模型），`createChatCompletion` 非流式调用。字段名为历史命名，实际已收敛为记忆系统专用；未配置时设置页会告警并对「立即提取/立即整理」做门控，详见 [setting/08-memory-setting-page.md](../setting/08-memory-setting-page.md)。
 - **长度上限（MemoryConstant.ts）**：长期按 `MEMORY_SECTIONS` 分节预算（用户偏好 800 / 事实与背景 1200 / 进行中的事项 800 / 经验教训 1200，合计 `MEMORY_MAX_CHARS` 4000 字，由预算表派生）；单日 2000 字（追加时丢最旧）、注入每日预算 4000 字、提取输入 30k 字符。
 - **合并走 JSON 协议而非解析模型 markdown**：模型输出只被当作 JSON 数据信任（容错解析 + 重试 + 失败保底），markdown 的节标题与条目格式全部由代码渲染——不存在「模型标题写法漂移导致分节匹配失败」的路径。此前的整体截断兜底（超 4000 字从文件末尾按行删）会让排在最末的「## 经验教训」整节先被砍掉，已废除。
 - **数据安全三重保险**：① 每日短期记忆文件合并后不删除，原始素材永远可回查；② 解析失败 / 四节全空保留原长期记忆且不推进消费边界，下次自动重试同批数据；③ 每次覆写 MEMORY.md 前把现有内容备份到 `MEMORY.md.bak`（单代）。裁剪只可能丢弃超预算分节内部的尾部条目，不可能整节蒸发。
@@ -72,7 +72,7 @@ AgentChat.buildRequestMessages
 | `modules/memory/MemoryConsolidator.ts` | 长期记忆合并（内存锁防并发 + JSON 容错解析重试 + 分节预算裁剪 + 确定性渲染） |
 | `modules/memory/memoryTool.ts` | record_memory 工具 |
 | `modules/memory/index.ts` | 聚合导出 + initMemorySystem（定时器） |
-| `pages/setting/soul/SoulSettingPage.vue` | 管理页（开关 / 立即提取 / 编辑 / 每日查看删除 / 立即整理） |
+| `pages/setting/soul/SoulSettingPage.vue` | 管理页编排层（开关 / 立即提取 / 编辑 / 每日查看删除 / 立即整理 / 记忆模型），详见 [setting/08](../setting/08-memory-setting-page.md) |
 
 接线点：`App.vue onMounted → initMemorySystem()`；`ChatSessionManager`（status watcher 防抖 + 空闲回收立即提取）；`AgentChat.buildRequestMessages`（稳定前缀加工具指导 + 独立 system 消息注入记忆）；`modules/tool/index.ts getDefaultTools` 注册 record_memory。
 

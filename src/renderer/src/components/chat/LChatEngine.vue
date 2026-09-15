@@ -3,7 +3,7 @@
     <t-content class="l-chat-tool__content">
       <r-chat-list
         :messages="messages"
-        :clear-history="messages.length > 1 && status !== 'streaming'"
+        :clear-history="false"
         :status="status"
         style="flex: 1; margin-top: 8px"
         @clear="handleClear"

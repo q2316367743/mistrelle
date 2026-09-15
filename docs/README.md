@@ -141,7 +141,7 @@
 
 | 文档                                                          | 描述                                                                                                    |
 |---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| [01-memory-system.md](./memory/01-memory-system.md)           | 记忆系统（`~/.mistrelle/soul/`）：短期记忆空闲防抖提取 + `record_memory` 主动记录 + 设置页手动立即提取 → 每日 LLM 合并长期记忆（JSON 协议 + 分节字数预算合计 4000 字、解析失败保底重试、覆写前 .bak 备份，合并前兜底补提）→ 主 Agent 独立 system 消息注入；state.json 提取进度与合并边界语义（下一个待消费日期，含边界）、首启基线不回溯、合并成功记录上次合并时间 |
+| [01-memory-system.md](./memory/01-memory-system.md)           | 记忆系统（`~/.mistrelle/soul/`）：短期记忆空闲防抖提取 + `record_memory` 主动记录 + 设置页手动立即提取 → 每日 LLM 合并长期记忆（JSON 协议 + 分节字数预算合计 4000 字、解析失败保底重试、覆写前 .bak 备份，合并前兜底补提）→ 主 Agent 独立 system 消息注入；state.json 提取进度与合并边界语义（下一个待消费日期，含边界）、首启基线不回溯、合并成功记录上次合并时间；模型配置见 [setting/08](./setting/08-memory-setting-page.md) |
 
 ### personalize/ —— 个性化
 
@@ -160,6 +160,7 @@
 | [05-ai-provider-builtin-relay.md](./setting/05-ai-provider-builtin-relay.md) | AI 设置内置供应商（服务端中转站）：主进程 relay IPC 代理 `/v1/models` + `/v1/chat/completions`；透传 `session_id`（渠道亲和）与 `request_id`（仅记录）；流式回调走 start/chunk/end 事件；第三方 key 免登录、登录只保护内置中转刷新 |
 | [06-account-page.md](./setting/06-account-page.md) | 账号设置页 Fluent 布局：身份主视觉（可用积分 / 每日赠送）+ 账户与安全（我的会员与我的积分分开，增量包挂在会员下）+ 第三方密钥；进入页 1 分钟节流刷新；积分流水抽屉；档位页收敛入口 + 增量包选择/结算（永久有效，无支付） |
 | [07-ai-setting-page.md](./setting/07-ai-setting-page.md) | AI 设置页 Fluent 布局 + 单向数据流：编排层只传 source 快照；ProviderEditor 本地 draft；ProviderModelList 共用；侧栏 Accent 选中条；修复 form 整表替换后模型操作打到孤儿数组 |
+| [08-memory-setting-page.md](./setting/08-memory-setting-page.md) | 记忆设置页 Fluent 布局：概览主视觉（开关 + 长期字数/短期天数/上次整理）+ 分组卡（记忆模型 / 立即提取 / 立即整理 / 长期记忆编辑 / 每日查看删除）；「默认总结模型」从「智能体设置」迁入本页更名「记忆模型」（字段名 `defaultSummaryModel` 不变、**去掉快速模型兜底**）；已启用但未配置时顶部 t-alert 告警 + 两个动作按钮真实门控 |
 
 ### skill/ —— 本地 Skill
 

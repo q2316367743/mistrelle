@@ -201,14 +201,14 @@ export const invalidateMemoryPromptCache = (): void => {
 
 /**
  * 记忆系统后台 LLM 调用（非流式）。
- * 优先使用「默认总结模型」，未配置时兜底「默认快速模型」（与订阅总结一致的成本策略）。
+ * 只认「记忆模型」（设置-记忆），不做任何兜底：兜底会用上用户没预期参与记忆的模型，
+ * 且让设置页无法如实判断「是否已配置」。未配置时抛错，设置页据此对提取 / 整理做门控。
  */
 export const memoryChatCompletion = async (system: string, user: string): Promise<string> => {
-  const { defaultSummaryModel, defaultQuickModel } = useSettingDefaultStore().state
-  const modelKey = defaultSummaryModel || defaultQuickModel
-  if (!modelKey) throw new Error('未配置默认总结模型，请在「设置-默认设置」中配置')
+  const modelKey = useSettingDefaultStore().state.defaultSummaryModel
+  if (!modelKey) throw new Error('未配置记忆模型，请在「设置-记忆」中配置')
   const option = useSettingAiStore().optionMap.get(modelKey)
-  if (!option) throw new Error('默认总结模型已失效，请重新在「设置-默认设置」中配置')
+  if (!option) throw new Error('记忆模型已失效，请重新在「设置-记忆」中配置')
   const result = await createChatCompletion({
     baseURL: option.baseUrl,
     apiKey: option.key,

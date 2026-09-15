@@ -1,117 +1,75 @@
 <template>
   <page-layout title="记忆">
-    <t-list class="setting-list" split size="small">
-      <t-list-item>
-        <t-list-item-meta
-          title="启用记忆系统"
-          description="对话空闲后自动提取值得记住的内容到每日短期记忆，后台每日整理进长期记忆，并在新对话中注入"
-        />
-        <template #action>
-          <t-switch :value="enabled" @change="onToggle" />
+    <div class="soul-page">
+      <t-alert
+        v-if="enabled && !modelReady"
+        theme="warning"
+        title="记忆系统已启用，但还没有选择记忆模型"
+        :close="false"
+      >
+        <template #message>
+          提取短期记忆、整理长期记忆都需要调用模型，未选择前不会产生任何记忆。请在下方「记忆设置」中选择一个模型。
         </template>
-      </t-list-item>
-      <t-list-item>
-        <t-list-item-meta
-          title="立即提取短期记忆"
-          description="立即提取所有未提取完的会话记忆到当日文件（通常在一轮回复结束 5 分钟后自动执行）"
-        />
-        <template #action>
-          <t-button
-            theme="default"
-            variant="outline"
-            :loading="extracting"
-            :disabled="!enabled"
-            @click="onExtractNow"
-          >
-            立即提取
-          </t-button>
-        </template>
-      </t-list-item>
-      <t-list-item>
-        <t-list-item-meta
-          title="立即整理"
-          :description="consolidateDesc"
-        />
-        <template #action>
-          <t-button
-            theme="default"
-            variant="outline"
-            :loading="consolidating"
-            :disabled="!enabled"
-            @click="onConsolidate"
-          >
-            立即整理
-          </t-button>
-        </template>
-      </t-list-item>
-    </t-list>
+      </t-alert>
 
-    <div class="memory-section">
-      <div class="section-header">
-        <span class="section-title">长期记忆</span>
-        <span class="section-tip"
-          >MEMORY.md · 跨会话持久保留，整理时自动去重淘汰，上限 {{ MEMORY_MAX_CHARS }} 字（{{
-            memorySectionLimitsLabel()
-          }}）</span
-        >
-      </div>
-      <t-textarea
-        v-model="longTermDraft"
-        class="memory-editor"
-        :autosize="{ minRows: 6, maxRows: 18 }"
-        :placeholder="enabled ? '暂无长期记忆，可通过「立即整理」或对话积累生成' : '记忆系统未启用'"
-        :disabled="!enabled"
-      />
-      <div class="editor-footer">
-        <span class="char-count" :class="{ over: longTermDraft.length > MEMORY_MAX_CHARS }">
-          {{ longTermDraft.length }} / {{ MEMORY_MAX_CHARS }}
-        </span>
-        <t-button
-          size="small"
-          theme="primary"
-          :loading="saving"
-          :disabled="!enabled || longTermDraft === longTerm"
-          @click="onSaveLongTerm"
-        >
-          保存
-        </t-button>
-      </div>
-    </div>
+      <p class="soul-page__lead">
+        让伙伴记住你们的过去：对话中自动提取短期记忆，每日整理进长期记忆，并在此后每轮对话中作为背景注入。
+      </p>
 
-    <div class="memory-section">
-      <div class="section-header">
-        <span class="section-title">每日短期记忆</span>
-        <div class="day-actions">
-          <t-select
-            v-model="selectedDate"
-            class="w-160px"
-            :options="dayOptions"
-            placeholder="选择日期"
-            :disabled="dates.length === 0"
-          />
-          <t-button
-            theme="danger"
-            variant="outline"
-            :disabled="!enabled || !selectedDate"
-            @click="onRemoveDay"
-          >
-            删除当日
-          </t-button>
-        </div>
-      </div>
-      <t-textarea
-        :value="dayContent"
-        class="memory-editor"
-        :autosize="{ minRows: 4, maxRows: 12 }"
-        readonly
-        :placeholder="dates.length === 0 ? '暂无每日记忆' : '选择日期查看'"
+      <memory-overview-card
+        :enabled="enabled"
+        :long-term-chars="longTermDraft.length"
+        :long-term-max="MEMORY_MAX_CHARS"
+        :day-count="dates.length"
+        :last-consolidated-label="lastConsolidatedLabel"
+        @update:enabled="onToggle"
       />
+
+      <section class="soul-group">
+        <h2 class="soul-group__title">记忆设置</h2>
+        <memory-setting-card
+          v-model="modelKey"
+          :options="options"
+          :enabled="enabled"
+          :model-ready="modelReady"
+          :extracting="extracting"
+          :consolidating="consolidating"
+          :consolidate-desc="consolidateDesc"
+          @extract="onExtractNow"
+          @consolidate="onConsolidate"
+        />
+      </section>
+
+      <section class="soul-group">
+        <h2 class="soul-group__title">长期记忆</h2>
+        <long-term-memory-card
+          v-model:draft="longTermDraft"
+          :max-chars="MEMORY_MAX_CHARS"
+          :limits-label="memorySectionLimitsLabel()"
+          :enabled="enabled"
+          :saving="saving"
+          :dirty="longTermDraft !== longTerm"
+          @save="onSaveLongTerm"
+        />
+      </section>
+
+      <section class="soul-group">
+        <h2 class="soul-group__title">每日短期记忆</h2>
+        <day-memory-card
+          v-model:date="selectedDate"
+          :options="dayOptions"
+          :enabled="enabled"
+          :content="dayContent"
+          @remove="onRemoveDay"
+        />
+      </section>
     </div>
   </page-layout>
 </template>
 <script lang="ts" setup>
 import { MessageUtil, MessageBoxUtil } from '@/utils/modal'
 import { toDateString } from '@/utils/lang/FormatUtil'
+import { useSettingAiStore, useSettingDefaultStore } from '@/windows/main/store'
 import {
   MEMORY_MAX_CHARS,
   extractPendingSessions,
@@ -125,6 +83,13 @@ import {
   setMemoryEnabled,
   writeLongTermMemory
 } from '@/windows/main/modules/memory'
+import MemoryOverviewCard from './components/MemoryOverviewCard.vue'
+import MemorySettingCard from './components/MemorySettingCard.vue'
+import LongTermMemoryCard from './components/LongTermMemoryCard.vue'
+import DayMemoryCard from './components/DayMemoryCard.vue'
+
+const settingDefaultStore = useSettingDefaultStore()
+const { options } = toRefs(useSettingAiStore())
 
 const enabled = ref(false)
 const consolidating = ref(false)
@@ -138,12 +103,31 @@ const selectedDate = ref('')
 const dayContent = ref('')
 const lastConsolidatedAt = ref('')
 
+/** 记忆模型：复用 SettingDefault.defaultSummaryModel（清空时归一为空串，保持 string 契约） */
+const modelKey = computed({
+  get: () => settingDefaultStore.state.defaultSummaryModel,
+  set: (value) => {
+    settingDefaultStore.state.defaultSummaryModel = typeof value === 'string' ? value : ''
+  }
+})
+
+/**
+ * 记忆能否产出内容：与 memoryChatCompletion 同源——只认记忆模型，不做任何兜底。
+ * 未配置时提取与整理必然失败，页面对这两个动作做真实门控而非仅提示。
+ */
+const modelReady = computed(() => Boolean(modelKey.value))
+
+const lastConsolidatedLabel = computed(() =>
+  lastConsolidatedAt.value ? toDateString(lastConsolidatedAt.value) : '尚未整理过'
+)
+
 const dayOptions = computed(() => [...dates.value].reverse().map((d) => ({ label: d, value: d })))
 
-const consolidateDesc = computed(() =>
-  `把昨日及更早的每日短期记忆合并进长期记忆（每日首启与运行中跨天会自动执行），上次整理：${
-    lastConsolidatedAt.value ? toDateString(lastConsolidatedAt.value) : '尚未整理过'
-  }`
+const consolidateDesc = computed(
+  () =>
+    `把昨日及更早的每日短期记忆合并进长期记忆（每日首启与运行中跨天会自动执行），上次整理：${
+      lastConsolidatedLabel.value
+    }`
 )
 
 const loadDayContent = async () => {
@@ -163,9 +147,9 @@ const refresh = async () => {
   await loadDayContent()
 }
 
-const onToggle = async (value: boolean | number | string) => {
-  await setMemoryEnabled(Boolean(value))
-  enabled.value = Boolean(value)
+const onToggle = async (value: boolean) => {
+  await setMemoryEnabled(value)
+  enabled.value = value
   MessageUtil.success(value ? '记忆系统已启用' : '记忆系统已关闭')
 }
 
@@ -234,54 +218,33 @@ watch(selectedDate, () => void loadDayContent())
 onMounted(() => void refresh())
 </script>
 <style scoped lang="less">
-.setting-list {
-  padding: 0 16px;
-}
-
-.memory-section {
-  margin: 16px;
-  padding: 16px;
-  background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
-  border-radius: var(--td-radius-large);
-}
-
-.section-header {
+.soul-page {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 8px 24px 32px;
+  box-sizing: border-box;
 }
 
-.section-title {
-  font-weight: 600;
-  color: var(--td-text-color-primary);
+.soul-page__lead {
+  margin: 0;
+  font: var(--td-font-body-medium);
+  color: var(--td-text-color-secondary);
 }
 
-.section-tip {
-  font-size: 12px;
-  color: var(--td-text-color-placeholder);
-}
-
-.day-actions {
+.soul-group {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
 }
 
-.editor-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
-}
-
-.char-count {
-  font-size: 12px;
-  color: var(--td-text-color-placeholder);
-
-  &.over {
-    color: var(--td-error-color);
-  }
+.soul-group__title {
+  margin: 0;
+  padding-left: 4px;
+  font: var(--td-font-title-small);
+  color: var(--td-text-color-secondary);
 }
 </style>

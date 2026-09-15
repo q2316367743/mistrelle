@@ -62,7 +62,7 @@ interface SubscribeStrategy {
 ## 总结（`src/modules/subscribe/summarize.ts`）
 
 - 复用聊天能力，非流式 `chat.completions.create`（仿 `UseChatName`）。
-- 模型：优先「默认总结模型」`defaultSummaryModel`，未配置兜底 `defaultQuickModel`（均见设置-默认设置）。
+- 模型：使用 `defaultSummaryModel` —— ⚠️ 该字段已于 2026-09-15 从「设置-默认设置」迁至「设置-记忆」并更名「记忆模型」，且**记忆系统已移除 `defaultQuickModel` 兜底**（本模块在 `src/` 下当前无代码；若日后实现，需自行决定是否沿用快速模型兜底）。
 - 读取 text.md → 系统总结 prompt → 写 summary.md。
 
 ## 服务函数（`src/modules/subscribe/SubscribeService.ts`）

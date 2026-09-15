@@ -10,8 +10,8 @@ export interface SettingDefault {
    */
   defaultQuickModel: string
   /**
-   * 默认总结模型
-   * > 订阅内容总结等任务使用的模型
+   * 记忆模型
+   * > 提取与整理记忆时使用的模型（设置-记忆）；字段名为历史命名，实际语义已收敛为记忆系统专用
    */
   defaultSummaryModel: string
   /**

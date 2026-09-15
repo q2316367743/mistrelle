@@ -49,7 +49,7 @@
         :speed="2"
         :delay="0"
         color="var(--td-text-color-placeholder)"
-        shine-color="var(--td-text-color-primary)"
+        shine-color="var(--td-brand-color)"
         :spread="120"
         direction="left"
         :yoyo="false"
