@@ -138,6 +138,7 @@
 | [18-agent-image-read.md](./chat/18-agent-image-read.md)             | Agent 主动读图：`image_read` 工具（识图模型下发、safe 免审批）+ `visionImages` 约定键（剥离后路径落 toolcall ext）；工具结果消息不支持图像块，请求构建时以「紧随 tool 消息的 user 消息」注入（适配器零改动）；contextRules 读类过期使同路径旧图不重注入、用户附件同路径去重 |
 | [19-scene-registry-refactor.md](./chat/19-scene-registry-refactor.md) | **Agent 场景注册表重构（2026-09-15）**：三层架构（AgentRuntime 引擎契约 / SceneDefinition 场景注册表 / PromptContribution 注入管线）；`global/ChatTypeConfig.ts` 删除、场景四件套（prompt+skills+tools+aside）自包含、`resolveScene` 无 default 穷尽解析、UI 七处静默分支清零（LChatAside 动态组件 / PageNew / ChatList / 沙盒 / 个性化作用域）、场景内置 skill 与 load_skill 解析链、死代码清理（enableSkill / getType / getWritingScene / WritingAside.vue）；**含「新增场景操作指南」与旧→新对照表** |
 | [20-chat-components-relocation.md](./chat/20-chat-components-relocation.md) | **chat 组件树迁出全局组件目录（2026-09-15）**：`src/components/chat/` → `windows/main/components/chat/`（新建窗口级组件目录），退出 unplugin-vue-components 自动导入、全部显式 import（含原靠自动导入的 9 处补齐）、components.d.ts 60 条 chat 条目清理；tdesign 走 resolver 不受影响 |
+| [21-new-page-segmented-control.md](./chat/21-new-page-segmented-control.md) | **新建页场景选择器（SegmentedControl，2026-09-16）**：通用分段选择器 + PageNew 一级家族 / 二级子场景用途；选中态唯一来源是绝对定位滑块（深色主题更暗、浅色更亮）；**事故复盘**——二级选项在写作↔设计间整体替换而组件实例复用，`v-for` 数组模板引用失同步致滑块塌缩 `width:0`、选中反转；修复=改查真实 DOM + `watch(flush:'post')`/`onMounted`/`ResizeObserver` 重测 + 去重重复 `id` |
 
 ### memory/ —— 记忆
 
