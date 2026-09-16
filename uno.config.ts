@@ -1,6 +1,17 @@
 import { defineConfig, presetUno } from 'unocss'
 
 export default defineConfig({
+  // unocss v66 已移除 important 选项，改用 postprocess 统一为工具类追加 !important：
+  // 构建后 uno 位于最先加载的共享样式表，与 TDesign（懒加载 chunk 的 CSS 后置注入）
+  // 等单类选择器优先级相同时会被覆盖，故在此提升优先级。
+  postprocess: (util) => {
+    for (const entry of util.entries) {
+      const value = entry[1]
+      if (value != null && !String(value).includes('!important')) {
+        entry[1] = `${value} !important`
+      }
+    }
+  },
   presets: [
     presetUno({
       dark: 'class'
