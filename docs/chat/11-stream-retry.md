@@ -66,7 +66,7 @@
 - 同一序列内多次失败**原地更新**同一块（按 `retryKey` 全量查找——收尾时该块可能已被恢复后的正文盖住）；
 - 结局文案：重试成功 → 「已自动重试 N 次，请求恢复」；耗尽 → 「已自动重试 N 次，仍未成功」（最终错误仍由 `handleRequestError` 追加，历史完整呈现全过程）；
 - 提示块随消息经既有 throttledWatch 持久化，重启后仍可见；
-- `MChatAssistant.finalContent` 判定排除 retryNotice，避免提示块被当作「最终回复」。
+- `MChatAssistant.finalContents` 判定排除 retryNotice，避免提示块被当作「最终回复」。
 
 ## 配置（ChatServiceConfig 既有字段，本次接上）
 

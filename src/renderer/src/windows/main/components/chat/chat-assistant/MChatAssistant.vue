@@ -151,29 +151,29 @@ const findLastText = (
   return undefined
 }
 
-/** 最终回复：默认取 content 中最后一条非 continueHint / retryNotice 的 text/markdown（agent 循环最后一步的输出）。
- *  record_memory 为收尾调用时（第一个 record_memory 之后无非记忆工具调用）锚定到第一个 record_memory 之前，
- *  使回答结束后的记忆调用与收尾补充说明归入过程，真正的回答不被折叠；其前无文本则回退默认逻辑。
+/** 最终回复集合：默认取 content 中最后一条非 continueHint / retryNotice 的 text/markdown（agent 循环最后一步的输出）。
+ *  record_memory 为收尾调用时（第一个 record_memory 之后无非记忆工具调用），回答可能被记忆调用切成上下两段
+ *  （有的模型把结论放上、有的放下），同时保留第一个 record_memory 之前与之后的各最后一条文本，两段都不被折叠；
  *  注意：收尾阶段常见的「记忆调用 + 收尾 thinking + 一句结束语」中 thinking 不算继续干活，
- *  仅非记忆 toolcall 才视为中途记忆（记忆后继续执行）走默认逻辑 */
-const finalContent = computed<AIMessageContent | undefined>(() => {
+ *  仅非记忆 toolcall 才视为中途记忆（记忆后继续执行）走默认逻辑，只保留最后一条文本 */
+const finalContents = computed<AIMessageContent[]>(() => {
   const contents = props.message.content ?? []
   const firstMemoryIdx = contents.findIndex(isRecordMemoryCall)
-  if (firstMemoryIdx < 0) return findLastText(contents, contents.length - 1, 0)
+  const lastText = findLastText(contents, contents.length - 1, 0)
+  if (firstMemoryIdx < 0) return lastText ? [lastText] : []
   const hasWorkAfterMemory = contents
     .slice(firstMemoryIdx + 1)
     .some((item) => item.type === 'toolcall' && !isRecordMemoryCall(item))
-  if (hasWorkAfterMemory) return findLastText(contents, contents.length - 1, 0)
-  return (
-    findLastText(contents, firstMemoryIdx - 1, 0) ??
-    findLastText(contents, contents.length - 1, firstMemoryIdx)
-  )
+  if (hasWorkAfterMemory) return lastText ? [lastText] : []
+  const before = findLastText(contents, firstMemoryIdx - 1, 0)
+  const after = findLastText(contents, contents.length - 1, firstMemoryIdx + 1)
+  return [before, after].filter((item): item is AIMessageContent => Boolean(item))
 })
 
 /** 是否存在可折叠的过程内容（thinking / toolcall / 中间文本等，排除最终回复与 continueHint 操作按钮） */
 const hasProcess = computed(() => {
   const contents = props.message.content ?? []
-  return contents.some((item) => item !== finalContent.value && !isContinueHint(item))
+  return contents.some((item) => !finalContents.value.includes(item) && !isContinueHint(item))
 })
 
 /** 是否可折叠：完成 + 有过程内容即可折叠（有无最终回复均可）。
@@ -182,14 +182,20 @@ const canCollapse = computed(() => isCompleted.value && hasProcess.value)
 
 /** 无最终回复且处于折叠态：显示"异常停止"提示，避免折叠后空白无解释 */
 const showAbortedHint = computed(
-  () => isCompleted.value && !processExpanded.value && hasProcess.value && !finalContent.value
+  () =>
+    isCompleted.value &&
+    !processExpanded.value &&
+    hasProcess.value &&
+    finalContents.value.length === 0
 )
 
 /** 过程步数：thinking + toolcall 数量（不含最终回复文本） */
 const processCount = computed(() => {
   const contents = props.message.content ?? []
   return contents.filter(
-    (item) => item !== finalContent.value && (item.type === 'thinking' || item.type === 'toolcall')
+    (item) =>
+      !finalContents.value.includes(item) &&
+      (item.type === 'thinking' || item.type === 'toolcall')
   ).length
 })
 
@@ -207,10 +213,10 @@ const visibleContents = computed(() => {
   const contents = props.message.content ?? []
   if (!isCompleted.value) return contents
   if (processExpanded.value) return contents
-  // 折叠：仅保留最终回复与继续按钮（continueHint）、图片块，其余过程（thinking/toolcall/中间文本）隐藏；
+  // 折叠：仅保留最终回复（可能上下两段）与继续按钮（continueHint）、图片块，其余过程（thinking/toolcall/中间文本）隐藏；
   // 无最终回复时结果仅剩 continueHint，过程内容由折叠条 + "异常停止"提示概括
   return contents.filter(
-    (item) => item === finalContent.value || isContinueHint(item) || item.type === 'image'
+    (item) => finalContents.value.includes(item) || isContinueHint(item) || item.type === 'image'
   )
 })
 
