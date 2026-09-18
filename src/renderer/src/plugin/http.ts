@@ -3,6 +3,7 @@ import { AxiosRequestConfig, AxiosResponse } from 'axios'
 import { useSettingNetworkStore } from '@/windows/main/store'
 import { useLog } from '@/hooks/UseLog'
 import { nonNullObj } from '@/utils/lang'
+import { Constant } from '@/global/Constant'
 
 const logger = useLog({ name: 'plugin:http' })
 
@@ -183,6 +184,9 @@ export async function requestStream(config: StreamRequestOptions): Promise<Strea
   const { signal, ...rest } = config
   const _config = httpRequestToAxiosConfig(rest)
   _config.responseType = 'stream'
+  _config.headers
+    ? (_config.headers['User-Agent'] = `${Constant.id}/${Constant.version}`)
+    : (_config.headers = { 'User-Agent': `${Constant.id}/${Constant.version}` })
 
   const requestUrl = `${_config.method} ${_config.baseURL || ''}${_config.url}`
   logger.debug(`发起流式请求: ${requestUrl}`)

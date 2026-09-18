@@ -1,6 +1,4 @@
 export const Constant = {
-  // 插件的ID
-  uid: 'zimjyydo',
   // 项目名称，英文名称
   id: 'mistrelle',
   // 项目中文名称
