@@ -30,6 +30,10 @@
             <template #icon><copy-icon /></template>
             复制图片
           </t-button>
+          <t-button v-if="cover" size="small" variant="text" theme="primary" @click="revealCover">
+            <template #icon><folder-open-icon /></template>
+            文件夹
+          </t-button>
           <t-button
             v-if="cover"
             size="small"
@@ -47,7 +51,14 @@
   </t-popup>
 </template>
 <script lang="ts" setup>
-import { AiIcon, CopyIcon, DeleteIcon, ImageIcon, UploadIcon } from 'tdesign-icons-vue-next'
+import {
+  AiIcon,
+  CopyIcon,
+  DeleteIcon,
+  FolderOpenIcon,
+  ImageIcon,
+  UploadIcon
+} from 'tdesign-icons-vue-next'
 import type { ArticleItem } from '@/windows/main/modules/tool/components/article/articleTypes'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { copyImageToAssets } from '@/windows/main/modules/tool/components/article/imageRef'
@@ -107,6 +118,12 @@ const copyCover = async (): Promise<void> => {
   } catch {
     MessageUtil.error('复制封面失败')
   }
+}
+
+/** 在系统文件管理器中定位封面文件 */
+const revealCover = (): void => {
+  if (!props.cover) return
+  window.preload.inject.shell.showItemInFolder(assetAbsPath(props.cover))
 }
 
 const genCover = (): void =>

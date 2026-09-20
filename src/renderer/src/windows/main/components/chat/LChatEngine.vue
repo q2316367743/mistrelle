@@ -1,6 +1,6 @@
 <template>
   <t-layout class="l-chat-tool">
-    <t-content class="l-chat-tool__content">
+    <t-content class="l-chat-tool__content" :class="{ aside: aside }">
       <r-chat-list
         :messages="messages"
         :clear-history="false"
@@ -232,6 +232,10 @@ const paddingRight = computed(() => `${8 + r1}px`)
     flex: 1;
     min-width: 0;
     width: 100%;
+
+    &.aside {
+      padding-right: 8px;
+    }
   }
   &__header {
     position: fixed;

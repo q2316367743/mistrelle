@@ -24,7 +24,7 @@ article/
     ├── ArticleFormatButtons.vue      # 格式区：内联按钮 + 「更多」触发（按宽度自适应）
     ├── ArticleToolbar.vue            # 顶部工具栏（版本面板 + 格式区 + 内联插图/生图）
     ├── ArticleBubbleMenu.vue         # 选中文字的悬浮格式框（BubbleMenu）
-    ├── ArticleImageMenu.vue          # 选中图片的悬浮框（复制/换图/重新生成/删除）
+    ├── ArticleImageMenu.vue          # 选中图片的悬浮框（复制/文件夹/换图/重新生成/删除）
     ├── ArticleFormatPanel.vue        # 「更多」溢出面板（块类型 / 格式 / 插入 三区）
     ├── articleFormatButtons.ts       # 按钮元数据表 + 宽度常量（内联行与面板共用）
     ├── LinkDialog.tsx                # 链接弹窗外壳（DialogPlugin 命令式）
@@ -62,11 +62,12 @@ interface ArticleEditorState {
 | 组件 | 显示条件 | 内容 |
 |---|---|---|
 | `ArticleBubbleMenu.vue` | 有非空文字选区且未选中图片 | 加粗/斜体/下划线/删除线/行内代码/链接/引用 |
-| `ArticleImageMenu.vue` | `editor.isActive('image')` | 缩略图 + 复制图片/换图/AI 重新生成/删除 |
+| `ArticleImageMenu.vue` | `editor.isActive('image')` | 缩略图 + 复制图片/文件夹/换图/AI 重新生成/删除 |
 
 - 两个浮层**不走 emit 上抛**（除图片重新生成需父级语境），直接持有 editor 调命令，减少接线。
 - 图片操作**按位置寻址**：`findSelectedImage()` 记录节点 `pos`，弹窗交互期间选区漂移也不影响目标。
 - **复制图片**复用 `clipboard.copyImageByPath(绝对路径)`（与封面 `ArticleCoverThumb.vue` 同一套），main 侧按路径读盘写剪贴板；路径由 `imageRef.ts` 新增的 `resolveArticleImagePath(baseDir, src)` 解析。
+- **文件夹**（2026-09-20 新增）：`shell.showItemInFolder(绝对路径)` 在系统文件管理器中定位当前图片；外链 / `data:` 等非本地图片 `imagePath` 为空，按钮自动禁用（与复制图片同一套路径解析）。封面 `ArticleCoverThumb.vue` 同步新增同款按钮。
 - **删除图片**仅当 `countImageRefs() === 0`（全文已无同图引用）才上报父级清理 `entry.images`，避免别处还用着却从插图列表摘掉。
 - **AI 重新生成**以**图片所在段落的文字**为语境（`getImageContext()`），成功后按 pos 回填 `replaceImageAt`。
 

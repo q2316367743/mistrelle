@@ -13,6 +13,15 @@
           <template #icon><CopyIcon /></template>
           复制图片
         </t-button>
+        <t-button
+          size="small"
+          variant="text"
+          :disabled="locked || !current || !imagePath"
+          @click="revealImage"
+        >
+          <template #icon><FolderOpenIcon /></template>
+          文件夹
+        </t-button>
         <t-button size="small" variant="text" :disabled="locked || !current" @click="replaceImage">
           <template #icon><SwapIcon /></template>
           换图
@@ -46,7 +55,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/core'
-import { AiImageIcon, CopyIcon, DeleteIcon, SwapIcon } from 'tdesign-icons-vue-next'
+import { AiImageIcon, CopyIcon, DeleteIcon, FolderOpenIcon, SwapIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import {
   copyImageToAssets,
@@ -112,6 +121,11 @@ const preview = computed(() =>
   current.value && props.baseDir ? resolveArticleImage(props.baseDir, current.value.rel) : ''
 )
 
+/** 当前图片的磁盘绝对路径（外链 / data: 等非本地图片为空串） */
+const imagePath = computed(() =>
+  current.value ? resolveArticleImagePath(props.baseDir, current.value.rel) : ''
+)
+
 const regenTip = computed(() => {
   if (!canGenerate.value) return '登录后可使用生图'
   if (locked.value) return '正在改写中，暂不可生图'
@@ -134,6 +148,12 @@ const copyImage = async (): Promise<void> => {
   } catch {
     MessageUtil.error('复制图片失败')
   }
+}
+
+/** 在系统文件管理器中定位当前图片文件 */
+const revealImage = (): void => {
+  const abs = imagePath.value
+  if (abs) window.preload.inject.shell.showItemInFolder(abs)
 }
 
 /** 换图：选本地图片 → 拷入 assets → 就地替换当前图片节点的 src（保持位置） */

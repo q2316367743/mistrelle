@@ -28,13 +28,13 @@ src/renderer/src/windows/main/components/chat/aside/writing/
     ├── useArticleAssist.ts          # 去 AI 味动作编排（按类型产出 humanize 新版本，流式期间 suspended 锁定）
     └── components/
         ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章）+ 类型下拉（t-select 切换）+ 信息面板（t-popup：标题可编辑 t-input + 简介/提纲只读）+ 刷新按钮
-        ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 复制图片 / 移除，16:9）
+        ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 复制图片 / 文件夹 / 移除，16:9）
         ├── ArticleToolbar.vue       # 工具栏：版本下拉 + 格式区 + 插图/生图（恒一行，按宽度自适应）
         ├── ArticleFormatButtons.vue # 格式区：内联按钮 + 「更多」触发（2026-09-14 新增）
         ├── ArticleFormatPanel.vue   # 「更多」溢出面板：块类型 / 格式 / 插入 三区（2026-09-14 新增）
         ├── articleFormatButtons.ts  # 按钮元数据表 + 宽度常量（内联行与面板共用）
         ├── ArticleBubbleMenu.vue    # 选中文字的悬浮格式框（BubbleMenu）（2026-09-14 新增）
-        ├── ArticleImageMenu.vue     # 选中图片的悬浮框：复制/换图/AI 重新生成/删除（2026-09-14 新增）
+        ├── ArticleImageMenu.vue     # 选中图片的悬浮框：复制/文件夹/换图/AI 重新生成/删除（2026-09-14 新增）
         ├── LinkDialog.tsx / LinkDialogContent.vue  # 链接地址输入弹窗（命令式）
         ├── ArticleVersionPanel.vue  # 版本时间线：t-timeline 倒序（第N版·来源），点击即切换，hover 删除
         ├── ArticleDocActions.vue    # 底部动作条：左组 = AI 检测 / 文件夹 / 去 AI 味（或停止）/ 复制；右侧 = N 字
@@ -92,8 +92,9 @@ tiptap 编辑器（flex:1，恒可编辑）
 
 ## 封面与插图（随类型走）
 
-- **封面（ArticleCoverThumb）**：头部 56px 缩略位（固定 16:9），t-popup 内 AI 生成 / 上传 / 复制图片 / 移除（仅已有封面时显示后两者）；`cover` 为类型级字段，变更经 `patchType({ cover })`。
+- **封面（ArticleCoverThumb）**：头部 56px 缩略位（固定 16:9），t-popup 内 AI 生成 / 上传 / 复制图片 / 文件夹 / 移除（仅已有封面时显示后三者）；`cover` 为类型级字段，变更经 `patchType({ cover })`。
   - **复制图片**：走 `clipboard.copyImageByPath(绝对路径)`（main 侧 `nativeImage.createFromPath` + `clipboard.writeImage`）——把封面**图片本体**写入系统剪贴板，可直接粘进微信 / 文档；与「复制路径」语义不同，用 `copyImage` 而非 `copyFile`（后者是文件引用，粘贴为文件而非图像）。
+  - **文件夹**（2026-09-20 新增）：`shell.showItemInFolder(绝对路径)` 在系统文件管理器中定位封面文件（与底部动作条的「文件夹」同款）。
 - **插图（工具栏）**：「插图」= 系统选图 → `copyImageToAssets` → `resolveAssetRel`（相对 md 目录）→ 插入 + 归一为 `assets/{文件名}` 登记进当前类型 `images[]`（去重）；「生图」= `openImageGen`（直出接口 `image.generate record:false`，落 `assets/`，封面横版/插图方形默认尺寸）成功后自动插入并登记；正文粘贴 / 拖入图片（编辑器内置）同样落盘并 emit `image-added` 登记。
 - **⚠️ 插图生图以「选中文字」为前提（2026-09-14 用户拍板）**：
   - **未选中文字时「生图」按钮禁用**，tooltip 提示「请先选中要配图的文字」；选中后解除禁用，tooltip 变「根据选中文字生图」。
