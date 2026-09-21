@@ -15,7 +15,6 @@
  * 运行态存模块闭包 Map：跨窗口、跨渲染层刷新存活；应用退出随进程结束（由启动收尾兜底）。
  */
 import { app, BrowserWindow } from 'electron'
-import axios from 'axios'
 import { existsSync } from 'fs'
 import { mkdir, readFile, rm, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
@@ -35,6 +34,7 @@ import {
   type RelayImageTask
 } from '../relay/RelayService'
 import { sharpMetadata } from '../sharp/image'
+import { appAxios } from '../network/appAxios'
 
 /** 异步任务轮询间隔（毫秒） */
 const POLL_INTERVAL_MS = 3000
@@ -126,7 +126,7 @@ function finish(task: RunningTask, key: string, outcome: ImageTaskOutcome): Imag
 
 /** 下载 url 图片到本地 */
 async function saveImageFromUrl(url: string, path: string): Promise<void> {
-  const resp = await axios.get<ArrayBuffer>(url, { responseType: 'arraybuffer', timeout: 60_000 })
+  const resp = await appAxios.get<ArrayBuffer>(url, { responseType: 'arraybuffer', timeout: 60_000 })
   await writeFile(path, Buffer.from(resp.data))
 }
 

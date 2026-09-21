@@ -10,6 +10,8 @@ import { registerBrowserToolIpc } from './modules/browser/browserToolIpc'
 import { registerSafeStorageIpc } from './modules/platform/safeStorageIpc'
 import { registerDbIpc } from './db/dbIpc'
 import { registerImageIpc } from './modules/image/imageIpc'
+import { registerNetworkIpc } from './modules/network/networkIpc'
+import { registerGzhIpc } from './modules/gzh/gzhIpc'
 import { registerTemplateIpc } from './modules/template/templateIpc'
 import { registerAuthIpc } from './modules/auth/authIpc'
 import { registerRelayIpc } from './modules/relay/relayIpc'
@@ -43,6 +45,8 @@ export function registerIpc(): void {
   registerSafeStorageIpc()
   registerDbIpc()
   registerImageIpc()
+  registerNetworkIpc()
+  registerGzhIpc()
   registerTemplateIpc()
   registerAuthIpc()
   registerRelayIpc()

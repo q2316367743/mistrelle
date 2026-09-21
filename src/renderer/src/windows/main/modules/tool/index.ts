@@ -17,6 +17,7 @@ import { agentTools } from './components/agent'
 import { designStyleTools } from './components/design'
 import { fontListTool } from './components/design/fontTools'
 import { cardStyleTools } from './components/card'
+import { gzhStyleTools } from './components/gzh'
 import { askTool } from './components/ask'
 import { spawnAgentTool } from '@/windows/main/modules/subagent/tool'
 // 叶子导入（勿改用 @/modules/memory 桶）：避免经 memory/index 拉入 ChatService/store 全量图（@see docs/tool/07-tool-policy.md）
@@ -132,6 +133,7 @@ export const toolMap: Record<string, ToolFunction> = {
   ...objectify(agentTools, 'name'),
   ...objectify(designStyleTools, 'name'),
   ...objectify(cardStyleTools, 'name'),
+  ...objectify(gzhStyleTools, 'name'),
   ...objectify([fontListTool], 'name')
 }
 

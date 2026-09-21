@@ -8,6 +8,8 @@ import { PermissionApi } from '@common/types/permissionRequest'
 import { Esp32LcdApi } from '@common/types/esp32Lcd'
 import { KeypadApi } from '@common/types/keypad'
 import { QuotaApi } from '@common/types/quota'
+import { GzhApi } from '@/types/gzh'
+import { NetworkApi } from '@/types/network'
 
 declare global {
   interface Window {
@@ -46,6 +48,10 @@ declare global {
       updater: UpdaterApi
       relay: RelayApi
       serial: SerialApi
+      /** 公众号域桥：爆款数据抓取（实现位于 main，源站需 TLS 回退） */
+      gzh: GzhApi
+      /** 网络设置桥：设置数据家在 main（内存缓存 + 写时刷新，保存即生效） */
+      network: NetworkApi
       /** 红绿灯配置桥：仅伙伴窗口独立 preload（out/preload/buddy.js）注入，主窗口运行时不存在 */
       trafficLight: TrafficLightApi
       /** 应用集成桥：外部软件接入配置检查/安装，仅伙伴窗口独立 preload 注入，主窗口运行时不存在 */

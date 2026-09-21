@@ -19,6 +19,8 @@ import { templateApi } from '~/modules/template/template'
 import { authApi } from '~/modules/auth/auth'
 import { relayApi } from '~/modules/relay/relay'
 import { serialApi } from '~/modules/serial/serial'
+import { gzhApi } from '~/modules/gzh/gzh'
+import { networkApi } from '~/modules/network/network'
 import { updaterApi } from '~/modules/updater/updater'
 
 // 组装 window.preload（形状与原 src-utools/preload.js 一致：9 模块 + axios 实例）
@@ -42,6 +44,8 @@ const preload = {
   auth: authApi,
   relay: relayApi,
   serial: serialApi,
+  gzh: gzhApi,
+  network: networkApi,
   updater: updaterApi,
   axios: axios.create({ adapter: axios.getAdapter('http') })
 }

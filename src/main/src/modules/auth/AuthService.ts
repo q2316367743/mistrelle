@@ -10,9 +10,9 @@
  * - 状态为模块级单例，所有窗口共享；变更经 BrowserWindow 广播 `auth:changed`。
  */
 import { app, BrowserWindow, safeStorage } from 'electron'
-import axios from 'axios'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
+import { createAppAxios } from '../network/appAxios'
 import {
   AuthChannels,
   normalizeAuthFeatures,
@@ -76,7 +76,7 @@ class AuthFailure extends Error {
 }
 
 /** K/V 请求（better-auth 端点直出 JSON）Blob 之外的响应体统一按 JSON 解析 */
-const http = axios.create({
+const http = createAppAxios({
   timeout: 15_000,
   validateStatus: () => true
 })

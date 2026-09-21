@@ -7,6 +7,7 @@
  * 供插件列表展示（内置与目录第三方统一模型）；runQuotaScript 负责真正执行。
  */
 import type { PluginSettingField, QuotaItem } from '@common/types/quota'
+import { appAxios } from '../../modules/network/appAxios'
 
 /** 单次网络请求超时 */
 const FETCH_TIMEOUT_MS = 15_000
@@ -111,8 +112,14 @@ export async function runQuotaScript(
   const ctx: QuotaPluginContext = {
     settings,
     fetch: async (url, init) => {
-      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
-      return { status: res.status, body: await res.text() }
+      // 统一走 appAxios（代理 / UA / TLS 策略随网络设置）；契约保持 { status, body: text }
+      const res = await appAxios.get<string>(url, {
+        headers: init?.headers,
+        responseType: 'text',
+        timeout: FETCH_TIMEOUT_MS,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+      })
+      return { status: res.status, body: res.data }
     }
   }
   const snapshot = await manifest.fetch(ctx)

@@ -12,12 +12,12 @@
  * - imageModels / imageGenerate / imageTask：生图域（/api/images/*，Result + camelCase），
  *   统一异步任务模型；仅供主进程 ImageService 编排调用，渲染层经 image 域 IPC 间接使用。
  */
-import axios from 'axios'
 import type { Readable } from 'node:stream'
 import { getRelayContext, getServerBaseUrl } from '../auth/AuthService'
+import { createAppAxios } from '../network/appAxios'
 import type { RelayChatParams } from '~/modules/relay/relayChannels'
 
-const http = axios.create({
+const http = createAppAxios({
   timeout: 0,
   validateStatus: () => true
 })

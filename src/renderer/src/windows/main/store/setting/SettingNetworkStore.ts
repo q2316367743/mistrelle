@@ -1,22 +1,25 @@
 import { defineStore } from 'pinia'
-import { buildSettingNetwork, SettingNetwork } from '@/entity'
-import { readJsonFile, writeJsonFile } from '@/utils/native'
+import { buildSettingNetwork, type SettingNetwork } from '@/entity'
 import { AxiosProxyConfig, AxiosRequestConfig } from 'axios'
-import { getSettingNetworkPath } from '@/global/Constant'
 import { useLog } from '@/hooks/UseLog'
 
+/**
+ * 网络设置 store（视图层）：数据家在 main（内存缓存 + 写时刷新，保存即生效）。
+ * 加载经 IPC 拉取、保存经 IPC 落盘（watchDebounced 防抖），本 store 只承载 UI 绑定
+ * 与渲染层自身 HTTP（plugin/http.ts）的 fillAxiosConfig 注入。
+ */
 export const useSettingNetworkStore = defineStore('setting:network', () => {
   const logger = useLog({ name: 'store:setting-network' })
   const setting = ref<SettingNetwork>(buildSettingNetwork())
 
   ;(async () => {
-    const network = await readJsonFile<SettingNetwork>(getSettingNetworkPath())
-    if (network) setting.value = network
+    const network = await window.preload.network.getSetting()
+    setting.value = network
 
     watchDebounced(
       setting,
       async (val) => {
-        await writeJsonFile(getSettingNetworkPath(), val)
+        await window.preload.network.saveSetting(val)
       },
       { debounce: 300, deep: true }
     )

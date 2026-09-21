@@ -64,6 +64,11 @@ export const getAppData2CardStyle = () => {
   return window.preload.path.join(dataFolder, 'card-style')
 }
 
+// ~/.mistrelle/gzh-style：公众号排版风格（index.json 索引 + gzh-style-{id}.json 单条）
+export const getAppData2GzhStyle = () => {
+  return window.preload.path.join(dataFolder, 'gzh-style')
+}
+
 // ~/.mistrelle/soul：记忆系统（长期记忆 / 每日短期记忆 / 记忆状态）+ 个性化设定文件
 export const getSoulDir = () => window.preload.path.join(dataFolder, 'soul')
 
@@ -96,10 +101,6 @@ export const getAgentPath = () => window.preload.path.join(dataFolder, 'setting'
 
 // 账户配置文件路径：~/.mistrelle/setting/account.json（整文件 safeStorage 加密存储）
 export const getAccountPath = () => window.preload.path.join(dataFolder, 'setting', 'account.json')
-
-// 设置-网络配置文件路径：~/.mistrelle/setting/network.json
-export const getSettingNetworkPath = () =>
-  window.preload.path.join(dataFolder, 'setting', 'network.json')
 
 // 设置-全局配置文件路径：~/.mistrelle/setting/global.json
 export const getSettingGlobalPath = () =>

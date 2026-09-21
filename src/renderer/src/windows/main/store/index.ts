@@ -13,6 +13,8 @@ export * from './design/DesignStyleStore'
 
 export * from './card/CardStyleStore'
 
+export * from './gzh/GzhStyleStore'
+
 export * from './AuthStore'
 
 export * from './image/ImageModelStore'

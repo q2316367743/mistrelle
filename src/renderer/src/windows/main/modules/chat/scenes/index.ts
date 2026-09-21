@@ -6,7 +6,8 @@ import {
   FileMarkdownIcon,
   BookOpenIcon,
   LayersIcon,
-  Html5Icon
+  Html5Icon,
+  LogoWechatStrokeIcon
 } from 'tdesign-icons-vue-next'
 import type { ToolFunction } from '@/domain'
 import type { ChatType } from '../chatType'
@@ -17,6 +18,7 @@ import { createImageSubAgentTools } from '@/windows/main/modules/tool/components
 import type { BuiltInSkill, SceneContext, SceneDefinition } from './types'
 import { officeScene } from './office'
 import { articleScene, novelShortScene } from './writing'
+import { gzhScene } from './gzh'
 import { canvasScene, htmlScene } from './design'
 
 export * from './types'
@@ -32,7 +34,7 @@ export const SCENES: {
   design: Record<DesignScene, SceneDefinition>
 } = {
   office: officeScene,
-  writing: { article: articleScene, novelShort: novelShortScene },
+  writing: { article: articleScene, novelShort: novelShortScene, gzh: gzhScene },
   design: { canvas: canvasScene, html: htmlScene }
 }
 
@@ -81,12 +83,19 @@ export interface SceneFamilyMeta {
 export const SCENE_FAMILY_META: Record<ChatType, SceneFamilyMeta> = {
   writing: {
     type: 'writing',
-    label: '写作',
-    description: '文档创作，侧边栏实时编辑与预览',
+    label: '自媒体创作',
+    description: '一套给内容创作者、运营和自媒体作者用的全栈创作工具箱。',
     icon: EditIcon,
     variants: {
       field: 'writingScene',
       options: [
+        {
+          value: 'gzh',
+          field: 'writingScene',
+          label: '微信公众号',
+          description: '公众号创作：爆款选题 / 体裁 skill / 排版预览 / 正文质检',
+          icon: LogoWechatStrokeIcon
+        },
         {
           value: 'article',
           field: 'writingScene',

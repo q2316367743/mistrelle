@@ -8,6 +8,7 @@ import { app, BrowserWindow } from 'electron'
 import { autoUpdater, type ProgressInfo, type UpdateInfo } from 'electron-updater'
 import { UpdaterChannels, type UpdaterMode, type UpdaterState } from '~/modules/updater/updaterChannels'
 import { getServerBaseUrl } from '../auth/AuthService'
+import { appAxios } from '../network/appAxios'
 
 const CHECK_TIMEOUT_MS = 15_000
 
@@ -76,11 +77,19 @@ function compareVersion(a: string, b: string): number {
  * 拉取失败 / 404（暂无已发布版本）/ 报文异常一律返回 null，调用方回退 electron-updater feed。
  */
 async function fetchLatestUpdate(): Promise<RemoteLatest | null> {
-  const response = await fetch(`${getServerBaseUrl()}/api/updates/latest`, {
-    signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
-  })
-  if (!response.ok) return null
-  const body: unknown = await response.json()
+  let body: unknown
+  try {
+    // validateStatus 全放行：404（暂无已发布版本）等非 2xx 与失败一样返 null 回退 feed
+    const response = await appAxios.get<unknown>(`${getServerBaseUrl()}/api/updates/latest`, {
+      timeout: CHECK_TIMEOUT_MS,
+      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+      validateStatus: () => true
+    })
+    if (response.status < 200 || response.status >= 300) return null
+    body = response.data
+  } catch {
+    return null
+  }
   if (typeof body !== 'object' || body === null || !('data' in body)) return null
   const data: unknown = body.data
   if (typeof data !== 'object' || data === null || !('version' in data) || !('mode' in data)) {
