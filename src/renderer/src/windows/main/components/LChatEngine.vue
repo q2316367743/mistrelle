@@ -84,7 +84,7 @@
   </t-layout>
 </template>
 <script lang="ts" setup>
-import TodoProgressButton from '@/windows/main/components/chat/TodoProgressButton.vue'
+import TodoProgressButton from '@/windows/main/components/TodoProgressButton.vue'
 import RChatList from './RChatList.vue'
 import LChatSender from './sender/LChatSender.vue'
 import LChatAside from './aside/LChatAside.vue'

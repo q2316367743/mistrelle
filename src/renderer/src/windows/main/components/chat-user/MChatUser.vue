@@ -139,7 +139,7 @@ import {
   LayersIcon,
   ToolsIcon
 } from 'tdesign-icons-vue-next'
-import RChatActionbar from '@/windows/main/components/chat/RChatActionbar.vue'
+import RChatActionbar from '@/windows/main/components/RChatActionbar.vue'
 
 defineProps({
   message: {

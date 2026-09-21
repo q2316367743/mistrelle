@@ -39,7 +39,7 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import LChatSender from '@/windows/main/components/chat/sender/LChatSender.vue'
+import LChatSender from '@/windows/main/components/sender/LChatSender.vue'
 import { useAiChatStore, useSettingDefaultStore } from '@/windows/main/store'
 import type {
   ChatRequestParams,

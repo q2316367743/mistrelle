@@ -49,7 +49,7 @@ import {
   type AskAnswerItem,
   type AskQuestion
 } from '@/windows/main/modules/tool/components/ask'
-import AskChatQuestion from '@/windows/main/components/chat/chat-assistant/tool/AskChatQuestion.vue'
+import AskChatQuestion from '@/windows/main/components/chat-assistant/tool/AskChatQuestion.vue'
 
 const props = defineProps({
   content: {

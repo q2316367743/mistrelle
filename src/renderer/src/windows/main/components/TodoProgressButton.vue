@@ -16,7 +16,7 @@
 </template>
 <script lang="ts" setup>
 import type { TodoItem } from '@/domain'
-import TodoList from '@/windows/main/components/chat/TodoList.vue'
+import TodoList from '@/windows/main/components/TodoList.vue'
 
 const props = withDefaults(
   defineProps<{

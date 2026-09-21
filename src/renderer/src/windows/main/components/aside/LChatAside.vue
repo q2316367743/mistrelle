@@ -12,7 +12,7 @@
 import { computed } from 'vue'
 import type { ChatMessage, TodoItem } from '@/domain'
 import type { ChatStatus, ChatType, DesignScene, WritingScene } from '@/windows/main/modules/chat'
-import type { AgentHistoryItem } from '@/windows/main/components/chat/AgentHistoryList.vue'
+import type { AgentHistoryItem } from '@/windows/main/components/AgentHistoryList.vue'
 import type { SubAgentInfo } from '@/windows/main/modules/chat/agent/agentMessages'
 import { resolveScene } from '@/windows/main/modules/chat/scenes'
 import SubAgentAside from './SubAgentAside.vue'

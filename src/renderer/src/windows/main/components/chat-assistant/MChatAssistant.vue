@@ -83,12 +83,12 @@ import {
   ErrorCircleIcon,
   RefreshIcon
 } from 'tdesign-icons-vue-next'
-import RChatTool from '@/windows/main/components/chat/chat-assistant/RChatTool.vue'
-import RChatThink from '@/windows/main/components/chat/chat-assistant/RChatThink.vue'
-import RChatImage from '@/windows/main/components/chat/chat-assistant/RChatImage.vue'
-import FileProductList from '@/windows/main/components/chat/chat-assistant/FileProductList.vue'
+import RChatTool from '@/windows/main/components/chat-assistant/RChatTool.vue'
+import RChatThink from '@/windows/main/components/chat-assistant/RChatThink.vue'
+import RChatImage from '@/windows/main/components/chat-assistant/RChatImage.vue'
+import FileProductList from '@/windows/main/components/chat-assistant/FileProductList.vue'
 import { ChatContent } from '@tdesign-vue-next/chat'
-import RChatActionbar from '@/windows/main/components/chat/RChatActionbar.vue'
+import RChatActionbar from '@/windows/main/components/RChatActionbar.vue'
 import { LOADING_TEXTS } from '@/global/Constant'
 
 const props = defineProps({

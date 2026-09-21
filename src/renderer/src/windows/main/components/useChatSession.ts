@@ -1,7 +1,7 @@
 import type { ChatRequestParams, ChatType } from '@/windows/main/modules/chat'
 import { getChatSession, getSandboxDir, releaseChatSession } from '@/windows/main/modules/chat'
 import type { ChatMessage, ThinkingEffort, TokenBreakdown, UserMessage } from '@/domain'
-import type { ChatSenderInitial } from '@/windows/main/components/chat/sender/chatSenderInitial'
+import type { ChatSenderInitial } from '@/windows/main/components/sender/chatSenderInitial'
 import { INTERACTIVE_KEY } from '@/windows/main/modules/chat/agent/interactive'
 import { readSubAgentContent, getRunningSubAgentMessages } from '@/windows/main/modules/subagent'
 import {
@@ -9,8 +9,8 @@ import {
   lastAssistantIndexOf,
   type SubAgentInfo
 } from '@/windows/main/modules/chat/agent/agentMessages'
-import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/windows/main/components/chat/design/canvasNodeBridge'
-import { HTML_ELEMENT_PICK_KEY, type HtmlElementRef } from '@/windows/main/components/chat/design/htmlElementBridge'
+import { CANVAS_NODE_PICK_KEY, type CanvasNodeRef } from '@/windows/main/components/design/canvasNodeBridge'
+import { HTML_ELEMENT_PICK_KEY, type HtmlElementRef } from '@/windows/main/components/design/htmlElementBridge'
 import { DEFAULT_CONTEXT_WINDOW } from '@/global/Constant'
 import { useSettingAiStore } from '@/windows/main/store'
 

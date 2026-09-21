@@ -4,7 +4,7 @@ import { createArticleTools } from '@/windows/main/modules/tool/components/artic
 import { createDesignDrawTool } from '@/windows/main/modules/tool/components/canvas/designDraw'
 import { gzhStyleTools, gzhTrendTools } from '@/windows/main/modules/tool/components/gzh'
 import { GZH_SKILLS } from './skills'
-import GzhAside from '@/windows/main/components/chat/aside/writing/gzh/GzhAside.vue'
+import GzhAside from '@/windows/main/components/aside/writing/gzh/GzhAside.vue'
 
 /**
  * 公众号场景基础约定（与文章创作共享文章项目库，产出为 .md 文档）：

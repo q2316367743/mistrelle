@@ -6,8 +6,8 @@ import { createDesignHtmlTools } from '@/windows/main/modules/tool/components/de
 import { createDesignTools } from '@/windows/main/modules/tool/components/design'
 import { hasImageGenerateAccess } from '@/windows/main/modules/tool/components/design/imageGenerate'
 import { hasHumanizeAccess } from '@/windows/main/modules/tool/components/design/humanize'
-import DesignAside from '@/windows/main/components/chat/aside/design/DesignAside.vue'
-import HtmlDesignAside from '@/windows/main/components/chat/aside/design/HtmlDesignAside.vue'
+import DesignAside from '@/windows/main/components/aside/design/DesignAside.vue'
+import HtmlDesignAside from '@/windows/main/components/aside/design/HtmlDesignAside.vue'
 
 /**
  * 设计创意场景（双渲染引擎叶子，创建时锁定）：

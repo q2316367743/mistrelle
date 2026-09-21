@@ -8,8 +8,8 @@ import {
   createHumanizeTool,
   hasHumanizeAccess
 } from '@/windows/main/modules/tool/components/design/humanize'
-import ArticleAside from '@/windows/main/components/chat/aside/writing/article/ArticleAside.vue'
-import NovelAside from '@/windows/main/components/chat/aside/writing/novelShort/NovelAside.vue'
+import ArticleAside from '@/windows/main/components/aside/writing/article/ArticleAside.vue'
+import NovelAside from '@/windows/main/components/aside/writing/novelShort/NovelAside.vue'
 
 /**
  * 写作通用约定（原 CHAT_TYPE_CONFIG.writing.prompt 按子场景分流的两段文本，摊平为各自叶子的基础段）：

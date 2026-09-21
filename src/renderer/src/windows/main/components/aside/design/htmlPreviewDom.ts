@@ -1,4 +1,4 @@
-import type { HtmlTreeNode } from '@/windows/main/components/chat/design/htmlElementBridge'
+import type { HtmlTreeNode } from '@/windows/main/components/design/htmlElementBridge'
 
 /**
  * HTML 设计稿预览的 iframe DOM 工具（纯函数，从 HtmlDesignPreview 拆出守行数红线）。

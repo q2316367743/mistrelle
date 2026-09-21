@@ -87,8 +87,8 @@ import {
   getDesignHtmlStore
 } from '@/windows/main/modules/designHtml'
 import type { ChatStatus } from '@/windows/main/modules/chat'
-import type { HtmlTreeNode } from '@/windows/main/components/chat/design/htmlElementBridge'
-import { HTML_ELEMENT_PICK_KEY } from '@/windows/main/components/chat/design/htmlElementBridge'
+import type { HtmlTreeNode } from '@/windows/main/components/design/htmlElementBridge'
+import { HTML_ELEMENT_PICK_KEY } from '@/windows/main/components/design/htmlElementBridge'
 import HtmlDesignPreview from './HtmlDesignPreview.vue'
 import HtmlElementTree from './HtmlElementTree.vue'
 import { useHtmlDesignActions } from './useHtmlDesignActions'

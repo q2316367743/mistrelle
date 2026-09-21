@@ -22,7 +22,7 @@
 </template>
 <script lang="ts" setup>
 import { prepareDesignHtmlDocument, type HtmlDesignDoc } from '@/windows/main/modules/designHtml'
-import type { HtmlTreeNode } from '@/windows/main/components/chat/design/htmlElementBridge'
+import type { HtmlTreeNode } from '@/windows/main/components/design/htmlElementBridge'
 import {
   applySelection,
   buildTree,

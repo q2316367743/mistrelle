@@ -18,14 +18,14 @@
 import { computed } from 'vue'
 import type { ToolCallContent } from '@/domain'
 import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
-import AskChatTool from '@/windows/main/components/chat/chat-assistant/tool/AskChatTool.vue'
-import FontPickChatTool from '@/windows/main/components/chat/chat-assistant/tool/FontPickChatTool.vue'
-import ConfirmChatTool from '@/windows/main/components/chat/chat-assistant/tool/ConfirmChatTool.vue'
-import DefaultChatTool from '@/windows/main/components/chat/chat-assistant/tool/DefaultChatTool.vue'
-import FileChatTool from '@/windows/main/components/chat/chat-assistant/tool/FileChatTool.vue'
-import ShellChatTool from '@/windows/main/components/chat/chat-assistant/tool/ShellChatTool.vue'
-import SkillChatTool from '@/windows/main/components/chat/chat-assistant/tool/SkillChatTool.vue'
-import SubAgentChatTool from '@/windows/main/components/chat/chat-assistant/tool/SubAgentChatTool.vue'
+import AskChatTool from '@/windows/main/components/chat-assistant/tool/AskChatTool.vue'
+import FontPickChatTool from '@/windows/main/components/chat-assistant/tool/FontPickChatTool.vue'
+import ConfirmChatTool from '@/windows/main/components/chat-assistant/tool/ConfirmChatTool.vue'
+import DefaultChatTool from '@/windows/main/components/chat-assistant/tool/DefaultChatTool.vue'
+import FileChatTool from '@/windows/main/components/chat-assistant/tool/FileChatTool.vue'
+import ShellChatTool from '@/windows/main/components/chat-assistant/tool/ShellChatTool.vue'
+import SkillChatTool from '@/windows/main/components/chat-assistant/tool/SkillChatTool.vue'
+import SubAgentChatTool from '@/windows/main/components/chat-assistant/tool/SubAgentChatTool.vue'
 
 const props = defineProps({
   content: {

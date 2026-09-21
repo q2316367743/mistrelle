@@ -79,8 +79,8 @@ import {
 } from 'tdesign-icons-vue-next'
 import type { TreeOptionData, TreeNodeModel } from 'tdesign-vue-next'
 import { openFilePreview } from '@/components/preview/FilePreviewDialog'
-import TodoList from '@/windows/main/components/chat/TodoList.vue'
-import AgentHistoryList, { type AgentHistoryItem } from '@/windows/main/components/chat/AgentHistoryList.vue'
+import TodoList from '@/windows/main/components/TodoList.vue'
+import AgentHistoryList, { type AgentHistoryItem } from '@/windows/main/components/AgentHistoryList.vue'
 
 interface WorkspaceTreeNode {
   label: string

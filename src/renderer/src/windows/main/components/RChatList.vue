@@ -84,8 +84,8 @@ import {
   UserMessage
 } from '@/domain'
 import { toolPhaseOf } from '@/windows/main/modules/chat/agent/agentMessages'
-import MChatUser from '@/windows/main/components/chat/chat-user/MChatUser.vue'
-import MChatAssistant from '@/windows/main/components/chat/chat-assistant/MChatAssistant.vue'
+import MChatUser from '@/windows/main/components/chat-user/MChatUser.vue'
+import MChatAssistant from '@/windows/main/components/chat-assistant/MChatAssistant.vue'
 import type { PropType } from 'vue'
 
 const props = defineProps({

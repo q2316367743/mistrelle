@@ -36,9 +36,9 @@
 <script lang="ts" setup>
 import { ChatContent } from '@tdesign-vue-next/chat'
 import type { ChatMessage } from '@/domain'
-import RChatThink from '@/windows/main/components/chat/chat-assistant/RChatThink.vue'
-import RChatImage from '@/windows/main/components/chat/chat-assistant/RChatImage.vue'
-import DefaultChatTool from '@/windows/main/components/chat/chat-assistant/tool/DefaultChatTool.vue'
+import RChatThink from '@/windows/main/components/chat-assistant/RChatThink.vue'
+import RChatImage from '@/windows/main/components/chat-assistant/RChatImage.vue'
+import DefaultChatTool from '@/windows/main/components/chat-assistant/tool/DefaultChatTool.vue'
 
 defineProps<{
   messages: ChatMessage[]

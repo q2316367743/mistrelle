@@ -19,7 +19,7 @@ import {
 import { MessageUtil } from '@/utils/modal'
 import { ensureFontsForDoc, getCanvasStore, buildDocElements } from '@/windows/main/modules/canvas'
 import type { CanvasDoc, CanvasNode } from '@/windows/main/modules/canvas'
-import { CANVAS_NODE_PICK_KEY } from '@/windows/main/components/chat/design/canvasNodeBridge'
+import { CANVAS_NODE_PICK_KEY } from '@/windows/main/components/design/canvasNodeBridge'
 
 /** 双击命中的元素最小结构（leafer 2.2.9 的 d.ts 被混淆，用本地接口收窄，避免 any） */
 interface CanvasTapTarget {

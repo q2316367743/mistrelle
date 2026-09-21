@@ -4,7 +4,7 @@ import {
   hasImageGenerateAccess
 } from '@/windows/main/modules/tool/components/design/imageGenerate'
 import { createDesignDrawTool } from '@/windows/main/modules/tool/components/canvas/designDraw'
-import OfficeAside from '@/windows/main/components/chat/aside/OfficeAside.vue'
+import OfficeAside from '@/windows/main/components/aside/OfficeAside.vue'
 
 /**
  * 日常办公场景（默认家族，无子场景）：

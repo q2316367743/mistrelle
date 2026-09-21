@@ -34,7 +34,7 @@ import {
   RectangleIcon,
   TextIcon
 } from 'tdesign-icons-vue-next'
-import type { HtmlTreeNode } from '@/windows/main/components/chat/design/htmlElementBridge'
+import type { HtmlTreeNode } from '@/windows/main/components/design/htmlElementBridge'
 
 interface FlatNode {
   id: string
