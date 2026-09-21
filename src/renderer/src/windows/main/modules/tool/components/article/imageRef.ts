@@ -22,13 +22,18 @@ export const resolveArticleImagePath = (baseDir: string, src: string): string =>
 }
 
 /**
- * 编辑器显示用：把节点里相对路径图片解析为 file:// 绝对链接（不改节点 src，源真相仍是相对路径）。
+ * 编辑器显示用：把节点里相对路径图片解析为本地资源服务 URL（不改节点 src，源真相仍是相对路径）。
  * 非相对路径（外链 / 绝对路径）原样返回。
+ *
+ * `rev` 为图片展示版本号，「重新读取正文」时递增即让 URL 必然变化——
+ * 磁盘上的图片被覆盖（同名重生成 / 外部工具替换）时，仅靠 `pathToHref` 的时间戳
+ * 无法触发重挂载，须连带改变 URL 才能绕开缓存读到新图。
  */
-export const resolveArticleImage = (baseDir: string, src: string): string => {
+export const resolveArticleImage = (baseDir: string, src: string, rev = 0): string => {
   const trimmed = (src ?? '').trim()
   if (!isRelative(trimmed)) return src
-  return window.preload.net.pathToHref(resolveArticleImagePath(baseDir, trimmed))
+  const href = window.preload.net.pathToHref(resolveArticleImagePath(baseDir, trimmed))
+  return rev ? `${href}#rev=${rev}` : href
 }
 
 /**

@@ -53,6 +53,8 @@ const props = defineProps<{
   baseDir?: string
   /** 配图目录（assets/ 绝对路径，粘贴 / 拖入图片落盘于此） */
   assetsDir?: string
+  /** 图片展示版本号（递增即刷新全部图片 URL，详见 ArticleImage） */
+  imageRev?: number
 }>()
 
 const emit = defineEmits<{
@@ -173,7 +175,10 @@ const editor = useEditor({
       link: { openOnClick: false }
     }),
     Markdown,
-    ArticleImage.configure({ baseDir: props.baseDir ?? '' }),
+    ArticleImage.configure({
+      baseDir: props.baseDir ?? '',
+      imageRev: props.imageRev ?? 0
+    }),
     ArticleSlash.configure({ baseDir: props.baseDir ?? '', assetsDir: props.assetsDir ?? '' }),
     TableKit
   ],
@@ -227,6 +232,27 @@ const editor = useEditor({
 watch(
   () => props.editable,
   (value) => editor.value?.setEditable(value !== false)
+)
+
+/**
+ * 图片展示版本号变化（头部「重新读取」）→ 把新版本号刷到全部图片节点：
+ * 节点属性变化触发重渲染，解析出的 URL 随之改变，磁盘上被覆盖的图片得以重新加载。
+ * 只改展示属性，不动 src（相对路径源真相）与 markdown 序列化结果。
+ */
+watch(
+  () => props.imageRev ?? 0,
+  (rev) => {
+    const ed = editor.value
+    if (!ed) return
+    const { tr } = ed.state
+    let touched = false
+    ed.state.doc.descendants((node, pos) => {
+      if (node.type.name !== 'image') return
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, imageRev: rev })
+      touched = true
+    })
+    if (touched) ed.view.dispatch(tr)
+  }
 )
 
 /** 外部内容变化（切换文章重挂载由父级 :key 处理，此处兜底外部写入）时仅在确有差异时同步 */

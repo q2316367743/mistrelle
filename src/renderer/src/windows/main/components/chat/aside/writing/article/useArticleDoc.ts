@@ -54,6 +54,14 @@ export const useArticleDoc = (
   /** 配图目录（上传 / 粘贴 / 生图落盘于此） */
   const assetsDir = computed(() => window.preload.path.join(root.value, 'assets'))
 
+  /**
+   * 图片展示版本号：递增即让正文全部图片 URL 换新（`ArticleImage` 派生属性 + `#rev=N`）。
+   * 用于「重新读取正文」——磁盘上的图片被覆盖（同名重生成、外部工具替换）时，
+   * 仅重读 markdown 文本不会触发 <img> 重新请求，须连带换 URL 才能看到新图。
+   * 文章 / 类型切换时一并自增，保证跨文章同名图片不串用旧缓存。
+   */
+  const imageRev = ref(0)
+
   // ─── 正文加载与落盘 ────────────────────────────────────────────────
 
   const loadContent = async (): Promise<void> => {
@@ -114,6 +122,7 @@ export const useArticleDoc = (
     activeId.value = id
     activeType.value = articles.value.find((a) => a.id === id)?.types[0]?.type ?? ''
     content.value = ''
+    imageRev.value++
     await loadContent()
   }
 
@@ -123,6 +132,7 @@ export const useArticleDoc = (
     lastPoll = null
     activeType.value = type
     content.value = ''
+    imageRev.value++
     await loadContent()
   }
 
@@ -172,7 +182,10 @@ export const useArticleDoc = (
     }
   )
 
-  /** 刷新项目索引并保证有选中文章与类型（重开聊天自动呈现最新一篇）；刷新以磁盘为准，丢弃未落盘编辑 */
+  /**
+   * 刷新文章列表（project.json 索引）并保证有选中文章与类型（重开聊天自动呈现最新一篇）。
+   * 以磁盘为准，丢弃未落盘编辑；外部新增 / 删除的文章由此浮现。
+   */
   const reload = async (): Promise<void> => {
     saveDoc.cancel()
     dirty.value = false
@@ -252,6 +265,22 @@ export const useArticleDoc = (
     void reload()
   })
 
+  // ─── 刷新（两种语义：正文 / 列表） ─────────────────────────────────
+
+  /**
+   * 重新读取当前文章正文：以磁盘为准重读 markdown，并递增 `imageRev` 让全部图片 URL 换新。
+   * 语义上等价于「重新打开这篇文章」，只有图片内容在磁盘上被替换过时才能看出来。
+   */
+  const handleReload = async (): Promise<void> => {
+    imageRev.value++
+    await reloadExternal()
+  }
+
+  /** 刷新文章列表：重读 project.json 索引（外部新增 / 删除文章由此浮现），并保留当前选中 */
+  const handleRefreshList = async (): Promise<void> => {
+    await reload()
+  }
+
   // ─── 版本操作 ─────────────────────────────────────────────────────
 
   /** 切换版本：先冲刷未落盘编辑（防旧内容经防抖写进新版本文件），再切换并重读正文 */
@@ -325,6 +354,7 @@ export const useArticleDoc = (
     dirty,
     activeMdDir,
     assetsDir,
+    imageRev,
     selectArticle,
     selectType,
     reloadExternal,
@@ -335,6 +365,7 @@ export const useArticleDoc = (
     patchArticle,
     handleReveal,
     flushSave,
-    handleRefresh: () => void reload()
+    handleReload,
+    handleRefreshList
   }
 }

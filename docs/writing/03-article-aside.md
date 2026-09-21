@@ -12,7 +12,9 @@
 - **类型 = 平台，AI 专属设定**：类型名是自由字符串（推荐 公众号/知乎/小红书 等，仅提示词层面引导），由 AI 经 article_write 自动创建；头部类型 tag 组只读展示 + 点击切换（active 高亮），无添加/删除入口。
 - **无状态维度**：status 字段已从数据模型、AI 工具（article_update）、UI 三处整体删除，旧数据读时剔除。
 - **恒可编辑**：窄栏 / 全屏共用同一套布局，编辑器始终 editable（仅去 AI 味流式期间锁定）。
-- **写完即呈现 + 刷新常驻**：AI 正文走 `article_write`（store 通道）即时驱动 UI；`file_write` 直写由 mtime 轮询兜底；头部刷新按钮（RefreshIcon）一键以磁盘为准重载（保留当前选中的文章/类型/版本，丢弃未落盘编辑并冲刷防抖写回）。
+- **写完即呈现 + 双刷新语义（2026-09-21 拆分）**：AI 正文走 `article_write`（store 通道）即时驱动 UI；`file_write` 直写由 mtime 轮询兜底。刷新拆成两个各司其职的入口：
+  - **重新读取（头部 ⟳ 按钮，`reload`）**：以磁盘为准重读**当前文章正文**（丢弃未落盘编辑并冲刷防抖写回），**并递增 `imageRev` 让正文全部图片 URL 换新**——磁盘上的图片被覆盖（同名重生成 / 外部工具替换）时，只重读 markdown 文本不会触发 `<img>` 重新请求，必须换 URL 才能看到新图。语义 ≈「重新打开这篇文章」。
+  - **刷新文章列表（标题下拉 footer 按钮，`refresh-list`）**：重读 `project.json` 索引（`store.refresh()`），让磁盘上**新增 / 删除的文章**浮现到标题下拉里，保留当前选中（选中项已不存在才回落最新一篇）。注意项目索引本就是磁盘事实源，没有「列表改了但没读到」的陈旧问题，此入口解决的是「外部新增 / 删除的文章不在下拉里」。
 - **版本 = 演进史**：时间线下拉（第 N 版 · 来源），点击条目即切换（无「设为当前」按钮），删除按钮 hover 显示；手动编辑永不自动建版。
 - **配图并入编辑器**：工具栏插图（上传）/ 生图（AI 直出）直接插入光标处；封面收敛为头部缩略位（16:9，随类型走）。
 - 风格/体裁维度已删除：平台差异化文风由提示词内置模板按 type 承担。**「AI 重写」按钮已删（2026-09-13 七轮拍板）**：重写锁定当前类型，而类型由 AI 专属设定，重写入口应收敛到聊天（用户直接对 AI 说，`article_write` + `newVersion=true`）；`PROMPT_INPUT_KEY` 桥（promptInputBridge.ts / useChatSession provide / LChatSender addTextPrompt·sendTextPrompt）随之整体删除。
@@ -27,7 +29,7 @@ src/renderer/src/windows/main/components/chat/aside/writing/
     ├── useArticleDoc.ts             # 数据层：store 共享、自动联动（id diff + contentRevs + mtime 轮询）、类型/正文/版本读写、元信息
     ├── useArticleAssist.ts          # 去 AI 味动作编排（按类型产出 humanize 新版本，流式期间 suspended 锁定）
     └── components/
-        ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select，切换文章）+ 类型下拉（t-select 切换）+ 信息面板（t-popup：标题可编辑 t-input + 简介/提纲只读）+ 刷新按钮
+        ├── ArticleDocHeader.vue     # 文档头部：封面缩略 + 文章标题下拉（t-select 切换文章，#footer 内「刷新文章列表」）+ 类型下拉（t-select 切换）+ 信息面板（t-popup：标题可编辑 t-input + 简介/提纲只读）+ 重新读取按钮
         ├── ArticleCoverThumb.vue    # 封面缩略位：t-popup（AI 生成 / 上传 / 复制图片 / 文件夹 / 移除，16:9）
         ├── ArticleToolbar.vue       # 工具栏：版本下拉 + 格式区 + 插图/生图（恒一行，按宽度自适应）
         ├── ArticleFormatButtons.vue # 格式区：内联按钮 + 「更多」触发（2026-09-14 新增）
@@ -41,7 +43,7 @@ src/renderer/src/windows/main/components/chat/aside/writing/
         ├── ArticleEditor.vue        # tiptap WYSIWYG（恒可编辑），expose runCommand/setBlockType/insertImage 等
         ├── articleEditorCommands.ts # 编辑器状态快照 / 命令派发 / 块类型（纯函数）
         ├── articleEditorImages.ts   # 图片落盘 + 图片节点寻址（选中/替换/删除/计数）
-        ├── ArticleImage.ts          # 图片节点：相对路径存 src，渲染时解析 file:// 显示
+        ├── ArticleImage.ts          # 图片节点：相对路径存 src，渲染时解析本地资源 URL 显示（imageRev 派生属性驱动刷新）
         └── ArticleSlash.ts          # 斜杠命令
 ```
 
@@ -59,7 +61,7 @@ src/renderer/src/windows/main/components/chat/aside/writing/
 ## 布局（窄栏 / 全屏统一）
 
 ```
-Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章）+ 类型下拉（t-select，AI 设定后在此切换）+ 信息ⓘ（标题可编辑 + 简介/提纲只读）+ 刷新⟳
+Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章；下拉 footer = 刷新文章列表）+ 类型下拉（t-select，AI 设定后在此切换）+ 信息ⓘ（标题可编辑 + 简介/提纲只读）+ 重新读取⟳
 工具栏（第N版·来源 ▾ │ [正文▾] B I … ⋯ │ 插图 生图）——恒为一行；窄栏时装不下的收进 ⋯ 面板
 tiptap 编辑器（flex:1，恒可编辑）
 底部动作条（去AI味/停止 · 更多 ▾ ·        N 字）
@@ -74,6 +76,10 @@ tiptap 编辑器（flex:1，恒可编辑）
 - **通道一（主）**：AI `article_write` → `store.writeContent(unitId, content, ...)` → bump `contentRevs["${articleId}::${type}"]`（内存 reactive Map，不落盘）→ useArticleDoc watch 即时重读正文。`newVersion=true` 走 `createVersion(source:'rewrite')` 返回新 id，写入的版本同时设为激活版本（侧边栏自动切过去）。
 - **通道二（兜底）**：3s `stat` 轮询当前类型激活版本文件 mtime（仿 NovelAside），变化即重读——兼容 AI 用通用 `file_write` 直写的历史路径。
 - **自动选中**：文章 id 集合增量 watcher（仿 NovelAside `seenNovelIds`）——AI 新建且当前无选中 → 自动激活最新一篇（取其首个类型）；当前文章被删 → 回落最新一篇；重开聊天（reload）无选中 → 自动呈现最新一篇。类型集合 watcher：AI 追加类型（article_write 带 type 自动创建）时自动选中新类型。
+- **图片展示版本号 `imageRev`（2026-09-21）**：`useArticleDoc` 持有的自增计数，同时传给编辑器（`ArticleImage` 扩展的 `imageRev` 选项）与节点派生属性。**不会**写入 `project.json`，也不会进入 markdown（派生属性 `rendered: false` 自动排除）。
+  - 变化点：头部「重新读取」`handleReload` 递增；文章 / 类型切换（`selectArticle` / `selectType`）也递增——跨文章浏览时防止同名图片串用旧缓存。
+  - 生效路径：节点属性变化 → `renderHTML` 重跑 → `resolveArticleImage(baseDir, src, rev)` 在 `pathToHref` 的时间戳后追加 `#rev=N`。⚠️ 只有属性真变化，ProseMirror 才会重渲染该节点（`pathToHref` 的 `?_t=` 每次调用都变，但节点 URL 是渲染时固化进 DOM 的，不重渲染就不会重新请求）。
+  - 编辑器 `:key` 已含文章/类型/版本，仍然保留 `imageRev` 增量刷新的原因：`key` 重挂载会**丢失滚动位置与光标**，而「重新读取」是轻量原地刷新。
 - **类型切换**：`selectType` 先 `flushSave()` 冲刷旧类型未落盘编辑，再切换并重读；编辑器 `:key = activeId:activeType:activeVersionId` 切换即重挂。
 - **冲突保护**：本地有未落盘编辑（`dirty`）时轮询跳过（不覆盖输入）；AI 显式写入（contentRevs / 轮询命中）时以磁盘为准覆盖本地并 `saveDoc.cancel()`；去 AI 味流式期间 `suspended=true` 暂停轮询与外部重读。
 - 编辑落盘：`ArticleEditor` change → 防抖 800ms 写回当前类型激活版本文件；**永不自动建版**。
@@ -108,7 +114,7 @@ tiptap 编辑器（flex:1，恒可编辑）
     插图 → `ArticleAside.buildImageContext()` = 文章 `title/summary/outline`（仅供理解背景）+ **编辑器选中文字**（画面主体以此为准）。
   - 提示词里选中片段置于最前并标注「画面的主体内容以此为准」，提纲标注「仅供理解上下文，不要照提纲画全景」。
   - 单个语境字段按 1200 字符截断（`MAX_FIELD_CHARS`）。
-- 展示 URL：`window.preload.net.pathToHref(...)`（本地事件服务 /file 资源面）。
+- 展示 URL：`window.preload.net.pathToHref(...)`（本地事件服务 /file 资源面，自带 `?_t=` 时间戳）；正文图片再叠加 `imageRev` 派生属性（`#rev=N`），见上文「图片展示版本号」。
 - 两种路径约定并存：正文引用相对 md 目录（`../assets/xxx.png`），登记相对 articles/（`assets/xxx.png`），见 02/04 号文档。
 - **AI 配图**（聊天侧）不走本弹窗：由生图型子 Agent（`spawn_agent(type="image")`）产出后经 `article_update` 登记，见 02 号文档。
 
@@ -125,7 +131,7 @@ tiptap 编辑器（flex:1，恒可编辑）
 ## 编辑器（tiptap）
 
 - 依赖：`@tiptap/markdown`、`@tiptap/extension-table`；全家桶 `^3.29.2`（markdown 序列化规格在 3.29 才进入各 extension 包，勿回退）。
-- props：`editable?: boolean`（默认 true；去 AI 味流式期间传 false；NovelEditor 复用时按自身 mode 映射）。
+- props：`editable?: boolean`（默认 true；去 AI 味流式期间传 false；NovelEditor 复用时按自身 mode 映射）、`imageRev?: number`（图片展示版本号，见上文）。
 - expose：`insertImage(rel)`（有选区插到选中块之后、无选区插光标处，不吞选中文字）/ `getSelection()`（读取当前选区文本，供插图弹窗起草描述与工具栏启用判定）+ 格式命令 `toggleBold / toggleItalic / toggleHeading2 / toggleBulletList / toggleBlockquote`（工具栏按钮经外壳转发调用）。
 - emits：`change`（markdown 输出）/ `image-added`（粘贴拖入落盘后登记）/ `selection-change`（选区变化携带选中文本，驱动插图生图启用）。
 - `contentType: 'markdown'` 加载，`onUpdate` 用 `editor.getMarkdown()` 输出；图片节点（`ArticleImage.ts`）`src` 存相对路径（源真相），渲染时经 `baseDir` 解析。

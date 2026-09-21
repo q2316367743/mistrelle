@@ -15,7 +15,22 @@
         borderless
         placeholder="文章标题"
         @change="onArticleChange"
-      />
+      >
+        <template #panelBottomContent>
+          <div class="doc-header__select-footer">
+            <t-button
+              size="small"
+              variant="text"
+              theme="primary"
+              title="重新读取文章列表（可见磁盘新增 / 删除的文章）"
+              @click="onRefreshList"
+            >
+              <template #icon><refresh-icon /></template>
+              刷新文章列表
+            </t-button>
+          </div>
+        </template>
+      </t-select>
       <t-select
         class="doc-header__type"
         :value="activeType || undefined"
@@ -60,8 +75,8 @@
       <t-button
         variant="text"
         shape="square"
-        title="刷新（读取磁盘最新内容）"
-        @click="emit('refresh')"
+        title="重新读取（以磁盘为准重读正文，并刷新图片显示）"
+        @click="emit('reload')"
       >
         <template #icon><refresh-icon /></template>
       </t-button>
@@ -96,7 +111,10 @@ const emit = defineEmits<{
   (e: 'patch-article', patch: ArticleUpdatePatch): void
   (e: 'switch-article', id: string): void
   (e: 'switch-type', type: string): void
-  (e: 'refresh'): void
+  /** 重新读取当前文章正文（以磁盘为准，并刷新图片显示） */
+  (e: 'reload'): void
+  /** 刷新文章列表（重读 project.json 索引） */
+  (e: 'refresh-list'): void
 }>()
 
 // ─── 文章：select 下拉切换（标题编辑在 ⓘ 面板内） ───────────────────
@@ -107,6 +125,16 @@ const articleOptions = computed(() =>
 
 const onArticleChange = (value: unknown): void => {
   if (typeof value === 'string' && value !== props.article.id) emit('switch-article', value)
+}
+
+/**
+ * 刷新文章列表：t-select 下拉点 footer 按钮不会自动收起面板
+ * （tdesign 仅自身监听 change），故先主动失焦收起再刷新。
+ */
+const onRefreshList = (): void => {
+  const active = document.activeElement
+  if (active instanceof HTMLElement) active.blur()
+  emit('refresh-list')
 }
 
 // ─── 类型：标题旁下拉选择项（类型由 AI 设定，这里只切换） ──────────
@@ -194,6 +222,14 @@ const onTitleEnter = (_value: unknown, context: { e: KeyboardEvent }): void => {
 .doc-header__type {
   flex-shrink: 0;
   width: 100px;
+}
+
+/* 标题下拉 footer：刷新文章列表（选择器面板底部整行入口） */
+.doc-header__select-footer {
+  display: flex;
+  justify-content: center;
+  padding: 4px 8px;
+  border-top: 1px solid var(--td-border-level-1-color);
 }
 
 .doc-info-panel {

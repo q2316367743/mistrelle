@@ -12,7 +12,8 @@
         @patch-article="patchArticle"
         @switch-article="(id: string) => guardAction(() => void selectArticle(id))"
         @switch-type="(t: string) => guardAction(() => void selectType(t))"
-        @refresh="handleRefresh"
+        @reload="handleReload"
+        @refresh-list="handleRefreshList"
       />
       <article-toolbar
         v-if="activeEntry"
@@ -35,6 +36,7 @@
         v-if="activeEntry"
         ref="editorRef"
         :key="editorKey"
+        :image-rev="imageRev"
         :content="content"
         :editable="!humanizing"
         :base-dir="activeMdDir"
@@ -140,6 +142,7 @@ const {
   content,
   activeMdDir,
   assetsDir,
+  imageRev,
   selectArticle,
   selectType,
   handleContentChange,
@@ -149,7 +152,8 @@ const {
   patchArticle,
   handleReveal,
   flushSave,
-  handleRefresh
+  handleReload,
+  handleRefreshList
 } = useArticleDoc(props, suspended)
 
 const {
