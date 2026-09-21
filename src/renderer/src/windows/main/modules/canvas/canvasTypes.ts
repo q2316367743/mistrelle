@@ -287,6 +287,9 @@ export type CanvasBatchOp =
 
 // ── 文档 ──────────────────────────────────────────────────
 
+/** 画布产物来源（扩展位）：upload = 由手动上传图片生成（删除时连带清理 uploads/ 源图片） */
+export type CanvasDocSource = 'upload'
+
 /** 画布文档：schema 2 = 图层树模型（旧扁平 shapes 模型不再兼容） */
 export interface CanvasDoc {
   /** 文件名（不含扩展名），固定 canvas-{version} */
@@ -304,15 +307,19 @@ export interface CanvasDoc {
   nodes: CanvasNode[]
   /** 调色板：name → 颜色，字段可用 $name 引用，保证全页色彩和谐 */
   palette: Record<string, string>
+  /** 产物来源标记（缺省 = AI 创建的常规画布） */
+  source?: CanvasDocSource
 }
 
-/** 画布文件列表项（供 t-select 选择不同画布） */
+/** 画布文件列表项（供侧边栏面板选择不同画布） */
 export interface CanvasFileInfo {
   name: string
   version: number
   title?: string
   path: string
   updatedTime: number
+  /** 来源标记（与 CanvasDoc.source 同步，供面板区分「画布 / 上传图片」并给出不同操作） */
+  source?: CanvasDocSource
 }
 
 /** 画布工具运行所需上下文（sandboxDir 需实时读取，支持切换后仍生效） */

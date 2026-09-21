@@ -1,5 +1,7 @@
 export * from './canvasTypes'
 export * from './CanvasStore'
+export * from './canvasDocOps'
+export * from './canvasUploads'
 export * from './canvasLayout'
 export * from './canvasRender'
 export * from './canvasPsd'

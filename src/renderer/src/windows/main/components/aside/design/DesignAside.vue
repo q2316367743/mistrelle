@@ -1,16 +1,7 @@
 <template>
   <div class="design-aside">
     <div class="design-aside__toolbar">
-      <t-select
-        v-model="selected"
-        class="design-aside__select"
-        :options="canvasOptions"
-        clearable
-        placeholder="选择画布"
-        :empty="emptyText"
-        :disabled="isChatRunning"
-        @change="handleSelect"
-      />
+      <canvas-file-picker :sandbox="sandbox" :disabled="isChatRunning" />
       <t-button theme="primary" variant="text" shape="square" title="刷新" @click="handleRefresh">
         <template #icon>
           <refresh-icon />
@@ -95,6 +86,7 @@ import type { ChatStatus } from '@/windows/main/modules/chat'
 import CanvasRenderer from './CanvasRenderer.vue'
 import CanvasElementTree from './CanvasElementTree.vue'
 import ElementPropertyPanel from './ElementPropertyPanel.vue'
+import CanvasFilePicker from './components/CanvasFilePicker.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -116,7 +108,6 @@ const props = withDefaults(
 
 const store = computed(() => getCanvasStore(props.sandbox ?? ''))
 
-const selected = ref<number | undefined>(undefined)
 const busy = ref(false)
 /** 画布选中节点 id（元素树 ↔ 画布双向联动的唯一数据源） */
 const selectedId = ref<string | undefined>(undefined)
@@ -128,20 +119,6 @@ const handleElementSelect = (id: string | undefined) => {
   selectedId.value = id
 }
 
-const canvasOptions = computed(() =>
-  store.value.files.value.map((file) => ({
-    label: file.title ? `${file.title}（${file.name}）` : file.name,
-    value: file.version
-  }))
-)
-
-const emptyText = '请先让 AI 创建画布'
-
-/** 文件列表刷新后，若当前已有打开的画布则保持选中态 */
-const syncSelected = () => {
-  selected.value = store.value.current.value?.version
-}
-
 onMounted(async () => {
   await store.value.refreshFiles()
   const files = store.value.files.value
@@ -149,29 +126,7 @@ onMounted(async () => {
   if (files.length && !store.value.current.value) {
     await store.value.open(files[files.length - 1].version)
   }
-  syncSelected()
 })
-
-watch(
-  () => store.value.files.value,
-  () => syncSelected(),
-  { deep: true }
-)
-
-// AI 通过 canvas_create / canvas_open 变更当前画布 → 同步下拉选中
-watch(
-  () => store.value.current.value?.version,
-  (version) => {
-    selected.value = version
-  }
-)
-
-const handleSelect = (version: unknown) => {
-  const v = typeof version === 'number' ? version : undefined
-  if (v == null) return
-  if (store.value.current.value?.version === v) return
-  void store.value.open(v)
-}
 
 const handleRefresh = () => {
   void store.value.refreshFiles()
@@ -231,12 +186,10 @@ const handleAction: DropdownProps['onClick'] = (data) => {
   else if (data.value === 'download-png') void handleDownload('png')
   else if (data.value === 'download-psd') void handleDownload('psd')
   else if (data.value === 'folder') {
-    if (selected.value) {
+    const version = store.value.current.value?.version
+    if (version) {
       window.preload.inject.shell.showItemInFolder(
-        window.preload.path.join(
-          buildCanvasOutputsDir(props.sandbox ?? ''),
-          buildCanvasFileName(selected.value)
-        )
+        window.preload.path.join(buildCanvasOutputsDir(props.sandbox ?? ''), buildCanvasFileName(version))
       )
     } else {
       window.preload.inject.shell.openPath(
@@ -257,11 +210,6 @@ const handleAction: DropdownProps['onClick'] = (data) => {
     display: flex;
     align-items: center;
     gap: 4px;
-  }
-
-  &__select {
-    flex: 1;
-    min-width: 0;
   }
 
   &__body {
