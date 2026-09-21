@@ -46,7 +46,7 @@
         @selection-change="handleSelectionChange"
         @state-change="handleStateChange"
       />
-      <article-doc-actions
+      <gzh-doc-actions
         v-if="activeEntry"
         :humanizing="humanizing"
         :words="liveWords"
@@ -58,34 +58,38 @@
         @detect="handleDetect"
         @reveal="handleReveal"
         @compare="handleCompareVersion"
+        @open-panel="activePanel = $event"
       />
-      <t-tabs v-if="activeEntry" v-model="activePanel" class="gzh-aside__panels">
-        <t-tab-panel value="layout" label="排版预览">
-          <gzh-layout-panel
-            class="gzh-aside__panel-body"
-            :content="content"
-            :md-dir="activeMdDir"
-            :disabled="humanizing || !content.trim()"
-          />
-        </t-tab-panel>
-        <t-tab-panel value="qc" label="正文质检">
-          <qc-section
-            class="gzh-aside__panel-body"
-            :title="activeArticle.title"
-            :content="content"
-            :model="chatModel"
-            :disabled="humanizing"
-          />
-        </t-tab-panel>
-      </t-tabs>
+      <gzh-panel-overlay
+        v-if="activeEntry"
+        v-show="activePanel"
+        :title="panelTitle"
+        @close="activePanel = null"
+      >
+        <gzh-layout-panel
+          v-show="activePanel === 'layout'"
+          class="gzh-aside__panel-body"
+          :content="content"
+          :md-dir="activeMdDir"
+          :disabled="humanizing || !content.trim()"
+        />
+        <qc-section
+          v-show="activePanel === 'qc'"
+          class="gzh-aside__panel-body"
+          :title="activeArticle.title"
+          :content="content"
+          :model="chatModel"
+          :disabled="humanizing"
+        />
+      </gzh-panel-overlay>
     </template>
     <div v-else class="gzh-aside__empty">
       <div class="empty-card">
         <div class="empty-card__title">公众号创作</div>
         <p>在左侧聊天告诉 AI 选题与要求，文章创建后会自动出现在这里。</p>
         <p>
-          创作流程：聊选题（可查爆款数据）→ AI 按公众号体裁成稿 → 在此编辑润色 / 去 AI 味 /
-          质检 → 排版预览选风格一键复制，粘贴进公众号编辑器。
+          创作流程：聊选题（可查爆款数据）→ AI 按公众号体裁成稿 → 在此编辑润色 / 去 AI 味 / 质检 →
+          排版预览选风格一键复制，粘贴进公众号编辑器。
         </p>
       </div>
     </div>
@@ -104,7 +108,8 @@ import { resolveGzhModel } from '@/windows/main/modules/gzh/gzhAi'
 import ArticleDocHeader from '../article/components/ArticleDocHeader.vue'
 import ArticleToolbar from '../article/components/ArticleToolbar.vue'
 import ArticleEditor from '../article/components/ArticleEditor.vue'
-import ArticleDocActions from '../article/components/ArticleDocActions.vue'
+import GzhDocActions from './components/GzhDocActions.vue'
+import GzhPanelOverlay from './components/GzhPanelOverlay.vue'
 import GzhLayoutPanel from './components/GzhLayoutPanel.vue'
 import QcSection from './components/QcSection.vue'
 
@@ -174,8 +179,11 @@ const liveWords = computed(() => content.value.replace(/\s+/g, '').length)
 /** 当前对话模型（质检直呼用）：最后一条 user 消息的 provide/model */
 const chatModel = computed(() => resolveGzhModel(props.messages ?? []))
 
-/** gzh 能力面板：排版预览 / 正文质检 */
-const activePanel = ref<'layout' | 'qc'>('layout')
+/** gzh 能力面板：排版预览 / 正文质检（覆盖整个侧栏的浮层，null = 关闭） */
+const activePanel = ref<'layout' | 'qc' | null>(null)
+
+const PANEL_TITLES: Record<'layout' | 'qc', string> = { layout: '排版预览', qc: '正文质检' }
+const panelTitle = computed(() => (activePanel.value ? PANEL_TITLES[activePanel.value] : ''))
 
 // ─── 编辑器接线（命令 / 选区 / 状态快照 / 图片登记与生图） ───────────
 const editorRef = useTemplateRef<ArticleEditorApi>('editorRef')
@@ -237,6 +245,7 @@ const handleCompareVersion = async (versionId: string): Promise<void> => {
 .gzh-aside {
   height: 100%;
   box-sizing: border-box;
+  position: relative;
   display: flex;
   flex-direction: column;
   padding-left: 8px;
@@ -247,19 +256,6 @@ const handleCompareVersion = async (versionId: string): Promise<void> => {
   :deep(.doc-toolbar),
   :deep(.doc-actions) {
     flex-shrink: 0;
-  }
-}
-
-.gzh-aside__panels {
-  flex-shrink: 0;
-  height: 320px;
-  display: flex;
-  flex-direction: column;
-  margin-top: 4px;
-  :deep(.t-tabs__content) {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
   }
 }
 

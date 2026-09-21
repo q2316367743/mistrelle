@@ -22,59 +22,34 @@
         去 AI 味
       </t-button>
     </t-tooltip>
-    <t-tooltip content="复制正文并打开朱雀官网检测">
-      <t-button size="small" variant="text" :disabled="humanizing" @click="emit('detect')">
-        <template #icon><ai-icon /></template>
-        AI 检测
-      </t-button>
-    </t-tooltip>
-    <t-tooltip content="在文件夹中显示正文文件">
-      <t-button size="small" variant="text" @click="emit('reveal')">
-        <template #icon><folder-open-icon /></template>
-        文件夹
-      </t-button>
-    </t-tooltip>
-    <t-tooltip content="复制当前正文 Markdown 到剪贴板">
-      <t-button size="small" variant="text" :disabled="humanizing" @click="emit('copy')">
-        <template #icon><copy-icon /></template>
-        复制
-      </t-button>
-    </t-tooltip>
     <t-dropdown
-      v-if="otherVersions.length"
       trigger="click"
-      placement="bottom-right"
-      min-column-width="160px"
+      placement="top-left"
+      :options="moreOptions"
       :disabled="humanizing"
-      @click="handleCompare"
+      :min-column-width="180"
+      :max-column-width="220"
+      @click="handleMoreClick"
     >
       <t-button size="small" variant="text" :disabled="humanizing">
-        <template #icon><contrast-icon /></template>
-        版本对比
+        <template #icon><more-icon /></template>
+        更多
       </t-button>
-      <t-dropdown-menu>
-        <t-dropdown-item v-for="v in otherVersions" :key="v.id" :value="v.id">
-          {{ articleVersionTitle(v) }}
-        </t-dropdown-item>
-      </t-dropdown-menu>
     </t-dropdown>
-    <t-tooltip v-else content="暂无其他版本可对比">
-      <t-button size="small" variant="text" disabled>
-        <template #icon><contrast-icon /></template>
-        版本对比
-      </t-button>
-    </t-tooltip>
+    <slot name="extra" />
     <div class="doc-actions__spacer" />
     <span class="doc-actions__words">{{ words }} 字</span>
   </div>
 </template>
 <script lang="ts" setup>
+import { h } from 'vue'
 import {
   AiEditIcon,
   AiIcon,
   ContrastIcon,
   CopyIcon,
   FolderOpenIcon,
+  MoreIcon,
   StopCircleIcon
 } from 'tdesign-icons-vue-next'
 import { DropdownProps } from 'tdesign-vue-next'
@@ -111,8 +86,38 @@ const otherVersions = computed(() =>
   [...(props.versions ?? [])].filter((v) => v.id !== props.activeVersionId).reverse()
 )
 
-const handleCompare: DropdownProps['onClick'] = (data) => {
-  emit('compare', String(data.value))
+/** 「更多」菜单：内容 / 文件 / 版本三段，用分隔线分组；版本对比平铺列出（窄栏内子菜单易被挤出屏幕） */
+const moreOptions = computed<DropdownProps['options']>(() => {
+  const options: NonNullable<DropdownProps['options']> = [
+    { content: 'AI 检测', value: 'detect', prefixIcon: () => h(AiIcon) },
+    { content: '复制正文', value: 'copy', prefixIcon: () => h(CopyIcon), divider: true },
+    { content: '在文件夹中显示', value: 'reveal', prefixIcon: () => h(FolderOpenIcon), divider: true }
+  ]
+  if (otherVersions.value.length) {
+    options.push(
+      ...otherVersions.value.map((v) => ({
+        content: articleVersionTitle(v),
+        value: v.id,
+        prefixIcon: () => h(ContrastIcon)
+      }))
+    )
+  } else {
+    options.push({
+      content: '版本对比（暂无其他版本）',
+      value: 'compare-none',
+      prefixIcon: () => h(ContrastIcon),
+      disabled: true
+    })
+  }
+  return options
+})
+
+const handleMoreClick: DropdownProps['onClick'] = (data) => {
+  const value = String(data.value)
+  if (value === 'detect') emit('detect')
+  else if (value === 'copy') emit('copy')
+  else if (value === 'reveal') emit('reveal')
+  else emit('compare', value)
 }
 
 const humanizeTooltip = computed(() => {

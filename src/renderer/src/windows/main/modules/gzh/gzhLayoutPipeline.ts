@@ -89,7 +89,7 @@ export const resolveGzhLayoutImages = async (html: string, baseDir: string): Pro
 
 /** 预览基础样式：页面留白清零 + 677px 内容宽（与公众号编辑器一致） */
 const PREVIEW_BASE_STYLE =
-  '<style id="gzh-preview-base">html,body{margin:0;padding:0;background:#f0f0f0}#gzh-content{max-width:677px;margin:0 auto;padding:12px 0;box-sizing:border-box}img{max-width:100%}</style>'
+  '<style id="gzh-preview-base">html,body{margin:0;padding:0;background:#ffffff}#gzh-content{max-width:677px;margin:0 auto;padding:12px 0;box-sizing:border-box}img{max-width:100%}</style>'
 
 /** 装配预览完整文档（iframe srcdoc 用）：图片 dataURL 化 + 基础样式 */
 export const buildGzhPreviewDoc = async (fragment: string, baseDir: string): Promise<string> => {

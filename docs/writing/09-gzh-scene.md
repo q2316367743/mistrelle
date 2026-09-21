@@ -30,7 +30,9 @@
 | `src/main/src/modules/gzh/gzhTrends.ts` + `gzhIpc.ts` | 抓取实现（Node https + no-SNI 回退）与 `gzh:trends` 通道 |
 | `src/preload/src/modules/gzh/` + `src/common/types/gzhTrends.ts` | IPC 桥（Channels + api）与三方共享契约 |
 | `src/renderer/src/types/gzh.d.ts` + `vite-env.d.ts` | `window.preload.gzh` 类型（GzhApi） |
-| `components/chat/aside/writing/gzh/GzhAside.vue` | 侧边栏：复用 article 四组件与 hooks，底部 t-tabs（排版预览 / 正文质检） |
+| `components/chat/aside/writing/gzh/GzhAside.vue` | 侧边栏：复用 article 组件与 hooks，底部动作条 + 全侧栏浮层能力面板（排版预览 / 正文质检） |
+| `components/chat/aside/writing/gzh/components/GzhDocActions.vue` | 底部动作条 gzh 变体：薄包装共享 `ArticleDocActions`，经 `#extra` 插槽注入「排版预览 / 正文质检」按钮（`open-panel` 事件） |
+| `components/chat/aside/writing/gzh/components/GzhPanelOverlay.vue` | 能力面板浮层外壳：`absolute inset:0` 覆盖整侧栏 + 头部标题 + 右上角 X（仿 `SubAgentAside`） |
 | `components/chat/aside/writing/gzh/components/GzhLayoutPanel.vue` | 风格下拉 + iframe 实时预览（677px 内容宽）+ 一键复制 |
 | `components/chat/aside/writing/gzh/components/QcSection.vue` | 正文质检卡片（自 pages/work/ 迁入并适配 aside props；原 pages/work 目录已删） |
 
@@ -50,6 +52,7 @@
 4. **QcSection 迁移适配**：原 `props.wb / props.config.modelKey` 接口作废，新 props 为自包含 `{ title, content, model, disabled }`；`articlePanelProps.ts` 不再存在。
 5. **旧数据兼容**：`writingScene` 水合回退值保持 `'article'`，存量聊天不受影响；`resolveScene` 无 default 分支，新值靠 SCENES.writing Record 穷尽约束兜底。
 6. **复制管线**：剪贴板 `text/html + text/plain` 双写（Clipboard API → execCommand 兜底）；图片转 dataURL 后进剪贴板，本地相对路径基于正文 md 目录解析，解析失败保留原样（裂图可见，不静默吞）。
+7. **能力面板浮层（2026-09-21 迭代）**：原底部 `t-tabs`（固定 320px）改为覆盖整个侧栏的浮层——`activePanel: 'layout' | 'qc' | null`，入口按钮在底部动作条（`GzhDocActions.vue` 经共享组件 `#extra` 插槽注入），浮层由 `GzhPanelOverlay.vue` 承载（`position:absolute; inset:0`，需父级 `.gzh-aside { position: relative }`）。两面板用 `v-show` 常驻挂载，关闭再打开**保留质检结果**；面板高度撑满整栏（不再受 320px 限制）。
 
 ## 二期扩展位（未搬的源包能力）
 

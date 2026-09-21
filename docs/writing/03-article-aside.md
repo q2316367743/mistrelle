@@ -37,7 +37,7 @@ src/renderer/src/windows/main/components/chat/aside/writing/
         ├── ArticleImageMenu.vue     # 选中图片的悬浮框：复制/文件夹/换图/AI 重新生成/删除（2026-09-14 新增）
         ├── LinkDialog.tsx / LinkDialogContent.vue  # 链接地址输入弹窗（命令式）
         ├── ArticleVersionPanel.vue  # 版本时间线：t-timeline 倒序（第N版·来源），点击即切换，hover 删除
-        ├── ArticleDocActions.vue    # 底部动作条：左组 = AI 检测 / 文件夹 / 去 AI 味（或停止）/ 复制；右侧 = N 字
+        ├── ArticleDocActions.vue    # 底部动作条：去 AI 味（或停止）+「更多」分组下拉（内容/文件/版本）+ #extra 插槽；右侧 = N 字
         ├── ArticleEditor.vue        # tiptap WYSIWYG（恒可编辑），expose runCommand/setBlockType/insertImage 等
         ├── articleEditorCommands.ts # 编辑器状态快照 / 命令派发 / 块类型（纯函数）
         ├── articleEditorImages.ts   # 图片落盘 + 图片节点寻址（选中/替换/删除/计数）
@@ -62,7 +62,7 @@ src/renderer/src/windows/main/components/chat/aside/writing/
 Row1 封面缩略 56px（16:9）+ 文章标题下拉（t-select，切换文章）+ 类型下拉（t-select，AI 设定后在此切换）+ 信息ⓘ（标题可编辑 + 简介/提纲只读）+ 刷新⟳
 工具栏（第N版·来源 ▾ │ [正文▾] B I … ⋯ │ 插图 生图）——恒为一行；窄栏时装不下的收进 ⋯ 面板
 tiptap 编辑器（flex:1，恒可编辑）
-底部动作条（AI 检测 · 文件夹 · 去AI味/停止 · 复制 ·        N 字）
+底部动作条（去AI味/停止 · 更多 ▾ ·        N 字）
 ```
 
 - `fullscreen` prop 保留入参但不再切换布局（仅宽度随容器变化）；编辑能力与全屏解耦。
@@ -112,11 +112,15 @@ tiptap 编辑器（flex:1，恒可编辑）
 - 两种路径约定并存：正文引用相对 md 目录（`../assets/xxx.png`），登记相对 articles/（`assets/xxx.png`），见 02/04 号文档。
 - **AI 配图**（聊天侧）不走本弹窗：由生图型子 Agent（`spawn_agent(type="image")`）产出后经 `article_update` 登记，见 02 号文档。
 
-## 底部动作条（AI 检测 / 文件夹 / 去 AI 味 / 复制）
+## 底部动作条（去 AI 味 + 「更多」分组下拉）
 
-- **更多菜单已撤**（2026-09-14 拍板）：原「更多」里的 AI 检测 / 在文件夹中显示移入底部动作条左组（与去 AI 味 / 复制同排），头部只剩刷新常驻按钮（RefreshIcon）：`reload()` 重读 project.json 与正文，保留当前选中的文章/类型/版本，以磁盘为准覆盖并 `saveDoc.cancel()`（丢弃未落盘编辑）；字数独占动作条最右侧。
+- **分组收拢（2026-09-21）**：可见主按钮仅「去 AI 味 / 停止」；AI 检测 / 复制 / 文件夹 / 版本对比收进「更多」`t-dropdown`（`trigger="click"`、`placement="top-left"`，贴底向上弹），用分隔线分三段：**内容**（AI 检测、复制正文）｜**文件**（在文件夹中显示）｜**版本**（平铺列出除当前外的其他版本，`articleVersionTitle` 为文案；无其他版本时显示禁用项「版本对比（暂无其他版本）」）。`humanizing` 期间「更多」整体禁用。
+  - ⚠️ 版本对比**不采用悬停子菜单**：窄侧栏内子菜单易被挤出屏幕、且无版本时整项消失（用户反馈「对比不见了」），故平铺直列，保证可发现。
+- **`#extra` 插槽**：动作条预留具名插槽供下游注入额外按钮（gzh 经 `GzhDocActions.vue` 薄包装注入「排版预览 / 正文质检」面板入口）；共享组件 `props` / `emits` 未变，`ArticleAside` 零改动。
+- **历史**：2026-09-14 曾撤销「更多」并把 AI 检测 / 文件夹平铺进动作条；本次（2026-09-21）因 gzh 复用需要重新以「更多」分组收拢。
 - **AI 检测**：复制当前正文到剪贴板（`copyText`）→ 系统通知「正文内容已复制」→ `openUrlByBrowser` 打开腾讯朱雀官网 `https://matrix.tencent.com/ai-detect/ai_gen_txt`（朱雀仅企业接入，不集成检测接口）。
 - **复制（2026-09-13 拍板替代导出）**：正文本来就是项目内本地文件，zip 导出已整体删除（`exportArticleZip`/`collectArticleAssets` 已从 imageRef.ts 移除）；「复制」= 当前类型激活版本 markdown 原文进剪贴板。
+- **版本对比**：子菜单选中某版本 → 读取该版本落盘正文，与当前激活版本实时正文在 monaco diff 弹窗对比（`openVersionDiffDialog`）。
 
 ## 编辑器（tiptap）
 

@@ -109,7 +109,6 @@ const handleCopy = async (): Promise<void> => {
     copying.value = false
   }
 }
-
 </script>
 <style scoped lang="less">
 .layout-panel {
@@ -135,7 +134,7 @@ const handleCopy = async (): Promise<void> => {
     border: 1px solid var(--td-component-border);
     border-radius: var(--td-radius-medium);
     overflow: hidden;
-    background: var(--td-bg-color-secondarycontainer);
+    background: var(--td-bg-color-container);
   }
 
   &__frame {
