@@ -1,60 +1,87 @@
 <template>
-  <t-popup trigger="click" placement="bottom-left" :disabled="locked" destroy-on-close>
-    <div class="cover-thumb" title="设置封面">
-      <img v-if="cover" :src="assetHref(cover)" alt="封面" />
-      <image-icon v-else class="cover-thumb__empty" />
-    </div>
-    <template #content>
-      <div class="cover-pop">
-        <div v-if="cover" class="cover-pop__preview">
-          <img :src="assetHref(cover)" alt="封面预览" />
-        </div>
-        <div class="cover-pop__actions">
-          <t-tooltip content="登录后可使用生图" :disabled="canGenerate">
+  <div class="h-33px">
+    <t-image-viewer
+      v-if="cover"
+      v-model:visible="previewVisible"
+      :images="[assetHref(cover)]"
+      :trigger="(h) => h('div')"
+      alt="封面预览"
+    />
+    <t-popup
+      v-model="popupVisible"
+      trigger="click"
+      placement="bottom-left"
+      :disabled="locked"
+      destroy-on-close
+    >
+      <div class="cover-thumb" title="设置封面">
+        <img v-if="cover" :src="assetHref(cover)" alt="封面" />
+        <image-icon v-else class="cover-thumb__empty" />
+      </div>
+      <template #content>
+        <div class="cover-pop">
+          <div v-if="cover" class="cover-pop__preview">
+            <img :src="assetHref(cover)" alt="封面预览" />
+          </div>
+          <div class="cover-pop__actions">
+            <t-tooltip content="登录后可使用生图" :disabled="canGenerate">
+              <t-button
+                size="small"
+                variant="text"
+                theme="primary"
+                :disabled="!canGenerate"
+                @click="genCover"
+              >
+                <template #icon><ai-icon /></template>
+                AI 生成
+              </t-button>
+            </t-tooltip>
+            <t-button size="small" variant="text" theme="primary" @click="uploadCover">
+              <template #icon><upload-icon /></template>
+              上传
+            </t-button>
+            <t-button v-if="cover" size="small" variant="text" theme="primary" @click="copyCover">
+              <template #icon><copy-icon /></template>
+              复制图片
+            </t-button>
+            <t-button v-if="cover" size="small" variant="text" theme="primary" @click="revealCover">
+              <template #icon><folder-open-icon /></template>
+              文件夹
+            </t-button>
             <t-button
+              v-if="cover"
               size="small"
               variant="text"
               theme="primary"
-              :disabled="!canGenerate"
-              @click="genCover"
+              class="ml-4px"
+              @click="previewCover"
             >
-              <template #icon><ai-icon /></template>
-              AI 生成
+              <template #icon><file-image-icon /></template>
+              预览
             </t-button>
-          </t-tooltip>
-          <t-button size="small" variant="text" theme="primary" @click="uploadCover">
-            <template #icon><upload-icon /></template>
-            上传
-          </t-button>
-          <t-button v-if="cover" size="small" variant="text" theme="primary" @click="copyCover">
-            <template #icon><copy-icon /></template>
-            复制图片
-          </t-button>
-          <t-button v-if="cover" size="small" variant="text" theme="primary" @click="revealCover">
-            <template #icon><folder-open-icon /></template>
-            文件夹
-          </t-button>
-          <t-button
-            v-if="cover"
-            size="small"
-            variant="text"
-            theme="danger"
-            @click="emit('cover', undefined)"
-          >
-            <template #icon><delete-icon /></template>
-            移除
-          </t-button>
+            <t-button
+              v-if="cover"
+              size="small"
+              variant="text"
+              theme="danger"
+              @click="emit('cover', undefined)"
+            >
+              <template #icon><delete-icon /></template>
+              移除
+            </t-button>
+          </div>
+          <div class="cover-pop__tip">封面建议比例 16:9（如 1536×864）</div>
         </div>
-        <div class="cover-pop__tip">封面建议比例 16:9（如 1536×864）</div>
-      </div>
-    </template>
-  </t-popup>
+      </template>
+    </t-popup>
+  </div>
 </template>
 <script lang="ts" setup>
 import {
   AiIcon,
   CopyIcon,
   DeleteIcon,
+  FileImageIcon,
   FolderOpenIcon,
   ImageIcon,
   UploadIcon
@@ -85,8 +112,7 @@ const emit = defineEmits<{
 const canGenerate = computed(() => useAuthStore().status === 'signed-in')
 
 /** 登记路径（相对 articles/）→ 展示 URL */
-const assetHref = (rel: string): string =>
-  window.preload.net.pathToHref(assetAbsPath(rel))
+const assetHref = (rel: string): string => window.preload.net.pathToHref(assetAbsPath(rel))
 
 /** 登记路径（相对 articles/）→ 绝对路径 */
 const assetAbsPath = (rel: string): string =>
@@ -124,6 +150,13 @@ const copyCover = async (): Promise<void> => {
 const revealCover = (): void => {
   if (!props.cover) return
   window.preload.inject.shell.showItemInFolder(assetAbsPath(props.cover))
+}
+
+const popupVisible = ref(false)
+const previewVisible = ref(false)
+const previewCover = () => {
+  previewVisible.value = true
+  popupVisible.value = false
 }
 
 const genCover = (): void =>

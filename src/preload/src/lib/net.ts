@@ -38,6 +38,7 @@ export const netApi = {
   },
 
   /** 将绝对路径转换为本地事件服务的资源 URL（渲染层经 HTTP 加载本地资源；dev 下 file:// 会被 Chromium 拦截） */
-  pathToHref: (path: string): string => `${EVENT_SERVER_ORIGIN}/file/${encodeURIComponent(resolve(path))}`,
+  pathToHref: (path: string): string =>
+    `${EVENT_SERVER_ORIGIN}/file/${encodeURIComponent(resolve(path))}?_t=${Date.now()}`,
   pathToFileHref: (path: string): string => pathToFileURL(resolve(path)).href
 }
