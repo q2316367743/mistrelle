@@ -6,9 +6,10 @@ import {
   sharpMetadata,
   sharpCrop,
   sharpRemoveBackground,
-  sharpColorMap
+  sharpColorMap,
+  sharpMask
 } from './image'
-import { SharpChannels, type SharpRegion } from '~/modules/sharp/sharpChannels'
+import { SharpChannels, type SharpCoverOptions, type SharpRegion } from '~/modules/sharp/sharpChannels'
 
 export function registerSharpIpc(): void {
   ipcMain.handle(SharpChannels.metadata, (_event, input: string | Uint8Array) =>
@@ -31,5 +32,11 @@ export function registerSharpIpc(): void {
     SharpChannels.colorMap,
     (_event, input: string, gridSize: number, top: number) =>
       sharpColorMap(input, gridSize, top)
+  )
+
+  ipcMain.handle(
+    SharpChannels.mask,
+    (_event, input: string, regions: SharpRegion[], output: string, cover?: SharpCoverOptions) =>
+      sharpMask(input, regions, output, cover)
   )
 }

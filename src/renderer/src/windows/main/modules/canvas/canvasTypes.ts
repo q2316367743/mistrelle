@@ -5,6 +5,7 @@
  * （海报 / 封面 / 配图等）。children 顺序即图层 z 序（后画者在上）。
  * 定位以自由坐标为主；group 可开启可选自动布局（layout 缺省 none）。
  */
+import type { ImageCoverStyle } from '@common/types/mosaic'
 
 // ── 节点 ──────────────────────────────────────────────────
 
@@ -179,6 +180,9 @@ export interface CanvasNode {
   svg?: string
   // ── 占位图标签（G 操作 placeholder 生成，渲染层居中绘制） ──
   placeholderLabel?: string
+  // ── 图片遮盖（马赛克 / 毛玻璃：只记录区域，渲染时实时叠加，可随时复原） ──
+  /** 遮盖记录（imageUrl 始终是原图，本字段描述「盖哪里、怎么盖」） */
+  mosaic?: CanvasMosaic
   // ── 动画（@leafer-in/animate 插件，纯增量，无该字段 = 静态元素） ──
   /** 入场 / 过渡动画 */
   animation?: CanvasAnimation
@@ -186,6 +190,35 @@ export interface CanvasNode {
   animationOut?: CanvasAnimation
   // ── 子节点（children 顺序即 z 序） ──
   children?: CanvasNode[]
+}
+
+/** 遮盖区域来源：text 自动识别文字区域（OCR）/ brush 手动涂抹 */
+export type CanvasMosaicRegionKind = 'text' | 'brush'
+
+/** 遮盖区域轮廓（图片像素坐标，左上原点，扁平 [x1,y1,x2,y2,...]，矩形即 4 点） */
+export interface CanvasMosaicRegion {
+  /** 轮廓点：矩形 4 点 / OCR 文字四点四边形 / 涂抹的网格对齐矩形 */
+  points: number[]
+  /** 来源：text 自动识别（可带 text 文本）/ brush 手动涂抹 */
+  kind: CanvasMosaicRegionKind
+  /** 自动识别区域对应的文字（供回填匹配与辨识，不参与渲染） */
+  text?: string
+}
+
+/**
+ * 图片遮盖记录（非破坏）：`imageUrl` 始终指向原图，本字段只记录「盖哪里、怎么盖」，
+ * 画布与导出由渲染层实时生成遮盖叠加层（见 modules/canvas/mosaicOverlay.ts），
+ * 删除本字段即无损复原（原图从未被改写）。
+ */
+export interface CanvasMosaic {
+  /** 遮盖方式：mosaic 马赛克（像素块）/ blur 毛玻璃（高斯模糊） */
+  style: ImageCoverStyle
+  /** 马赛克像素块边长（px，越小越细腻）；缺省 MOSAIC_CELL_PX */
+  cellPx?: number
+  /** 毛玻璃模糊半径（px）；缺省 MOSAIC_BLUR_PX */
+  blurPx?: number
+  /** 遮盖区域（图片像素坐标，与 ocr_image / image_mosaic 同系） */
+  regions: CanvasMosaicRegion[]
 }
 
 /** 节点动画（映射 Leafer 动画插件 @leafer-in/animate 的 IAnimation，纯增量字段） */

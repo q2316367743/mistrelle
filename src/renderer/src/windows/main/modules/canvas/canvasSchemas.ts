@@ -1,4 +1,5 @@
 import { Type } from '@sinclair/typebox'
+import { MOSAIC_BLUR_RANGE, MOSAIC_CELL_RANGE } from '@common/types/mosaic'
 import { collectErrors, toToolProperty } from '@/windows/main/modules/tool/typeboxUtil'
 import type { ToolProperty } from '@/domain'
 import { CANVAS_ALIGNS } from './canvasTypes'
@@ -137,6 +138,52 @@ const animationSchema = Type.Object(
   }
 )
 
+// ── 图片遮盖 schema（马赛克 / 毛玻璃，只记录区域，不参与节点几何） ──
+
+const mosaicRegionSchema = Type.Object(
+  {
+    points: Type.Array(Type.Number(), {
+      minItems: 6,
+      description: '轮廓点扁平坐标 [x1,y1,x2,y2,...]（图片像素坐标，左上原点；矩形 4 点）'
+    }),
+    kind: Type.Union([Type.Literal('text'), Type.Literal('brush')], {
+      description: 'text 自动识别文字区域 / brush 手动涂抹'
+    }),
+    text: Type.Optional(Type.String({ description: '自动识别区域对应的文字（不参与渲染）' }))
+  },
+  { additionalProperties: false }
+)
+
+const mosaicSchema = Type.Object(
+  {
+    style: Type.Union([Type.Literal('mosaic'), Type.Literal('blur')], {
+      description: 'mosaic 马赛克（像素块）/ blur 毛玻璃（高斯模糊）'
+    }),
+    cellPx: Type.Optional(
+      Type.Number({
+        minimum: MOSAIC_CELL_RANGE[0],
+        maximum: MOSAIC_CELL_RANGE[1],
+        description: '马赛克像素块边长（px，越小越细腻）'
+      })
+    ),
+    blurPx: Type.Optional(
+      Type.Number({
+        minimum: MOSAIC_BLUR_RANGE[0],
+        maximum: MOSAIC_BLUR_RANGE[1],
+        description: '毛玻璃模糊半径（px）'
+      })
+    ),
+    regions: Type.Array(mosaicRegionSchema, {
+      minItems: 1,
+      description: '遮盖区域（图片像素坐标，与 ocr_image 输出同系）；复原请删除整个 mosaic 字段'
+    })
+  },
+  {
+    additionalProperties: false,
+    description: '图片遮盖记录：只记录区域，原图不变，删除本字段即无损复原'
+  }
+)
+
 // ── 节点字段（nodeSchema 与 nodePatchSchema 共用） ──────────
 
 const nodeFieldSchema = {
@@ -233,6 +280,7 @@ const nodeFieldSchema = {
   imageUrl: Type.Optional(Type.String({ description: '图片地址（本地绝对路径 / file:// / http(s) / data URL）' })),
   svg: Type.Optional(Type.String({ description: '内联 SVG 字符串（与 imageUrl 二选一）' })),
   placeholderLabel: Type.Optional(Type.String({ description: '占位图标签' })),
+  mosaic: Type.Optional(mosaicSchema),
   animation: Type.Optional(animationSchema),
   animationOut: Type.Optional(animationSchema)
 }

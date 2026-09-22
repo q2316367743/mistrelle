@@ -1,12 +1,14 @@
 /**
- * sharp 桥（preload）：图像四操作（metadata/crop/去底/主色）的 IPC 薄封装（原 inject.ts 的 sharp 段）。
+ * sharp 桥（preload）：图像处理的 IPC 薄封装（metadata/crop/去底/主色/遮盖）。
  * 实现位于 main（modules/sharp/image.ts + sharpIpc.ts）。
  */
 import { ipcRenderer } from 'electron'
 import {
   SharpChannels,
   type SharpRegion,
-  type SharpColorMapResult
+  type SharpColorMapResult,
+  type SharpCoverOptions,
+  type SharpMaskResult
 } from './sharpChannels'
 
 export const sharpApi = {
@@ -25,5 +27,13 @@ export const sharpApi = {
   ): Promise<{ width: number; height: number; removedPixels: number }> =>
     ipcRenderer.invoke(SharpChannels.removeBackground, input, options, output),
   colorMap: (input: string, gridSize: number, top: number): Promise<SharpColorMapResult> =>
-    ipcRenderer.invoke(SharpChannels.colorMap, input, gridSize, top)
+    ipcRenderer.invoke(SharpChannels.colorMap, input, gridSize, top),
+  /** 区域遮盖（马赛克 / 毛玻璃）：把区域内的像素替换为遮盖底图（原文件不变，产物写 output） */
+  mask: (
+    input: string,
+    regions: SharpRegion[],
+    output: string,
+    cover?: SharpCoverOptions
+  ): Promise<SharpMaskResult> =>
+    ipcRenderer.invoke(SharpChannels.mask, input, regions, output, cover)
 }

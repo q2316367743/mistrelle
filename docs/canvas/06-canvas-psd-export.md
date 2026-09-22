@@ -17,9 +17,9 @@ PSD 写入选型 `ag-psd`（唯一成熟的 JS 写 PSD 库，浏览器端可用�
 
 ## 导出流程（canvasPsd.ts）
 
-1. `ensureFontsForDoc` 保证字体就绪（与 PNG 导出同一事实源）。
+1. `ensureFontsForDoc` + `prepareMosaicOverlays` 并行就绪（与 PNG 导出同一事实源：字体齐、遮盖叠加位图已生成）。
 2. `computeLayoutBounds` 一次拿全节点画布绝对包围盒（id → bounds 映射）。
-3. 复用**单个**离屏 Leafer（doc 尺寸），逐节点 `leafer.clear()` 后挂载 `buildNode` 产物 → `settleAnimations` → `export('png', { blob, screenshot: 节点包围盒 })`，串行处理防内存峰值；`Leafer.clear()` 等价 `removeAll(true)`（已核 @leafer/core）。
+3. 复用**单个**离屏 Leafer（doc 尺寸），逐节点 `leafer.clear()` 后挂载 `buildNodeWithExtras` 产物（节点元素 + 图片遮盖叠加层）→ `settleAnimations` → `export('png', { blob, screenshot: 节点包围盒 })`，串行处理防内存峰值；`Leafer.clear()` 等价 `removeAll(true)`（已核 @leafer/core）。
 4. 元素坐标是「相对父盒」：单独挂载用包装 Group 平移回绝对位置（`x: abs.x - layout.x`），不影响子树相对结构与旋转。
 5. Blob → `createImageBitmap` → `HTMLCanvasElement`（ag-psd 图层像素只吃 canvas / ImageData）。
 6. 递归构建 ag-psd `Layer` 树：
@@ -38,6 +38,7 @@ leafer（canvas 值）→ PSD：`-` 换空格即命中（multiply / color-dodge 
 - 文本 / 矢量 / 阴影 / 模糊 / 渐变全部烘焙进位图，PS 内不可编辑；可编辑文本层为 Phase 2 可选项（`ag-psd` `LayerTextData`，风险见上）。
 - 旋转烘焙进位图（截图区域为布局包围盒，非旋转 AABB，极端旋转角可能裁边）。
 - group 裁剪（overflow clip）不映射；节点级 effects 随位图烘焙，组级 effects 靠拍平保留。
+- **图片遮盖（马赛克 / 毛玻璃）随宿主图层烘焙**：导出的是「遮盖后」的视觉（遮盖叠加层由 `mosaicOverlay` 生成、经 `buildNodeWithExtras` 与图片一起光栅化），PSD 内无法单独关掉遮盖——需要未遮盖的原图请直接用节点的 `imageUrl` 原文件。
 - PSD 仅整张画布导出，`canvas_export` 的 `node` / `region` 参数对 psd 无效（返回 note 说明）。
 
 ## 注意事项

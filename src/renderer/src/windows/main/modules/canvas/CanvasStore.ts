@@ -1,5 +1,11 @@
 import { validateBatchOp } from './canvasSchemas'
-import type { CanvasBatchOp, CanvasDoc, CanvasDocSource, CanvasFileInfo, CanvasNode } from './canvasTypes'
+import type {
+  CanvasBatchOp,
+  CanvasDoc,
+  CanvasDocSource,
+  CanvasFileInfo,
+  CanvasNode
+} from './canvasTypes'
 import { removeUploadSourceFiles } from './canvasUploads'
 import {
   applyImageOp,
@@ -23,7 +29,7 @@ import {
 
 /** 扫描目录下的 .canvas 文件（仅识别 schema 2），按版本升序 */
 const scanCanvasFiles = async (dir: string): Promise<CanvasFileInfo[]> => {
-  if (!(window.preload.fs.existsSync(dir))) return []
+  if (!window.preload.fs.existsSync(dir)) return []
   const items = await window.preload.fs.readDir(dir)
   const infos: CanvasFileInfo[] = []
   for (const item of items) {
@@ -36,6 +42,25 @@ const scanCanvasFiles = async (dir: string): Promise<CanvasFileInfo[]> => {
   }
   infos.sort((a, b) => a.version - b.version)
   return infos
+}
+
+/**
+ * 取 batch_edit 结果中的首个失败信息（null = 全部成功）。
+ * batchEdit 是单点容错：失败的 op 只返回 `{ error }` 而不抛异常，
+ * 调用方须显式核对，否则会把失败当成功。
+ */
+export const firstBatchError = (results: unknown[]): string | null => {
+  for (const result of results) {
+    if (
+      typeof result === 'object' &&
+      result !== null &&
+      'error' in result &&
+      typeof result.error === 'string'
+    ) {
+      return result.error
+    }
+  }
+  return null
 }
 
 /**
@@ -66,7 +91,10 @@ export class CanvasStore {
 
   /** 打开指定版本画布为当前画布 */
   async open(version: number): Promise<CanvasDoc | null> {
-    const path = window.preload.path.join(buildCanvasOutputsDir(this.sandboxDir), buildCanvasFileName(version))
+    const path = window.preload.path.join(
+      buildCanvasOutputsDir(this.sandboxDir),
+      buildCanvasFileName(version)
+    )
     const doc = await readDoc(path)
     this.current.value = doc
     if (doc) await this.refreshFiles()
@@ -76,8 +104,11 @@ export class CanvasStore {
 
   /** 读取指定版本画布的原始 JSON 文本（供 AI 分析，不改动当前画布；返回前治愈缺失 type） */
   async read(version: number): Promise<string | null> {
-    const path = window.preload.path.join(buildCanvasOutputsDir(this.sandboxDir), buildCanvasFileName(version))
-    if (!(window.preload.fs.existsSync(path))) return null
+    const path = window.preload.path.join(
+      buildCanvasOutputsDir(this.sandboxDir),
+      buildCanvasFileName(version)
+    )
+    if (!window.preload.fs.existsSync(path)) return null
     const parsed = JSON.parse(await window.preload.fs.readTextFile(path)) as unknown
     if (!isSchema2(parsed)) return null
     const doc = parsed as CanvasDoc
@@ -101,7 +132,11 @@ export class CanvasStore {
   }): Promise<CanvasDoc> {
     await this.refreshFiles()
     const nextVersion =
-      Math.max(0, ...this.files.value.map((f) => f.version), ...this.archivedFiles.value.map((f) => f.version)) + 1
+      Math.max(
+        0,
+        ...this.files.value.map((f) => f.version),
+        ...this.archivedFiles.value.map((f) => f.version)
+      ) + 1
     const name = `canvas-${nextVersion}`
     const doc: CanvasDoc = {
       name,
@@ -124,7 +159,10 @@ export class CanvasStore {
 
   /** 删除指定版本画布文件（source=upload 的画布连带删除其引用的 uploads/ 源图片） */
   async delete(version: number): Promise<void> {
-    const path = window.preload.path.join(buildCanvasOutputsDir(this.sandboxDir), buildCanvasFileName(version))
+    const path = window.preload.path.join(
+      buildCanvasOutputsDir(this.sandboxDir),
+      buildCanvasFileName(version)
+    )
     const doc = await readDoc(path)
     if (window.preload.fs.existsSync(path)) {
       await window.preload.fs.rm(path)
@@ -140,22 +178,34 @@ export class CanvasStore {
    * 不关闭会导致编辑已归档画布时在根目录复活出重复文件。
    */
   async archive(version: number): Promise<void> {
-    const from = window.preload.path.join(buildCanvasOutputsDir(this.sandboxDir), buildCanvasFileName(version))
-    if (!(window.preload.fs.existsSync(from))) return
+    const from = window.preload.path.join(
+      buildCanvasOutputsDir(this.sandboxDir),
+      buildCanvasFileName(version)
+    )
+    if (!window.preload.fs.existsSync(from)) return
     const archivedDir = buildCanvasArchivedDir(this.sandboxDir)
-    if (!(window.preload.fs.existsSync(archivedDir))) {
+    if (!window.preload.fs.existsSync(archivedDir)) {
       await window.preload.fs.mkdir(archivedDir, true)
     }
-    await window.preload.fs.rename(from, window.preload.path.join(archivedDir, buildCanvasFileName(version)))
+    await window.preload.fs.rename(
+      from,
+      window.preload.path.join(archivedDir, buildCanvasFileName(version))
+    )
     if (this.current.value?.version === version) this.current.value = null
     await this.refreshFiles()
   }
 
   /** 取消归档：移回 outputs/ 根目录（打开归档画布前须先取消归档，保证写入路径唯一） */
   async unarchive(version: number): Promise<void> {
-    const from = window.preload.path.join(buildCanvasArchivedDir(this.sandboxDir), buildCanvasFileName(version))
-    if (!(window.preload.fs.existsSync(from))) return
-    await window.preload.fs.rename(from, window.preload.path.join(buildCanvasOutputsDir(this.sandboxDir), buildCanvasFileName(version)))
+    const from = window.preload.path.join(
+      buildCanvasArchivedDir(this.sandboxDir),
+      buildCanvasFileName(version)
+    )
+    if (!window.preload.fs.existsSync(from)) return
+    await window.preload.fs.rename(
+      from,
+      window.preload.path.join(buildCanvasOutputsDir(this.sandboxDir), buildCanvasFileName(version))
+    )
     await this.refreshFiles()
   }
 
@@ -187,7 +237,9 @@ export class CanvasStore {
    * 返回 { error }（results 内联），其余 op 照常执行并落盘 —— 一个坏节点不拖垮整批。
    * 级联语义：被跳过的 op 不写入 as 绑定，后续引用它的 op 会因找不到绑定而独立报错。
    */
-  async batchEdit(ops: CanvasBatchOp[]): Promise<{ results: unknown[]; potentialIssues: string[] }> {
+  async batchEdit(
+    ops: CanvasBatchOp[]
+  ): Promise<{ results: unknown[]; potentialIssues: string[] }> {
     const doc = this.current.value
     if (!doc) throw new Error('当前没有打开的画布，请先 canvas_create 或 canvas_open')
     const results: unknown[] = []
@@ -200,7 +252,9 @@ export class CanvasStore {
         if (opErrors.length) throw new Error(opErrors.join('；'))
         results.push(this.executeOp(doc, op, bindings, issues))
       } catch (err) {
-        results.push({ error: `第 ${i + 1} 个操作失败：${err instanceof Error ? err.message : String(err)}` })
+        results.push({
+          error: `第 ${i + 1} 个操作失败：${err instanceof Error ? err.message : String(err)}`
+        })
       }
     }
     await this.persist()
@@ -276,7 +330,7 @@ export class CanvasStore {
 
   private async persistDoc(doc: CanvasDoc): Promise<void> {
     const dir = buildCanvasOutputsDir(this.sandboxDir)
-    if (!(window.preload.fs.existsSync(dir))) {
+    if (!window.preload.fs.existsSync(dir)) {
       await window.preload.fs.mkdir(dir, true)
     }
     const path = window.preload.path.join(dir, buildCanvasFileName(doc.version))

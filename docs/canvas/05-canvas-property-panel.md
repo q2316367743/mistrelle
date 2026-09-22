@@ -8,29 +8,35 @@
 - **布局**：`DesignAside.vue` 的 `design-aside__body` 在 `fullscreen` 时挂载 `ElementPropertyPanel`（固定 290px，自带 `border-left` 分隔），与左侧元素树（220px）、中间画布（flex:1）构成三栏。仅全屏显示。
 - **数据源**：面板按 `nodeId`（即 `selectedId`）从 `getCanvasStore(sandbox).current.value.nodes` 递归 `findNode` 取 deep reactive 节点对象 —— AI / 画布拖拽改动后面板展示自动同步，节点数据是唯一数据源。
 - **草稿 + 显式保存**：编辑只改本地草稿 `draft`（`usePropertyDraft.ts`），面板头部「属性」右侧的「保存」按钮按 diff（草稿 vs 当前节点）激活；点击才经 `store.batchEdit([{ op: 'update', path: nodeId, patch }])` 写回 —— 与 AI `canvas_batch_edit` 同一条链路（TypeBox `nodePatchSchemaT` 白名单校验 + 落盘 + deep watch 触发画布重渲染 + 选中恢复）。失败时 `MessageUtil.error` 提示。
+- **删除元素**（2026-09-21）：头部「保存」旁的 danger 图标按钮，`store.batchEdit([{ op: 'delete', id: nodeId }])`（同样走 AI 链路），成功后 `emit('deleted')` 由 DesignAside 清空 `selectedId`（画布取消选中 + 面板回落空态）。**2026-09-21 二次调整**：马赛克改为工具栏入口 + 抽屉弹窗（见 [07-canvas-mosaic.md](./07-canvas-mosaic.md)），面板恢复为 `design-aside__body` 的 flex row 直接子项，靠 stretch 拉满高度（无需 `:deep` 高度补丁）。
 - **草稿同步**：切换选中节点（id 变化）强制重建草稿（未保存修改丢弃）；同节点被外部更新（AI 编辑）仅在没有未保存修改时跟随，有修改则保留用户草稿。数值输入清空 = 删除属性（diff 提交 undefined，`Object.assign` 后从节点移除）。
+- **图片遮盖区块**（2026-09-22，`ImageMosaicFields.vue`）：image 节点专属，显示遮盖摘要（`马赛克 · 块边长 14px · 3 处` / `毛玻璃 · 模糊 8px · 1 处` / `未遮盖`）+
+  「编辑」（打开马赛克弹窗并回填既有区域）+「复原」（`clearNodeMosaic` 删除节点 `mosaic` 字段）。**不走草稿机制**：与头部「删除元素」同为立即写回，
+  避免与「保存」语义纠缠（遮盖是结构化记录，不适合字段级 diff 编辑）。详见 [07-canvas-mosaic.md](./07-canvas-mosaic.md)。
 
 ## 关键文件
 
 | 文件 | 职责 |
 |------|------|
-| `src/renderer/src/windows/main/components/chat/aside/design/ElementPropertyPanel.vue` | 面板主体：节点头部（类型徽标 + 图层名）、保存按钮、尺寸块、外观块、形状块 |
-| `src/renderer/src/windows/main/components/chat/aside/design/TextPropertyFields.vue` | text 专属字段块：内容 / 字体 / 字号 / 字重 / 行高 / 字间距 / 对齐 / 大小写 / 斜体（v-model 绑草稿） |
-| `src/renderer/src/windows/main/components/chat/aside/design/usePropertyDraft.ts` | 草稿状态 composable：`PropertyDraft` 快照 / diff 计算（`dirty`）/ 显式保存（batchEdit 写回）/ 颜色字段代理 |
-| `src/renderer/src/windows/main/components/chat/aside/design/DesignAside.vue` | 三栏挂载：`v-if="fullscreen"` + `:node-id="selectedId"` |
+| `src/renderer/src/windows/main/components/aside/design/ElementPropertyPanel.vue` | 面板主体：节点头部（类型徽标 + 图层名）、保存按钮、尺寸块、外观块、形状块 |
+| `src/renderer/src/windows/main/components/aside/design/TextPropertyFields.vue` | text 专属字段块：内容 / 字体 / 字号 / 字重 / 行高 / 字间距 / 对齐 / 大小写 / 斜体（v-model 绑草稿） |
+| `src/renderer/src/windows/main/components/aside/design/ImageMosaicFields.vue` | image 专属字段块：遮盖摘要 + 编辑（打开弹窗回填）+ 复原（删字段） |
+| `src/renderer/src/windows/main/components/aside/design/usePropertyDraft.ts` | 草稿状态 composable：`PropertyDraft` 快照 / diff 计算（`dirty`）/ 显式保存（batchEdit 写回）/ 颜色字段代理 |
+| `src/renderer/src/windows/main/components/aside/design/DesignAside.vue` | 三栏挂载：`v-if="fullscreen"` + `:node-id="selectedId"` |
 
 ## 字段矩阵（按类型生效）
 
-| 类型 | w/h/opacity | fill | stroke/strokeWidth | cornerRadius | 形状参数 | 文本字段 |
-|------|-------------|------|--------------------|--------------|----------|----------|
-| group | ✓（尺寸） | ✗ | ✗ | ✗ | ✗ | ✗ |
-| rect | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
-| ellipse / path | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
-| line | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ |
-| polygon | ✓ | ✓ | ✓ | ✗ | sides / startAngle | ✗ |
-| star | ✓ | ✓ | ✓ | ✗ | corners / innerRadius / startAngle | ✗ |
-| text | ✓ | ✓（文字色） | ✓ | ✗ | ✗ | ✓ |
-| image / svg | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| 类型 | w/h/opacity | fill | stroke/strokeWidth | cornerRadius | 形状参数 | 文本字段 | 遮盖 |
+|------|-------------|------|--------------------|--------------|----------|----------|------|
+| group | ✓（尺寸） | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| rect | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| ellipse / path | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| line | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| polygon | ✓ | ✓ | ✓ | ✗ | sides / startAngle | ✗ | ✗ |
+| star | ✓ | ✓ | ✓ | ✗ | corners / innerRadius / startAngle | ✗ | ✗ |
+| text | ✓ | ✓（文字色） | ✓ | ✗ | ✗ | ✓ | ✗ |
+| image | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✓（摘要 / 编辑 / 复原） |
+| svg | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
 
 ## 降级与约束策略
 

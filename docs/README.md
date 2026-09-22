@@ -96,11 +96,12 @@
 
 | 文档                                                                    | 描述                                                                                               |
 |-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| [02-canvas-node-model.md](./canvas/02-canvas-node-model.md)             | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill；`canvas_guidelines("styles")` 动态风格目录；场景指南结构含文案容量/安全区/翻车点 |
+| [02-canvas-node-model.md](./canvas/02-canvas-node-model.md)             | 画布节点模型与批量编辑（v2）：图层树 + 区域分组、`canvas_batch_edit`、调色板 token、内置设计 skill；`canvas_guidelines("styles")` 动态风格目录；场景指南结构含文案容量/安全区/翻车点；**09-22**：image 节点新增非破坏 `mosaic` 字段（遮盖记录），渲染附加层统一走 `buildNodeWithExtras` |
 | [03-canvas-animation.md](./canvas/03-canvas-animation.md) | 画布动画（v3）：`CanvasAnimation` 声明式动画字段、`@leafer-in/animate` 透传与预览自动播放、PNG 导出 settle；原随附视频导出已随 ffmpeg 移除（见 app/04） |
 | [04-canvas-element-tree.md](./canvas/04-canvas-element-tree.md)         | 画布元素树：设计侧边栏全屏左栏，`selectedId` 驱动元素树 ↔ 画布双向选中联动                      |
-| [05-canvas-property-panel.md](./canvas/05-canvas-property-panel.md)     | 画布元素属性面板：全屏三栏第三栏，本地草稿 +「保存」按钮显式写回（batchEdit update，与 AI 同链路）；x/y 禁改、渐变/$token/布局关键字降级策略、按类型字段矩阵 |
-| [06-canvas-psd-export.md](./canvas/06-canvas-psd-export.md)             | 画布导出分层 PSD（2026-09-12）：ag-psd + 逐图层位图化（叶子光栅化、group→图层组、带效果组拍平）、`canvas_export` format=psd 与侧边栏「下载 PSD」入口、混合模式映射表、已知限制（文本/矢量烘焙进位图） |
+| [05-canvas-property-panel.md](./canvas/05-canvas-property-panel.md)     | 画布元素属性面板：全屏三栏第三栏，本地草稿 +「保存」按钮显式写回（batchEdit update，与 AI 同链路）+ **删除元素按钮**（batchEdit delete + 清选中）；x/y 禁改、渐变/$token/布局关键字降级策略、按类型字段矩阵；**09-21 二次调整**：马赛克已改为工具栏入口的抽屉弹窗，面板恢复为 `design-aside__body` 的 flex row 直接子项（`design-aside__right` 纵向容器与 `:deep` 高度补丁已撤）；**09-22**：image 节点新增「遮盖」区块（`ImageMosaicFields.vue`：摘要 + 编辑 + 复原，即时写回不走草稿） |
+| [06-canvas-psd-export.md](./canvas/06-canvas-psd-export.md)             | 画布导出分层 PSD（2026-09-12）：ag-psd + 逐图层位图化（叶子光栅化、group→图层组、带效果组拍平）、`canvas_export` format=psd 与侧边栏「下载 PSD」入口、混合模式映射表、已知限制（文本/矢量烘焙进位图；**09-22** 图片遮盖随宿主图层烘焙，导出即遮盖后视觉） |
+| [07-canvas-mosaic.md](./canvas/07-canvas-mosaic.md) | 图片遮盖（马赛克 / 毛玻璃，2026-09-22 **三次重构＝非破坏模型**）：遮盖区域与参数记录在 image 节点 `mosaic` 字段（`imageUrl` 始终是原图，删除字段即无损复原），渲染层生成透明**叠加位图**实时叠加（`mosaicOverlay` 预热 + 同步缓存、几何与图片元素逐字段一致保对齐、`hittable:false` 隔离交互、PNG/PSD 导出自动带遮盖）；区域用轮廓点（矩形 / OCR 四点四边形 / 涂抹网格矩形）；弹窗编辑（`MosaicEntryButton` + `useMosaicTarget` + `modals/MosaicDialog.tsx/.vue` + `useMosaicEditor` + `mosaicMarks`）支持文字识别勾选 / 框选 / 涂抹 / **擦除**、马赛克块边长与毛玻璃模糊半径可调、**打开即回填**（可局部增删）、应用零文件产出；入口改为「优先选中 image 节点，未选中退回画布唯一图片」（多图不再一律禁用）；属性面板提供摘要 + 编辑 + 复原；旧烘焙链路（`-mosaic-*.png`）仅保留给画布外独立文件（`-mask-*.png`） |
 
 ### design/ —— 设计风格
 
@@ -197,6 +198,7 @@
 | [13-humanize-tool.md](./tool/13-humanize-tool.md) | `humanize_text` 文案去 AI 味工具（design 双引擎，登录门控）：流式客户端从写作组件目录下沉到 `modules/ai/humanize.ts`（写作侧边栏与工具共用）、工具 `risk: safe` 直接放行、提示词 `hasHumanize` 同源门控、只返回文本不落盘 |
 | [14-design-draw.md](./tool/14-design-draw.md) | `design_draw` 画布绘图工具（2026-09-14）：参数对齐生图接口（prompt / path / size），内部驱动**工具面封闭**的「设计创意画布 agent」逐层构建并导出 PNG、产物以 `image` 块直出——定位「比扩散生图高一档：无 AI 感、文案版式精确可控」；**四层安全纵深**（`closedToolSurface` 物理封闭工具面 + 维持 `denyOnAsk` 所有 ask 自动拒绝 + 既有策略零放宽 + 外层路径感知策略）、不注册 `toolMap`（防 registry 兜底把工具泄漏到未注入场景）、office/writing 注入且不门控登录 |
 | [15-ask-tool.md](./tool/15-ask-tool.md) | `ask` 询问用户工具全链路（schema → InteractiveBridge → 问答卡片 → formatAskResult）：单/多问题形态、**2026-09-15 多选支持**（问题级 `multiple: true`，checkbox 渲染，答案「、」连接）、option key 归一化防「整组串选」bug（漏 key → `undefined === undefined` 全亮，`normalizeAskArgs` 统一兜底）、resolve 协议 `string[]`（label 文本非 key）与 `ext.askItems` 结果卡片 |
+| [16-ocr-mosaic-tools.md](./tool/16-ocr-mosaic-tools.md) | OCR 识别与图片遮盖工具（2026-09-21 落地，09-22 扩展）：`@arcships/light-ocr`（PP-OCRv6 离线原生引擎，engine 懒加载单例 + will-quit 释放、四点 box→包围盒 + **轮廓点 points**、pageSpace 坐标契约无需 y 翻转）的 `ocr_image`（safe）与 `image_mosaic`（sensitive + 路径感知 policy）；**09-22**：`image_mosaic` 画布内图片改为**非破坏记录**（写节点 `mosaic` 字段，`regions: []` = 复原，零文件产出），画布外独立文件仍烘焙（`{base}-mask-{时间戳}.png`）；`sharpMosaic` → `sharpMask`（`sharp:mask` 通道，按 `style` 生成底图：马赛克粗化 / 毛玻璃 `blur(sigma)`，掩码 raw 替换不变），常量与取值范围移到 `src/common/types/mosaic.ts` 三端共用；契约放 preload 侧 main 共用（sharp 模块同款） |
 
 ### writing/ —— 写作
 

@@ -7,6 +7,7 @@
           <refresh-icon />
         </template>
       </t-button>
+      <mosaic-entry-button :reason="mosaicReason" @open="handleMosaicOpen" />
       <t-dropdown
         trigger="click"
         min-column-width="150px"
@@ -53,13 +54,22 @@
         :selected-id="selectedId"
         @select="handleElementSelect"
       />
+      <!-- key 随 fullscreen 变化强制重建：leafer App 的 editor 交互配置（moveable 等）在构造时固定，
+           仅改 prop 不会生效 -->
       <canvas-renderer
+        :key="fullscreen ? 'edit' : 'view'"
         :sandbox="sandbox"
         :selected-id="selectedId"
+        :editable="fullscreen"
         class="design-aside__canvas"
         @select="handleElementSelect"
       />
-      <element-property-panel v-if="fullscreen" :sandbox="sandbox ?? ''" :node-id="selectedId" />
+      <element-property-panel
+        v-if="fullscreen"
+        :sandbox="sandbox ?? ''"
+        :node-id="selectedId"
+        @deleted="selectedId = undefined"
+      />
     </div>
   </div>
 </template>
@@ -87,6 +97,9 @@ import CanvasRenderer from './CanvasRenderer.vue'
 import CanvasElementTree from './CanvasElementTree.vue'
 import ElementPropertyPanel from './ElementPropertyPanel.vue'
 import CanvasFilePicker from './components/CanvasFilePicker.vue'
+import MosaicEntryButton from './components/MosaicEntryButton.vue'
+import { useMosaicTarget } from './useMosaicTarget'
+import { openMosaicDialog } from './modals/MosaicDialog'
 
 const props = withDefaults(
   defineProps<{
@@ -117,6 +130,23 @@ const isChatRunning = computed(() => props.status === 'pending' || props.status 
 
 const handleElementSelect = (id: string | undefined) => {
   selectedId.value = id
+}
+
+// ── 图片遮盖（工具栏入口：优先选中图片节点，未选中时退回画布唯一图片）──
+const { target: mosaicTarget, reason: mosaicReason } = useMosaicTarget(
+  () => props.sandbox ?? '',
+  () => selectedId.value
+)
+
+const handleMosaicOpen = () => {
+  const target = mosaicTarget.value
+  if (!target) return
+  openMosaicDialog({
+    sandbox: props.sandbox ?? '',
+    nodeId: target.nodeId,
+    source: target.source,
+    initial: target.mosaic
+  })
 }
 
 onMounted(async () => {

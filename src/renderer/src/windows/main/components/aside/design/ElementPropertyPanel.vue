@@ -2,16 +2,30 @@
   <div class="element-property-panel">
     <div class="element-property-panel__header">
       <span>属性</span>
-      <t-button
-        v-if="node"
-        size="small"
-        theme="primary"
-        :disabled="!dirty"
-        :loading="saving"
-        @click="handleSave"
-      >
-        保存
-      </t-button>
+      <div v-if="node" class="element-property-panel__actions">
+        <t-button
+          size="small"
+          theme="primary"
+          :disabled="!dirty"
+          :loading="saving"
+          @click="handleSave"
+        >
+          保存
+        </t-button>
+        <t-button
+          size="small"
+          theme="danger"
+          variant="text"
+          shape="square"
+          title="删除元素"
+          :loading="deleting"
+          @click="handleDelete"
+        >
+          <template #icon>
+            <delete-icon />
+          </template>
+        </t-button>
+      </div>
     </div>
     <div v-if="!node" class="element-property-panel__empty">在画布或元素树中选择元素</div>
     <div v-else class="element-property-panel__body">
@@ -99,20 +113,29 @@
         </template>
       </t-form>
       <text-property-fields v-if="node.type === 'text'" :draft="draft" />
+      <image-mosaic-fields v-if="node.type === 'image'" :sandbox="sandbox" :node="node" />
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, toRef } from 'vue'
-import { getCanvasStore } from '@/windows/main/modules/canvas'
+import { computed, ref, toRef } from 'vue'
+import { DeleteIcon } from 'tdesign-icons-vue-next'
+import { MessageUtil } from '@/utils/modal'
+import { firstBatchError, getCanvasStore } from '@/windows/main/modules/canvas'
 import type { CanvasLayoutSize, CanvasNode } from '@/windows/main/modules/canvas'
 import { isGradientPaint, usePropertyDraft } from './usePropertyDraft'
 import TextPropertyFields from './TextPropertyFields.vue'
+import ImageMosaicFields from './ImageMosaicFields.vue'
 
 const props = defineProps<{
   sandbox: string
   /** 选中节点 id（空则显示占位空态，保持三栏宽度稳定） */
   nodeId?: string
+}>()
+
+const emit = defineEmits<{
+  /** 删除成功（父组件清空选中态） */
+  (e: 'deleted', id: string): void
 }>()
 
 const store = computed(() => getCanvasStore(props.sandbox))
@@ -140,6 +163,29 @@ const { draft, dirty, saving, handleSave, fillColor, strokeColor } = useProperty
   nodeId: toRef(props, 'nodeId'),
   store
 })
+
+/** 删除元素：走 batchEdit delete（与 AI 同链路），成功后上抛让父组件清空选中 */
+const deleting = ref(false)
+const handleDelete = async () => {
+  const id = props.nodeId
+  if (!id || deleting.value) return
+  deleting.value = true
+  try {
+    const { results } = await store.value.batchEdit([{ op: 'delete', id }])
+    // batchEdit 单点容错不抛异常，须显式核对结果，否则失败也会提示「已删除」
+    const failure = firstBatchError(results)
+    if (failure) {
+      MessageUtil.error('删除失败', failure)
+      return
+    }
+    emit('deleted', id)
+    MessageUtil.success('已删除元素')
+  } catch (e) {
+    MessageUtil.error('删除失败', e)
+  } finally {
+    deleting.value = false
+  }
+}
 
 const typeLabels: Record<string, string> = {
   group: '编组',
@@ -193,6 +239,12 @@ const layoutSizeText = (v: number | CanvasLayoutSize | undefined): string =>
     padding: 2px 6px 2px 0;
     font-size: var(--td-font-size-body-small);
     color: var(--td-text-color-placeholder);
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   &__body {

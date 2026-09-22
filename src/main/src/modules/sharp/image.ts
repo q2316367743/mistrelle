@@ -8,8 +8,16 @@
  * - colorMap(input, gridSize, top)：网格主色 + LAB 感知色差突兀区域检测（纯 JS，一次 raw 读取）
  */
 import sharp from 'sharp'
+import {
+  MOSAIC_BLUR_PX,
+  MOSAIC_BLUR_RANGE,
+  MOSAIC_CELL_PX,
+  MOSAIC_CELL_RANGE
+} from '@common/types/mosaic'
 import type {
   SharpColorMapResult,
+  SharpCoverOptions,
+  SharpMaskResult,
   SharpMetadata,
   SharpRegion,
   SharpRemoveBackgroundResult
@@ -266,4 +274,83 @@ export const sharpColorMap = async (
     })
 
   return { width, height, cols, rows, palette, anomalies }
+}
+
+/**
+ * 区域遮盖（马赛克 / 毛玻璃）：整图先生成「遮盖底图」——
+ * - mosaic：按块边长粗化（缩到 1/N 再 nearest 放大回原尺寸）得到统一网格的马赛克底图
+ * - blur：整图高斯模糊（sigma = 半径，与渲染层 `blur()` 半径同义）
+ * 再把各区域内像素从底图拷贝回原图，输出 PNG。用掩码 + raw 一次遍历实现，
+ * 支持大量区域（笔刷行段）不劣化。区域越界部分自动钳制到图片范围内。
+ *
+ * ⚠️ 粗化必须拆成两条 pipeline：sharp 同一条 pipeline 只允许一次 resize
+ * （官方文档：Only one resize can occur per pipeline，先前的 resize 会被忽略）。
+ * 写在一条里会只剩「按原尺寸 nearest 放大」＝恒等变换，产物与原图逐像素相同（马赛克静默失效）。
+ */
+export const sharpMask = async (
+  input: string,
+  regions: SharpRegion[],
+  output: string,
+  cover?: SharpCoverOptions
+): Promise<SharpMaskResult> => {
+  if (!regions.length) throw new Error('遮盖区域列表为空')
+  const { data, info } = await sharp(input).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const width = info.width
+  const height = info.height
+  // 通道数按图片实际值（彩色 4 / 灰度 2）：两个缓冲同源，通道数必然一致
+  const channels = info.channels
+  let masked: Buffer
+  if (cover?.style === 'blur') {
+    masked = await buildBlurBase(input, cover.blurPx)
+  } else {
+    // 马赛克底图：第一步缩到 1/N（默认核做块内平均），第二步 nearest 放大回原尺寸
+    const cell = clampRange(cover?.cellPx, MOSAIC_CELL_PX, MOSAIC_CELL_RANGE)
+    const cols = Math.max(1, Math.round(width / cell))
+    const rows = Math.max(1, Math.round(height / cell))
+    const small = await sharp(input)
+      .ensureAlpha()
+      .resize(cols, rows, { fit: 'fill' })
+      .raw()
+      .toBuffer()
+    masked = await sharp(small, { raw: { width: cols, height: rows, channels } })
+      .resize(width, height, { fit: 'fill', kernel: 'nearest' })
+      .raw()
+      .toBuffer()
+  }
+  // 区域掩码：标记需要替换的像素（行遍历填充，对矩形连续段 memset 友好）
+  const mask = new Uint8Array(width * height)
+  for (const region of regions) {
+    const left = Math.max(0, Math.min(Math.round(region.left), width - 1))
+    const top = Math.max(0, Math.min(Math.round(region.top), height - 1))
+    const w = Math.max(1, Math.min(Math.round(region.width), width - left))
+    const h = Math.max(1, Math.min(Math.round(region.height), height - top))
+    for (let y = top; y < top + h; y++) {
+      mask.fill(1, y * width + left, y * width + left + w)
+    }
+  }
+  // 逐像素替换：命掩码处从遮盖底图取同位置像素（含 alpha，逐通道拷贝）
+  for (let i = 0, px = 0; i < mask.length; i++, px += channels) {
+    if (!mask[i]) continue
+    for (let c = 0; c < channels; c++) {
+      data[px + c] = masked[px + c]
+    }
+  }
+  await sharp(data, { raw: { width, height, channels } }).png().toFile(output)
+  return { width, height, applied: regions.length }
+}
+
+/** 毛玻璃底图：整图高斯模糊（sigma = 半径，与渲染层 CSS blur 半径同义） */
+const buildBlurBase = async (input: string, blurPx: number | undefined): Promise<Buffer> => {
+  const sigma = clampRange(blurPx, MOSAIC_BLUR_PX, MOSAIC_BLUR_RANGE)
+  return sharp(input).ensureAlpha().blur(sigma).raw().toBuffer()
+}
+
+/** 数值缺省 / 越界 / 脏数据一律回落到默认值与合法范围 */
+const clampRange = (
+  value: number | undefined,
+  fallback: number,
+  [min, max]: readonly [number, number]
+): number => {
+  const base = typeof value === 'number' && Number.isFinite(value) ? value : fallback
+  return Math.min(max, Math.max(min, base))
 }

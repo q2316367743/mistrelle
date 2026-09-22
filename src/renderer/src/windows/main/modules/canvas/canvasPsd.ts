@@ -10,8 +10,9 @@ import {
 } from './canvasLayout'
 import { compact, resolvePaint } from './canvasPaint'
 import { ensureFontsForDoc } from './fontRegistry'
-import { buildNode, settleAnimations } from './canvasRender'
+import { buildNodeWithExtras, settleAnimations } from './canvasRender'
 import { createOffscreenLeafer } from './offscreenCanvas'
+import { prepareMosaicOverlays } from './mosaicOverlay'
 
 /**
  * 画布导出分层 PSD（MVP：逐图层位图化）：
@@ -87,8 +88,9 @@ const exportBlob = async (leafer: Leafer, abs: CanvasNodeBounds): Promise<Blob> 
 }
 
 export const exportCanvasPsd = async (doc: CanvasDoc): Promise<ArrayBuffer> => {
-  // 先确保画布用到的字体已加载（与 PNG 导出同一事实源，保证文字光栅化不缺字）
-  await ensureFontsForDoc(doc)
+  // 先确保画布用到的字体已加载（与 PNG 导出同一事实源，保证文字光栅化不缺字），
+  // 并预热图片遮盖叠加位图（马赛克 / 毛玻璃）
+  await Promise.all([ensureFontsForDoc(doc), prepareMosaicOverlays(doc)])
   const palette = doc.palette ?? {}
   const boundsById = new Map(computeLayoutBounds(doc).map((b) => [b.id, b]))
   const { leafer, dispose } = createOffscreenLeafer(doc.width, doc.height)
@@ -99,9 +101,10 @@ export const exportCanvasPsd = async (doc: CanvasDoc): Promise<ArrayBuffer> => {
       abs: CanvasNodeBounds
     ): Promise<HTMLCanvasElement> => {
       leafer.clear()
-      // 元素坐标是「相对父盒」：单独挂载时用包装组平移回画布绝对位置（不改变子树相对结构与旋转）
+      // 元素坐标是「相对父盒」：单独挂载时用包装组平移回画布绝对位置（不改变子树相对结构与旋转）。
+      // 图片遮盖叠加层（马赛克 / 毛玻璃）随宿主节点一起光栅化，保证 PSD 与 PNG / 画布视觉一致
       const wrapper = new Group({ x: abs.x - layout.x, y: abs.y - layout.y })
-      wrapper.add(buildNode(layout, palette))
+      for (const element of buildNodeWithExtras(layout, palette)) wrapper.add(element)
       leafer.add(wrapper)
       settleAnimations([wrapper])
       return blobToCanvas(await exportBlob(leafer, abs), abs.width, abs.height)

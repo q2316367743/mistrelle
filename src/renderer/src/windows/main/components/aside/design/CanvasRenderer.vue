@@ -17,9 +17,16 @@ import {
   EditorScaleEvent
 } from 'leafer-editor'
 import { MessageUtil } from '@/utils/modal'
-import { ensureFontsForDoc, getCanvasStore, buildDocElements } from '@/windows/main/modules/canvas'
+import {
+  ensureFontsForDoc,
+  findCanvasNode,
+  getCanvasStore,
+  buildDocElements,
+  prepareMosaicOverlays
+} from '@/windows/main/modules/canvas'
 import type { CanvasDoc, CanvasNode } from '@/windows/main/modules/canvas'
 import { CANVAS_NODE_PICK_KEY } from '@/windows/main/components/design/canvasNodeBridge'
+import { useCanvasTransform } from './useCanvasTransform'
 
 /** 双击命中的元素最小结构（leafer 2.2.9 的 d.ts 被混淆，用本地接口收窄，避免 any） */
 interface CanvasTapTarget {
@@ -33,16 +40,6 @@ interface CanvasSelectTarget {
 }
 interface CanvasSelectEvent {
   value?: CanvasSelectTarget | CanvasSelectTarget[] | null
-}
-
-/** 被编辑元素的最小结构（拖拽结束后读回变换） */
-interface EditorElement {
-  id?: string
-  x?: number
-  y?: number
-  width?: number
-  height?: number
-  rotation?: number
 }
 
 const props = withDefaults(
@@ -87,16 +84,8 @@ const handleWindowPointerDown = (e: PointerEvent) => {
 }
 
 /** 在节点树中按 id 查找节点（含子树） */
-const findNode = (nodes: CanvasNode[], id: string): CanvasNode | null => {
-  for (const node of nodes) {
-    if (node.id === id) return node
-    if (node.children?.length) {
-      const found = findNode(node.children, id)
-      if (found) return found
-    }
-  }
-  return null
-}
+const findNode = (nodes: CanvasNode[], id: string): CanvasNode | null =>
+  findCanvasNode(nodes, id)
 
 /** 双击画布元素：把「画布版本 + 节点 id」注入到聊天输入框，让 AI 能 canvas_open(version) 定位并修改 */
 const handleDoubleTap = async (event: { target?: CanvasTapTarget | null }) => {
@@ -120,6 +109,12 @@ const handleDoubleTap = async (event: { target?: CanvasTapTarget | null }) => {
     MessageUtil.error('复制失败')
   }
 }
+
+/** 拖拽 / 缩放 / 旋转结束 → 元素新变换写回画布 model 并保存（useCanvasTransform） */
+const { handleTransformEnd } = useCanvasTransform({
+  getApp: () => app,
+  store: () => store.value
+})
 
 onMounted(() => {
   if (!canvasHost.value) return
@@ -163,50 +158,6 @@ onBeforeUnmount(() => {
   app?.destroy?.()
   app = null
 })
-
-/** 拖拽 / 缩放 / 旋转结束（isEnd）→ 把元素新变换写回画布 model 并保存 */
-const handleTransformEnd = (event: { isEnd?: boolean }) => {
-  if (!event.isEnd) return
-  void syncEditorTransform()
-}
-
-const syncEditorTransform = async () => {
-  const doc = store.value.current.value
-  const items = app?.editor?.list
-  if (!doc || !items?.length) return
-  let changed = false
-  for (const raw of items) {
-    const el = raw as EditorElement
-    if (!el.id) continue
-    const node = findNode(doc.nodes, el.id)
-    if (!node) continue
-    if (typeof el.x === 'number' && Math.abs(el.x - (node.x ?? 0)) > 0.5) {
-      node.x = Math.round(el.x)
-      changed = true
-    }
-    if (typeof el.y === 'number' && Math.abs(el.y - (node.y ?? 0)) > 0.5) {
-      node.y = Math.round(el.y)
-      changed = true
-    }
-    if (typeof el.rotation === 'number' && Math.abs(el.rotation - (node.rotation ?? 0)) > 0.5) {
-      node.rotation = Math.round(el.rotation)
-      changed = true
-    }
-    // 尺寸：仅自由节点写回；布局组（layout 非 none）尺寸由引擎排布
-    const isFreeGroup = node.type !== 'group' || node.layout == null || node.layout === 'none'
-    const nodeW = typeof node.width === 'number' ? node.width : 0
-    const nodeH = typeof node.height === 'number' ? node.height : 0
-    if (isFreeGroup && typeof el.width === 'number' && Math.abs(el.width - nodeW) > 0.5) {
-      node.width = Math.round(el.width)
-      changed = true
-    }
-    if (isFreeGroup && typeof el.height === 'number' && Math.abs(el.height - nodeH) > 0.5) {
-      node.height = Math.round(el.height)
-      changed = true
-    }
-  }
-  if (changed) await store.value.save()
-}
 
 /** 编辑器选中事件 → 提取单个节点 id 上抛（多选只取首个）。取消选中分两类：
  *  画布内空白点击（pointerDownInCanvas 为 true）正常下发；画布外点击触发的取消不下发。
@@ -254,15 +205,20 @@ const resetView = () => {
 
 // 当前渲染对应的视图标识（画布版本 + 容器尺寸），用于判断是否重置缩放/平移
 let viewKey = ''
+// 渲染世代：重建前的异步预热（字体 / 遮盖叠加位图）期间若又有新渲染请求，旧结果直接作废
+let renderToken = 0
 
 const render = async () => {
   if (!app) return
   const doc = store.value.current.value
+  const token = ++renderToken
   app.tree.clear()
   app.editor?.cancel()
   if (!doc) return
-  // 确保画布用到的字体已加载（资源库 / 在线字体走 FontFace），保证预览与 measureText 用同一字体源
-  await ensureFontsForDoc(doc)
+  // 确保画布用到的字体已加载（资源库 / 在线字体走 FontFace），保证预览与 measureText 用同一字体源；
+  // 同时预热图片遮盖叠加位图（马赛克 / 毛玻璃），元素树构建阶段只做同步缓存查询
+  await Promise.all([ensureFontsForDoc(doc), prepareMosaicOverlays(doc)])
+  if (token !== renderToken) return
   const width = Math.max(40, Math.round(containerWidth.value - 16))
   const height = Math.max(40, Math.round(containerHeight.value - 16))
   const key = `${doc.version}@${width}x${height}`
@@ -288,8 +244,6 @@ watch(() => store.value.current.value, render, { deep: true })
 watch([containerWidth, containerHeight], () => {
   if (store.value.current.value) render()
 })
-
-defineExpose({ render })
 </script>
 <style scoped lang="less">
 .canvas-renderer {

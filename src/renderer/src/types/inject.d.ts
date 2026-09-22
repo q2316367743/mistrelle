@@ -260,6 +260,15 @@ interface InjectSharpColorMapResult {
   }>
 }
 
+interface InjectSharpCoverOptions {
+  /** mosaic 像素块马赛克（默认）/ blur 毛玻璃（高斯模糊） */
+  style?: 'mosaic' | 'blur'
+  /** 马赛克像素块边长（px，越小越细腻），默认 14 */
+  cellPx?: number
+  /** 毛玻璃模糊半径（px），默认 8 */
+  blurPx?: number
+}
+
 interface InjectSharp {
   /** 读取图片元信息（宽高 / 格式） */
   metadata(input: string | Uint8Array | ArrayBuffer): Promise<InjectSharpMetadata>
@@ -279,6 +288,42 @@ interface InjectSharp {
    * 突兀区域 anomalies（每格与 8 邻域的 LAB ΔE 最大色差 Top-N）。
    */
   colorMap(input: string, gridSize: number, top: number): Promise<InjectSharpColorMapResult>
+  /**
+   * 区域遮盖（马赛克 / 毛玻璃）：整图先生成遮盖底图（粗化方块 / 高斯模糊），
+   * 再逐区域把底图像素替换回原图，输出 PNG（不改原图）。区域越界部分自动钳制到图片范围内。
+   */
+  mask(
+    input: string,
+    regions: InjectSharpRegion[],
+    output: string,
+    cover?: InjectSharpCoverOptions
+  ): Promise<InjectSharpMaskResult>
+}
+
+interface InjectSharpMaskResult {
+  width: number
+  height: number
+  /** 实际遮盖的区域数 */
+  applied: number
+}
+
+// ── ocr（图片文字识别） ─────────────────────────────────────
+
+/** 单个 OCR 识别行：文本 + 置信度 + 包围盒与四点轮廓（原图像素坐标，左上原点） */
+interface InjectOcrLine {
+  text: string
+  confidence: number
+  x: number
+  y: number
+  w: number
+  h: number
+  /** 四点四边形轮廓扁平坐标 [x1,y1,x2,y2,x3,y3,x4,y4]（顺时针，贴合倾斜文字） */
+  points: number[]
+}
+
+interface InjectOcr {
+  /** 离线识别本地图片中的全部文字（PP-OCRv6，macOS 走 Core ML 加速），返回图片尺寸与文本行 */
+  recognize(path: string): Promise<{ width: number; height: number; lines: InjectOcrLine[] }>
 }
 
 // ── browserTool（浏览器工具） ────────────────────────────────
@@ -335,4 +380,6 @@ interface InjectApi {
   runBrowser(payload: InjectRunBrowserPayload): Promise<unknown>
 
   sharp: InjectSharp
+
+  ocr: InjectOcr
 }

@@ -22,6 +22,8 @@ import {
 import { compact, resolvePaint, toEffectsProps } from './canvasPaint'
 import { ensureFontsForDoc } from './fontRegistry'
 import { createOffscreenLeafer } from './offscreenCanvas'
+import { resolveImageHref } from './canvasImage'
+import { buildMosaicOverlay, prepareMosaicOverlays } from './mosaicOverlay'
 
 export type CanvasRenderNode =
   Rect | Ellipse | Text | Line | LeaferImage | Polygon | Star | Path | Group
@@ -32,17 +34,6 @@ const buildAnimationProps = (node: CanvasNode): Record<string, unknown> =>
     animation: node.animation,
     animationOut: node.animationOut
   })
-
-/**
- * 图片引用统一为本地绝对路径（数据层），渲染时在此唯一转换：
- * 已是 URL（file / http(s) / data / blob）原样透传（AI 可合法填入远程地址），
- * 否则视为本地文件路径转 file href 交给 Leafer 加载。
- */
-const resolveImageHref = (value: string | undefined): string | undefined => {
-  if (!value) return undefined
-  if (/^(file|https?|data|blob):/i.test(value)) return value
-  return window.preload.net.pathToHref(value)
-}
 
 /** 节点公共属性（几何 + 变换 + 效果 + 动画），坐标为文档空间 */
 const buildCommon = (layout: CanvasLayoutNode, effects: boolean): Record<string, unknown> => {
@@ -161,7 +152,7 @@ export const buildNode = (
       }
       for (const child of layout.children) {
         try {
-          group.add(buildNode(child, palette))
+          for (const element of buildNodeWithExtras(child, palette)) group.add(element)
         } catch {
           // 跳过损坏的子节点，保证整张画布不因单个脏节点崩溃
         }
@@ -288,6 +279,19 @@ export const buildNode = (
 }
 
 /**
+ * 节点元素 + 附加渲染层（图片遮盖叠加，见 mosaicOverlay.ts）：附加层紧跟宿主之后插入，
+ * 保证「遮盖在图片之上、其后的图层仍在遮盖之上」。
+ */
+export const buildNodeWithExtras = (
+  layout: CanvasLayoutNode,
+  palette: Record<string, string>
+): CanvasRenderNode[] => {
+  const element = buildNode(layout, palette)
+  const overlay = layout.node.type === 'image' ? buildMosaicOverlay(layout) : null
+  return overlay ? [element, overlay] : [element]
+}
+
+/**
  * 构建整张画布的渲染元素：背景 Rect + 全部根图层，
  * 统一包在一个可缩放的根 Group 中（缩放/平移由根 Group 变换完成，元素坐标保持文档空间）。
  */
@@ -310,7 +314,7 @@ export const buildDocElements = (
   const palette = doc.palette ?? {}
   for (const layout of layoutCanvasDoc(doc)) {
     try {
-      root.add(buildNode(layout, palette))
+      for (const element of buildNodeWithExtras(layout, palette)) root.add(element)
     } catch {
       // 跳过损坏的根图层，保证整张画布不因单个脏节点崩溃
     }
@@ -418,8 +422,9 @@ export const exportCanvasPng = async (
   doc: CanvasDoc,
   region?: CanvasExportRegion
 ): Promise<Blob> => {
-  // 先确保画布用到的字体已加载（资源库 / 在线字体走 FontFace，系统字体 Chromium 原生可用）
-  await ensureFontsForDoc(doc)
+  // 先确保画布用到的字体已加载（资源库 / 在线字体走 FontFace，系统字体 Chromium 原生可用），
+  // 并预热图片遮盖叠加位图（马赛克 / 毛玻璃），保证导出与预览一致
+  await Promise.all([ensureFontsForDoc(doc), prepareMosaicOverlays(doc)])
   const r = region ? roundRegion(region) : { x: 0, y: 0, width: doc.width, height: doc.height }
   const width = Math.max(1, r.width)
   const height = Math.max(1, r.height)

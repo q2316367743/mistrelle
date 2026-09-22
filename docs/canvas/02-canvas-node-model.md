@@ -74,6 +74,10 @@ interface CanvasDoc {
   `fill`（必须设置否则不可见），描边字 = `stroke` + `strokeWidth`
 - **矢量/图片**：`points`（折线，相对 x/y）、`sides`、`corners`、`innerRadius`、`startAngle`、`path`（SVG 路径）、`imageUrl`、`svg`
   （内联）
+- **图片遮盖（image 节点，2026-09-22）**：`mosaic: { style: 'mosaic'|'blur', cellPx?, blurPx?, regions: [{ points, kind, text? }] }`。
+  **非破坏记录**——`imageUrl` 始终是原图，本字段只描述「盖哪里、怎么盖」；画布与导出由渲染层实时叠加遮盖层
+  （`modules/canvas/mosaicOverlay.ts`），删除该字段即无损复原。区域用轮廓点（图片像素坐标）：矩形 4 点 / OCR 四点四边形 /
+  涂抹网格矩形。详见 [07-canvas-mosaic.md](./07-canvas-mosaic.md)。
 - **图标默认用 svg 节点**：图标优先用 `svg` 节点写内联 SVG（`icon_svg` 工具取真实图标，或手写 path），内部颜色可写
   `$token名`， 落盘时自动替换为调色板实色（见 CanvasStore `resolveSvgTokens`）；简单单色图形（圆点 / 分隔线 / 星标 /
   书签）用原生节点组合 （rect / ellipse / path / line / star / polygon），颜色用 `fill` + `$token`。`path` 描边图标设
@@ -205,6 +209,8 @@ interface CanvasDoc {
   xxx …"） 让 AI 自纠，不再静默丢弃；渲染层兜底（`buildNode` 未知类型返回空 `Group`、单节点失败跳过）仍保留作最后防线。
 - 旧模型无此校验时可能落盘的脏数据（如 `width:"500"`）读盘仍宽松展示，不影响渲染。
 - 渲染端兜底：`buildNode` 对未知类型返回空 `Group`（绝不返回 `undefined`），单节点构建失败会跳过而非拖垮整张画布。
+- **渲染附加层（`buildNodeWithExtras`）**：`buildNode` 只产出节点自身元素，图片遮盖叠加层由 `mosaicOverlay.buildMosaicOverlay`
+  产出、作为**紧邻宿主之后的兄弟元素**插入（视口渲染 / PNG 导出 / PSD 逐图层光栅化三处统一走它），保证「遮盖在图片之上、后续图层仍在遮盖之上」。
 - **区域分组**：区域内 ≥2 个元素必须收进 `group` 并用 `layout` 排布（子节点不写 x/y，交引擎）；`rect`
   不是容器、不能挂子节点，「背景 + 文字」必须用 group 而非 rect 硬凑。手动坐标仅用于顶层定位与布局组内 `ABSOLUTE` 锚点。
   例外：**svg 图标嵌圆底（图标底+图标）不能用排布型 layout**（horizontal/vertical 会并排而非叠加），须 group 不开 layout +
