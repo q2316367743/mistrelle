@@ -28,7 +28,7 @@ export class ChatSession {
   readonly chat: ToolChat
   /** 跨挂载存活：当前工作空间 */
   readonly workspace = ref('')
-  /** 跨挂载存活：聊天模式（0 默认 / 1 计划 / 2 完全访问） */
+  /** 跨挂载存活：聊天模式（0 默认 / 1 计划 / 2 完全访问 / 3 自动编辑） */
   readonly mode = ref<AiChatMode>(0)
   /** 跨挂载存活：隐私聊天标记（不注入记忆 / 不注册记忆工具，持久化在 chat 表 privacy 列，创建后锁定） */
   readonly privacy = ref(false)
@@ -44,6 +44,8 @@ export class ChatSession {
   readonly agentId = ref('')
 
   private hydrated = false
+  /** 水合是否已完整走完（消息已就位）：此前禁止落盘，避免用空消息覆盖存储 */
+  private loaded = false
   private destroyed = false
   private unWatch?: () => void
   private unWatchStatus?: () => void
@@ -111,6 +113,8 @@ export class ChatSession {
     const content = await aiChatContentGet(this.storageKey)
     // 水合期间会话被销毁（删除聊天），直接放弃，避免重建常驻 watcher 与草稿发送
     if (this.destroyed) return
+    // 磁盘上的模式：水合期间用户可能已在下拉里改过（见 setMode 的 loaded 守卫），末尾据此补落盘
+    let storedMode = this.mode.value
     if (content) {
       this.chat.init(content.messages)
       if (content.todos) this.chat.setTodos(content.todos)
@@ -118,8 +122,9 @@ export class ChatSession {
         this.workspace.value = content.workspace
         this.chat.setWorkspace(content.workspace)
       }
-      this.mode.value = content.mode
-      this.chat.setMode(content.mode)
+      storedMode = content.mode ?? 0
+      this.mode.value = storedMode
+      this.chat.setMode(storedMode)
       // 隐私聊天标记（chat 行级列，创建后锁定）：水合进会话与引擎，首轮草稿发送前即生效
       const privacyChatId = chatIdFromKey(this.storageKey)
       if (privacyChatId) {
@@ -172,19 +177,36 @@ export class ChatSession {
     // 为 pending/streaming，resumePendingInteractives 内部会因 canStartRequest 直接返回）
     const hasUserMessage = this.chat.messages.value.some((m) => m.role === 'user')
     if (!hasUserMessage && content?.draft) {
-      await this.chat.sendUserMessage(content.draft)
+      // 走 send() 而非直接 sendUserMessage：草稿里的模式 / 工作空间 / agent 一并同步进会话
+      await this.send(content.draft)
     }
     await this.chat.resumePendingInteractives()
+    // 水合完成：此前用户改过的模式（setMode 守卫跳过了落盘）在此统一补写
+    this.loaded = true
+    if (this.mode.value !== storedMode) this.persist()
   }
 
   async send(params: ChatRequestParams): Promise<void> {
     if (params.workspace) this.workspace.value = params.workspace
-    this.mode.value = params.mode
+    this.setMode(params.mode)
     if (params.agentId) this.agentId.value = params.agentId
     // 注意：聊天类型（type）、写作子场景（writingScene）、设计子场景（designScene）、
     // 设计风格（designStyleId）与隐私标记（privacy）均为「创建后锁定」属性，
     // 由 load() 从聊天行 / 持久化内容恢复，此处不得随消息修改。
     await this.chat.sendUserMessage(params)
+  }
+
+  /**
+   * 切换聊天模式：同步会话标记与引擎裁决，并立即落盘。
+   * 模式是「随对话实时生效」的属性（与创建后锁定的 type 等不同）：改动即时作用于下一个工具调用的
+   * 策略裁决（buildPolicyContext 每次调用读取当前值），无需等下一次发送，也不随消息丢失。
+   */
+  setMode(mode: AiChatMode): void {
+    if (this.mode.value === mode) return
+    this.mode.value = mode
+    this.chat.setMode(mode)
+    // 水合完成前不落盘：此时内存消息尚为空，写入会用空消息覆盖存储（load 末尾统一补写）
+    if (this.loaded) this.persist()
   }
 
   stop(): void {

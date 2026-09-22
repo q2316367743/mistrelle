@@ -108,28 +108,11 @@
                 </button>
               </template>
 
-              <!-- 模式面板 -->
-              <template v-else-if="activePanel === 'mode'">
-                <div
-                  v-for="item in modeToggleOptions"
-                  :key="item.value"
-                  class="l-chat-attachment__mode-row"
-                  :title="item.label"
-                >
-                  <span class="l-chat-attachment__mode-label">{{ item.label }}</span>
-                  <span class="l-chat-attachment__mode-en">{{ item.en }}</span>
-                  <t-switch
-                    class="ml-auto"
-                    :value="mode === item.value"
-                    @change="selectMode(item.value)"
-                  />
-                </div>
-                <t-divider />
-                <div class="l-chat-attachment__mode-desc">{{ currentModeDesc }}</div>
-                <t-divider />
-                <div class="l-chat-attachment__mode-row" title="隐私聊天（创建后锁定）">
-                  <span class="l-chat-attachment__mode-label">隐私聊天</span>
-                  <span class="l-chat-attachment__mode-en">Privacy</span>
+              <!-- 隐私面板：聊天模式已收敛到发送栏权限模式下拉，此处只保留创建时锁定的隐私开关 -->
+              <template v-else-if="activePanel === 'privacy'">
+                <div class="l-chat-attachment__switch-row" title="隐私聊天（创建后锁定）">
+                  <span class="l-chat-attachment__switch-label">隐私聊天</span>
+                  <span class="l-chat-attachment__switch-en">Privacy</span>
                   <t-switch
                     class="ml-auto"
                     :value="privacy"
@@ -137,7 +120,7 @@
                     @change="togglePrivacy"
                   />
                 </div>
-                <div class="l-chat-attachment__mode-desc">
+                <div class="l-chat-attachment__switch-desc">
                   开启后此聊天不注入记忆、不提供记忆工具，对话内容不会进入短期 /
                   长期记忆。仅创建聊天时可选，创建后锁定。
                 </div>
@@ -280,21 +263,21 @@ import {
   FolderIcon,
   SearchIcon,
   UploadIcon,
-  CodeIcon,
   LightbulbIcon,
+  LockOnIcon,
   ToolsIcon,
   AddIcon
 } from 'tdesign-icons-vue-next'
 import { localSkillList, type LocalSkill } from '@/windows/main/modules/skill'
 import { toolOptions } from '@/windows/main/modules/tool'
 import { useAiAgentStore } from '@/windows/main/store'
-import { AI_AGENT_CATEGORIES, AiChatMode } from '@/entity/ai'
+import { AI_AGENT_CATEGORIES } from '@/entity/ai'
 import type { ToolSuggestionItem } from './mentionSuggestion'
 import { CommonSelect } from '@/domain'
 import { loadChatFiles, type ChatFileRef } from '@/utils/chatSender'
 
 /** 面板类型 */
-type PanelType = 'skill' | 'tool' | 'expert' | 'mode' | 'file' | 'ref-file'
+type PanelType = 'skill' | 'tool' | 'expert' | 'privacy' | 'file' | 'ref-file'
 
 /** 导航项定义 */
 interface NavItem {
@@ -303,18 +286,10 @@ interface NavItem {
   icon: Component
 }
 
-/** 模式切换项 */
-interface ModeToggleOption {
-  value: AiChatMode
-  label: string
-  en: string
-}
-
 // ─── Props & Emits ───────────────────────────────────────
 const props = withDefaults(
   defineProps<{
     agent?: string
-    mode?: AiChatMode
     privacy?: boolean
     /** 锁定隐私标记（聊天室）：隐私为创建后锁定属性，开关禁用仅回显 */
     lockPrivacy?: boolean
@@ -323,7 +298,6 @@ const props = withDefaults(
   }>(),
   {
     agent: '',
-    mode: 0,
     privacy: false,
     lockPrivacy: false,
     sandboxDir: '',
@@ -332,7 +306,6 @@ const props = withDefaults(
 )
 const emit = defineEmits<{
   'update:agent': [agentId: string]
-  'update:mode': [mode: AiChatMode]
   'update:privacy': [privacy: boolean]
   addSkill: [skill: LocalSkill]
   addTool: [tool: ToolSuggestionItem]
@@ -398,7 +371,7 @@ const workspaceRelativeDir = computed(() => {
 const panelItems: NavItem[] = [
   { value: 'file', label: '添加文件', icon: FileAddIcon },
   { value: 'ref-file', label: '引用对话中的文件', icon: FolderIcon },
-  { value: 'mode', label: '模式', icon: CodeIcon },
+  { value: 'privacy', label: '隐私', icon: LockOnIcon },
   { value: 'expert', label: 'Agent', icon: AiEducationIcon },
   { value: 'skill', label: '技能', icon: LightbulbIcon },
   { value: 'tool', label: '工具', icon: ToolsIcon }
@@ -419,16 +392,6 @@ const showFooter = computed(() => ['skill', 'tool', 'expert'].includes(activePan
 const searchPlaceholder = computed(() => {
   const map: Record<string, string> = { skill: '搜索技能', tool: '搜索工具', expert: '搜索专家' }
   return map[activePanel.value] ?? '搜索'
-})
-
-/** 当前模式描述文字 */
-const currentModeDesc = computed(() => {
-  const map: Record<AiChatMode, string> = {
-    0: '当前为默认模式，工具按权限审批执行。',
-    1: '当前为计划模式：可读取 / 分析，可运行 shell（需审批），禁止写入 / 修改文件。',
-    2: '当前为完全访问模式：默认直接执行，仅命中安全黑名单时需你批准。'
-  }
-  return map[props.mode] ?? '当前为默认模式，工具按权限审批执行。'
 })
 
 /** 过滤后的技能列表 */
@@ -475,12 +438,6 @@ const groupedAgents = computed(() => {
   return groups
 })
 
-/** 模式切换选项（0 默认模式为基准，点击已选中的项会切回 0） */
-const modeToggleOptions: ModeToggleOption[] = [
-  { value: 1, label: '计划', en: 'Plan' },
-  { value: 2, label: '完全访问', en: 'Full' }
-]
-
 // ─── 选择动作 ─────────────────────────────────────────────
 const selectSkill = (skill: LocalSkill) => {
   emit('addSkill', skill)
@@ -498,16 +455,6 @@ const selectAgent = (agentId: string) => {
   emit('update:agent', agentId)
   keyword.value = ''
   show.value = false
-}
-
-const selectMode = (res: AiChatMode) => {
-  console.log(res, props.mode)
-  if (props.mode === res) {
-    emit('update:mode', 0)
-  } else {
-    emit('update:mode', res)
-  }
-  keyword.value = ''
 }
 
 const togglePrivacy = (value: unknown) => {
@@ -839,15 +786,15 @@ watch(
   }
 }
 
-/* ─── 模式面板 ──────────────────────────────────── */
-.l-chat-attachment__mode-desc {
+/* ─── 隐私面板 ──────────────────────────────────── */
+.l-chat-attachment__switch-desc {
   padding: 4px 6px 12px;
   color: var(--td-text-color-secondary);
   font-size: var(--td-font-size-body-medium);
   line-height: 1.5;
 }
 
-.l-chat-attachment__mode-row {
+.l-chat-attachment__switch-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -861,48 +808,16 @@ watch(
   }
 }
 
-.l-chat-attachment__mode-label {
+.l-chat-attachment__switch-label {
   color: var(--td-text-color-primary);
   font-size: var(--td-font-size-body-medium);
   font-weight: 500;
 }
 
-.l-chat-attachment__mode-en {
+.l-chat-attachment__switch-en {
   color: var(--td-text-color-placeholder);
   font-size: var(--td-font-size-body-small);
   margin-left: 2px;
-}
-
-.l-chat-attachment__mode-switch {
-  margin-left: auto;
-  width: 36px;
-  height: 20px;
-  border-radius: 10px;
-  background: var(--td-component-stroke);
-  position: relative;
-  transition: background 200ms;
-  flex-shrink: 0;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--td-bg-color-container);
-    box-shadow: var(--td-shadow-inset-top);
-    transition: transform 200ms;
-  }
-
-  &.is-on {
-    background: var(--td-brand-color);
-
-    &::after {
-      transform: translateX(16px);
-    }
-  }
 }
 
 /* ─── 底部操作区 ────────────────────────────────── */

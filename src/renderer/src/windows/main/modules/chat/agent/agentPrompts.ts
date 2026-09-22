@@ -152,7 +152,7 @@ const buildSubAgentGuidancePrompt = (): string =>
  * 根据当前聊天模式生成一段"模式指令"，作为独立 system 消息追加到稳定 system 之后。
  * 不写入稳定 system 提示词，以保留其缓存前缀；参考 opencode 做法，让 AI 自行收敛行为：
  * - 1 计划模式：可读取 / 分析、可运行 shell（需审批），但严禁写入 / 修改文件，建议先给计划
- * - 0 默认 / 2 完全访问：无附加指令
+ * - 0 默认 / 2 完全访问 / 3 自动编辑：无附加指令
  */
 const buildModeInstructionBody = (mode: AiChatMode): string => {
   if (mode === 1) {

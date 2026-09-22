@@ -16,7 +16,7 @@ export interface ToolPolicyContext {
   onAllowDir?: (dir: string) => void
   /** skill agent 根目录集合（AgentChat 注入），其内脚本执行免审批 */
   skillRootDirs?: string[]
-  /** 当前聊天模式，用于按模式约束工具执行（0 默认 / 1 计划：无写入·shell 需审批 / 2 完全访问） */
+  /** 当前聊天模式，用于按模式约束工具执行（0 默认 / 1 计划：无写入·shell 需审批 / 2 完全访问 / 3 自动编辑：文件写入免审批） */
   mode?: AiChatMode
   /** 隐私聊天标记（AgentChat 注入，spawn_agent 透传给子 Agent 继承） */
   privacy?: boolean

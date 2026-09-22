@@ -1,6 +1,7 @@
 import type { ChatRequestParams, ChatType } from '@/windows/main/modules/chat'
 import { getChatSession, getSandboxDir, releaseChatSession } from '@/windows/main/modules/chat'
 import type { ChatMessage, ThinkingEffort, TokenBreakdown, UserMessage } from '@/domain'
+import type { AiChatMode } from '@/entity'
 import type { ChatSenderInitial } from '@/windows/main/components/sender/chatSenderInitial'
 import { INTERACTIVE_KEY } from '@/windows/main/modules/chat/agent/interactive'
 import { readSubAgentContent, getRunningSubAgentMessages } from '@/windows/main/modules/subagent'
@@ -81,6 +82,14 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     void session.send(message)
   }
 
+  /**
+   * 切换聊天模式：实时写入当前会话（同步引擎裁决 + 立即落盘），并作用于下一个工具调用。
+   * sender 侧经 `v-model:mode` 绑定该会话状态，切换对话即自动显示对应对话的模式。
+   */
+  const handleModeChange = (value: AiChatMode) => {
+    session.setMode(value)
+  }
+
   const handleStop = () => {
     session.stop()
   }
@@ -132,7 +141,6 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     thinking: thinking.value,
     effort: effort.value,
     agentId: agentId.value,
-    mode: mode.value,
     privacy: session.privacy.value,
     type: chatType.value,
     writingScene: writingScene.value,
@@ -269,6 +277,7 @@ export const useChatSession = (options: UseChatSessionOptions) => {
     initialState,
     tokenUsage,
     handleSend,
+    handleModeChange,
     handleStop,
     handleClear,
     handleDeleteMessage,

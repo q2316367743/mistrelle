@@ -32,14 +32,15 @@ export interface AiChatItem extends BaseEntity {
 export type AiChatDraft = ChatRequestParams
 
 /**
- * 聊天模式
- * - 0：默认模式（工具审批受限于工具自身权限：safe 放行、sensitive 需确认、dangerous 拦截）
+ * 聊天模式（发送栏权限模式下拉的四个档位，互斥单选）
+ * - 0：变更前确认（默认档；工具审批受限于工具自身权限：safe 放行、sensitive 需确认、dangerous 拦截）
  * - 1：计划模式（无写入 / 修改权限，shell 执行需审批，只读 / 分析类可用）
  * - 2：完全访问模式（默认直接放行一切，仅当操作命中安全中心黑名单时才需审批）
+ * - 3：自动编辑模式（写 / 改文件类工具直接放行，shell 执行等其余工具仍走默认审批流）
  *
- * 三种模式均无法跳过安全中心设置：一旦工具命中黑名单（写入指定目录、shell 含指定目录字符串、shell 命中指定命令），均需审批。
+ * 四种模式均无法跳过安全中心设置：一旦工具命中黑名单（写入指定目录、shell 含指定目录字符串、shell 命中指定命令），均需审批。
  */
-export type AiChatMode = 0 | 1 | 2
+export type AiChatMode = 0 | 1 | 2 | 3
 
 export interface AiChatContent {
   /**

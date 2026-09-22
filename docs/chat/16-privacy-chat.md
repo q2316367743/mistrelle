@@ -1,10 +1,11 @@
 # 16 - 隐私聊天
 
-> 2026-08-26 落地。**创建聊天时**在发送面板「模式」下设置隐私开关：开启后该聊天不注入记忆、不注册记忆工具、消息不进入短期 / 长期记忆。**创建后锁定**（与 type / writingScene / designStyleId 同族），聊天室内开关禁用、不可更改。
+> 2026-08-26 落地。**创建聊天时**在发送面板「隐私」下设置隐私开关：开启后该聊天不注入记忆、不注册记忆工具、消息不进入短期 / 长期记忆。**创建后锁定**（与 type / writingScene / designStyleId 同族），聊天室内开关禁用、不可更改。
+> （2026-09-22 起该面板由「模式」更名而来：聊天模式已提为发送栏工具条的一等下拉，面板内不再有模式开关，见 [22-chat-sender-toolbar.md](./22-chat-sender-toolbar.md)。）
 
 ## 需求语义
 
-- 开关位于 `LChatAttachment.vue` 模式面板（计划 / 完全访问之下），**仅新建聊天页（PageNew → LChatSender）可操作**；
+- 开关位于 `LChatAttachment.vue` 隐私面板（`activePanel === 'privacy'`），**仅新建聊天页（PageNew → LChatSender）可操作**；
 - **创建后锁定**：聊天室（LChatEngine）内 `lock-privacy` 硬编码传入，开关禁用仅回显、「隐私」tag 不可关闭；引擎不随消息修改该标记（`ChatSession.send` 不接收、`sendUserMessage` 不读取 privacy）；
 - 标记持久化在 **chat 表 `privacy` 列**（integer 0/1，默认 0），即 `AiChatItem.privacy`（与 `mode` 存在 `AiChatContent` 不同，列表 / 引擎无需加载消息体即可读取）；
 - 开启后：
@@ -12,12 +13,12 @@
   2. 不注入记忆工具使用指导、不注册 `record_memory` 工具（用户 `#` 显式指定也不注入）；
   3. 该会话不进入记忆提取（短期记忆无条目 → 长期记忆合并自然无来源）；
   4. 子 Agent 继承主 Agent 的隐私标记（同样不注册记忆工具）；
-  5. `LChatEngine` 标题前展示红色「私」tag；发送面板 footer 展示「隐私」tag（仅新建页可关闭）；侧边栏 `ChatList` 列表项名称前展示「私」tag。
+  5. `LChatEngine` 标题前展示红色「私」tag；发送栏工具条展示「隐私」tag（仅新建页可关闭）；侧边栏 `ChatList` 列表项名称前展示「私」tag。
 
 ## 数据链路
 
 ```
-LChatAttachment 开关（t-switch，模式面板；lockPrivacy 时禁用）
+LChatAttachment 开关（t-switch，隐私面板；lockPrivacy 时禁用）
   └─ v-model:privacy → LChatSender.privacy → ChatRequestParams.privacy（发送时携带）
        ├─ 新建聊天（唯一写入口）：AiChatStore.add() → item.privacy 入库 + content.draft 携带
        │    └─ 引擎挂载 → ChatSession.load() 经 aiChatGetItem 水合 → setPrivacy → 首轮草稿发送前生效
@@ -59,8 +60,8 @@ LChatAttachment 开关（t-switch，模式面板；lockPrivacy 时禁用）
 | `src/renderer/src/modules/chat/agent/AgentChat.ts` | `privacy` 字段 / `setPrivacy` / 记忆注入跳过 / record_memory 过滤 / policyContext 透传 |
 | `src/renderer/src/modules/chat/agent/ChatSessionManager.ts` | 会话级 `privacy` ref、load 水合（send 不修改，锁定属性） |
 | `src/renderer/src/modules/memory/MemoryExtractor.ts` | 隐私会话跳过提取并推进进度 |
-| `src/renderer/src/windows/main/components/chat/sender/LChatAttachment.vue` | 模式面板隐私开关行（`lockPrivacy` 禁用）+ 锁定说明文案 |
-| `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue` | `v-model:privacy`、`lockPrivacy` 透传、footer「隐私」tag（锁定时不可关闭）、消息携带、initial 回填 |
+| `src/renderer/src/windows/main/components/sender/LChatAttachment.vue` | 隐私面板隐私开关行（`lockPrivacy` 禁用）+ 锁定说明文案 |
+| `src/renderer/src/windows/main/components/sender/LChatSender.vue` | `v-model:privacy`、`lockPrivacy` 透传、工具条「隐私」tag（`LChatSenderTags.vue` 渲染，锁定时不可关闭）、消息携带、initial 回填 |
 | `src/renderer/src/windows/main/components/chat/LChatEngine.vue` | 标题前「私」tag（danger light）、`privacy` prop、sender 传 `lock-privacy` |
 | `src/renderer/src/pages/chat/PageChat.vue` | `:privacy="chat.privacy"` 传入引擎（chat 为 computed 跟随 store） |
 | `src/renderer/src/pages/app/components/ChatList.vue` | 侧边栏列表项名称前「私」tag（danger light） |

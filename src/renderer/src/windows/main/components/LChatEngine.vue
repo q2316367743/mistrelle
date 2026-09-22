@@ -14,12 +14,14 @@
       />
       <l-chat-sender
         ref="_senderRef"
+        :mode="mode"
         :initial="initialState"
         :loading="status === 'pending' || status === 'streaming'"
         :sandbox-dir="sandboxDir"
         :token-usage="tokenUsage"
         lock-workspace
         lock-privacy
+        @update:mode="handleModeChange"
         @send="handleSend"
         @stop="handleStop()"
       />
@@ -161,12 +163,14 @@ const {
   messages,
   status,
   workspace,
+  mode,
   writingScene,
   designScene,
   sandboxDir,
   initialState,
   tokenUsage,
   handleSend,
+  handleModeChange,
   handleStop,
   handleClear,
   handleDeleteMessage,

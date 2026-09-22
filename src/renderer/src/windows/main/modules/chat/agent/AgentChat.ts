@@ -49,7 +49,7 @@ export interface UseChatOptions {
   systemPrompt?: string
   sandboxDir?: string
   workspace?: string
-  /** 聊天模式（0 默认 / 1 计划 / 2 完全访问），用于约束工具执行行为 */
+  /** 聊天模式（0 默认 / 1 计划 / 2 完全访问 / 3 自动编辑），用于约束工具执行行为 */
   mode?: AiChatMode
   /** 隐私聊天（子 Agent 继承主 Agent 标记）：不注入记忆、不注册记忆工具 */
   privacy?: boolean
@@ -98,7 +98,7 @@ export class ToolChat implements AgentRuntime {
   workspace = ''
   /** 聊天级目录白名单（用户在确认卡片勾选「此目录以后都允许」累积），响应式供会话 watch 持久化 */
   readonly allowedDirs = ref<string[]>([])
-  /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问【协作面：agentLoop 按模式决定步数上限】 */
+  /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 / 3 自动编辑【协作面：agentLoop 按模式决定步数上限】 */
   mode: AiChatMode = 0
   /** 隐私聊天：不注入记忆、不注册记忆工具（发送时设置，标记持久化在 chat 表 privacy 列） */
   private privacy = false

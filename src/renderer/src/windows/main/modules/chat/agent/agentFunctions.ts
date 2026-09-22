@@ -26,7 +26,7 @@ export interface ToolSurfaceContext {
   functions: ToolFunction[]
   isSubAgent: boolean
   privacy: boolean
-  /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 */
+  /** 当前聊天模式，0 默认 / 1 计划 / 2 完全访问 / 3 自动编辑 */
   mode: AiChatMode
   /** 当前场景定义（叶子场景，含工具 / 提示词 / 剔除名单 / 子 Agent 矩阵） */
   scene: SceneDefinition
@@ -203,7 +203,7 @@ export const buildAiTools = (functions: ToolFunction[]): AiTool[] =>
 /**
  * 按当前聊天模式过滤暴露给模型的工具，作为模型层兜底：
  * - 1 计划模式：仅暴露只读 / 分析类（safe）与执行类（shell）工具，写入 / 修改类物理隐藏
- * - 0 默认 / 2 完全访问：原样返回
+ * - 0 默认 / 2 完全访问 / 3 自动编辑：原样返回
  */
 export const filterToolsByMode = (mode: AiChatMode, functions: ToolFunction[]): ToolFunction[] => {
   if (mode === 1) {

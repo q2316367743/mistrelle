@@ -97,10 +97,11 @@ export interface TokenBreakdown {
   - `tokenUsage` computed：取**最后一条 assistant 消息**的 `usage.promptTokens` 为 `contextTokens`，
     `contextWindow` = `optionMap.get(modelKey)?.context || DEFAULT_CONTEXT_WINDOW`。
   - 传给 `LChatSender` 的 `token-usage` prop。
-- `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue`：
-  - 按钮：`t-popup trigger="click"` 包住圆形 `t-progress`，圆环 percentage = `contextTokens / contextWindow`，
-    旁显示 `formatTokens(contextTokens)`。
-- `src/renderer/src/windows/main/components/chat/sender/TokenUsagePanel.vue`（弹窗内容）：
+- `src/renderer/src/windows/main/components/sender/LChatTokenUsage.vue`（**2026-09-22 从 `LChatSender.vue` 拆出**，
+  见 [22-chat-sender-toolbar.md](./22-chat-sender-toolbar.md)）：
+  - 按钮：`t-popup trigger="click"` 包住圆形 `t-progress`，圆环 percentage = `contextTokens / contextWindow`。
+  - 由 `LChatSender.vue` 以 `tokenUsage` prop 透传三个字段（无用量时整个组件不渲染）。
+- `src/renderer/src/windows/main/components/sender/TokenUsagePanel.vue`（弹窗内容）：
   - 头部：`13% 已使用 25.0k/192.0k`
   - 分段进度条：四段宽度 = 各分类 token / contextWindow，颜色与明细圆点一致
   - 四行明细：圆点 + 标签 + 百分比（各分类 token / contextWindow）

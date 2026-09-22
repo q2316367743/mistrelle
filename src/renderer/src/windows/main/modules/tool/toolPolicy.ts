@@ -160,9 +160,10 @@ function isReadonlyShellCommand(args: Record<string, unknown>): boolean {
  * 根据聊天模式、工具风险等级、运行时参数和安全设置，裁决本次工具调用的执行权限。
  *
  * 模式语义：
- * - 0 默认模式：走正常工具权限（safe 放行、sensitive 需确认、dangerous 拦截、工具专属策略优先）
+ * - 0 变更前确认（默认）：走正常工具权限（safe 放行、sensitive 需确认、dangerous 拦截、工具专属策略优先）
  * - 1 计划模式：无写入 / 修改权限，执行类（shell）工具需审批，其余（写 / 改）一律禁止
  * - 2 完全访问模式：默认直接放行一切
+ * - 3 自动编辑模式：文件写入 / 修改类免审批，其余（含 shell 执行）仍按默认模式裁决
  *
  * 安全中心黑名单覆盖（与模式无关，最后生效）：一旦命中黑名单（写入指定目录、
  * shell 含指定目录字符串、shell 命中指定命令），无论当前模式如何均需审批（ask）。
@@ -193,14 +194,18 @@ export function resolveToolPolicy(
     case 2: // 完全访问模式：默认全部放行
       base = 'allow'
       break
+    case 3: // 自动编辑模式：文件写入免审批，其余与默认模式同口径
+      {
+        const verdict = resolveDefaultModePolicy(tool, args, ctx)
+        if (verdict !== null) return applyBlacklistOverride(verdict, args)
+        base = isFileWriteCall(tool, args) ? 'allow' : defaultToolPolicy(tool, args, ctx)
+      }
+      break
     default:
       {
         // 0 默认模式：正常工具权限流
-        const policy = toolPolicies.get(tool.name)
-        if (policy) {
-          const verdict = policy.resolve(tool, args, ctx)
-          if (verdict !== null) return applyBlacklistOverride(verdict, args)
-        }
+        const verdict = resolveDefaultModePolicy(tool, args, ctx)
+        if (verdict !== null) return applyBlacklistOverride(verdict, args)
         base = defaultToolPolicy(tool, args, ctx)
       }
       break
@@ -208,6 +213,21 @@ export function resolveToolPolicy(
 
   // 安全中心黑名单覆盖（与模式无关）：命中则需审批
   return applyBlacklistOverride(base, args)
+}
+
+/**
+ * 默认模式（mode=0）裁决：工具专属策略优先。
+ * 返回 null 表示该工具未注册专属策略，由调用方回落通用默认策略（defaultToolPolicy）。
+ * 「自动编辑模式（mode=3）」与默认模式共用本函数，只是在其后对文件写入额外放行。
+ */
+function resolveDefaultModePolicy(
+  tool: ToolFunction,
+  args: Record<string, unknown>,
+  ctx: ToolPolicyContext
+): ToolPolicyVerdict | null {
+  const policy = toolPolicies.get(tool.name)
+  if (!policy) return null
+  return policy.resolve(tool, args, ctx)
 }
 
 /**
@@ -243,6 +263,15 @@ export const SHELL_EXEC_TOOL_NAMES = new Set<string>(['cli_run'])
 /** 判断某工具是否为执行类（shell）工具 */
 export function isShellExecTool(tool: ToolFunction): boolean {
   return SHELL_EXEC_TOOL_NAMES.has(tool.name)
+}
+
+/**
+ * 判断本次调用是否为「文件写入 / 修改」类：带 path 参数的非执行类（shell）工具。
+ * 自动编辑模式（mode=3）据此免审批；只读工具（risk=safe）已在 resolveToolPolicy 前置放行，不受影响。
+ */
+function isFileWriteCall(tool: ToolFunction, args: Record<string, unknown>): boolean {
+  if (isShellExecTool(tool)) return false
+  return typeof args.path === 'string' && !!args.path
 }
 
 /**

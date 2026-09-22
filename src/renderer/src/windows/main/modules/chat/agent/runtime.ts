@@ -39,7 +39,7 @@ export interface AgentRuntime {
   readonly ctx: ChatContext
 
   // —— 配置（引擎只读，宿主可写）——
-  /** 聊天模式，0 默认 / 1 计划 / 2 完全访问：loop 按模式决定步数上限与工具过滤 */
+  /** 聊天模式，0 默认 / 1 计划 / 2 完全访问 / 3 自动编辑：loop 按模式决定步数上限与工具过滤 */
   mode: AiChatMode
   /** 当前工作空间（resume 重建参数时读取） */
   workspace: string

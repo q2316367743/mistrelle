@@ -66,7 +66,13 @@
 </template>
 <script lang="ts" setup>
 import Fuse from 'fuse.js'
-import { CloseIcon, DeleteIcon, FolderAdd1Icon, FolderFilledIcon, SearchIcon } from 'tdesign-icons-vue-next'
+import {
+  CloseIcon,
+  DeleteIcon,
+  FolderAdd1Icon,
+  FolderFilledIcon,
+  SearchIcon
+} from 'tdesign-icons-vue-next'
 import { MessageBoxUtil, MessageUtil } from '@/utils/modal'
 import { useWorkspaceList } from '@/windows/main/components/useWorkspaceList'
 
