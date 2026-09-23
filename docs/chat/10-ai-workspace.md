@@ -1,32 +1,35 @@
-# AiWorkspace 工作目录选择组件
+# 10 - AiWorkspace 工作目录选择组件
 
 ## 职责
 
-聊天发送栏底部的工作目录选择器，位于 `LChatSender.vue` 左侧（`showWorkspace` 控制显隐）。
+发送栏的**工作目录选择器**，渲染在 `LChatSender.vue` 输入区上方的工作空间行里（`showWorkspace` 控制该行显隐，见 [23-chat-workspace-row.md](./23-chat-workspace-row.md)）。
 
-## 两种形态
+## 形态
 
-| 形态 | 触发条件 | 交互 |
-|------|----------|------|
-| 非只读（默认） | `readonly=false` | `t-dropdown` 点击展开：清除 / 清空并替换 / 选择目录 / 最近使用历史 |
-| 只读（锁定） | `readonly=true` | 纯文本展示当前目录，`cursor: default` 无 hover 动画；点击用 `shell.openPath` 打开目录 |
+单一形态（原有的只读锁定形态已于 2026-09-22 删除，聊天页改为整块不渲染）：
 
-只读场景：聊天室创建后工作空间锁定（`lockWorkspace`），已选择时 `AiWorkspace` 以只读展示，不可再修改；未选择时组件隐藏（`v-if="showWorkspace && (!lockWorkspace || workspaceRef)"`）。
+| 形态 | 交互 |
+|------|------|
+| popup 选择面板 | `t-popup`（`placement="top"`）点击展开：搜索框 + 最近目录列表（hover 出删除）+ 已选中时「清除工作目录 / 清空并替换目录」、未选中时「选择目录」 |
+
+- 触发器：`t-button`（`variant="text"`），图标随状态切换（已选中 `FolderFilledIcon` + 品牌色，未选中 `FolderAdd1Icon`），文案为当前目录名或「选择工作目录」。
+- 面板数据源与左侧聊天列表分组**共用** `useWorkspaceList`，保证两侧列表一致。
 
 ## 关键文件
 
-- `src/renderer/src/windows/main/components/chat/AiWorkspace.vue`（组件本体）
-- `src/renderer/src/windows/main/components/chat/sender/LChatSender.vue`（使用方，`lockWorkspace` prop）
+- `src/renderer/src/windows/main/components/AiWorkspace.vue`（组件本体，242 行）
+- `src/renderer/src/windows/main/components/useWorkspaceList.ts`（工作空间共享数据源）
+- `src/renderer/src/windows/main/components/sender/LChatSender.vue`（使用方，`showWorkspace` 控制显隐）
 
 ## 数据结构 / API 契约
 
 - `workspace`：`defineModel<string>`，当前工作目录绝对路径，空串表示未选择
-- `history`：`useUtoolsDbAsync(LocalNameEnum.KEY_AI_WORKSPACE, [])`，最近使用目录列表（选择新目录时 push，去重）
+- `useWorkspaceList()`：合并「聊天绑定的目录」与「最近目录历史」，提供 `workspaces` / `displayName` / `addHistory` / `removeWorkspace` / `countChats`
 - 目录选择：`window.preload.inject.dialog.open({ properties: ['openDirectory'] })`，返回路径数组
-- 只读打开目录：`window.preload.inject.shell.openPath(fullPath)`（返回 `Promise<void>`，空路径不触发）
+- 组件**不接收** props：显隐由使用方的 `v-if`（`showWorkspace`）决定，工作目录本身走 `v-model`
 
 ## 注意事项
 
-- 只读分支必须保持静态：`cursor: default`、`transition: none`（覆盖全局 `*` transition 带来的颜色过渡动画）、`user-select: none`
-- 只读时鼠标不显示手型（`role="button"` 仅为语义标记，不改变光标）
-- 点击选择/清除等操作经 `debounce(300ms)` 防抖（`handleClickDebounced`）
+- 不要重新引入只读 / 锁定形态：聊天页（`LChatEngine`）已改为不渲染工作空间行，需要回显的场景走左侧列表项目分组。
+- 面板向上弹出（`placement="top"`）：触发器位于发送栏顶部，向下弹会被输入区遮挡。
+- 删除工作空间是**连带删除**（其下聊天与产物一并删除），必须走 `MessageBoxUtil.confirm` 二次确认。

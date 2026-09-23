@@ -29,6 +29,15 @@
   overflow-y: auto;
 }
 
+/* 工作空间行：位于输入区上方，选择后即锁定到本次对话 */
+.l-chat-sender__workspace {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 4px;
+}
+
 .l-chat-sender__input {
   position: relative;
   display: flex;
@@ -122,13 +131,6 @@
   gap: 4px;
   flex-shrink: 0;
   margin-left: auto;
-}
-
-.l-chat-sender__divider {
-  width: 1px;
-  height: 16px;
-  flex-shrink: 0;
-  background: var(--td-component-stroke);
 }
 
 .l-chat-sender__ws-btn {

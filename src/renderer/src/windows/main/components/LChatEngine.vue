@@ -19,7 +19,7 @@
         :loading="status === 'pending' || status === 'streaming'"
         :sandbox-dir="sandboxDir"
         :token-usage="tokenUsage"
-        lock-workspace
+        :show-workspace="false"
         lock-privacy
         @update:mode="handleModeChange"
         @send="handleSend"

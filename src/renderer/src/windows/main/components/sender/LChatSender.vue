@@ -1,6 +1,9 @@
 <template>
   <div class="l-chat-sender-container">
     <div class="l-chat-sender">
+      <div v-if="showWorkspace" class="l-chat-sender__workspace">
+        <ai-workspace v-model="workspaceRef" />
+      </div>
       <div
         class="l-chat-sender__input"
         :class="{ 'is-disabled': loading }"
@@ -24,12 +27,6 @@
             @add-ref-file="insertFile"
           />
           <l-chat-mode-select v-model="mode" />
-          <span class="l-chat-sender__divider" />
-          <ai-workspace
-            v-if="showWorkspace && (!lockWorkspace || workspaceRef)"
-            v-model="workspaceRef"
-            :readonly="lockWorkspace"
-          />
           <l-chat-sender-tags
             :agent-name="selectedAgent?.name"
             :design-style-name="designStyleLabel"
@@ -96,10 +93,8 @@ const props = withDefaults(
     loading?: boolean
     placeholder?: string
     sandboxDir?: string
-    /** 是否显示工作空间选择（设计编辑器等无工作空间场景传 false） */
+    /** 是否显示输入框上方的工作空间选择行（聊天页创建后锁定、设计编辑器等场景传 false） */
     showWorkspace?: boolean
-    /** 锁定工作空间（聊天室）：未选择时隐藏，已选择时只读不可修改 */
-    lockWorkspace?: boolean
     /** 锁定隐私标记（聊天室）：隐私为创建后锁定属性，开关禁用、tag 不可关闭，仅回显创建时的选择 */
     lockPrivacy?: boolean
     tokenUsage?: {
@@ -115,7 +110,6 @@ const props = withDefaults(
     placeholder: '描述任务，/ 调用技能，# 使用工具，@ 添加上下文',
     sandboxDir: '',
     showWorkspace: true,
-    lockWorkspace: false,
     lockPrivacy: false
   }
 )

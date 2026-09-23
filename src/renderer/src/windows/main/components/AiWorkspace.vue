@@ -1,16 +1,5 @@
 <template>
-  <div
-    v-if="readonly"
-    class="ai-workspace ai-workspace--readonly"
-    :title="workspace"
-    role="button"
-    @click="openWorkspace"
-  >
-    <div class="ai-workspace__icon active">
-      <folder-filled-icon />
-    </div>
-  </div>
-  <t-popup v-else v-model="visible" trigger="click" placement="top">
+  <t-popup v-model="visible" trigger="click" placement="top">
     <t-button theme="default" variant="text" class="ai-workspace">
       <template #icon>
         <div :class="['ai-workspace__icon', { active: active }]">
@@ -81,9 +70,6 @@ const workspace = defineModel({
   required: true
 })
 
-/** 只读展示：会话创建后工作空间锁定，仅显示当前目录，不可再修改 */
-defineProps<{ readonly?: boolean }>()
-
 const { workspaces, displayName, addHistory, removeWorkspace, countChats } = useWorkspaceList()
 
 const active = computed(() => !!workspace.value)
@@ -150,12 +136,6 @@ const removeWorkspaceAt = async (path: string) => {
   if (workspace.value === path) workspace.value = ''
   MessageUtil.success(count > 0 ? '工作空间及其聊天已删除' : '已移除')
 }
-
-const openWorkspace = () => {
-  if (workspace.value) {
-    window.preload.inject.shell.openPath(workspace.value)
-  }
-}
 </script>
 <style scoped lang="less">
 .ai-workspace {
@@ -163,21 +143,6 @@ const openWorkspace = () => {
   align-items: center;
   cursor: pointer;
   font-size: var(--td-font-size-body-medium);
-  &--readonly {
-    cursor: pointer;
-    padding: 4px 8px;
-    user-select: none;
-    border-radius: var(--td-radius-medium);
-    transition: background-color 0.3s ease-in-out;
-    .ai-workspace__icon,
-    .ai-workspace__text {
-      transition: none;
-    }
-
-    &:hover {
-      background-color: var(--td-bg-color-container-hover);
-    }
-  }
   &__icon,
   &__text {
     &.active {
