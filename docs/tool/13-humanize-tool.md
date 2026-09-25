@@ -7,8 +7,9 @@
 - **服务端能力**：`POST {server}/api/rewrite`（SSE 流式），主进程 `RelayService.rewriteStream`（未登录抛「未登录，无法使用去 AI 味」），preload 桥 `window.preload.relay.rewriteStream`。
 - **渲染层客户端**：`windows/main/modules/ai/humanize.ts`（`requestHumanizeStream` + `HUMANIZE_ENABLED`）。
   - 原位于 `windows/main/components/chat/aside/writing/article/humanizeApi.ts`，为让工具层复用（`tool/` 模块不能反向依赖 `components/`）下沉到 AI 请求域。
-  - 写作侧边栏「去 AI 味」与 design 的 `humanize_text` 工具共用同一客户端，改动需同时考虑两侧。
-- **请求时序**：工具直接 `await` 完整结果（不流式写 UI），返回改写文本；写作侧边栏则用 `onDelta` 流式写入编辑器，并另建版本。
+  - 写作侧边栏「去 AI 味」、design 的 `humanize_text` 工具、以及「朝花夕拾 → 去 AI 味儿」独立页（`/attachment/humanize`，双栏流式，见 docs/app/09）共用同一客户端与同一套深度记忆（`getLastHumanizeDepth` / `setLastHumanizeDepth`）；改动需同时考虑三处。
+  - 深度选择弹窗 `openHumanizeDepth` 自 2026-09-25 由 `components/aside/writing/components/` 迁到 **`windows/main/components/humanize/`**（写作侧 3 处引用已改绝对路径），供独立页复用。
+- **请求时序**：工具直接 `await` 完整结果（不流式写 UI），返回改写文本；写作侧边栏与独立页则用 `onDelta` 流式写入编辑器（侧边栏另建版本，独立页不建版本、不落盘）。
 
 ## 工具契约
 

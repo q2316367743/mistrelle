@@ -1,7 +1,7 @@
 /**
- * 马赛克弹窗编辑器：编辑发生在弹窗内的普通 canvas 上，坐标只有两层——图片像素 ↔ 显示像素
+ * 马赛克编辑器：编辑发生在普通 canvas 上，坐标只有两层——图片像素 ↔ 显示像素
  * （scale = 显示宽 / 图片实际宽）。预览与画布叠加层共用同一套绘制原语（同网格 / 同模糊半径），
- * 标记只累积在内存，点「应用」才写入画布节点的 `mosaic` 字段（非破坏：原图不变，随时可复原）。
+ * 标记只累积在内存，点「应用」才交给宿主出口（画布写 `mosaic` 字段 / 独立页烘焙导出）。
  */
 import {
   MOSAIC_BLUR_RANGE,
@@ -11,28 +11,45 @@ import {
 } from '@common/types/mosaic'
 import type { ImageCoverStyle } from '@common/types/mosaic'
 import { MessageUtil } from '@/utils/modal'
-import {
-  applyNodeMosaic,
-  clearNodeMosaic,
-  createGrid,
-  createPixelatedSmall,
-  resolveCover
+import { createGrid, createPixelatedSmall, resolveCover } from '@/windows/main/modules/canvas'
+import type {
+  CanvasMosaic,
+  CanvasMosaicRegion,
+  MosaicCoverParams,
+  MosaicGrid
 } from '@/windows/main/modules/canvas'
-import type { CanvasMosaic, MosaicCoverParams, MosaicGrid } from '@/windows/main/modules/canvas'
 import { useMosaicMarks } from './mosaicMarks'
 import { fitDisplay, paintOverlay, paintStage, prepareCanvas } from './mosaicPreview'
 import type { MosaicPalette } from './mosaicPreview'
 
 export type MosaicEditMode = 'auto' | 'brush'
 
+/** 应用到宿主的载荷：全部遮盖区域（图片像素坐标）与遮盖参数 */
+export interface MosaicApplyPayload {
+  regions: CanvasMosaicRegion[]
+  style: ImageCoverStyle
+  cellPx: number
+  blurPx: number
+}
+
+/** 应用结果：宿主落点是否已留下遮盖记录（省略即不改动编辑器内的记录态） */
+export interface MosaicApplyResult {
+  hasRecord: boolean
+}
+
+/**
+ * 应用出口：宿主自行决定落点（画布写回节点字段 / 独立页烘焙导出），也自行负责用户提示。
+ * 约定：正常返回视为成功（弹窗据此关闭）；失败必须抛出（先自行提示错误，编辑器只兜底打日志）。
+ */
+export type MosaicApplier = (payload: MosaicApplyPayload) => Promise<MosaicApplyResult | void>
+
 interface UseMosaicEditorOptions {
-  /** 源图本地绝对路径（画布 image 节点的 imageUrl） */
+  /** 源图本地绝对路径 */
   source: string
-  sandbox: () => string
-  /** 遮盖记录写回的目标画布 image 节点 id */
-  nodeId: string
-  /** 节点已记录的遮盖（打开即回填；无记录传 undefined） */
+  /** 已记录的遮盖（打开即回填；无记录传 undefined） */
   initial?: CanvasMosaic
+  /** 应用出口 */
+  apply: MosaicApplier
   /** 舞台元素与两层 canvas（内容组件模板 ref 的取值函数） */
   stage: () => HTMLElement | undefined
   base: () => HTMLCanvasElement | undefined
@@ -343,36 +360,26 @@ export const useMosaicEditor = (options: UseMosaicEditorOptions) => {
   }
 
   /**
-   * 应用：写入节点遮盖记录（非破坏，原图不变）；标记清空后应用 = 复原（删除记录）。
-   * 全程零 IPC、零文件产出，成功返回 true。
+   * 应用：把当前标记与遮盖参数交给宿主出口（画布写记录 / 页面导出文件）。
+   * 无标记且无历史记录时无事可做，直接返回 false。
    */
   const apply = async (): Promise<boolean> => {
     if (applying.value) return false
+    if (isEmpty.value && !hasRecord.value) return false
     applying.value = true
-    const sandboxDir = options.sandbox()
     try {
       const current = cover.value
-      if (isEmpty.value && !hasRecord.value) return false
-      const regions = markedRegions()
-      if (!regions.length) {
-        await clearNodeMosaic({ sandboxDir, nodeId: options.nodeId })
-        hasRecord.value = false
-        MessageUtil.success('已复原：移除遮盖记录')
-      } else {
-        await applyNodeMosaic({
-          sandboxDir,
-          nodeId: options.nodeId,
-          regions,
-          style: current.style,
-          cellPx: current.cellPx,
-          blurPx: current.blurPx
-        })
-        hasRecord.value = true
-        MessageUtil.success('已应用遮盖（可随时复原）')
-      }
+      const result = await options.apply({
+        regions: markedRegions(),
+        style: current.style,
+        cellPx: current.cellPx,
+        blurPx: current.blurPx
+      })
+      if (result) hasRecord.value = result.hasRecord
       return true
     } catch (e) {
-      MessageUtil.error('遮盖应用失败', e)
+      // 提示由 applier 负责（各宿主文案不同）；此处仅兜底打印，避免未捕获拒绝
+      console.error('[Mosaic] 应用失败', e)
       return false
     } finally {
       applying.value = false

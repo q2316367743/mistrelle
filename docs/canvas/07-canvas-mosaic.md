@@ -59,12 +59,16 @@ DesignAside 工具栏〔MosaicEntryButton〕
   └─ useMosaicTarget()：优先「选中的 image 节点」→ 未选中时若画布仅 1 张图自动使用 → 否则置灰 + tooltip
         ↓ openMosaicDialog({ sandbox, nodeId, source, initial: 节点已有记录 })
 modals/MosaicDialog.tsx（DrawerPlugin 外壳：size clamp(900px,82%,1280px) / footer:false / destroyOnClose / closeOnOverlayClick:false）
-  └─ MosaicDialogContent.vue（工具条 + MosaicTextBoxList.vue + 双层 canvas + 应用/取消）
-        └─ useMosaicEditor.ts（加载 / 绘制编排 / 指针交互 / 样式强度 / 应用）
-              ├─ mosaicMarks.ts（标记模型：文字框标记 + 涂抹 cell + 遗留区域 + 撤销栈）
-              ├─ mosaicPreview.ts（两层 canvas 绘制编排，底层委托 mosaicDraw）
-              └─ modules/canvas/{mosaicGrid,mosaicDraw,canvasMosaic}.ts（网格几何 / 绘制原语 / 写回）
+  └─ MosaicDialogContent.vue（纯接线：把画布写回包成 MosaicApplier）
+        └─ components/mosaic/MosaicEditor.vue（共享编辑器：工具条 + MosaicTextBoxList.vue + 双层 canvas + 页脚）
+              └─ components/mosaic/useMosaicEditor.ts（加载 / 绘制编排 / 指针交互 / 样式强度 / 应用）
+                    ├─ components/mosaic/mosaicMarks.ts（标记模型：文字框标记 + 涂抹 cell + 遗留区域 + 撤销栈）
+                    ├─ components/mosaic/mosaicPreview.ts（两层 canvas 绘制编排，底层委托 mosaicDraw）
+                    └─ modules/canvas/{mosaicGrid,mosaicDraw}.ts（网格几何 / 绘制原语）
+                          └─ apply(payload) 出口 → modules/canvas/canvasMosaic.ts（本页写回；独立页走烘焙导出）
 ```
+
+> 编辑器自 2026-09-25 起为**共享组件**（`components/mosaic/`）：画布抽屉与「朝花夕拾 → 打水印」独立页共用同一套 UI 与标记模型，落点差异由注入的 `MosaicApplier` 决定（画布写节点 `mosaic` 字段 / 独立页离屏 canvas 烘焙 PNG）。详见 docs/app/09。
 
 ### 入口可用条件
 
@@ -98,6 +102,7 @@ modals/MosaicDialog.tsx（DrawerPlugin 外壳：size clamp(900px,82%,1280px) / f
 - 标记非空 → `applyNodeMosaic`：区域归一化（取整、过滤退化轮廓）→ `batchEdit` patch `{ mosaic }` → **显式核对 `firstBatchError`** → 画布重渲染（叠加层出现）。
 - 标记清空后点「应用」→ `clearNodeMosaic`：删除节点 `mosaic` 字段并落盘 → 立即回到未遮盖状态（按钮文案变「复原（清除记录）」，节点无记录时该按钮禁用）。
 - 全程不发 IPC、不落任何图片文件；取消 / ESC / 右上角关闭都不写回（遮罩点击已禁，防误关丢编辑）。
+- 两处应用逻辑都在 **applier**（`MosaicDialogContent.vue` 内的 `applyCanvasMosaic`）：返回值 `{ hasRecord }` 让编辑器知道「本次落点是否已留下记录」（决定同一次会话内清空标记后是否还能「复原」）；**失败必须抛出**，否则编辑器会把写回失败当成成功并关闭抽屉。
 
 ## 属性面板
 
@@ -126,8 +131,9 @@ modals/MosaicDialog.tsx（DrawerPlugin 外壳：size clamp(900px,82%,1280px) / f
 | `modules/canvas/canvasMosaic.ts` | `applyNodeMosaic`（非破坏写回）/ `clearNodeMosaic`（复原）/ `mosaicCanvasImage`（画布外烘焙）/ 节点查找 |
 | `modules/canvas/canvasRender.ts` | `buildNodeWithExtras`（节点 + 遮盖叠加，替换三处 `buildNode` 调用点）；`exportCanvasPng` 预热叠加位图 |
 | `modules/canvas/canvasPsd.ts` | PSD 逐图层光栅化改走 `buildNodeWithExtras`（遮盖随图层） |
-| `components/aside/design/modals/{mosaicMarks,mosaicPreview,useMosaicEditor}.ts` | 标记模型 / 绘制编排 / 编辑器（`useMosaicEditor` 已从 441 行拆分，避免破 500 行红线） |
-| `components/aside/design/modals/MosaicDialogContent.vue` | 工具条 / 舞台 / 应用取消（文字列表已拆 `MosaicTextBoxList.vue`，避免破 300 行红线） |
+| `components/mosaic/{mosaicMarks,mosaicPreview,useMosaicEditor}.ts` | 标记模型 / 绘制编排 / 编辑器编排（2026-09-25 自 `aside/design/modals/` 迁入成共享组件；`useMosaicEditor` 已从 441 行拆分，避免破 500 行红线） |
+| `components/mosaic/MosaicEditor.vue` + `mosaicEditor.less` | 共享编辑器外壳（工具条 / 文字列表 / 双层舞台 / 页脚，props 驱动 + 注入 `MosaicApplier` 出口；样式抽出避免破 300 行红线） |
+| `components/aside/design/modals/MosaicDialogContent.vue` | 画布抽屉接线（applier = `applyNodeMosaic` / `clearNodeMosaic`） |
 | `components/aside/design/ImageMosaicFields.vue` | 属性面板遮盖区块（摘要 / 编辑 / 复原） |
 | `src/common/types/mosaic.ts` | 共享：`ImageCoverStyle` + 名称映射、默认值与范围常量（main 与渲染层共用） |
 | `src/preload/src/modules/sharp/sharpChannels.ts` | `sharp:mask` 通道与 `SharpCoverOptions`（main 共用契约） |

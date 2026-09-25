@@ -8,7 +8,7 @@ import {
   setLastHumanizeDepth,
   requestHumanizeStream
 } from '@/windows/main/modules/ai/humanize'
-import { openHumanizeDepth } from '../components/HumanizeDepthDialog'
+import { openHumanizeDepth } from '@/windows/main/components/humanize/HumanizeDepthDialog'
 import { openSelectionHumanizeDialog } from './components/SelectionHumanizeDialog'
 
 /**

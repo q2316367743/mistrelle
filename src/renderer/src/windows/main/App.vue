@@ -56,8 +56,15 @@ const showChatAdd = computed(() => {
   return true
 })
 
-/** keep-alive 缓存的组件名：新建聊天页 + 可用性检测 / 模型对比工具页保活（检测跨页面切换不中断） */
-const keepAliveNames = ['PageNew', 'ExtendTestPage', 'ExtendComparePage', 'DesignListPage']
+/** keep-alive 缓存的组件名：新建聊天页 + 可用性检测 / 模型对比工具页保活（检测跨页面切换不中断）+ 朝花夕拾两页（已上传图片 / 已输入正文不丢） */
+const keepAliveNames = [
+  'PageNew',
+  'ExtendTestPage',
+  'ExtendComparePage',
+  'DesignListPage',
+  'ExtendWatermarkPage',
+  'ExtendHumanizePage'
+]
 
 onMounted(() => {
   console.log(`插件已启动:

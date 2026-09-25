@@ -64,13 +64,26 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/windows/main/pages/design/font/DesignFontPage.vue')
   },
 
-  // --------------------------------- 闲庭漫步 ---------------------------------
+  // --------------------------------- 朝花夕拾（工具箱） ---------------------------------
 
   {
-    name: '闲庭漫步/文生图',
+    name: '朝花夕拾/生图',
     path: '/attachment/image',
     component: () => import('@/windows/main/pages/extend/image/AttachmentImagePage.vue')
   },
+  {
+    name: '朝花夕拾/打水印',
+    path: '/attachment/watermark',
+    component: () => import('@/windows/main/pages/extend/watermark/index.vue')
+  },
+  {
+    name: '朝花夕拾/去 AI 味儿',
+    path: '/attachment/humanize',
+    component: () => import('@/windows/main/pages/extend/humanize/index.vue')
+  },
+
+  // --------------------------------- 闲庭漫步 ---------------------------------
+
   {
     name: '闲庭漫步/笔记卡片',
     path: '/attachment/card',

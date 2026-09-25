@@ -31,7 +31,7 @@ interface SideMenuItem {
 `menuTree` 定义在 `AppSide.vue`，当前映射（见源码）：
 
 - 新建（`Constant.name`）→ `/new`
-- 生图 → `/attachment/image`
+- 朝花夕拾（父，工具箱，2026-09-25 新增）→ 生图 `/attachment/image`、打水印 `/attachment/watermark`、去 AI 味儿 `/attachment/humanize`（详见 docs/app/09）
 - 设计（父，`activePaths:['/design/detail/']`）→ 设计风格 `/design/list`、卡片风格 `/design/card`、字体 `/design/font`
 - 闲庭漫步（父）→ 笔记卡片 `/attachment/card`、可用性检测工具 `/attachment/test`、模型对比检测 `/attachment/compare`
 - 更多拓展（父）→ Agent `/agent`、技能 `/skill`、工具 `/tool`

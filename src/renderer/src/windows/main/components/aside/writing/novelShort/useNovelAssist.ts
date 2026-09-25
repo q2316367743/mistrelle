@@ -4,7 +4,7 @@ import type { NovelStore } from '@/windows/main/modules/tool/components/novel/no
 import { MessageUtil } from '@/utils/modal'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { HUMANIZE_ENABLED, requestHumanizeStream } from '@/windows/main/modules/ai/humanize'
-import { openHumanizeDepth } from '../components/HumanizeDepthDialog'
+import { openHumanizeDepth } from '@/windows/main/components/humanize/HumanizeDepthDialog'
 
 /** 记住上次选择的深度，下次打开弹窗作为默认（首次为 5） */
 let lastHumanizeDepth = 5

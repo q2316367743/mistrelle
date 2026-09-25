@@ -41,26 +41,29 @@
 <script lang="ts" setup>
 import {
   AiArticleIcon,
+  AiEditIcon,
   AiEducationIcon,
+  AiImageIcon,
   AppIcon,
+  ArrowLeftRight1Icon,
   BookmarkIcon,
+  Calculation1Icon,
   CardIcon,
   ChatIcon,
+  ChevronLeftIcon,
   InternetIcon,
   LightbulbIcon,
+  MosaicIcon,
   Palette1Icon,
   PenIcon,
   SecuredIcon,
   Setting1Icon,
   StickyNoteIcon,
+  SunFallIcon,
   TextformatColorIcon,
   ToolsIcon,
   UserCircleIcon,
-  UserIcon,
-  AiImageIcon,
-  ArrowLeftRight1Icon,
-  Calculation1Icon,
-  ChevronLeftIcon
+  UserIcon
 } from 'tdesign-icons-vue-next'
 import { collapsed } from '@/global/BeanFactory'
 import ChatList from './components/ChatList.vue'
@@ -73,7 +76,15 @@ const router = useRouter()
 
 const menuTree: SideMenuItem[] = [
   { label: Constant.name, icon: ChatIcon, to: '/new' },
-  { label: '生图', icon: AiImageIcon, to: '/attachment/image' },
+  {
+    label: '朝花夕拾',
+    icon: SunFallIcon,
+    children: [
+      { label: '生图', icon: AiImageIcon, to: '/attachment/image' },
+      { label: '打水印', icon: MosaicIcon, to: '/attachment/watermark' },
+      { label: '去 AI 味儿', icon: AiEditIcon, to: '/attachment/humanize' }
+    ]
+  },
   {
     label: '设计',
     icon: PenIcon,

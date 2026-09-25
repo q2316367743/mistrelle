@@ -4,7 +4,7 @@ import type { ArticleStore } from '@/windows/main/modules/tool/components/articl
 import { MessageUtil } from '@/utils/modal'
 import { useAuthStore } from '@/windows/main/store/AuthStore'
 import { HUMANIZE_ENABLED, requestHumanizeStream, getLastHumanizeDepth, setLastHumanizeDepth } from '@/windows/main/modules/ai/humanize'
-import { openHumanizeDepth } from '../components/HumanizeDepthDialog'
+import { openHumanizeDepth } from '@/windows/main/components/humanize/HumanizeDepthDialog'
 
 /**
  * 去 AI 味动作编排：选深度 → 建版本 → 流式写入，产出进入当前类型的版本历史。
