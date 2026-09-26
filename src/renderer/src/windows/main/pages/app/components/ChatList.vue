@@ -4,6 +4,7 @@
       <template #default="{ item }">
         <div
           v-if="item.kind === 'header'"
+          :key="`h:${item.key}`"
           class="group-header"
           :title="item.workspace || undefined"
           @contextmenu="openWorkspaceContextmenu($event, item.workspace)"
@@ -30,7 +31,21 @@
           </t-button>
         </div>
         <button
+          v-else-if="item.kind === 'more'"
+          :key="`m:${item.key}`"
+          class="menu-item menu-item--more"
+          type="button"
+          @click="toggleGroupMore(item.key)"
+        >
+          <chevron-down-icon v-if="!item.expanded" class="menu-icon" />
+          <chevron-up-icon v-else class="menu-icon" />
+          <span class="ellipsis flex-1 min-w-0">{{
+            item.expanded ? '收起' : `查看更多（还有 ${item.hidden} 条）`
+          }}</span>
+        </button>
+        <button
           v-else
+          :key="`c:${item.chat.id}`"
           class="menu-item"
           :class="{ active: isActive(`/chat/${item.chat.id}`), privacy: item.chat.privacy }"
           type="button"
@@ -55,6 +70,7 @@ import { VList } from 'virtua/vue'
 import {
   ChevronDownIcon,
   ChevronRightIcon,
+  ChevronUpIcon,
   FolderIcon,
   FolderOpenIcon,
   PlusIcon,
@@ -70,7 +86,7 @@ import { useChatGroups } from './useChatGroups'
 const route = useRoute()
 const router = useRouter()
 
-const { rows, toggleGroup } = useChatGroups()
+const { rows, toggleGroup, toggleGroupMore } = useChatGroups()
 
 const isActive = (path: string) => route.path === path
 
@@ -173,6 +189,7 @@ const onContextmenu = (e: MouseEvent, item: AiChatItem) => {
   }
 }
 
+// 分组超出默认上限时的展开入口：与聊天行同形，仅降一级字色
 .menu-item {
   display: flex;
   align-items: center;
@@ -227,6 +244,15 @@ const onContextmenu = (e: MouseEvent, item: AiChatItem) => {
 
     &::before {
       background: var(--fluent-item-selected-border);
+    }
+  }
+
+  &--more {
+    color: var(--td-text-color-secondary);
+    font: var(--td-font-body-small);
+
+    &:hover {
+      color: var(--td-text-color-primary);
     }
   }
 }

@@ -10,6 +10,9 @@ export const TASK_GROUP_KEY = ''
 /** 折叠分组 key 集合的 localStorage 键（key = workspace 全路径，任务组为空串） */
 const COLLAPSED_STORAGE_KEY = 'chat-list-collapsed-groups'
 
+/** 分组内默认展示的聊天条数，超出部分由「查看更多」展开 */
+const GROUP_VISIBLE_LIMIT = 8
+
 interface ChatGroup {
   key: string
   /** 绑定的工作目录，空串即任务列表 */
@@ -32,7 +35,17 @@ export interface ChatItemRow {
   chat: AiChatItem
 }
 
-export type ChatListRow = ChatGroupHeaderRow | ChatItemRow
+export interface ChatGroupMoreRow {
+  kind: 'more'
+  /** 所属分组 key */
+  key: string
+  /** 该组被隐藏的聊天条数（总数 - GROUP_VISIBLE_LIMIT） */
+  hidden: number
+  /** 是否已展开为全部聊天；仅本次运行有效，不持久化 */
+  expanded: boolean
+}
+
+export type ChatListRow = ChatGroupHeaderRow | ChatItemRow | ChatGroupMoreRow
 
 const byCreatedDesc = (a: AiChatItem, b: AiChatItem) => b.createdAt - a.createdAt
 
@@ -82,7 +95,15 @@ export const useChatGroups = () => {
     KeyValueUtil.setItem(COLLAPSED_STORAGE_KEY, [...collapsed])
   }
 
-  /** 组（header + 聊天行）拍平为虚拟列表行；折叠组只保留 header，任务列表与工作空间全集均为空时不渲染 */
+  // 展开「查看更多」的分组：重启即回到默认上限，故不落盘
+  const expanded = reactive(new Set<string>())
+
+  const toggleGroupMore = (key: string) => {
+    if (expanded.has(key)) expanded.delete(key)
+    else expanded.add(key)
+  }
+
+  /** 组（header + 聊天行 + 「查看更多」行）拍平为虚拟列表行；折叠组只保留 header，任务列表与工作空间全集均为空时不渲染 */
   const rows = computed<ChatListRow[]>(() => {
     if (groups.value.length === 1 && groups.value[0].chats.length === 0) return []
     return groups.value.flatMap((group) => {
@@ -94,9 +115,23 @@ export const useChatGroups = () => {
         collapsed: collapsed.has(group.key)
       }
       if (header.collapsed) return [header]
-      return [header, ...group.chats.map((chat): ChatItemRow => ({ kind: 'chat', chat }))]
+      const isExpanded = expanded.has(group.key)
+      const listed = isExpanded ? group.chats : group.chats.slice(0, GROUP_VISIBLE_LIMIT)
+      const result: ChatListRow[] = [
+        header,
+        ...listed.map((chat): ChatItemRow => ({ kind: 'chat', chat }))
+      ]
+      if (group.chats.length > GROUP_VISIBLE_LIMIT) {
+        result.push({
+          kind: 'more',
+          key: group.key,
+          hidden: group.chats.length - GROUP_VISIBLE_LIMIT,
+          expanded: isExpanded
+        })
+      }
+      return result
     })
   })
 
-  return { rows, toggleGroup }
+  return { rows, toggleGroup, toggleGroupMore }
 }

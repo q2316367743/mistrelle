@@ -2,6 +2,7 @@
 
 > 2026-09-12：侧边栏聊天列表从平铺改为以项目为核心的分组列表。
 > 2026-09-13：工作空间统一数据源（合并口径）+ 删除工作空间能力，见文末「工作空间合并口径与删除」。
+> 2026-09-25：分组内默认只显示最近 8 条，超出部分由组内末尾「查看更多」展开，见文末「分组内默认 8 条 + 查看更多」。
 
 ## 需求与拍板
 
@@ -28,8 +29,8 @@
 `AiChatItem.workspace` 为空串 → 任务列表组；非空 → 按 workspace 全路径聚合，组名 = `window.preload.path.basename(workspace)`，完整路径放分组头 `title`（hover 可见）。
 
 ```ts
-// 虚拟列表行：header 行 + 聊天行拍平，折叠组只保留 header
-type ChatListRow = ChatGroupHeaderRow | ChatItemRow
+// 虚拟列表行：header 行 + 聊天行 + 「查看更多」行拍平；折叠组只保留 header
+type ChatListRow = ChatGroupHeaderRow | ChatItemRow | ChatGroupMoreRow
 ```
 
 排序规则：任务组固定第一；项目组以 `useWorkspaceList` 的合并全集为序（有聊天绑定的按组内最新 `createdAt` 降序在前，仅历史中的空分组按最近使用优先置底）；组内 `createdAt` 降序。
@@ -81,3 +82,25 @@ AiWorkspace 面板列表（`workspace-history.json`，仅「选择目录」时�
 
 - 目录历史文件 `~/.mistrelle/data/workspace-history.json` 仅追加/移除路径字符串，不校验目录在磁盘上是否仍存在。
 - `useWorkspaceList` 引用了 `@/windows/main/store` 的聊天 store，仅在主窗口上下文可用（当前消费方 ChatList / AiWorkspace 均在主窗口）。
+
+## 分组内默认 8 条 + 查看更多（2026-09-25）
+
+### 行为
+
+- 每个分组（含「任务列表」）默认只列出组内最近 `GROUP_VISIBLE_LIMIT = 8` 条聊天；超出时在该组末尾追加一行「查看更多（还有 N 条）」，N = 组内总数 - 8（即 `ChatGroupMoreRow.hidden`）。
+- 点击该行展开为全部聊天，同一行文案变「收起」，再点回到 8 条。
+- 「查看更多」行是组内普通一行，`item-size` 仍为 36、照常走 VList 虚拟滚动；样式复用聊天行 `.menu-item` 的几何尺寸 + `.menu-item--more` 修饰类（仅降一级字色），图标槽用既有 `.menu-icon`，故文案与聊天名天然左对齐。
+- 折叠组只保留 header，8 条上限与「查看更多」行随之隐藏（折叠优先级更高）。
+
+### 状态口径（拍板）
+
+- **展开态不持久化**：`useChatGroups` 内 `reactive(new Set<string>())`，只活在本次运行内，重启回到默认 8 条。
+  - 与折叠态（`chat-list-collapsed-groups` 落盘）刻意不对称：折叠是用户的稳定偏好，展开是临时查看；若持久化则重启即恢复长列表，与「默认 8 条」的初衷相反。
+- **当前正在查看的聊天排在 8 条之外时不特殊处理**：不自动展开所在分组、也不强制插入可见列表（该行不显示、无高亮），点「查看更多」即可看到。这样 `useChatGroups` 保持与路由无关。
+- 分组被删除 / 消失时无需清理展开态：Set 随组件生命周期存续，字符串 key 复用无害（与折叠态残留 key 同一口径）。
+
+### 注意事项
+
+- `useChatGroups()` 返回值变为 `{ rows, toggleGroup, toggleGroupMore }`；`ChatListRow` 联合新增 `ChatGroupMoreRow{ kind: 'more', key, hidden, expanded }`。
+- VList 插槽的三个 `v-if/v-else-if/v-else` 分支根节点必须写显式 `:key`（`h:` / `m:` / `c:` 前缀保证唯一）：Vue 编译器给分支注入的内置 key（0/1/2）会被 virtua 直接当行 key 采走，此前控制台报 `Duplicate keys "1"`。
+- 若将来要改默认条数，只改 `GROUP_VISIBLE_LIMIT`；「收起」判定与文案均由该常量派生，无需同步其他文件。
