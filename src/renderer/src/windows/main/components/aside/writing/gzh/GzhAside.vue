@@ -62,7 +62,7 @@
         @compare="handleCompareVersion"
         @open-panel="activePanel = $event"
       />
-      <gzh-panel-overlay
+      <panel-overlay
         v-if="activeEntry"
         v-show="activePanel"
         :title="panelTitle"
@@ -83,7 +83,7 @@
           :model="chatModel"
           :disabled="humanizing"
         />
-      </gzh-panel-overlay>
+      </panel-overlay>
     </template>
     <div v-else class="gzh-aside__empty">
       <div class="empty-card">
@@ -111,7 +111,7 @@ import ArticleDocHeader from '../article/components/ArticleDocHeader.vue'
 import ArticleToolbar from '../article/components/ArticleToolbar.vue'
 import ArticleEditor from '../article/components/ArticleEditor.vue'
 import GzhDocActions from './components/GzhDocActions.vue'
-import GzhPanelOverlay from './components/GzhPanelOverlay.vue'
+import PanelOverlay from '../components/PanelOverlay.vue'
 import GzhLayoutPanel from './components/GzhLayoutPanel.vue'
 import QcSection from './components/QcSection.vue'
 

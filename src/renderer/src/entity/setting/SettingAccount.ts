@@ -9,11 +9,17 @@ export interface SettingAccount {
    * @see <https://developer.zhihu.com/>
    */
   zhihu: string
+  /**
+   * 红狐 API Key（小红书热门笔记取数 xhs_hot_notes 鉴权）
+   * @see <https://redfox.hk/settings/api-keys>
+   */
+  redfox: string
 }
 
 export function buildSettingAccount(): SettingAccount {
   return {
     skillhub: '',
-    zhihu: ''
+    zhihu: '',
+    redfox: ''
   }
 }

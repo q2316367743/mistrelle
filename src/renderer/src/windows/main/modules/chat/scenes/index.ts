@@ -7,7 +7,8 @@ import {
   BookOpenIcon,
   LayersIcon,
   Html5Icon,
-  LogoWechatStrokeIcon
+  LogoWechatStrokeIcon,
+  StickyNoteIcon
 } from 'tdesign-icons-vue-next'
 import type { ToolFunction } from '@/domain'
 import type { ChatType } from '../chatType'
@@ -19,6 +20,7 @@ import type { BuiltInSkill, SceneContext, SceneDefinition } from './types'
 import { officeScene } from './office'
 import { articleScene, novelShortScene } from './writing'
 import { gzhScene } from './gzh'
+import { xhsScene } from './xhs'
 import { canvasScene, htmlScene } from './design'
 
 export * from './types'
@@ -34,7 +36,7 @@ export const SCENES: {
   design: Record<DesignScene, SceneDefinition>
 } = {
   office: officeScene,
-  writing: { article: articleScene, novelShort: novelShortScene, gzh: gzhScene },
+  writing: { article: articleScene, novelShort: novelShortScene, gzh: gzhScene, xhs: xhsScene },
   design: { canvas: canvasScene, html: htmlScene }
 }
 
@@ -95,6 +97,13 @@ export const SCENE_FAMILY_META: Record<ChatType, SceneFamilyMeta> = {
           label: '微信公众号',
           description: '公众号创作：爆款选题 / 体裁 skill / 排版预览 / 正文质检',
           icon: LogoWechatStrokeIcon
+        },
+        {
+          value: 'xhs',
+          field: 'writingScene',
+          label: '小红书',
+          description: '小红书创作：定位 / 选题 / 标题 / 文案 + 画板图文卡片',
+          icon: StickyNoteIcon
         },
         {
           value: 'article',

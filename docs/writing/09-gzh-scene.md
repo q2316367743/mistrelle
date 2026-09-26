@@ -32,7 +32,7 @@
 | `src/renderer/src/types/gzh.d.ts` + `vite-env.d.ts` | `window.preload.gzh` 类型（GzhApi） |
 | `components/chat/aside/writing/gzh/GzhAside.vue` | 侧边栏：复用 article 组件与 hooks，底部动作条 + 全侧栏浮层能力面板（排版预览 / 正文质检） |
 | `components/chat/aside/writing/gzh/components/GzhDocActions.vue` | 底部动作条 gzh 变体：薄包装共享 `ArticleDocActions`，经 `#extra` 插槽注入「排版预览 / 正文质检」按钮（`open-panel` 事件） |
-| `components/chat/aside/writing/gzh/components/GzhPanelOverlay.vue` | 能力面板浮层外壳：`absolute inset:0` 覆盖整侧栏 + 头部标题 + 右上角 X（仿 `SubAgentAside`） |
+| `components/chat/aside/writing/components/PanelOverlay.vue` | 写作家族共享能力浮层外壳（`absolute inset:0` 覆盖整侧栏 + 头部标题 + 右上角 X，仿 `SubAgentAside`）；原 `gzh/components/GzhPanelOverlay.vue` 于 2026-09-26 上移为共享组件（gzh 与小红书场景共用） |
 | `components/chat/aside/writing/gzh/components/GzhLayoutPanel.vue` | 风格下拉 + iframe 实时预览（677px 内容宽）+ 一键复制 |
 | `components/chat/aside/writing/gzh/components/QcSection.vue` | 正文质检卡片（自 pages/work/ 迁入并适配 aside props；原 pages/work 目录已删） |
 
@@ -52,14 +52,14 @@
 4. **QcSection 迁移适配**：原 `props.wb / props.config.modelKey` 接口作废，新 props 为自包含 `{ title, content, model, disabled }`；`articlePanelProps.ts` 不再存在。
 5. **旧数据兼容**：`writingScene` 水合回退值保持 `'article'`，存量聊天不受影响；`resolveScene` 无 default 分支，新值靠 SCENES.writing Record 穷尽约束兜底。
 6. **复制管线**：剪贴板 `text/html + text/plain` 双写（Clipboard API → execCommand 兜底）；图片转 dataURL 后进剪贴板，本地相对路径基于正文 md 目录解析，解析失败保留原样（裂图可见，不静默吞）。
-7. **能力面板浮层（2026-09-21 迭代）**：原底部 `t-tabs`（固定 320px）改为覆盖整个侧栏的浮层——`activePanel: 'layout' | 'qc' | null`，入口按钮在底部动作条（`GzhDocActions.vue` 经共享组件 `#extra` 插槽注入），浮层由 `GzhPanelOverlay.vue` 承载（`position:absolute; inset:0`，需父级 `.gzh-aside { position: relative }`）。两面板用 `v-show` 常驻挂载，关闭再打开**保留质检结果**；面板高度撑满整栏（不再受 320px 限制）。
+7. **能力面板浮层（2026-09-21 迭代）**：原底部 `t-tabs`（固定 320px）改为覆盖整个侧栏的浮层——`activePanel: 'layout' | 'qc' | null`，入口按钮在底部动作条（`GzhDocActions.vue` 经共享组件 `#extra` 插槽注入），浮层由共享 `PanelOverlay.vue` 承载（`position:absolute; inset:0`，需父级 `.gzh-aside { position: relative }`；2026-09-26 由 gzh 专用上移为写作家族共享，小红书画板浮层复用同一外壳）。两面板用 `v-show` 常驻挂载，关闭再打开**保留质检结果**；面板高度撑满整栏（不再受 320px 限制）。
 
 ## 二期扩展位（未搬的源包能力）
 
 | 源 skill | 能力 | 缺口 / 依赖 |
 |------|------|------|
 | `global-content-search` | 全域内容搜索：小红书 / B站 / 抖音关键词搜索、笔记详情、评论、博主作品监控 | 依赖外部 CLI（`agent-reach` / `bili-cli` / `opencli`）与 Guaikei API token 兜底；B站公开 API 可直连但小红书有 `xsec_token` 风控、抖音无公开后端。等主进程网络层统一改造后再评估做取数工具 |
-| `xhs-hotnotes` | 小红书热门笔记搜索（相关性/热度/时效三维评分） | 脚本 `fetch_xhs_hot_articles.py`，需 `REDFOX_API_KEY`（红狐hub）；搬 md 无工具支撑即空话，与上条同批做 |
+| `xhs-hotnotes` | 小红书热门笔记搜索（相关性/热度/时效三维评分） | 脚本 `fetch_xhs_hot_articles.py`，需 `REDFOX_API_KEY`（红狐hub）；搬 md 无工具支撑即空话，与上条同批做。**2026-09-26 已落地**：随小红书场景做成主进程 `xhs_hot_notes` 工具（见 `docs/writing/10-xhs-scene.md`） |
 | 封面安全区校验脚本 | `check_cover.py` 导出安全区标注图与分享裁切预览 | 安全区规则已浓缩进 `gzh-cover` skill 文本；标注图生成留待有需再做 |
 
 二期实施前提：主进程网络出口统一（axios + 代理收口，见 `docs/setting/09`）完成后，按「主进程单方法 + 薄 preload 桥」先例各做一个取数工具，方法论 md 随工具一并注入。

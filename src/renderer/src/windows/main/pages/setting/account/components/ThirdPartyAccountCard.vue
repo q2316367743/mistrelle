@@ -42,6 +42,26 @@
           <m-link href="https://developer.zhihu.com/">获取</m-link>
         </div>
       </account-setting-row>
+      <account-setting-row
+        icon="sticky-note"
+        title="小红书数据（红狐）"
+        description="用于小红书热门笔记取数（xhs_hot_notes）"
+      >
+        <template #action>
+          <t-tag v-if="state.redfox" theme="success" variant="light" size="small">已配置</t-tag>
+          <t-tag v-else variant="light" size="small">未配置</t-tag>
+        </template>
+        <div class="key-field">
+          <t-input
+            v-model="state.redfox"
+            class="key-field__input"
+            type="password"
+            placeholder="请输入红狐 API Key"
+            clearable
+          />
+          <m-link href="https://redfox.hk/settings/api-keys">获取</m-link>
+        </div>
+      </account-setting-row>
     </div>
   </section>
 </template>

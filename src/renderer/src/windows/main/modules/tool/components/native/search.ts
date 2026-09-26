@@ -52,7 +52,8 @@ interface AnySearchResponse {
   }
 }
 
-function getDomainBlockReason(hostname: string): string | undefined {
+/** 出网前置闸：沙盒网络访问控制（域名黑白名单）命中即返回原因，供各 AI 出网工具复用 */
+export function getDomainBlockReason(hostname: string): string | undefined {
   const { sandbox } = useSettingSecureStore().state
   if (!sandbox.enabled) return undefined
   const { blocked, reason } = isDomainBlocked(

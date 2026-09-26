@@ -9,6 +9,7 @@ import { Esp32LcdApi } from '@common/types/esp32Lcd'
 import { KeypadApi } from '@common/types/keypad'
 import { QuotaApi } from '@common/types/quota'
 import { GzhApi } from '@/types/gzh'
+import { XhsApi } from '@/types/xhs'
 import { NetworkApi } from '@/types/network'
 
 declare global {
@@ -50,6 +51,8 @@ declare global {
       serial: SerialApi
       /** 公众号域桥：爆款数据抓取（实现位于 main，源站需 TLS 回退） */
       gzh: GzhApi
+      /** 小红书域桥：热门笔记取数（实现位于 main，鉴权 Key 由渲染层传入） */
+      xhs: XhsApi
       /** 网络设置桥：设置数据家在 main（内存缓存 + 写时刷新，保存即生效） */
       network: NetworkApi
       /** 红绿灯配置桥：仅伙伴窗口独立 preload（out/preload/buddy.js）注入，主窗口运行时不存在 */

@@ -14,6 +14,7 @@
 <script lang="ts" setup>
 import { CloseIcon } from 'tdesign-icons-vue-next'
 
+/** 写作家族 aside 通用能力浮层外壳：覆盖整个侧栏 + 标题 + 右上角关闭（原 gzh 专用，现共享） */
 defineProps<{
   /** 浮层标题（当前能力面板名） */
   title: string

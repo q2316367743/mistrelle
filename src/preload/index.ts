@@ -20,6 +20,7 @@ import { authApi } from '~/modules/auth/auth'
 import { relayApi } from '~/modules/relay/relay'
 import { serialApi } from '~/modules/serial/serial'
 import { gzhApi } from '~/modules/gzh/gzh'
+import { xhsApi } from '~/modules/xhs/xhs'
 import { networkApi } from '~/modules/network/network'
 import { updaterApi } from '~/modules/updater/updater'
 
@@ -45,6 +46,7 @@ const preload = {
   relay: relayApi,
   serial: serialApi,
   gzh: gzhApi,
+  xhs: xhsApi,
   network: networkApi,
   updater: updaterApi,
   axios: axios.create({ adapter: axios.getAdapter('http') })

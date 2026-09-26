@@ -13,6 +13,7 @@ import { registerDbIpc } from './db/dbIpc'
 import { registerImageIpc } from './modules/image/imageIpc'
 import { registerNetworkIpc } from './modules/network/networkIpc'
 import { registerGzhIpc } from './modules/gzh/gzhIpc'
+import { registerXhsIpc } from './modules/xhs/xhsIpc'
 import { registerTemplateIpc } from './modules/template/templateIpc'
 import { registerAuthIpc } from './modules/auth/authIpc'
 import { registerRelayIpc } from './modules/relay/relayIpc'
@@ -49,6 +50,7 @@ export function registerIpc(): void {
   registerImageIpc()
   registerNetworkIpc()
   registerGzhIpc()
+  registerXhsIpc()
   registerTemplateIpc()
   registerAuthIpc()
   registerRelayIpc()
