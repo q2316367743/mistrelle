@@ -1,10 +1,18 @@
 <template>
   <page-layout title="打水印">
     <template #extra>
-      <t-button v-if="source" variant="outline" @click="pickImage">
-        <template #icon><swap-icon /></template>
-        更换图片
-      </t-button>
+      <div v-if="source" class="flex items-center gap-8px">
+        <t-button variant="outline" @click="pickImage">
+          <template #icon><swap-icon /></template>
+          更换图片
+        </t-button>
+        <t-popconfirm content="将清空当前图片与已打码的标记，确定吗？" @confirm="clearImage">
+          <t-button variant="outline">
+            <template #icon><delete-icon /></template>
+            清空图片
+          </t-button>
+        </t-popconfirm>
+      </div>
     </template>
 
     <div class="watermark-page">
@@ -40,7 +48,7 @@
   </page-layout>
 </template>
 <script lang="ts" setup>
-import { ImageAddIcon, ImageIcon, SwapIcon } from 'tdesign-icons-vue-next'
+import { DeleteIcon, ImageAddIcon, ImageIcon, SwapIcon } from 'tdesign-icons-vue-next'
 import { MessageUtil } from '@/utils/modal'
 import MosaicEditor from '@/windows/main/components/mosaic/MosaicEditor.vue'
 import type { MosaicApplyPayload } from '@/windows/main/components/mosaic/useMosaicEditor'
@@ -75,6 +83,11 @@ const pickImage = async () => {
     filters: [{ name: '图片', extensions: WATERMARK_IMAGE_EXTS }]
   })
   openImage(paths?.[0])
+}
+
+/** 清空图片：回到上传空态（OCR 结果与标记都活在编辑器内部，随其卸载一起丢弃） */
+const clearImage = () => {
+  source.value = ''
 }
 
 /** 拖入图片：Electron 32+ 已移除 File.path，磁盘路径只能经 webUtils 还原 */
