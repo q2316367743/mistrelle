@@ -1,6 +1,6 @@
 # 10 - 小红书场景（xhs）
 
-> 状态：已落地（2026-09-26）。写作家族第四个子场景：小红书创作（定位 → 选题 → 正文 → 标题 → 图文 → 数据复盘），图文产物走**画布画板**。
+> 状态：已落地（2026-09-26；2026-09-27 侧栏增第三个 tab「文件」）。写作家族第四个子场景：小红书创作（定位 → 选题 → 正文 → 标题 → 图文 → 数据复盘），图文产物走**画布画板**。
 
 ## 实现思路
 
@@ -8,7 +8,7 @@
 
 - **文归文章库**：发布文案 / 选题复用文章工作台（`articleStore` 同库，type 用「小红书」——该平台名已在 `ARTICLE_TYPES` 与平台模板里），零新增数据层。
 - **图归画布画板**：图文卡片与封面用 `canvas_*` 引擎（leafer），**一页 = 一个画布文档**（引擎没有多页/画板概念，核实过），1080×1440 + 底部 18% 遮挡区；刻意**不用** HTML 引擎（html_create/html_write 面向单页设计稿，且用户要的是画板上可继续编辑的产物）。
-- **侧栏主次 = 图为主**（2026-09-27 用户纠偏后定稿）：右侧用 **tab 切换两个同位一级视图**——第一个 tab「图片」是常驻画板（直接渲染 `DesignAside`：切页 / 上传 / 遮盖 / 元素树 / 属性面板 / 导出 PNG·PSD），第二个 tab「正文」用 **Monaco 编辑源码纯文本**、不做 Markdown 渲染（小红书不支持 Markdown，渲染层只会掩盖要复制发布的内容）；正文数据仍走 `article_*`，与 AI 写入共享同一 store。两面板均 `destroyOnHide: false` 常驻（画布不重建、正文保留撤销栈），正文 tab 额外 `lazy`——Monaco 必须在可见容器里创建，不能建在隐藏容器上。
+- **侧栏主次 = 图为主**（2026-09-27 用户纠偏后定稿）：右侧用 **tab 切换三个同位一级视图**——第一个 tab「图片」是常驻画板（直接渲染 `DesignAside`：切页 / 上传 / 遮盖 / 元素树 / 属性面板 / 导出 PNG·PSD），第二个 tab「正文」用 **Monaco 编辑源码纯文本**、不做 Markdown 渲染（小红书不支持 Markdown，渲染层只会掩盖要复制发布的内容），第三个 tab「文件」把本聊天的**产物**（导出图片 / 生图素材 / 正文文件）汇成一张列表、点击在系统文件管理器中定位——图片两类取 `canvas_export` / `image_generate` 的工具调用记录（AI 常按工作空间选题约定写显式路径，见「注意事项 9」）；正文数据仍走 `article_*`，与 AI 写入共享同一 store。三面板均 `destroyOnHide: false` 常驻（画布不重建、正文保留撤销栈），正文与文件 tab 额外 `lazy`——Monaco 必须在可见容器里创建，不能建在隐藏容器上。
 - **数据归红狐**：把源包的 `fetch_xhs_hot_articles.py` 能力下沉为主进程 `xhs_hot_notes` 工具，凭证复用既有「第三方账号」链（与知乎同一条），未配置时降级公开检索并强制标注「未经数据验证」。
 
 不拼接 `buildArticleScenePrompt()`：它的配图工作流写死「封面 16:9 + 插图 1:1 + design_draw / 生图子 Agent」，与小红书 3:4 画布路线直接冲突；笔记模型段落改在 `scenes/xhs/prompt.ts` 按本项目工具面浓缩重写（同 gzh 的做法）。
@@ -22,8 +22,10 @@
 | `modules/chat/scenes/xhs/prompt.ts` | `buildXhsScenePrompt({ hasImageGenerate, hasRedfox })`：七段（创作模式 / 笔记模型 / 图文流水线 / 素材铁律 / 热点取数 / skill 路由 / 纪律），动态段落与工具注入同源门控 |
 | `modules/chat/scenes/xhs/skills.ts` + `skills/*.md` ×10 | 10 个内置 skill（`?raw` 打包，gzh 同款模式） |
 | `modules/chat/scenes/index.ts` | `SCENES.writing` 注册 + `SCENE_FAMILY_META.writing.variants` 加「小红书」（`StickyNoteIcon`） |
-| `components/aside/writing/xhs/XhsAside.vue` | 小红书侧栏（图为主）：`t-tabs` 两个同位视图——「图片」（常驻画板）/「正文」（Monaco 源码编辑），均 `destroyOnHide: false` |
+| `components/aside/writing/xhs/XhsAside.vue` | 小红书侧栏（图为主）：`t-tabs` 三个同位视图——「图片」（常驻画板）/「正文」（Monaco 源码编辑）/「文件」（产物文件列表），均 `destroyOnHide: false`、后两者 lazy；`messages` 由 `asideProps` 注入并透传给文件页 |
 | `components/aside/writing/xhs/components/XhsTextPanel.vue` | 正文 tab：`useArticleDoc` 数据层 + **Monaco 源码编辑**（不做 Markdown 渲染）+ 多篇/多版本下拉 + 字数 / 自动保存状态 / 复制正文 |
+| `components/aside/writing/xhs/components/XhsFilePanel.vue` | 文件 tab 视图：三类产物分组列表 + 顶部 ⟳；点击 `showItemInFolder` 定位 |
+| `components/aside/writing/xhs/components/useXhsFiles.ts` | 文件 tab 数据层（抽出自守 vue 300 行红线）：**图片两类读工具调用记录**（`canvas_export` / `image_generate` 的返回路径）+ 正文扫文章库 drafts + 命名映射 / 排序 / 刷新时机 |
 | `components/aside/writing/components/PanelOverlay.vue` | 写作家族**共享**能力浮层外壳（原 `gzh/components/GzhPanelOverlay.vue` 上移，gzh 侧栏同步改用） |
 | `modules/tool/components/xhs/xhsHotTools.ts` | `xhs_hot_notes` 工具（薄封装）+ `hasRedfoxAccess()` 门控 |
 | `src/main/src/modules/xhs/xhsHotNotes.ts` + `xhsIpc.ts` | 红狐取数实现（`appAxios.post` 统一出口）+ `xhs:hot-notes` 通道 |
@@ -33,7 +35,7 @@
 
 ## 数据结构 / API 契约
 
-- **场景定义**：`xhsScene.tools = createArticleTools(ctx) + createCanvasTools(ctx) + createDesignTools(ctx) + (hasRedfoxAccess() ? xhsHotTools : [])`；`subAgentAllow: ['research','image']`；`personalizeScope: 'writing'`；`sandboxDirs` 与 article 相同（同库）；`asideProps` 传 `sandbox/workspace/fullscreen/status`（status 供画板面板在作答中禁用切页）。**未注入 `design_draw`**：视觉路线单一（画布 + 生图），避免与 `canvas_*` 争抢工具选择。
+- **场景定义**：`xhsScene.tools = createArticleTools(ctx) + createCanvasTools(ctx) + createDesignTools(ctx) + (hasRedfoxAccess() ? xhsHotTools : [])`；`subAgentAllow: ['research','image']`；`personalizeScope: 'writing'`；`sandboxDirs` 与 article 相同（同库）；`asideProps` 传 `sandbox/workspace/fullscreen/status/messages`（status 供画板面板在作答中禁用切页；messages 供文件 tab 取工具产物路径）。**未注入 `design_draw`**：视觉路线单一（画布 + 生图），避免与 `canvas_*` 争抢工具选择。
 - **10 个内置 skill**（name 去源包 `space-` 前缀、统一 `xhs-`）：
   | skill | 作用 |
   |---|---|
@@ -50,6 +52,16 @@
 - **`xhs_hot_notes` 工具**：`{ keywords: string[]（1-3）, days?（≤30）, maxItems?（≤20） }` → `{ results?: [{ keyword, total, relatedSearches, items[] }], errors[] }`；条目字段 `title / desc / time / link / author / fans / likes / collects / comments / shares / interactive / score / recency / cover`（压缩后）。部分关键词失败只进 `errors`，不整体报错。
 - **红狐接口**：`POST https://redfox.hk/story/api/xhs/search/search`，头 `X-API-KEY`，体 `{ keyword, pageNum: 1, pageSize ≤50, startDate, endDate, source }`；返回 `{ code: 2000, data: { articles[], total, relatedSearches[] } }`，**评分由接口返回不自行计算**，客户端按 `totalScore` 降序取前 N。
 - **凭证链**：`SettingAccount.redfox` → `SettingAccountStore`（deep watch → `accountSave`）→ `~/.mistrelle/setting/account.json`（safeStorage 整文件加密，解密失败按明文兼容）；工具侧读取后**随请求参数经 IPC 下发**，主进程不留存、不落盘。
+- **文件 tab 的数据契约**（零新增 IPC；两类来源各取所长，**图片两类必须取工具调用记录，不能扫目录猜**）：
+
+  | 分组 | 来源 | 取值 | 主行 | 排序 |
+  |---|---|---|---|---|
+  | 导出图片 | 本聊天消息流中的 `canvas_export` 工具调用 | 结果 `path`（回落参数 `path`） | 文件名（`P01_封面.png`） | 调用时间升序 = 页序 |
+  | 生图素材 | 同一来源的 `image_generate` 调用 | 结果 `paths` 全量（旧形状回落 `path`） | 文件名 | 调用时间升序 |
+  | 正文文件 | 扫 `{articles根}/drafts/*.md` | 与 `project.articles[].types[].versions[].file` 比对 | `标题 · 类型 · 第N版 · 展示名`（`articleVersionTitle`），索引缺失回落文件名 | mtime 降序（最新草稿在前） |
+
+  次行统一 `所在目录名 / 文件名 · 大小 · MM-DD HH:mm`（`size` / `mtime` 取磁盘实况，图片两类只取 `stat`，正文取 `readDir`）；右侧 `t-tag` 标后缀。**为什么图片不扫目录**：AI 常按用户工作空间的选题约定写显式路径（实测 `{workspace}/选题/<主题>/P01_封面.png`），只有调用记录认得出；首版扫 `{sandbox}/outputs/canvas-*.png` 因此恒为空。约束：只认块级 `status === 'complete'` 的调用、同路径保留最后一次（重导覆盖）、每条 `fs.stat` 过滤已不存在的文件（用户移走即消失，条目 hover 有完整路径 tooltip）。点击一律 `window.preload.inject.shell.showItemInFolder`。刷新时机 = 首次挂载 + `active` 变 true（切到本页）+ 工具产物签名变化（AI 又导出 / 又生图）+ 文章根变化 + 顶部 ⟳，**不做轮询**。
+- **`messages` 注入**：`SceneAsideContext` 本就带 `messages`，xhs `asideProps` 增传 `ctx.messages`（`XhsAside` → `XhsFilePanel` → `useXhsFiles`），是本功能唯一的接线条目。
 - **侧栏联动（白拿）**：图片 tab 直接渲染 `DesignAside`，与工具层共享 `getCanvasStore(sandbox)` 单例——AI 经 `canvas_*` 改动画布时侧栏 deep watch 实时重渲染；用户拖拽 / 改属性写回节点并落盘；双击节点经 `CANVAS_NODE_PICK_KEY`（`useChatSession` 在聊天页 provide）注入聊天输入框。正文 tab 与 AI 的 `article_write` 共享 `articleStore`（`contentRevs` 即时重读 + mtime 轮询兜底），多篇 / 多版本下拉仅在数量 > 1 时出现。
 
 ## 注意事项
@@ -62,6 +74,7 @@
 6. **源包落地差异**：① 三个付费数据源只搬红狐（`socialdatax` / `怪壳` 是外部 CLI，项目内无等价物），降级位置由 `any_search` / `browser_fetch` 承接；② Python / Node 校验脚本一律不搬——规格校验用 `image_info` + `canvas_inspect`，表格数据用 `file_read_xlsx`，渲染校验用 `canvas_export` 目测；③ `getdesign` 62 风格注册表 → 项目自带 `canvas_guidelines("styles")` 与设计风格体系；④ 源包 3 处失效的 `xhs-ops-copilot` 残留引用已改为对应 skill 名。
 7. **工具面偏大**：article + canvas(12) + design(13) + xhs 取数 ≈ 40 个工具，function 定义 token 与 design 场景同量级；如需收敛可走「按需装载组」方向。
 8. **正文被有意降级**（2026-09-27 纠偏：先做成二级页，再按用户意见改成第二个 tab）：小红书以图为主，故正文去掉文章工作台的重组件——**不引 tiptap 富文本**（小红书不支持 Markdown，渲染无意义）、**无去 AI 味 / 版本对比 / AI 检测 / 封面登记按钮**、标题只读（AI 设定）。保留的是：Monaco 纯源码编辑（800ms 防抖自动落盘，`useArticleDoc.saveDoc`）、字数、复制正文、多篇 / 多版本切换。要做富交互请先确认这是有意收窄而非遗漏。
+9. **文件 tab 的口径 = 工具调用记录 + 文章库扫描**（首版只扫沙盒产物目录，实测恒为 0，已纠正）：`canvas_export` / `image_generate` 的产物路径以**工具返回值**为唯一真源（显式 path 与缺省路径都覆盖，落点可能在工作空间任意位置）；正文文件扫文章库 `drafts/`（覆盖 AI `article_write` 与「正文」页自动落盘两条写入路径）。**不要退回「扫 outputs 目录」的写法**——用户的选题约定会把成品写到 `{workspace}/选题/…`，扫沙盒只会得到空列表。边界（有意收窄）：手动「下载图片 / PSD」（保存对话框写到自选路径）、AI 用 `file_write` / `cli_run` 写出的文件都不入列表；**子 Agent（`spawn_agent type=image`）内部生成的图片也不在列表内**（读的是主会话消息流，子 Agent 消息另存）；文件被移走 / 删除后条目自行消失（`fs.stat` 过滤）；点击只做「在 Finder 中定位」一件事，不做打开文件 / 目录下钻。连带口径：① 打开文件 tab 会经 `getArticleStore().refresh()` 读索引（该方法在 project.json 缺失时会创建空项目落盘，与「正文」tab 同一行为）；② 正文根优先工作空间（`{workspace}/articles`），切工作空间后列表跟随。
 
 ## 后续（可做未做）
 

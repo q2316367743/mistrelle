@@ -1,6 +1,6 @@
 <template>
   <div class="xhs-aside">
-    <!-- 图与文是同位的一级视图，用 tab 切换：图片在前（笔记重点），正文其次 -->
+    <!-- 图 / 文 / 产物文件是同位的一级视图，用 tab 切换：图片在前（笔记重点），正文其次，文件收尾 -->
     <t-tabs v-model="tab" class="xhs-aside__tabs">
       <t-tab-panel value="canvas" label="图片" :destroy-on-hide="false">
         <div class="xhs-aside__view">
@@ -21,18 +21,34 @@
           <xhs-text-panel :sandbox="sandbox" :workspace="workspace" />
         </div>
       </t-tab-panel>
+      <!-- 文件页：只汇总本聊天的产物文件（导出图片 / 生图素材 / 正文文件），点击在文件夹中定位。
+           active 供面板在切到本页时重扫产物目录，替代定时轮询 -->
+      <t-tab-panel value="files" label="文件" lazy :destroy-on-hide="false">
+        <div class="xhs-aside__view">
+          <xhs-file-panel
+            :sandbox="sandbox"
+            :workspace="workspace"
+            :messages="messages"
+            :active="tab === 'files'"
+          />
+        </div>
+      </t-tab-panel>
     </t-tabs>
   </div>
 </template>
 <script lang="ts" setup>
+import type { ChatMessage } from '@/domain'
 import type { ChatStatus } from '@/windows/main/modules/chat'
 import DesignAside from '@/windows/main/components/aside/design/DesignAside.vue'
 import XhsTextPanel from './components/XhsTextPanel.vue'
+import XhsFilePanel from './components/XhsFilePanel.vue'
 
 /**
  * 小红书侧栏：**图为主**——「图片」tab 常驻画板（复用 canvas 引擎侧栏）；
  * 「正文」tab 用 Monaco 编辑发布文案源码，不做 Markdown 渲染（小红书不支持 Markdown，
- * 渲染层只会掩盖真正要复制发布的内容）。两 tab 是同位一级视图，都常驻不反复重建。
+ * 渲染层只会掩盖真正要复制发布的内容）；「文件」tab 汇总本聊天落盘的产物文件
+ * （导出图片 / 生图素材 / 正文文件），点击在文件夹中定位，便于取用发布。三个 tab 是同位一级视图，
+ * 都常驻不反复重建。
  */
 defineProps<{
   sandbox?: string
@@ -40,9 +56,11 @@ defineProps<{
   fullscreen?: boolean
   /** 会话作答状态：画板据此禁用切页，避免干扰 AI 作答 */
   status?: ChatStatus
+  /** 会话消息流：文件 tab 据此取 canvas_export / image_generate 的真实产物路径 */
+  messages?: ChatMessage[]
 }>()
 
-const tab = ref<'canvas' | 'text'>('canvas')
+const tab = ref<'canvas' | 'text' | 'files'>('canvas')
 </script>
 <style scoped lang="less">
 .xhs-aside {

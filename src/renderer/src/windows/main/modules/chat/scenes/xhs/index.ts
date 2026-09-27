@@ -3,7 +3,10 @@ import { createArticleTools } from '@/windows/main/modules/tool/components/artic
 import { createCanvasTools } from '@/windows/main/modules/tool/components/canvas/canvasTools'
 import { createDesignTools } from '@/windows/main/modules/tool/components/design'
 import { hasImageGenerateAccess } from '@/windows/main/modules/tool/components/design/imageGenerate'
-import { hasRedfoxAccess, xhsHotTools } from '@/windows/main/modules/tool/components/xhs/xhsHotTools'
+import {
+  hasRedfoxAccess,
+  xhsHotTools
+} from '@/windows/main/modules/tool/components/xhs/xhsHotTools'
 import { XHS_SKILLS } from './skills'
 import { buildXhsScenePrompt } from './prompt'
 import XhsAside from '@/windows/main/components/aside/writing/xhs/XhsAside.vue'
@@ -39,6 +42,9 @@ export const xhsScene: SceneDefinition = {
     sandbox: ctx.sandbox,
     workspace: ctx.workspace,
     fullscreen: ctx.fullscreen,
-    status: ctx.status
+    status: ctx.status,
+    // 文件 tab 用：canvas_export / image_generate 常按工作空间约定写显式路径，
+    // 真实落点只在工具调用记录里，扫沙盒产物目录认不出
+    messages: ctx.messages
   })
 }
