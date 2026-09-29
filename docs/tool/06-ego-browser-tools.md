@@ -56,7 +56,7 @@ ego-browser 命令**默认不在 PATH 中**（macOS 上 onboarding 注册到 `~/
 ```json
 {
   "subcommand": "nodejs",
-  "script": "const task = await useOrCreateTaskSpace(\"打开示例页\"); await openOrReuseTab(\"https://example.com\"); cliLog(await snapshotText())",
+  "script": "const task = await taskSpace(\"打开示例页\"); const page = task.page(\"p1\"); await page.goto(\"https://example.com\"); console.log(await page.title())",
   "serverName": "app-a",
   "cwd": "/path",
   "timeout": 60000
@@ -96,5 +96,13 @@ ego-browser 命令**默认不在 PATH 中**（macOS 上 onboarding 注册到 `~/
 - **stdin 通道**：`cliRun` 的 `CliRunOptions` 新增 `stdin` 字段（`channels.ts` / `plugin/shell.ts` /
   main `shellExec.ts` 三层同步），main 进程 spawn 后写入 `child.stdin` 并 `end()`（EPIPE 已吞掉）。
   `nodejs` 子命令脚本即经此通道传入，SKILL.md 的 heredoc 写法（`ego-browser nodejs <<'EOF'`）等价可用。
-- 按 ego-browser 约定，通常每个用户目标复用一个 task space（`useOrCreateTaskSpace`），
-  跨轮次用返回的 `task.id` 续用；任务完成调用 `completeTaskSpace(id, { keep: false })`。
+- **脚本 API 以 ego-browser 官方为准**（2026-09-29 校订）：任务空间 `taskSpace(nameOrId)`（按名/按 id 创建或复用，
+  新空间自带页码 `p1`）、页面 `task.page(label)` + `page.goto/click/fill/setInputFiles/mouse.click/keyboard.*/`
+  `screenshot/evaluate/waitForTimeout`、`takeOverTaskSpace(spaceId)`（用户处理完权限弹窗后接回**同一**空间）、
+  `task.finish({ keep })` 结束任务；输出用 `console.log()`。**不是 Playwright**，勿臆造 `locator()` / `getByRole()`
+  等方法。旧文档里的 `useOrCreateTaskSpace` / `completeTaskSpace` / `snapshotText` / `fillInput` / `cliLog`
+  等名字在 ego-browser 现行文档中不存在，已全部改掉，勿再使用。
+- **每次调用是新进程**：JS 变量不保留，任务空间、标签页与页码标签可凭上一段打印的 `spaceId` 续用；
+  含长等待的流程（如发笔记）须显式传 `timeout`（默认仅 30000ms）。
+- **场景侧消费方**：小红书场景第 11 个内置 skill `xhs-publish` 即本组工具的落地用法示例
+  （先 `load_tool_collection(["browser"])`，再分段跑 `ego_browser_run`），见 `docs/writing/10-xhs-scene.md`。

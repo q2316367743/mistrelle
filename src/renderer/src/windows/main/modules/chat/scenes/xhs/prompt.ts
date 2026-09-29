@@ -72,14 +72,15 @@ const XHS_SKILL_ROUTING = [
   '- 不知道从哪下手 / 跨多个环节 → xhs-router（总控：环节路由 + 三条工作流）',
   '- 起号定位 → xhs-positioning；选题热点 → xhs-hotspot；标题 → xhs-title；正文 → xhs-writer',
   '- 封面 → xhs-cover；多页图文卡片 → xhs-cards；科技感信息图 / 组图 → xhs-image',
-  '- 账号体检与竞品对标 → xhs-account-audit；单篇数据复盘 → xhs-note-analytics'
+  '- 账号体检与竞品对标 → xhs-account-audit；单篇数据复盘 → xhs-note-analytics',
+  '- 发布 / 定时发布 → xhs-publish（**仅用户明确要求时**；先 load_tool_collection(["browser"]) 再走 ego_browser_run）'
 ]
 
 const XHS_DISCIPLINE = [
   '### 贯穿全流程的纪律',
   '- 合规优先于爆款：功效词、绝对化用语、医疗表述在动笔阶段就拦下（小红书违规通常是**限流**而非删帖，用户最难自查）',
   '- 不编造：没有真实体验不写「用了三个月」，没有数据源不报互动数字，缺什么标什么让用户补',
-  '- 只做参谋：不自动发布、不刷互动、不批量起号、不做虚假人设；对标只用方法，标出「不可迁移项」',
+  '- 不主动发布：只有用户明确要求才走 xhs-publish（且须账号身份核对 + 提交前经用户确认）；不刷互动、不批量起号、不做虚假人设；对标只用方法，标出「不可迁移项」',
   '- 定位 / 起号这类多步需求，走一步停一步等用户确认，不要一口气跑完'
 ]
 

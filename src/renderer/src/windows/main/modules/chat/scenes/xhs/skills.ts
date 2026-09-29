@@ -17,6 +17,7 @@ import cards from './skills/xhs-cards.md?raw'
 import image from './skills/xhs-image.md?raw'
 import accountAudit from './skills/xhs-account-audit.md?raw'
 import noteAnalytics from './skills/xhs-note-analytics.md?raw'
+import publish from './skills/xhs-publish.md?raw'
 
 export const XHS_SKILLS: ReadonlyArray<BuiltInSkill> = [
   {
@@ -78,5 +79,11 @@ export const XHS_SKILLS: ReadonlyArray<BuiltInSkill> = [
     description:
       '小红书笔记数据复盘：14 项指标口径、六层漏斗归因、多篇横向找规律。说「笔记数据复盘」「这条为什么没流量」「曝光高但没人点」「哪类内容该加码」时加载（数据来自用户导出的表格或后台截图）',
     content: noteAnalytics
+  },
+  {
+    name: 'xhs-publish',
+    description:
+      '小红书发布（ego 浏览器）：把定稿图文上传到创作服务平台并按用户指定时间定时发布，含账号身份核对 / 批量传图 / 标题正文 / 定时开关与时间设置 / 提交验收 / 五个实测踩坑点。说「发布小红书」「帮我发这篇」「定时发布」「排到明天中午发」「上传到小红书」时加载（仅用户明确要求时执行；需本机安装 ego-browser，先装载 browser 工具组）',
+    content: publish
   }
 ]

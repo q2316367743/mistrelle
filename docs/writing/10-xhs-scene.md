@@ -1,10 +1,10 @@
 # 10 - 小红书场景（xhs）
 
-> 状态：已落地（2026-09-26；2026-09-27 侧栏增第三个 tab「文件」）。写作家族第四个子场景：小红书创作（定位 → 选题 → 正文 → 标题 → 图文 → 数据复盘），图文产物走**画布画板**。
+> 状态：已落地（2026-09-26；2026-09-27 侧栏增第三个 tab「文件」；2026-09-29 内置 skill 增至 11 个，新增 `xhs-publish` 发布流程）。写作家族第四个子场景：小红书创作（定位 → 选题 → 正文 → 标题 → 图文 → 发布 → 数据复盘），图文产物走**画布画板**。
 
 ## 实现思路
 
-在写作家族（`ChatType = 'writing'`）下新增子场景 `WritingScene = 'xhs'`，方法论文本改编自外部 skill 包 **xhs-Skills**（10 个 skill，位于 `~/Documents/temp/creator-buddy/xhs-Skills/`），按本项目工具面改写后注入。三项关键取向：
+在写作家族（`ChatType = 'writing'`）下新增子场景 `WritingScene = 'xhs'`，方法论文本改编自外部 skill 包 **xhs-Skills**（10 个 skill，位于 `~/Documents/temp/creator-buddy/xhs-Skills/`），按本项目工具面改写后注入；第 11 个 `xhs-publish`（发布流程）来自 2026-09-29 一次真实发布的实测记录，为场景自有内容而非源包。三项关键取向：
 
 - **文归文章库**：发布文案 / 选题复用文章工作台（`articleStore` 同库，type 用「小红书」——该平台名已在 `ARTICLE_TYPES` 与平台模板里），零新增数据层。
 - **图归画布画板**：图文卡片与封面用 `canvas_*` 引擎（leafer），**一页 = 一个画布文档**（引擎没有多页/画板概念，核实过），1080×1440 + 底部 18% 遮挡区；刻意**不用** HTML 引擎（html_create/html_write 面向单页设计稿，且用户要的是画板上可继续编辑的产物）。
@@ -20,7 +20,7 @@
 | `modules/chat/writingScene.ts` | `WritingScene` 加 `'xhs'`（水合回退保持 `'article'`，存量聊天不受影响） |
 | `modules/chat/scenes/xhs/index.ts` | xhsScene 定义（prompt / skills / tools / aside 四件套） |
 | `modules/chat/scenes/xhs/prompt.ts` | `buildXhsScenePrompt({ hasImageGenerate, hasRedfox })`：七段（创作模式 / 笔记模型 / 图文流水线 / 素材铁律 / 热点取数 / skill 路由 / 纪律），动态段落与工具注入同源门控 |
-| `modules/chat/scenes/xhs/skills.ts` + `skills/*.md` ×10 | 10 个内置 skill（`?raw` 打包，gzh 同款模式） |
+| `modules/chat/scenes/xhs/skills.ts` + `skills/*.md` ×11 | 11 个内置 skill（`?raw` 打包，gzh 同款模式；第 11 个 `xhs-publish` 为发布流程） |
 | `modules/chat/scenes/index.ts` | `SCENES.writing` 注册 + `SCENE_FAMILY_META.writing.variants` 加「小红书」（`StickyNoteIcon`） |
 | `components/aside/writing/xhs/XhsAside.vue` | 小红书侧栏（图为主）：`t-tabs` 三个同位视图——「图片」（常驻画板）/「正文」（Monaco 源码编辑）/「文件」（产物文件列表），均 `destroyOnHide: false`、后两者 lazy；`messages` 由 `asideProps` 注入并透传给文件页 |
 | `components/aside/writing/xhs/components/XhsTextPanel.vue` | 正文 tab：`useArticleDoc` 数据层 + **Monaco 源码编辑**（不做 Markdown 渲染）+ 多篇/多版本下拉 + 字数 / 自动保存状态 / 复制正文 |
@@ -36,7 +36,7 @@
 ## 数据结构 / API 契约
 
 - **场景定义**：`xhsScene.tools = createArticleTools(ctx) + createCanvasTools(ctx) + createDesignTools(ctx) + (hasRedfoxAccess() ? xhsHotTools : [])`；`subAgentAllow: ['research','image']`；`personalizeScope: 'writing'`；`sandboxDirs` 与 article 相同（同库）；`asideProps` 传 `sandbox/workspace/fullscreen/status/messages`（status 供画板面板在作答中禁用切页；messages 供文件 tab 取工具产物路径）。**未注入 `design_draw`**：视觉路线单一（画布 + 生图），避免与 `canvas_*` 争抢工具选择。
-- **10 个内置 skill**（name 去源包 `space-` 前缀、统一 `xhs-`）：
+- **11 个内置 skill**（name 去源包 `space-` 前缀、统一 `xhs-`）：
   | skill | 作用 |
   |---|---|
   | `xhs-router` | 总控：环节路由表 + 三条工作流（起号 / 日常 / 诊断）+ 三条纪律 |
@@ -49,6 +49,7 @@
   | `xhs-image` | 生图型信息图：固定「轻盈 AI 产品信息图」视觉系统 + Style Lock 英文段逐字复用 + 文字密度控制 + 逐图 10 项复核 |
   | `xhs-account-audit` | 账号体检：八维评分 + 判据扣分表 + 竞品对标 + 不可迁移项 + 固定输出格式 |
   | `xhs-note-analytics` | 数据复盘：14 项指标口径 + 六层漏斗定位 + 样本量红线 + 多条横向纪律 |
+  | `xhs-publish` | 发布（ego 浏览器）：账号身份核对 + 批量传图 + 标题正文 + 定时开关与时间设置 + 提交验收 + 五个实测坑；**仅用户明确要求时执行**，先 `load_tool_collection(["browser"])` 再走 `ego_browser_run` |
 - **`xhs_hot_notes` 工具**：`{ keywords: string[]（1-3）, days?（≤30）, maxItems?（≤20） }` → `{ results?: [{ keyword, total, relatedSearches, items[] }], errors[] }`；条目字段 `title / desc / time / link / author / fans / likes / collects / comments / shares / interactive / score / recency / cover`（压缩后）。部分关键词失败只进 `errors`，不整体报错。
 - **红狐接口**：`POST https://redfox.hk/story/api/xhs/search/search`，头 `X-API-KEY`，体 `{ keyword, pageNum: 1, pageSize ≤50, startDate, endDate, source }`；返回 `{ code: 2000, data: { articles[], total, relatedSearches[] } }`，**评分由接口返回不自行计算**，客户端按 `totalScore` 降序取前 N。
 - **凭证链**：`SettingAccount.redfox` → `SettingAccountStore`（deep watch → `accountSave`）→ `~/.mistrelle/setting/account.json`（safeStorage 整文件加密，解密失败按明文兼容）；工具侧读取后**随请求参数经 IPC 下发**，主进程不留存、不落盘。
@@ -75,6 +76,8 @@
 7. **工具面偏大**：article + canvas(12) + design(13) + xhs 取数 ≈ 40 个工具，function 定义 token 与 design 场景同量级；如需收敛可走「按需装载组」方向。
 8. **正文被有意降级**（2026-09-27 纠偏：先做成二级页，再按用户意见改成第二个 tab）：小红书以图为主，故正文去掉文章工作台的重组件——**不引 tiptap 富文本**（小红书不支持 Markdown，渲染无意义）、**无去 AI 味 / 版本对比 / AI 检测 / 封面登记按钮**、标题只读（AI 设定）。保留的是：Monaco 纯源码编辑（800ms 防抖自动落盘，`useArticleDoc.saveDoc`）、字数、复制正文、多篇 / 多版本切换。要做富交互请先确认这是有意收窄而非遗漏。
 9. **文件 tab 的口径 = 工具调用记录 + 文章库扫描**（首版只扫沙盒产物目录，实测恒为 0，已纠正）：`canvas_export` / `image_generate` 的产物路径以**工具返回值**为唯一真源（显式 path 与缺省路径都覆盖，落点可能在工作空间任意位置）；正文文件扫文章库 `drafts/`（覆盖 AI `article_write` 与「正文」页自动落盘两条写入路径）。**不要退回「扫 outputs 目录」的写法**——用户的选题约定会把成品写到 `{workspace}/选题/…`，扫沙盒只会得到空列表。边界（有意收窄）：手动「下载图片 / PSD」（保存对话框写到自选路径）、AI 用 `file_write` / `cli_run` 写出的文件都不入列表；**子 Agent（`spawn_agent type=image`）内部生成的图片也不在列表内**（读的是主会话消息流，子 Agent 消息另存）；文件被移走 / 删除后条目自行消失（`fs.stat` 过滤）；点击只做「在 Finder 中定位」一件事，不做打开文件 / 目录下钻。连带口径：① 打开文件 tab 会经 `getArticleStore().refresh()` 读索引（该方法在 project.json 缺失时会创建空项目落盘，与「正文」tab 同一行为）；② 正文根优先工作空间（`{workspace}/articles`），切工作空间后列表跟随。
+
+10. **发布 = skill 而非工具**（2026-09-29）：`xhs-publish` 只教模型怎么调既有 `ego_browser_run`（发布全程在 renderer 提示词层，**无新增 IPC / 主进程代码**）。三点约束：① `ego_browser_run` / `ego_browser_exist` 属**可选工具组 `browser`**，不在常驻工具里，skill 要求先 `load_tool_collection(["browser"])`；② 依赖用户本机安装 ego-browser（路径见 docs/tool/06 与「设置 → 安全中心 → 内置运行时」），未安装时如实告知而非硬试；③ `ego_browser_run` 是 `risk: 'safe'` 免审批工具，`nodejs` 子命令可执行任意 JS，兜底仅剩文件黑名单子串扫描（见 docs/tool/06 安全边界）。**纪律口径已同步收窄**：`prompt.ts` 的「只做参谋：不自动发布」改为「不主动发布：只有用户明确要求才走 xhs-publish（须身份核对 + 提交前确认）」，`xhs-router` / `xhs-writer` / `xhs-account-audit` 三处同口径改词——改回原文前请先确认这是有意的能力回收。发布流程细节（选择器 / 五个实测坑 / 验收四条 / 分段与 timeout 约定）全在该 skill 内，不在此重复。
 
 ## 后续（可做未做）
 
